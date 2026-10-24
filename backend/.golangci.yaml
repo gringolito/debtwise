@@ -1,0 +1,59 @@
+version: "2"
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - depguard
+    - errorlint
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - godox
+    - gosec
+    - iface
+    - misspell
+    - modernize
+    - nilerr
+    - noctx
+    - prealloc
+    - predeclared
+    - reassign
+    - rowserrcheck
+    - sloglint
+    - sqlclosecheck
+    - testifylint
+    - testpackage
+    - tparallel
+    - unconvert
+    - unparam
+    - wsl_v5
+  settings:
+    depguard:
+      rules:
+        decimal:
+          list-mode: lax
+          files:
+            - "!**/backend/decimal/*.go"
+          deny:
+            - pkg: github.com/cockroachdb/apd
+              desc: only the decimal package imports apd (ADR-0003); use decimal.Decimal
+    sloglint:
+      # "scope" flags calls only where a ctx was in scope but unused.
+      context: "scope"
+      # Keys such as lot_id and duration_ms.
+      key-naming-case: "snake"
+  exclusions:
+    generated: strict
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      module-path: github.com/gringolito/debtwise/backend
+    goimports:
+      local-prefixes:
+        - github.com/gringolito/debtwise/backend
+  exclusions:
+    generated: strict

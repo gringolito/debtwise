@@ -1,0 +1,229 @@
+# `mise install` provisions the toolchain.
+# `mise tasks` lists tasks.
+# `mise run <task>` runs one.
+
+[tools]
+go = "1.27.3"                   # Keep in sync with backend/go.mod
+node = "24.22.1"                # LTS
+sqlc = "1.31.1"
+"go:github.com/pressly/goose/v3/cmd/goose" = "v3.29.0"
+# Keep in sync with the version the gringolito/go-covergrid action runs in CI.
+"go:github.com/vladopajic/go-test-coverage/v2" = "v2.20.1"
+
+[env]
+_.file = ".env"
+
+SERVER_IMAGE = { default = "docker.io/gringolito/debtwise-server:edge" }
+WEB_IMAGE = { default = "docker.io/gringolito/debtwise-web:edge" }
+DB_PATH = { default = "debtwise.db" }
+
+# ---------------------------------------------------------------------------
+# Local dev loop (server + frontend run host-native on a local SQLite file)
+# ---------------------------------------------------------------------------
+
+[tasks."local:up"]
+description = "Run the API server and the frontend host-native (Ctrl-C stops both)"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+trap 'kill 0' EXIT
+(cd backend && go run ./cmd/server) &
+(cd frontend && npm run dev) &
+wait
+'''
+
+# ---------------------------------------------------------------------------
+# Full stack in Docker (build from source; drop a .env and run)
+# ---------------------------------------------------------------------------
+
+[tasks."docker:up"]
+description = "Build images from source and start the full stack locally (Ctrl-C stops)"
+run = "docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml up --build"
+
+[tasks."docker:down"]
+description = "Stop and remove local stack containers"
+run = "docker compose -f deploy/compose.yaml -f deploy/compose.local.yaml down"
+
+# ---------------------------------------------------------------------------
+# Database migrations (goose) / codegen (sqlc)
+# The server applies the embedded migrations at startup; these tasks are for
+# working on a migration by hand.
+# ---------------------------------------------------------------------------
+
+[tasks."db:migrate:up"]
+description = "Apply all up migrations to the local SQLite file"
+dir = "backend"
+run = 'goose sqlite3 "$DB_PATH" -dir db/migrations up'
+
+[tasks."db:migrate:down"]
+description = "Roll back the most recent migration on the local SQLite file"
+dir = "backend"
+run = 'goose sqlite3 "$DB_PATH" -dir db/migrations down'
+
+[tasks."generate:sqlc"]
+description = "Generate Go query code from SQL (sqlc)"
+dir = "backend"
+run = "sqlc generate"
+
+[tasks."verify:sqlc"]
+description = "Regenerate sqlc code and fail if it differs from git"
+depends = "generate:sqlc"
+run = "git diff --exit-code -- backend/db"
+
+# ---------------------------------------------------------------------------
+# OpenAPI SDK codegen (openapi-ts)
+# ---------------------------------------------------------------------------
+
+[tasks."generate:openapi"]
+description = "Generate docs/openapi.json from the Go server, then the TS SDK into frontend/src/lib/api/generated/"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+(cd backend && go run ./cmd/openapi-gen)
+# Pin typescript@5.x so peer resolution does not pull TS7+, which breaks
+# internal compiler APIs. The generated SDK has no runtime deps.
+(cd frontend && npx --yes -p @hey-api/openapi-ts@0.90.0 -p typescript@5.9.3 \
+  openapi-ts -i ../docs/openapi.json -o src/lib/api/generated -c @hey-api/client-fetch)
+'''
+
+[tasks."verify:openapi"]
+description = "Regenerate the OpenAPI spec and TS client and fail if they differ from git"
+depends = ["generate:openapi"]
+run = "git diff --exit-code -- docs/openapi.json frontend/src/lib/api/generated"
+
+# ---------------------------------------------------------------------------
+# Lint / format
+# ---------------------------------------------------------------------------
+
+[tasks."lint:all"]
+description = "Run all the project's linters"
+depends = ["lint:backend", "lint:frontend"]
+
+[tasks."lint:backend"]
+description = "Lint Go with golangci-lint"
+dir = "backend"
+run = "golangci-lint run"
+
+[tasks."lint:frontend"]
+description = "Lint and type-check the frontend (oxlint + tsc)"
+dir = "frontend"
+run = [
+  "npm run lint",
+  "npm run typecheck",
+]
+
+[tasks."format:all"]
+description = "Run all the project's code-style formatting tools"
+depends = ["format:backend", "format:frontend"]
+
+[tasks."format:backend"]
+description = "Format Go (golangci-lint fmt)"
+dir = "backend"
+run = "golangci-lint fmt"
+
+[tasks."format:frontend"]
+description = "Format the frontend with Biome"
+dir = "frontend"
+run = "npm run format"
+
+[tasks."verify:format:all"]
+description = "Verify the formatting"
+depends = ["verify:format:backend", "verify:format:frontend"]
+
+[tasks."verify:format:backend"]
+description = "Verify the backend formatting with golangci-lint fmt"
+dir = "backend"
+run = "golangci-lint fmt --diff"
+
+[tasks."verify:format:frontend"]
+description = "Verify the frontend formatting with Biome"
+dir = "frontend"
+run = "npm run format:check"
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+[tasks."test:all"]
+description = "Run all tests (backend + frontend)"
+run = [{ task = "test:backend" }, { task = "test:frontend" }]
+
+[tasks."test:backend"]
+description = "Run Go tests with coverage and race detection"
+dir = "backend"
+run = "go test -race ./... -coverprofile=cover.out -covermode=atomic -coverpkg=./..."
+
+[tasks."test:frontend"]
+description = "Run frontend tests"
+dir = "frontend"
+run = "npm test"
+
+[tasks."verify:coverage:backend"]
+description = "Fail if cover.out from test:backend is under the .testcoverage.yml thresholds"
+dir = "backend"
+run = "go-test-coverage --config .testcoverage.yml --profile cover.out"
+
+# ---------------------------------------------------------------------------
+# Pre-push check
+# ---------------------------------------------------------------------------
+
+[tasks.check]
+description = "Run the pull request CI checks locally, except the security scans and coverage-drop gate"
+run = [
+  { task = "verify:sqlc" },
+  { task = "verify:openapi" },
+  { tasks = ["lint:all", "verify:format:all"] },
+  { task = "test:backend" },
+  { task = "verify:coverage:backend" },
+  { task = "test:frontend" },
+]
+
+# ---------------------------------------------------------------------------
+# Golang build / run (fast loop)
+# ---------------------------------------------------------------------------
+
+[tasks."build:server"]
+description = "Compile the API server binary to backend/bin/"
+dir = "backend"
+run = "go build -o bin/server ./cmd/server"
+
+[tasks."run:server"]
+description = "Run the API server"
+dir = "backend"
+run = "go run ./cmd/server"
+
+# ---------------------------------------------------------------------------
+# Container images
+# The server image builds from backend/ only; the web image needs frontend/
+# and the Caddyfile in build/, so it builds from the repository root.
+# ---------------------------------------------------------------------------
+
+[tasks."build:image:all"]
+description = "Build the debtwise container images"
+depends = ["build:image:server", "build:image:web"]
+
+[tasks."build:image:server"]
+description = "Build the debtwise-server container image"
+run = 'docker build -f build/server.Dockerfile -t "$SERVER_IMAGE" backend'
+
+[tasks."build:image:web"]
+description = "Build the debtwise-web (Caddy + frontend) container image"
+run = 'docker build -f build/web.Dockerfile -t "$WEB_IMAGE" .'
+
+[tasks."push:image:all"]
+description = "Build and push multi-arch debtwise container images"
+depends = ["push:image:server", "push:image:web"]
+
+[tasks."push:image:server"]
+description = "Build and push the multi-arch debtwise-server container image"
+run = '''
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -f build/server.Dockerfile -t "$SERVER_IMAGE" --push backend
+'''
+
+[tasks."push:image:web"]
+description = "Build and push the multi-arch debtwise-web container image"
+run = '''
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -f build/web.Dockerfile -t "$WEB_IMAGE" --push .
+'''

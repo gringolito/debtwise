@@ -1,0 +1,9 @@
+threshold:
+  file: 50
+  package: 75
+  total: 90
+exclude:
+  paths:
+    - ^db
+    - ^cmd/
+    - ^testutil
