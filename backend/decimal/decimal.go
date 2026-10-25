@@ -31,13 +31,9 @@ var decimalString = regexp.MustCompile(`^-?(0|[1-9][0-9]*)(\.[0-9]+)?$`)
 // Parse reads a decimal string such as "48.81" or "-0.0125" exactly, keeping every digit and
 // trailing zero, so String returns the same text.
 func Parse(s string) (Decimal, error) {
-	if !decimalString.MatchString(s) {
-		return Decimal{}, fmt.Errorf("decimal: parse %q: not a decimal string", s)
-	}
-
 	var x Decimal
-	if _, _, err := x.d.SetString(s); err != nil {
-		return Decimal{}, fmt.Errorf("decimal: parse %q: %w", s, err)
+	if _, _, err := x.d.SetString(s); err != nil || !decimalString.MatchString(s) {
+		return Decimal{}, fmt.Errorf("decimal: parse %q: not a decimal string", s)
 	}
 
 	return x, nil

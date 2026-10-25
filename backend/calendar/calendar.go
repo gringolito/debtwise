@@ -25,21 +25,30 @@ type Calendar struct {
 
 // New returns the calendar of the ANBIMA national holidays from 2001 to 2099.
 func New() (*Calendar, error) {
-	r := csv.NewReader(strings.NewReader(anbimaHolidays))
+	return parseHolidays(anbimaHolidays)
+}
+
+// parseHolidays reads a holiday list laid out like anbima_holidays.csv.
+func parseHolidays(data string) (*Calendar, error) {
+	r := csv.NewReader(strings.NewReader(data))
 	r.Comment = '#'
 	r.FieldsPerRecord = 2
 
+	if _, err := r.Read(); err != nil {
+		return nil, fmt.Errorf("calendar: read holiday list header: %w", err)
+	}
+
 	records, err := r.ReadAll()
 	if err != nil {
-		return nil, fmt.Errorf("calendar: read ANBIMA holidays: %w", err)
+		return nil, fmt.Errorf("calendar: read holiday list: %w", err)
 	}
 
 	holidays := make([]time.Time, 0, len(records))
 
-	for _, record := range records[1:] {
+	for _, record := range records {
 		day, err := time.Parse(time.DateOnly, record[0])
 		if err != nil {
-			return nil, fmt.Errorf("calendar: parse ANBIMA holiday %q: %w", record[0], err)
+			return nil, fmt.Errorf("calendar: parse holiday %q: %w", record[0], err)
 		}
 
 		if !isWeekend(day) {
