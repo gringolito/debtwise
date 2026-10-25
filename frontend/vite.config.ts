@@ -18,7 +18,8 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    globals: true,
+    // Dates are shown in the browser's time zone, so tests pin one.
+    env: { TZ: "UTC" },
     setupFiles: "./src/setupTests.ts",
     coverage: {
       provider: "v8",

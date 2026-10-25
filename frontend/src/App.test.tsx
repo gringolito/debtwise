@@ -1,16 +1,7 @@
-import { QueryClient } from "@tanstack/react-query";
-import { createMemoryHistory } from "@tanstack/react-router";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { App } from "./App";
-import { createAppRouter } from "./router";
+import { renderAt } from "./test/renderAt";
 import { stubServer } from "./test/stubServer";
-
-function renderAt(path: string) {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }));
-  render(<App queryClient={queryClient} router={router} />);
-}
 
 afterEach(() => {
   vi.unstubAllGlobals();

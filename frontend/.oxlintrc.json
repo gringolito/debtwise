@@ -28,6 +28,10 @@
       }
     },
     {
+      "files": ["src/components/ui/chart.tsx"],
+      "rules": { "shadcn/no-inline-styles": "off" }
+    },
+    {
       "files": ["src/**/*.test.tsx"],
       "rules": { "shadcn/no-inline-styles": "off" }
     }
