@@ -20,7 +20,7 @@ func TestMigrateAppliesPendingMigrationsOnce(t *testing.T) {
 
 	applied, err := db.Migrate(t.Context(), conn)
 	require.NoError(t, err)
-	assert.Equal(t, []int64{1}, applied)
+	assert.Equal(t, []int64{1, 2}, applied)
 	require.NoError(t, conn.Close())
 
 	reopened, err := db.Open(t.Context(), path)

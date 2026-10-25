@@ -9,16 +9,28 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"time"
 
 	"github.com/gringolito/debtwise/backend/api"
+	"github.com/gringolito/debtwise/backend/indexes"
+	"github.com/gringolito/debtwise/backend/marketdata"
 )
 
 const outputPath = "../docs/openapi.json"
 
-// noDatabase stands in for the database, which serving the contract never reads.
-type noDatabase struct{}
+// unused stands in for the database and the domain packages, which serving the contract never
+// reads.
+type unused struct{}
 
-func (noDatabase) Ping(context.Context) (int64, error) { return 0, nil }
+func (unused) Ping(context.Context) (int64, error) { return 0, nil }
+
+func (unused) History(context.Context, indexes.Index) ([]indexes.Value, error) { return nil, nil }
+
+func (unused) Status(context.Context, time.Time) (marketdata.Status, error) {
+	return marketdata.Status{}, nil
+}
+
+func (unused) Trigger() {}
 
 func main() {
 	if err := run(); err != nil {
@@ -31,7 +43,7 @@ func main() {
 func run() error {
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/openapi.json", nil)
 	rec := httptest.NewRecorder()
-	api.NewHandler(noDatabase{}).ServeHTTP(rec, req)
+	api.NewHandler(unused{}, unused{}, unused{}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		return fmt.Errorf("GET /api/openapi.json returned %d", rec.Code)

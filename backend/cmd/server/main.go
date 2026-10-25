@@ -1,5 +1,5 @@
 // Command server runs DebtWise's API. It applies pending database migrations before it starts
-// listening.
+// listening, and refreshes market data in the background while it serves.
 package main
 
 import (
@@ -16,6 +16,9 @@ import (
 	"github.com/gringolito/debtwise/backend/api"
 	"github.com/gringolito/debtwise/backend/config"
 	"github.com/gringolito/debtwise/backend/db"
+	"github.com/gringolito/debtwise/backend/indexes"
+	"github.com/gringolito/debtwise/backend/marketdata"
+	"github.com/gringolito/debtwise/backend/marketdata/sgs"
 )
 
 func main() {
@@ -55,9 +58,27 @@ func run(logger *slog.Logger, level *slog.LevelVar) error {
 
 	logger.InfoContext(ctx, "database ready", "path", cfg.DBPath, "applied_migrations", applied)
 
+	store := indexes.NewStore(conn)
+	job := marketdata.New(sgs.New(), store, marketdata.WithLogger(logger))
+
+	jobCtx, stopJob := context.WithCancel(ctx)
+	jobDone := make(chan struct{})
+
+	go func() {
+		defer close(jobDone)
+
+		job.Run(jobCtx)
+	}()
+
+	// The job writes to the database, so it stops before the database closes.
+	defer func() {
+		stopJob()
+		<-jobDone
+	}()
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           api.NewHandler(db.New(conn), api.WithLogger(logger)),
+		Handler:           api.NewHandler(db.New(conn), store, job, api.WithLogger(logger)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,

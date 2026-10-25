@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { HealthData, HealthErrors, HealthResponses } from './types.gen';
+import type { HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -24,3 +24,24 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  * Reports whether the server is up and able to read its data.
  */
 export const health = <ThrowOnError extends boolean = false>(options?: Options<HealthData, ThrowOnError>) => (options?.client ?? client).get<HealthResponses, HealthErrors, ThrowOnError>({ url: '/health', ...options });
+
+/**
+ * List the history of an index
+ *
+ * Lists the published values of an index, as of its latest refresh.
+ */
+export const indexHistory = <ThrowOnError extends boolean = false>(options: Options<IndexHistoryData, ThrowOnError>) => (options.client ?? client).get<IndexHistoryResponses, IndexHistoryErrors, ThrowOnError>({ url: '/indexes/{index}/history', ...options });
+
+/**
+ * Refresh the market data
+ *
+ * Starts refreshing every index from its source and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.
+ */
+export const refreshMarketData = <ThrowOnError extends boolean = false>(options?: Options<RefreshMarketDataData, ThrowOnError>) => (options?.client ?? client).post<RefreshMarketDataResponses, RefreshMarketDataErrors, ThrowOnError>({ url: '/market-data/refresh', ...options });
+
+/**
+ * Report how fresh the market data is
+ *
+ * Reports, for each index, when it was last refreshed from its source and whether that data is stale or its latest refresh failed.
+ */
+export const marketDataStatus = <ThrowOnError extends boolean = false>(options?: Options<MarketDataStatusData, ThrowOnError>) => (options?.client ?? client).get<MarketDataStatusResponses, MarketDataStatusErrors, ThrowOnError>({ url: '/market-data/status', ...options });

@@ -3,3 +3,21 @@
 //   sqlc v1.31.1
 
 package db
+
+import (
+	"database/sql"
+)
+
+type IndexRefresh struct {
+	Series      string
+	RefreshedAt sql.NullString
+	FailedAt    sql.NullString
+}
+
+type IndexValue struct {
+	Series      string
+	PeriodStart string
+	PeriodEnd   string
+	Value       string
+	FetchedAt   string
+}
