@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ContractRate, RegisteredMortgage } from "@/lib/api";
 import { amortizationSystemLabels } from "@/lib/mortgageForm";
 import { useDeleteMortgage, useMortgage } from "@/lib/mortgageQueries";
-import { formatDate, formatMoney, formatRate } from "@/lib/ptbr";
+import { formatDate, formatMoney, formatRate } from "@/lib/format";
 
 type SectionProps = React.ComponentProps<typeof Card> & { heading: string };
 

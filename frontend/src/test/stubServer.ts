@@ -42,17 +42,6 @@ export function stubRoutes(routes: Record<string, Responder>): RecordedRequest[]
   });
 }
 
-// Routes a request to the handler registered under "METHOD /path". A request nobody expected
-// fails the test instead of getting an arbitrary answer.
-export function routes(table: Record<string, Responder>): Responder {
-  return (req) => {
-    const key = `${req.method} ${new URL(req.url).pathname}`;
-    const handler = table[key];
-    if (!handler) throw new Error(`unexpected request ${key}`);
-    return handler(req);
-  };
-}
-
 export function problem(
   status: number,
   title: string,

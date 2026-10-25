@@ -2,8 +2,8 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { stubMortgageApi } from "@/test/mortgageApi";
 import { registeredMortgage, schedule, scheduleAfterSave } from "@/test/mortgageFixtures";
-import { renderAt } from "@/test/renderApp";
-import { problem, routes, stubServer } from "@/test/stubServer";
+import { renderAt } from "@/test/renderAt";
+import { problem, stubRoutes } from "@/test/stubServer";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -13,12 +13,10 @@ const notFound = () => problem(404, "Not Found", "no mortgage is registered");
 
 describe("navigation", () => {
   it("links the header to the home page and to the mortgage", async () => {
-    stubServer(
-      routes({
-        "GET /api/health": () => Response.json({ status: "ok" }),
-        "GET /api/mortgage": notFound,
-      }),
-    );
+    stubRoutes({
+      "GET /api/health": () => Response.json({ status: "ok" }),
+      "GET /api/mortgage": notFound,
+    });
     renderAt("/");
 
     fireEvent.click(await screen.findByRole("link", { name: "Financiamento" }));
@@ -31,7 +29,7 @@ describe("navigation", () => {
 
 describe("mortgage page without a mortgage", () => {
   it("offers to register one", async () => {
-    stubServer(routes({ "GET /api/mortgage": notFound }));
+    stubRoutes({ "GET /api/mortgage": notFound });
 
     renderAt("/financiamento");
 
@@ -54,11 +52,9 @@ describe("mortgage page without a mortgage", () => {
   });
 
   it("says it could not load the mortgage when the server fails", async () => {
-    stubServer(
-      routes({
-        "GET /api/mortgage": () => problem(500, "Internal Server Error", "unexpected failure"),
-      }),
-    );
+    stubRoutes({
+      "GET /api/mortgage": () => problem(500, "Internal Server Error", "unexpected failure"),
+    });
 
     renderAt("/financiamento");
 
@@ -249,13 +245,11 @@ describe("mortgage page with a mortgage", () => {
   });
 
   it("says the schedule could not load while still showing the terms", async () => {
-    stubServer(
-      routes({
-        "GET /api/mortgage": () => Response.json(registeredMortgage),
-        "GET /api/mortgage/schedule": () =>
-          problem(500, "Internal Server Error", "unexpected failure"),
-      }),
-    );
+    stubRoutes({
+      "GET /api/mortgage": () => Response.json(registeredMortgage),
+      "GET /api/mortgage/schedule": () =>
+        problem(500, "Internal Server Error", "unexpected failure"),
+    });
 
     renderAt("/financiamento");
 
@@ -266,12 +260,10 @@ describe("mortgage page with a mortgage", () => {
   });
 
   it("says the schedule is loading until the server answers", async () => {
-    stubServer(
-      routes({
-        "GET /api/mortgage": () => Response.json(registeredMortgage),
-        "GET /api/mortgage/schedule": () => new Promise<Response>(() => {}),
-      }),
-    );
+    stubRoutes({
+      "GET /api/mortgage": () => Response.json(registeredMortgage),
+      "GET /api/mortgage/schedule": () => new Promise<Response>(() => {}),
+    });
 
     renderAt("/financiamento");
 
@@ -308,13 +300,11 @@ describe("deleting the mortgage", () => {
   });
 
   it("says so when the server refuses to delete", async () => {
-    stubServer(
-      routes({
-        "GET /api/mortgage": () => Response.json(registeredMortgage),
-        "GET /api/mortgage/schedule": () => Response.json(schedule),
-        "DELETE /api/mortgage": () => problem(500, "Internal Server Error", "unexpected failure"),
-      }),
-    );
+    stubRoutes({
+      "GET /api/mortgage": () => Response.json(registeredMortgage),
+      "GET /api/mortgage/schedule": () => Response.json(schedule),
+      "DELETE /api/mortgage": () => problem(500, "Internal Server Error", "unexpected failure"),
+    });
     renderAt("/financiamento");
 
     fireEvent.click(await screen.findByRole("button", { name: "Excluir" }));

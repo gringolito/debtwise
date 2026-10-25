@@ -4,7 +4,7 @@ import {
   type MortgageTerms,
   type RegisteredMortgage,
 } from "@/lib/api";
-import { fractionToPercent, inputToMoney, moneyToInput, percentToFraction } from "@/lib/ptbr";
+import { fractionToPercent, inputToMoney, moneyToInput, percentToFraction } from "@/lib/format";
 
 export type Basis = ContractRate["basis"];
 export type AmortizationSystem = MortgageTerms["amortization_system"];

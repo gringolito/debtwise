@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useMortgageSchedule } from "@/lib/mortgageQueries";
-import { formatDate, formatMoney } from "@/lib/ptbr";
+import { formatDate, formatMoney } from "@/lib/format";
 
 const columns = [
   "Nº",

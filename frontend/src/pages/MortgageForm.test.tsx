@@ -3,8 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RegisteredMortgage } from "@/lib/api";
 import { stubMortgageApi } from "@/test/mortgageApi";
 import { registeredMortgage } from "@/test/mortgageFixtures";
-import { renderAt } from "@/test/renderApp";
-import { problem, routes, stubServer } from "@/test/stubServer";
+import { renderAt } from "@/test/renderAt";
+import { problem, stubRoutes } from "@/test/stubServer";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -394,11 +394,9 @@ describe("a rejected mortgage", () => {
 
 describe("loading the form", () => {
   it("says it could not load the mortgage when the server fails", async () => {
-    stubServer(
-      routes({
-        "GET /api/mortgage": () => problem(500, "Internal Server Error", "unexpected failure"),
-      }),
-    );
+    stubRoutes({
+      "GET /api/mortgage": () => problem(500, "Internal Server Error", "unexpected failure"),
+    });
 
     renderAt("/financiamento/editar");
 
