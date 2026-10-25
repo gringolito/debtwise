@@ -92,6 +92,125 @@
           "status"
         ],
         "type": "object"
+      },
+      "IndexHistory": {
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "enum": [
+              "tr",
+              "poupanca",
+              "selic_target",
+              "selic",
+              "ipca"
+            ],
+            "type": "string"
+          },
+          "values": {
+            "description": "Every stored value of the index, oldest period first.",
+            "items": {
+              "$ref": "#/components/schemas/IndexValue"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "index",
+          "values"
+        ],
+        "type": "object"
+      },
+      "IndexStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "failed_at": {
+            "description": "When the latest refresh of the index failed. Absent unless status is failed.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "index": {
+            "enum": [
+              "tr",
+              "poupanca",
+              "selic_target",
+              "selic",
+              "ipca"
+            ],
+            "type": "string"
+          },
+          "refreshed_at": {
+            "description": "When the index was last refreshed successfully. Absent when it never was.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "description": "fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed.",
+            "enum": [
+              "fresh",
+              "stale",
+              "failed",
+              "missing"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "status"
+        ],
+        "type": "object"
+      },
+      "IndexValue": {
+        "additionalProperties": false,
+        "properties": {
+          "fetched_at": {
+            "description": "When the value was last fetched from its source.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "period_end": {
+            "description": "The last day of the period the value covers. Equals period_start when the source dates the value by one day or month.",
+            "format": "date",
+            "type": "string"
+          },
+          "period_start": {
+            "description": "The first day of the period the value covers.",
+            "format": "date",
+            "type": "string"
+          },
+          "value": {
+            "description": "The published value, as a decimal string in the index's unit.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period_start",
+          "period_end",
+          "value",
+          "fetched_at"
+        ],
+        "type": "object"
+      },
+      "MarketDataStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "indexes": {
+            "description": "How fresh each index is.",
+            "items": {
+              "$ref": "#/components/schemas/IndexStatus"
+            },
+            "type": "array"
+          },
+          "refreshing": {
+            "description": "Whether a refresh is pending or running.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "refreshing",
+          "indexes"
+        ],
+        "type": "object"
       }
     }
   },
@@ -130,6 +249,121 @@
         "summary": "Check server health",
         "tags": [
           "Health"
+        ]
+      }
+    },
+    "/indexes/{index}/history": {
+      "get": {
+        "description": "Lists every published value of an index that has been fetched from its source.",
+        "operationId": "index-history",
+        "parameters": [
+          {
+            "description": "The index.",
+            "in": "path",
+            "name": "index",
+            "required": true,
+            "schema": {
+              "description": "The index.",
+              "enum": [
+                "tr",
+                "poupanca",
+                "selic_target",
+                "selic",
+                "ipca"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexHistory"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the history of an index",
+        "tags": [
+          "Indexes"
+        ]
+      }
+    },
+    "/market-data/refresh": {
+      "post": {
+        "description": "Starts refreshing every index from its source and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.",
+        "operationId": "refresh-market-data",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketDataStatus"
+                }
+              }
+            },
+            "description": "Accepted"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Refresh the market data",
+        "tags": [
+          "Market data"
+        ]
+      }
+    },
+    "/market-data/status": {
+      "get": {
+        "description": "Reports, for each index, when it was last refreshed from its source and whether that data is stale or its latest refresh failed.",
+        "operationId": "market-data-status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketDataStatus"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Report how fresh the market data is",
+        "tags": [
+          "Market data"
         ]
       }
     }

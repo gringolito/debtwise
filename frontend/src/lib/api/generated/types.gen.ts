@@ -57,6 +57,60 @@ export type Health = {
     status: 'ok';
 };
 
+export type IndexHistory = {
+    index: 'tr' | 'poupanca' | 'selic_target' | 'selic' | 'ipca';
+    /**
+     * Every stored value of the index, oldest period first.
+     */
+    values: Array<IndexValue>;
+};
+
+export type IndexStatus = {
+    /**
+     * When the latest refresh of the index failed. Absent unless status is failed.
+     */
+    failed_at?: string;
+    index: 'tr' | 'poupanca' | 'selic_target' | 'selic' | 'ipca';
+    /**
+     * When the index was last refreshed successfully. Absent when it never was.
+     */
+    refreshed_at?: string;
+    /**
+     * fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed.
+     */
+    status: 'fresh' | 'stale' | 'failed' | 'missing';
+};
+
+export type IndexValue = {
+    /**
+     * When the value was last fetched from its source.
+     */
+    fetched_at: string;
+    /**
+     * The last day of the period the value covers. Equals period_start when the source dates the value by one day or month.
+     */
+    period_end: string;
+    /**
+     * The first day of the period the value covers.
+     */
+    period_start: string;
+    /**
+     * The published value, as a decimal string in the index's unit.
+     */
+    value: string;
+};
+
+export type MarketDataStatus = {
+    /**
+     * How fresh each index is.
+     */
+    indexes: Array<IndexStatus>;
+    /**
+     * Whether a refresh is pending or running.
+     */
+    refreshing: boolean;
+};
+
 export type HealthData = {
     body?: never;
     path?: never;
@@ -81,3 +135,83 @@ export type HealthResponses = {
 };
 
 export type HealthResponse = HealthResponses[keyof HealthResponses];
+
+export type IndexHistoryData = {
+    body?: never;
+    path: {
+        /**
+         * The index.
+         */
+        index: 'tr' | 'poupanca' | 'selic_target' | 'selic' | 'ipca';
+    };
+    query?: never;
+    url: '/indexes/{index}/history';
+};
+
+export type IndexHistoryErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type IndexHistoryError = IndexHistoryErrors[keyof IndexHistoryErrors];
+
+export type IndexHistoryResponses = {
+    /**
+     * OK
+     */
+    200: IndexHistory;
+};
+
+export type IndexHistoryResponse = IndexHistoryResponses[keyof IndexHistoryResponses];
+
+export type RefreshMarketDataData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/market-data/refresh';
+};
+
+export type RefreshMarketDataErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type RefreshMarketDataError = RefreshMarketDataErrors[keyof RefreshMarketDataErrors];
+
+export type RefreshMarketDataResponses = {
+    /**
+     * Accepted
+     */
+    202: MarketDataStatus;
+};
+
+export type RefreshMarketDataResponse = RefreshMarketDataResponses[keyof RefreshMarketDataResponses];
+
+export type MarketDataStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/market-data/status';
+};
+
+export type MarketDataStatusErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type MarketDataStatusError = MarketDataStatusErrors[keyof MarketDataStatusErrors];
+
+export type MarketDataStatusResponses = {
+    /**
+     * OK
+     */
+    200: MarketDataStatus;
+};
+
+export type MarketDataStatusResponse = MarketDataStatusResponses[keyof MarketDataStatusResponses];
