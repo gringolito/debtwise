@@ -299,6 +299,26 @@ func TestInvalidMortgageIsRejected(t *testing.T) {
 			want: []errorDetail{{"body.contract_rates[0].rate", ratePattern}},
 		},
 		{
+			name: "appraisal value below a centavo",
+			body: withField(t, "appraisal_value", `"100000.001"`),
+			want: []errorDetail{{"body.appraisal_value", moneyPattern}},
+		},
+		{
+			name: "fee below a centavo",
+			body: withField(t, "fees", `[{"effective_from": "2023-12-10", "amount": "12.505"}]`),
+			want: []errorDetail{{"body.fees[0].amount", moneyPattern}},
+		},
+		{
+			name: "MIP rate over 12 places",
+			body: withField(t, "mip_rates", `[{"effective_from": "2023-12-10", "rate": "0.0003000000001"}]`),
+			want: []errorDetail{{"body.mip_rates[0].rate", ratePattern}},
+		},
+		{
+			name: "contract rate of 1000 times",
+			body: withField(t, "contract_rates", `[{"effective_from": "2023-12-10", "rate": "1000", "basis": "nominal"}]`),
+			want: []errorDetail{{"body.contract_rates[0].rate", ratePattern}},
+		},
+		{
 			name: "term over 50 years",
 			body: withField(t, "term_months", "601"),
 			want: []errorDetail{{"body.term_months", "expected number <= 600"}},
@@ -416,6 +436,17 @@ func TestMortgageOnTheLimitsIsAccepted(t *testing.T) {
 		{name: "fee effective on the first installment date", field: "fees", raw: `[{"effective_from": "2024-01-10", "amount": "12.50"}]`},
 		{name: "term of 50 years", field: "term_months", raw: "600"},
 		{name: "original amount of 15 digits", field: "original_amount", raw: `"999999999999999.99"`},
+		{name: "original amount of one place", field: "original_amount", raw: `"60000.5"`},
+		{
+			name:  "contract rate of 999 times",
+			field: "contract_rates",
+			raw:   `[{"effective_from": "2023-12-10", "rate": "999", "basis": "nominal"}]`,
+		},
+		{
+			name:  "MIP rate of 12 places",
+			field: "mip_rates",
+			raw:   `[{"effective_from": "2023-12-10", "rate": "0.000300000001"}]`,
+		},
 		{
 			name:  "contract rate of 12 places",
 			field: "contract_rates",

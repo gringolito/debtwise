@@ -28,8 +28,8 @@ type mortgageTerms struct {
 	AmortizationSystem   string              `json:"amortization_system" enum:"sac,price" doc:"How each installment splits into amortization and interest."`
 	AppraisalValue       string              `json:"appraisal_value" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"Appraisal value of the property, in reais, as a decimal string."`
 	ContractRates        []contractRateTerms `json:"contract_rates" nullable:"false" doc:"The contract's interest rate, and its later changes."`
-	MIPRates             []monthlyRate       `json:"mip_rates" nullable:"false" doc:"The MIP rate, and its changes as the borrower moves into a new age band."`
-	DFIRates             []monthlyRate       `json:"dfi_rates" nullable:"false" doc:"The DFI rate, and its later changes."`
+	MIPRates             []monthlyRate       `json:"mip_rates" nullable:"false" doc:"The MIP (life and disability insurance) rate, and its changes as the borrower moves into a new age band."`
+	DFIRates             []monthlyRate       `json:"dfi_rates" nullable:"false" doc:"The DFI (property damage insurance) rate, and its later changes."`
 	Fees                 []fee               `json:"fees" nullable:"false" doc:"The monthly admin fee, and its later changes."`
 }
 
@@ -57,8 +57,8 @@ type registeredMortgage struct {
 	AmortizationSystem   string         `json:"amortization_system" enum:"sac,price" doc:"How each installment splits into amortization and interest."`
 	AppraisalValue       string         `json:"appraisal_value" doc:"Appraisal value of the property, in reais, as a decimal string."`
 	ContractRates        []contractRate `json:"contract_rates" nullable:"false" doc:"The contract's interest rate and its later changes, in date order."`
-	MIPRates             []monthlyRate  `json:"mip_rates" nullable:"false" doc:"The MIP rate and its changes, in date order."`
-	DFIRates             []monthlyRate  `json:"dfi_rates" nullable:"false" doc:"The DFI rate and its changes, in date order."`
+	MIPRates             []monthlyRate  `json:"mip_rates" nullable:"false" doc:"The MIP (life and disability insurance) rate and its changes, in date order."`
+	DFIRates             []monthlyRate  `json:"dfi_rates" nullable:"false" doc:"The DFI (property damage insurance) rate and its changes, in date order."`
 	Fees                 []fee          `json:"fees" nullable:"false" doc:"The monthly admin fee and its changes, in date order."`
 }
 
@@ -78,8 +78,8 @@ type scheduledInstallment struct {
 	DueDate            string `json:"due_date" format:"date" doc:"Date the installment falls due."`
 	Interest           string `json:"interest" doc:"Interest charged, in reais, as a decimal string."`
 	Amortization       string `json:"amortization" doc:"Outstanding balance paid off, in reais, as a decimal string."`
-	MIP                string `json:"mip" doc:"MIP premium, in reais, as a decimal string."`
-	DFI                string `json:"dfi" doc:"DFI premium, in reais, as a decimal string."`
+	MIP                string `json:"mip" doc:"MIP (life and disability insurance) premium, in reais, as a decimal string."`
+	DFI                string `json:"dfi" doc:"DFI (property damage insurance) premium, in reais, as a decimal string."`
 	Fee                string `json:"fee" doc:"Admin fee, in reais, as a decimal string."`
 	Amount             string `json:"amount" doc:"Total the installment charges, in reais, as a decimal string."`
 	OutstandingBalance string `json:"outstanding_balance" doc:"Outstanding balance after the installment, in reais, as a decimal string."`

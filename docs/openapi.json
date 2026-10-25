@@ -343,7 +343,7 @@
             "type": "array"
           },
           "dfi_rates": {
-            "description": "The DFI rate, and its later changes.",
+            "description": "The DFI (property damage insurance) rate, and its later changes.",
             "items": {
               "$ref": "#/components/schemas/MonthlyRate"
             },
@@ -362,7 +362,7 @@
             "type": "string"
           },
           "mip_rates": {
-            "description": "The MIP rate, and its changes as the borrower moves into a new age band.",
+            "description": "The MIP (life and disability insurance) rate, and its changes as the borrower moves into a new age band.",
             "items": {
               "$ref": "#/components/schemas/MonthlyRate"
             },
@@ -423,7 +423,7 @@
             "type": "array"
           },
           "dfi_rates": {
-            "description": "The DFI rate and its changes, in date order.",
+            "description": "The DFI (property damage insurance) rate and its changes, in date order.",
             "items": {
               "$ref": "#/components/schemas/MonthlyRate"
             },
@@ -442,7 +442,7 @@
             "type": "string"
           },
           "mip_rates": {
-            "description": "The MIP rate and its changes, in date order.",
+            "description": "The MIP (life and disability insurance) rate and its changes, in date order.",
             "items": {
               "$ref": "#/components/schemas/MonthlyRate"
             },
@@ -500,7 +500,7 @@
             "type": "string"
           },
           "dfi": {
-            "description": "DFI premium, in reais, as a decimal string.",
+            "description": "DFI (property damage insurance) premium, in reais, as a decimal string.",
             "type": "string"
           },
           "due_date": {
@@ -517,7 +517,7 @@
             "type": "string"
           },
           "mip": {
-            "description": "MIP premium, in reais, as a decimal string.",
+            "description": "MIP (life and disability insurance) premium, in reais, as a decimal string.",
             "type": "string"
           },
           "number": {
