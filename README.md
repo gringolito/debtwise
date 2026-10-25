@@ -14,9 +14,29 @@ docker compose -f deploy/compose.yaml up -d
 All data lives in one SQLite file on the `debtwise-data` volume. The server applies pending
 database migrations when it starts. Set `DEBTWISE_PORT` to serve on another port.
 
-The compose file runs the `docker.io/gringolito/debtwise-server:edge` and
-`docker.io/gringolito/debtwise-web:edge` images. `mise run build:image:all` builds both from
-source under those names.
+The compose file runs the `ghcr.io/gringolito/debtwise/server:edge` and
+`ghcr.io/gringolito/debtwise/web:edge` images. `mise run build:image:all` builds both from source
+under those names.
+
+### Container images
+
+Every push to `main` that touches the backend, the frontend or `build/` publishes both images to
+GitHub Container Registry for `linux/amd64` and `linux/arm64`, tagged `edge` and `sha-<commit>`. A
+`vX.Y.Z` tag publishes `X.Y.Z`, `X.Y` and `latest`.
+
+### Kubernetes
+
+The Helm chart in `deploy/helm/debtwise` runs the same two images:
+
+```sh
+helm install debtwise deploy/helm/debtwise --namespace debtwise --create-namespace
+```
+
+The server keeps its SQLite file on a 1Gi `ReadWriteOnce` claim and always runs as one replica.
+`helm uninstall` leaves that claim in place, so reinstalling picks up the same data; set
+`persistence.keepOnUninstall=false` to delete it with the release. Set `ingress.enabled=true` and
+`ingress.hosts` to expose the web service, or follow the port-forward printed after the install.
+`values.yaml` lists the rest of the settings.
 
 ## Development
 

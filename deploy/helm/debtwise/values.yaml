@@ -1,0 +1,83 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+
+# The images run as the distroless nonroot user (65532).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+
+# The API server. It keeps its data in one SQLite file, so it always runs as a single replica.
+server:
+  image:
+    repository: ghcr.io/gringolito/debtwise/server
+    # Defaults to the chart's appVersion.
+    tag: ""
+    # `edge` is a moving tag, so the default pulls on every pod start.
+    pullPolicy: Always
+  # debug, info, warn or error.
+  logLevel: info
+  extraEnv: []
+  resources: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  service:
+    port: 8080
+
+# Caddy serving the frontend and proxying /api to the server.
+web:
+  replicas: 1
+  image:
+    repository: ghcr.io/gringolito/debtwise/web
+    # Defaults to the chart's appVersion.
+    tag: ""
+    pullPolicy: Always
+  resources: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  service:
+    type: ClusterIP
+    port: 80
+
+persistence:
+  # Without persistence the database lives in an emptyDir and is lost with the pod.
+  enabled: true
+  # Use an existing PersistentVolumeClaim instead of creating one.
+  existingClaim: ""
+  # Empty uses the cluster's default StorageClass; "-" sets storageClassName: "".
+  storageClass: ""
+  accessModes: [ReadWriteOnce]
+  size: 1Gi
+  # Leave the claim, and the database on it, in place on `helm uninstall`.
+  keepOnUninstall: true
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: debtwise.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: debtwise-tls
+  #    hosts:
+  #      - debtwise.local
