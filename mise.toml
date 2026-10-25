@@ -17,6 +17,7 @@ _.file = ".env"
 
 SERVER_IMAGE = { default = "ghcr.io/gringolito/debtwise/server:edge" }
 WEB_IMAGE = { default = "ghcr.io/gringolito/debtwise/web:edge" }
+CHART_REPO = { default = "oci://ghcr.io/gringolito/debtwise/charts" }
 DB_PATH = { default = "debtwise.db" }
 
 # ---------------------------------------------------------------------------
@@ -232,4 +233,20 @@ description = "Build and push the multi-arch debtwise web container image"
 run = '''
 docker buildx build --platform linux/amd64,linux/arm64 \
   -f build/web.Dockerfile -t "$WEB_IMAGE" --push .
+'''
+
+# ---------------------------------------------------------------------------
+# Helm chart
+# ---------------------------------------------------------------------------
+
+[tasks."push:chart"]
+description = "Package the Helm chart as CHART_VERSION for APP_VERSION images and push it to CHART_REPO"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+dist=$(mktemp -d)
+trap 'rm -rf "$dist"' EXIT
+helm package deploy/helm/debtwise --destination "$dist" \
+  --version "${CHART_VERSION:?set CHART_VERSION}" --app-version "${APP_VERSION:?set APP_VERSION}"
+helm push "$dist"/debtwise-"$CHART_VERSION".tgz "$CHART_REPO"
 '''
