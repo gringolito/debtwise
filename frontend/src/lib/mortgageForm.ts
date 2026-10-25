@@ -1,25 +1,35 @@
-import { ApiError, type MortgageTerms, type RegisteredMortgage } from "@/lib/api";
+import {
+  ApiError,
+  type ContractRate,
+  type MortgageTerms,
+  type RegisteredMortgage,
+} from "@/lib/api";
 import { fractionToPercent, inputToMoney, moneyToInput, percentToFraction } from "@/lib/ptbr";
 
-export type Basis = "nominal" | "effective";
-export type AmortizationSystem = "sac" | "price";
+export type Basis = ContractRate["basis"];
+export type AmortizationSystem = MortgageTerms["amortization_system"];
 
-// A row in an editable list; `id` keeps a row's inputs with it when another row is removed.
-interface Row {
+export const amortizationSystemLabels: Record<AmortizationSystem, string> = {
+  sac: "SAC",
+  price: "Price",
+};
+
+/** A row in an editable list; `id` keeps a row's inputs with it when another row is removed. */
+export interface EffectiveRow {
   id: number;
   effectiveFrom: string;
 }
 
-export interface ContractRateRow extends Row {
+export interface ContractRateRow extends EffectiveRow {
   rate: string;
   basis: Basis;
 }
 
-export interface MonthlyRateRow extends Row {
+export interface MonthlyRateRow extends EffectiveRow {
   rate: string;
 }
 
-export interface FeeRow extends Row {
+export interface FeeRow extends EffectiveRow {
   amount: string;
 }
 

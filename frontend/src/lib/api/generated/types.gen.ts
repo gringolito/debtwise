@@ -25,7 +25,7 @@ export type ContractRate = {
 
 export type ContractRateTerms = {
     /**
-     * Whether the rate is nominal, charged a twelfth each month, or effective, what the monthly charge compounds to over a year.
+     * Whether the contract prints the rate as nominal or as effective.
      */
     basis: 'nominal' | 'effective';
     /**
@@ -173,7 +173,7 @@ export type MortgageTerms = {
      */
     amortization_system: 'sac' | 'price';
     /**
-     * Appraisal value of the property, in reais, as a decimal string. DFI is charged on it.
+     * Appraisal value of the property, in reais, as a decimal string.
      */
     appraisal_value: string;
     /**
@@ -185,7 +185,7 @@ export type MortgageTerms = {
      */
     contract_rates: Array<ContractRateTerms>;
     /**
-     * The DFI property insurance rate charged on the appraisal value, and its later changes.
+     * The DFI property insurance rate, and its later changes.
      */
     dfi_rates: Array<MonthlyRate>;
     /**
@@ -193,11 +193,11 @@ export type MortgageTerms = {
      */
     fees: Array<Fee>;
     /**
-     * Due date of the first installment. Each later one falls due on the same day of the following months, or on the month's last day when it is shorter.
+     * Due date of the first installment.
      */
     first_installment_date: string;
     /**
-     * The MIP life insurance rate charged on the outstanding balance, and its changes as the borrower moves into a new age band.
+     * The MIP life insurance rate, and its changes as the borrower moves into a new age band.
      */
     mip_rates: Array<MonthlyRate>;
     /**
@@ -257,14 +257,18 @@ export type Schedule = {
     /**
      * Every installment of the mortgage, in due date order.
      */
-    months: Array<ScheduleMonth>;
+    installments: Array<ScheduledInstallment>;
 };
 
-export type ScheduleMonth = {
+export type ScheduledInstallment = {
     /**
      * Outstanding balance paid off, in reais, as a decimal string.
      */
     amortization: string;
+    /**
+     * Total the installment charges, in reais, as a decimal string.
+     */
+    amount: string;
     /**
      * DFI property insurance premium, in reais, as a decimal string.
      */
@@ -277,10 +281,6 @@ export type ScheduleMonth = {
      * Admin fee, in reais, as a decimal string.
      */
     fee: string;
-    /**
-     * Total the installment charges, in reais, as a decimal string.
-     */
-    installment: string;
     /**
      * Interest charged, in reais, as a decimal string.
      */

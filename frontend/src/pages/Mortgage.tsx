@@ -1,31 +1,35 @@
 import { Link } from "@tanstack/react-router";
-import { type ReactNode, useId } from "react";
+import { cn } from "cn";
+import { useId } from "react";
 import { DeleteMortgageDialog } from "@/components/mortgage/DeleteMortgageDialog";
 import { MortgageSchedule } from "@/components/mortgage/MortgageSchedule";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ContractRate, RegisteredMortgage } from "@/lib/api";
+import { amortizationSystemLabels } from "@/lib/mortgageForm";
 import { useDeleteMortgage, useMortgage } from "@/lib/mortgageQueries";
 import { formatDate, formatMoney, formatRate } from "@/lib/ptbr";
 
-const systemNames = { sac: "SAC", price: "Price" } as const;
+type SectionProps = React.ComponentProps<typeof Card> & { heading: string };
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  const titleId = useId();
+function Section({ heading, children, ...props }: SectionProps) {
+  const headingId = useId();
   return (
-    <Card role="region" aria-labelledby={titleId}>
+    <Card role="region" aria-labelledby={headingId} {...props}>
       <CardHeader>
-        <CardTitle id={titleId}>{title}</CardTitle>
+        <CardTitle id={headingId}>{heading}</CardTitle>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
   );
 }
 
-function Term({ name, children }: { name: string; children: ReactNode }) {
+type TermProps = React.ComponentProps<"div"> & { name: string };
+
+function Term({ name, className, children, ...props }: TermProps) {
   return (
-    <div className="flex justify-between gap-4">
+    <div className={cn("flex justify-between gap-4", className)} {...props}>
       <dt className="text-muted-foreground">{name}</dt>
       <dd>{children}</dd>
     </div>
@@ -34,13 +38,15 @@ function Term({ name, children }: { name: string; children: ReactNode }) {
 
 function ContractTerms({ mortgage }: { mortgage: RegisteredMortgage }) {
   return (
-    <Section title="Condições do contrato">
+    <Section heading="Condições do contrato">
       <dl className="flex flex-col gap-2">
         <Term name="Data do contrato">{formatDate(mortgage.contract_date)}</Term>
         <Term name="Valor financiado">{formatMoney(mortgage.original_amount)}</Term>
         <Term name="Prazo">{mortgage.term_months} meses</Term>
         <Term name="Primeira prestação">{formatDate(mortgage.first_installment_date)}</Term>
-        <Term name="Sistema de amortização">{systemNames[mortgage.amortization_system]}</Term>
+        <Term name="Sistema de amortização">
+          {amortizationSystemLabels[mortgage.amortization_system]}
+        </Term>
         <Term name="Valor de avaliação">{formatMoney(mortgage.appraisal_value)}</Term>
       </dl>
     </Section>
@@ -53,7 +59,7 @@ function informedMark(rate: ContractRate, basis: ContractRate["basis"]): string 
 
 function ContractRates({ rates }: { rates: ContractRate[] }) {
   return (
-    <Section title="Taxa de juros">
+    <Section heading="Taxa de juros">
       <ul className="flex flex-col gap-2">
         {rates.map((rate) => (
           <li key={rate.effective_from} className="flex flex-wrap gap-x-4">
@@ -81,7 +87,7 @@ function EffectiveRows({
   rows: { effective_from: string; value: string }[];
 }) {
   return (
-    <Section title={title}>
+    <Section heading={title}>
       <ul className="flex flex-col gap-2">
         {rows.map((row) => (
           <li key={row.effective_from} className="flex flex-wrap gap-x-4">
@@ -126,7 +132,7 @@ function MortgageDetails({ mortgage }: { mortgage: RegisteredMortgage }) {
       <EffectiveRows title="MIP" rows={monthly(mortgage.mip_rates)} />
       <EffectiveRows title="DFI" rows={monthly(mortgage.dfi_rates)} />
       <EffectiveRows
-        title="Tarifa de administração"
+        title="Taxa de administração"
         rows={mortgage.fees.map((fee) => ({
           effective_from: fee.effective_from,
           value: formatMoney(fee.amount),

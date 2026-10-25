@@ -43,8 +43,8 @@ describe("registering the mortgage", () => {
       "MIP 1",
       "DFI",
       "DFI 1",
-      "Tarifa de administração",
-      "Tarifa de administração 1",
+      "Taxa de administração",
+      "Taxa de administração 1",
     ]) {
       expect(group(name)).toBeInTheDocument();
     }
@@ -54,7 +54,7 @@ describe("registering the mortgage", () => {
     fill("Prazo (meses)", "6");
     fill("Primeira prestação", "2024-01-10");
     fill("Sistema de amortização", "price");
-    fill("Valor de avaliação", "100000,00");
+    fill("Valor de avaliação", "100.000");
     fill("Vigência da taxa de juros 1", "2023-12-10");
     fill("Taxa de juros 1 (% a.a.)", "9,5");
     fill("Base da taxa de juros 1", "effective");
@@ -62,8 +62,8 @@ describe("registering the mortgage", () => {
     fill("Taxa do MIP 1 (% a.m.)", "0,0258");
     fill("Vigência do DFI 1", "2023-12-10");
     fill("Taxa do DFI 1 (% a.m.)", "0,01");
-    fill("Vigência da tarifa 1", "2023-12-10");
-    fill("Valor da tarifa 1 (R$)", "25,90");
+    fill("Vigência da taxa de administração 1", "2023-12-10");
+    fill("Valor da taxa de administração 1 (R$)", "25,90");
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(await savedPage()).toBeInTheDocument();
@@ -74,7 +74,7 @@ describe("registering the mortgage", () => {
         term_months: 6,
         first_installment_date: "2024-01-10",
         amortization_system: "price",
-        appraisal_value: "100000.00",
+        appraisal_value: "100000",
         contract_rates: [{ effective_from: "2023-12-10", rate: "0.095", basis: "effective" }],
         mip_rates: [{ effective_from: "2023-12-10", rate: "0.000258" }],
         dfi_rates: [{ effective_from: "2023-12-10", rate: "0.0001" }],
@@ -144,7 +144,7 @@ describe("the term in months", () => {
           { effective_from: "2024-04-01", rate: "0.0005" },
         ],
         dfi_rates: [{ effective_from: "2023-12-10", rate: "0.0001" }],
-        fees: [{ effective_from: "2023-12-10", amount: "10.00" }],
+        fees: [{ effective_from: "2023-12-10", amount: "12.50" }],
       },
     ]);
   });
@@ -175,7 +175,7 @@ describe("editing the mortgage", () => {
     expect(screen.getByLabelText("Vigência do MIP 2")).toHaveValue("2024-04-01");
     expect(screen.getByLabelText("Taxa do MIP 2 (% a.m.)")).toHaveValue("0,05");
     expect(screen.getByLabelText("Taxa do DFI 1 (% a.m.)")).toHaveValue("0,01");
-    expect(screen.getByLabelText("Valor da tarifa 1 (R$)")).toHaveValue("10,00");
+    expect(screen.getByLabelText("Valor da taxa de administração 1 (R$)")).toHaveValue("12,50");
 
     fill("Valor financiado", "250.000,00");
     fill("Taxa do MIP 2 (% a.m.)", "0,06");
@@ -197,7 +197,7 @@ describe("editing the mortgage", () => {
           { effective_from: "2024-04-01", rate: "0.0006" },
         ],
         dfi_rates: [{ effective_from: "2023-12-10", rate: "0.0001" }],
-        fees: [{ effective_from: "2023-12-10", amount: "10.00" }],
+        fees: [{ effective_from: "2023-12-10", amount: "12.50" }],
       },
     ]);
   });
@@ -220,6 +220,18 @@ describe("editing the mortgage", () => {
 
     expect(await screen.findByLabelText("Taxa de juros 1 (% a.a.)")).toHaveValue("12");
     expect(screen.getByLabelText("Base da taxa de juros 1")).toHaveValue("effective");
+  });
+
+  it("prefills a rate with more than two decimal digits in full", async () => {
+    stubMortgageApi({
+      mortgage: {
+        ...registeredMortgage,
+        mip_rates: [{ effective_from: "2023-12-10", rate: "0.000258" }],
+      },
+    });
+    renderAt("/financiamento/editar");
+
+    expect(await screen.findByLabelText("Taxa do MIP 1 (% a.m.)")).toHaveValue("0,0258");
   });
 
   it("returns to the mortgage without saving when the owner cancels", async () => {
@@ -257,10 +269,10 @@ describe("rows of the lists", () => {
     fill("Vigência da taxa de juros 2", "2025-01-10");
     fill("Taxa de juros 2 (% a.a.)", "10");
     fireEvent.click(
-      within(group("Tarifa de administração")).getByRole("button", { name: "Adicionar" }),
+      within(group("Taxa de administração")).getByRole("button", { name: "Adicionar" }),
     );
-    fill("Vigência da tarifa 2", "2025-01-10");
-    fill("Valor da tarifa 2 (R$)", "12,5");
+    fill("Vigência da taxa de administração 2", "2025-01-10");
+    fill("Valor da taxa de administração 2 (R$)", "12,5");
     fireEvent.click(within(group("MIP")).getByRole("button", { name: "Adicionar" }));
     expect(screen.getByLabelText("Taxa do MIP 2 (% a.m.)")).toHaveValue("");
     fireEvent.click(within(group("DFI")).getByRole("button", { name: "Adicionar" }));
@@ -285,7 +297,7 @@ describe("rows of the lists", () => {
         mip_rates: [{ effective_from: "2024-04-01", rate: "0.0005" }],
         dfi_rates: [{ effective_from: "2024-02-01", rate: "0.0002" }],
         fees: [
-          { effective_from: "2023-12-10", amount: "10.00" },
+          { effective_from: "2023-12-10", amount: "12.50" },
           { effective_from: "2025-01-10", amount: "12.5" },
         ],
       },
@@ -300,6 +312,8 @@ describe("a rejected mortgage", () => {
       { location: "body.first_installment_date", message: "must not be before the contract date" },
       { location: "body.contract_rates", message: "must have a row on the contract date" },
       { location: "body.mip_rates[1].rate", message: "must not be negative" },
+      { location: "body.dfi_rates", message: "must have a row on the contract date" },
+      { location: "body.contract_rates[0].basis", message: "must be nominal or effective" },
       { location: "body.fees[1].effective_from", message: "repeats the date of another row" },
       { location: "body.something_else", message: "is not known" },
     ]);
@@ -310,7 +324,7 @@ describe("a rejected mortgage", () => {
     await screen.findByRole("heading", { name: "Editar financiamento" });
     fill("Valor financiado", "abc");
     fireEvent.click(
-      within(group("Tarifa de administração")).getByRole("button", { name: "Adicionar" }),
+      within(group("Taxa de administração")).getByRole("button", { name: "Adicionar" }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     return screen.findByRole("alert");
@@ -323,20 +337,32 @@ describe("a rejected mortgage", () => {
     expect(screen.getByLabelText("Valor financiado")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("Primeira prestação")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByLabelText("Taxa do MIP 2 (% a.m.)")).toHaveAttribute("aria-invalid", "true");
-    expect(screen.getByLabelText("Vigência da tarifa 2")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Vigência da taxa de administração 2")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByLabelText("Base da taxa de juros 1")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(group("DFI")).toHaveAttribute("aria-invalid", "true");
     expect(group("Taxa de juros")).toHaveAttribute("aria-invalid", "true");
-    expect(screen.getAllByText("Valor inválido.")).toHaveLength(4);
-    expect(screen.getAllByText("Confira as linhas desta lista.")).toHaveLength(1);
+    expect(screen.getAllByText("Valor inválido.")).toHaveLength(5);
+    expect(screen.getAllByText("Confira as linhas desta lista.")).toHaveLength(2);
 
     expect(screen.getByLabelText("Data do contrato")).not.toHaveAttribute("aria-invalid");
     expect(screen.getByLabelText("Taxa do MIP 1 (% a.m.)")).not.toHaveAttribute("aria-invalid");
-    expect(screen.getByLabelText("Vigência da tarifa 1")).not.toHaveAttribute("aria-invalid");
-    expect(screen.getByLabelText("Valor da tarifa 2 (R$)")).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByLabelText("Vigência da taxa de administração 1")).not.toHaveAttribute(
+      "aria-invalid",
+    );
+    expect(screen.getByLabelText("Valor da taxa de administração 2 (R$)")).not.toHaveAttribute(
+      "aria-invalid",
+    );
     expect(group("MIP")).not.toHaveAttribute("aria-invalid");
 
     expect(screen.queryByText(/must|repeats|known/)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Valor financiado")).toHaveValue("abc");
-    expect(screen.getByLabelText("Vigência da tarifa 2")).toHaveValue("");
+    expect(screen.getByLabelText("Vigência da taxa de administração 2")).toHaveValue("");
   });
 
   it("drops the highlights once rows move, since they pointed at row numbers", async () => {

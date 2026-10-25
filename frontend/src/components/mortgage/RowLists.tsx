@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ListSection, Row, SelectField, TextField } from "@/components/mortgage/FormControls";
 import {
   type Basis,
@@ -5,6 +6,7 @@ import {
   blankFee,
   blankMonthlyRate,
   type ContractRateRow,
+  type EffectiveRow,
   type FeeRow,
   type MonthlyRateRow,
   rowLocation,
@@ -17,147 +19,156 @@ interface RowsProps<T> {
   isInvalid: (location: string) => boolean;
 }
 
+interface RowContext<T> {
+  /** The row's number in its list, counting from 1. */
+  n: number;
+  /** Whether the API rejected this field of the row. */
+  invalid: (field: string) => boolean;
+  update: (patch: Partial<T>) => void;
+}
+
+interface RowListProps<T extends EffectiveRow> extends RowsProps<T> {
+  /** Names the list and, with the row's number, each of its rows: "MIP" and "MIP 1". */
+  title: string;
+  /** The list's name in the API, such as "mip_rates". */
+  location: string;
+  /** Finishes "Vigência" for the date input's name: "do MIP" gives "Vigência do MIP 1". */
+  validityOf: string;
+  blank: () => T;
+  /** Renders the inputs a row has besides its effective date. */
+  children: (row: T, context: RowContext<T>) => ReactNode;
+}
+
+// Every list is rows keyed by an effective date, so the date input, the row numbering, the
+// removal and the wiring of API errors to a row live here once.
+function RowList<T extends EffectiveRow>({
+  title,
+  location,
+  validityOf,
+  rows,
+  onChange,
+  isInvalid,
+  blank,
+  children,
+}: RowListProps<T>) {
+  return (
+    <ListSection
+      title={title}
+      invalid={isInvalid(location)}
+      onAdd={() => onChange([...rows, blank()])}
+    >
+      {rows.map((row, index) => {
+        const context: RowContext<T> = {
+          n: index + 1,
+          invalid: (field) => isInvalid(rowLocation(location, index, field)),
+          update: (patch) => onChange(rows.map((r) => (r.id === row.id ? { ...r, ...patch } : r))),
+        };
+        return (
+          <Row
+            key={row.id}
+            aria-label={`${title} ${context.n}`}
+            onRemove={() => onChange(rows.filter((r) => r.id !== row.id))}
+          >
+            <TextField
+              label="Vigência"
+              accessibleName={`Vigência ${validityOf} ${context.n}`}
+              type="date"
+              value={row.effectiveFrom}
+              onChange={(effectiveFrom) => context.update({ effectiveFrom } as Partial<T>)}
+              invalid={context.invalid("effective_from")}
+            />
+            {children(row, context)}
+          </Row>
+        );
+      })}
+    </ListSection>
+  );
+}
+
 const basisOptions = [
   { value: "nominal", label: "Nominal" },
   { value: "effective", label: "Efetiva" },
 ] as const satisfies readonly { value: Basis; label: string }[];
 
-// Replaces the row with the same id, so editing one row leaves the others as they are.
-function patched<T extends { id: number }>(rows: T[], id: number, patch: Partial<T>): T[] {
-  return rows.map((row) => (row.id === id ? { ...row, ...patch } : row));
-}
-
-function without<T extends { id: number }>(rows: T[], id: number): T[] {
-  return rows.filter((row) => row.id !== id);
-}
-
-export function ContractRateRows({ rows, onChange, isInvalid }: RowsProps<ContractRateRow>) {
+export function ContractRateRows(props: RowsProps<ContractRateRow>) {
   return (
-    <ListSection
+    <RowList
+      {...props}
       title="Taxa de juros"
-      invalid={isInvalid("contract_rates")}
-      onAdd={() => onChange([...rows, blankContractRate()])}
+      location="contract_rates"
+      validityOf="da taxa de juros"
+      blank={blankContractRate}
     >
-      {rows.map((row, index) => {
-        const n = index + 1;
-        const invalid = (field: string) => isInvalid(rowLocation("contract_rates", index, field));
-        return (
-          <Row
-            key={row.id}
-            name={`Taxa de juros ${n}`}
-            onRemove={() => onChange(without(rows, row.id))}
-          >
-            <TextField
-              label="Vigência"
-              accessibleName={`Vigência da taxa de juros ${n}`}
-              type="date"
-              value={row.effectiveFrom}
-              onChange={(value) => onChange(patched(rows, row.id, { effectiveFrom: value }))}
-              invalid={invalid("effective_from")}
-            />
-            <TextField
-              label="Taxa (% a.a.)"
-              accessibleName={`Taxa de juros ${n} (% a.a.)`}
-              inputMode="decimal"
-              value={row.rate}
-              onChange={(value) => onChange(patched(rows, row.id, { rate: value }))}
-              invalid={invalid("rate")}
-            />
-            <SelectField
-              label="Base"
-              accessibleName={`Base da taxa de juros ${n}`}
-              options={basisOptions}
-              value={row.basis}
-              onChange={(value) => onChange(patched(rows, row.id, { basis: value }))}
-              invalid={invalid("basis")}
-            />
-          </Row>
-        );
-      })}
-    </ListSection>
+      {(row, { n, invalid, update }) => (
+        <>
+          <TextField
+            label="Taxa (% a.a.)"
+            accessibleName={`Taxa de juros ${n} (% a.a.)`}
+            inputMode="decimal"
+            value={row.rate}
+            onChange={(rate) => update({ rate })}
+            invalid={invalid("rate")}
+          />
+          <SelectField
+            label="Base"
+            accessibleName={`Base da taxa de juros ${n}`}
+            options={basisOptions}
+            value={row.basis}
+            onChange={(basis) => update({ basis })}
+            invalid={invalid("basis")}
+          />
+        </>
+      )}
+    </RowList>
   );
 }
 
 interface MonthlyRateRowsProps extends RowsProps<MonthlyRateRow> {
-  /** What the rate is called: "MIP" or "DFI". */
   insurance: "MIP" | "DFI";
 }
 
-export function MonthlyRateRows({ insurance, rows, onChange, isInvalid }: MonthlyRateRowsProps) {
-  const list = `${insurance.toLowerCase()}_rates`;
+export function MonthlyRateRows({ insurance, ...props }: MonthlyRateRowsProps) {
   return (
-    <ListSection
+    <RowList
+      {...props}
       title={insurance}
-      invalid={isInvalid(list)}
-      onAdd={() => onChange([...rows, blankMonthlyRate()])}
+      location={`${insurance.toLowerCase()}_rates`}
+      validityOf={`do ${insurance}`}
+      blank={blankMonthlyRate}
     >
-      {rows.map((row, index) => {
-        const n = index + 1;
-        const invalid = (field: string) => isInvalid(rowLocation(list, index, field));
-        return (
-          <Row
-            key={row.id}
-            name={`${insurance} ${n}`}
-            onRemove={() => onChange(without(rows, row.id))}
-          >
-            <TextField
-              label="Vigência"
-              accessibleName={`Vigência do ${insurance} ${n}`}
-              type="date"
-              value={row.effectiveFrom}
-              onChange={(value) => onChange(patched(rows, row.id, { effectiveFrom: value }))}
-              invalid={invalid("effective_from")}
-            />
-            <TextField
-              label="Taxa (% a.m.)"
-              accessibleName={`Taxa do ${insurance} ${n} (% a.m.)`}
-              inputMode="decimal"
-              value={row.rate}
-              onChange={(value) => onChange(patched(rows, row.id, { rate: value }))}
-              invalid={invalid("rate")}
-            />
-          </Row>
-        );
-      })}
-    </ListSection>
+      {(row, { n, invalid, update }) => (
+        <TextField
+          label="Taxa (% a.m.)"
+          accessibleName={`Taxa do ${insurance} ${n} (% a.m.)`}
+          inputMode="decimal"
+          value={row.rate}
+          onChange={(rate) => update({ rate })}
+          invalid={invalid("rate")}
+        />
+      )}
+    </RowList>
   );
 }
 
-export function FeeRows({ rows, onChange, isInvalid }: RowsProps<FeeRow>) {
+export function FeeRows(props: RowsProps<FeeRow>) {
   return (
-    <ListSection
-      title="Tarifa de administração"
-      invalid={isInvalid("fees")}
-      onAdd={() => onChange([...rows, blankFee()])}
+    <RowList
+      {...props}
+      title="Taxa de administração"
+      location="fees"
+      validityOf="da taxa de administração"
+      blank={blankFee}
     >
-      {rows.map((row, index) => {
-        const n = index + 1;
-        const invalid = (field: string) => isInvalid(rowLocation("fees", index, field));
-        return (
-          <Row
-            key={row.id}
-            name={`Tarifa de administração ${n}`}
-            onRemove={() => onChange(without(rows, row.id))}
-          >
-            <TextField
-              label="Vigência"
-              accessibleName={`Vigência da tarifa ${n}`}
-              type="date"
-              value={row.effectiveFrom}
-              onChange={(value) => onChange(patched(rows, row.id, { effectiveFrom: value }))}
-              invalid={invalid("effective_from")}
-            />
-            <TextField
-              label="Valor (R$)"
-              accessibleName={`Valor da tarifa ${n} (R$)`}
-              inputMode="decimal"
-              value={row.amount}
-              onChange={(value) => onChange(patched(rows, row.id, { amount: value }))}
-              invalid={invalid("amount")}
-            />
-          </Row>
-        );
-      })}
-    </ListSection>
+      {(row, { n, invalid, update }) => (
+        <TextField
+          label="Valor (R$)"
+          accessibleName={`Valor da taxa de administração ${n} (R$)`}
+          inputMode="decimal"
+          value={row.amount}
+          onChange={(amount) => update({ amount })}
+          invalid={invalid("amount")}
+        />
+      )}
+    </RowList>
   );
 }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ApiError, type RegisteredMortgage } from "@/lib/api";
 import {
   type AmortizationSystem,
+  amortizationSystemLabels,
   emptyValues,
   type FormValues,
   invalidLocations,
@@ -15,10 +16,9 @@ import {
 } from "@/lib/mortgageForm";
 import { useMortgage, useSaveMortgage } from "@/lib/mortgageQueries";
 
-const systemOptions = [
-  { value: "sac", label: "SAC" },
-  { value: "price", label: "Price" },
-] as const satisfies readonly { value: AmortizationSystem; label: string }[];
+const systemOptions = (
+  Object.entries(amortizationSystemLabels) as [AmortizationSystem, string][]
+).map(([value, label]) => ({ value, label }));
 
 type ListName = "contractRates" | "mipRates" | "dfiRates" | "fees";
 

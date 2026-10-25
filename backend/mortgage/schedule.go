@@ -7,8 +7,8 @@ import (
 	"github.com/gringolito/debtwise/backend/decimal"
 )
 
-// Month is one installment of the schedule. Every amount is in centavos.
-type Month struct {
+// Installment is one scheduled monthly payment and what it charges, in reais rounded to centavos.
+type Installment struct {
 	// Number counts installments from 1.
 	Number  int
 	DueDate time.Time
@@ -18,8 +18,8 @@ type Month struct {
 	MIP          decimal.Decimal
 	DFI          decimal.Decimal
 	Fee          decimal.Decimal
-	// Installment is everything the bank charges this month.
-	Installment decimal.Decimal
+	// Amount is everything the installment charges.
+	Amount decimal.Decimal
 	// OutstandingBalance is what is still owed after this installment.
 	OutstandingBalance decimal.Decimal
 }
@@ -30,8 +30,8 @@ type Month struct {
 // Each charge is rounded to centavos. The last installment amortizes whatever is still owed, so
 // the balance ends at zero. Under Price the amortization plus interest is set from the balance,
 // rate and months left on the first installment and whenever the rate changes.
-func (t Terms) Schedule() iter.Seq[Month] {
-	return func(yield func(Month) bool) {
+func (t Terms) Schedule() iter.Seq[Installment] {
+	return func(yield func(Installment) bool) {
 		balance := t.OriginalAmount.RoundCents()
 
 		var payment, paymentRate decimal.Decimal
@@ -63,7 +63,7 @@ func (t Terms) Schedule() iter.Seq[Month] {
 			fee := inEffect(t.Fees, due).Amount.RoundCents()
 			balance = balance.Sub(amortization)
 
-			month := Month{
+			installment := Installment{
 				Number:             number,
 				DueDate:            due,
 				Interest:           interest,
@@ -71,10 +71,10 @@ func (t Terms) Schedule() iter.Seq[Month] {
 				MIP:                mip,
 				DFI:                dfi,
 				Fee:                fee,
-				Installment:        amortization.Add(interest).Add(mip).Add(dfi).Add(fee),
+				Amount:             amortization.Add(interest).Add(mip).Add(dfi).Add(fee),
 				OutstandingBalance: balance,
 			}
-			if !yield(month) {
+			if !yield(installment) {
 				return
 			}
 		}

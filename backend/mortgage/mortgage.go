@@ -13,7 +13,8 @@ import (
 type AmortizationSystem string
 
 const (
-	// SAC amortizes the same share of the outstanding balance every month, so installments fall.
+	// SAC amortizes the outstanding balance in equal parts over the months left, so installments
+	// fall.
 	SAC AmortizationSystem = "sac"
 	// Price keeps amortization plus interest level while the rate holds.
 	Price AmortizationSystem = "price"

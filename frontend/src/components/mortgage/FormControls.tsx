@@ -1,15 +1,12 @@
-import { type ReactNode, useId } from "react";
+import { cn } from "cn";
+import { useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
-function Message({ id, children }: { id: string; children: ReactNode }) {
-  return (
-    <p id={id} className="text-sm text-destructive">
-      {children}
-    </p>
-  );
+function Message({ className, ...props }: React.ComponentProps<"p">) {
+  return <p className={cn("text-sm text-destructive", className)} {...props} />;
 }
 
 interface TextFieldProps {
@@ -93,21 +90,28 @@ export function SelectField<T extends string>({
   );
 }
 
-interface ListSectionProps {
+type ListSectionProps = React.ComponentProps<"fieldset"> & {
   title: string;
   invalid: boolean;
   onAdd: () => void;
-  children: ReactNode;
-}
+};
 
 /** ListSection frames the rows of one editable list with the button that adds another. */
-export function ListSection({ title, invalid, onAdd, children }: ListSectionProps) {
+export function ListSection({
+  title,
+  invalid,
+  onAdd,
+  className,
+  children,
+  ...props
+}: ListSectionProps) {
   const messageId = useId();
   return (
     <fieldset
-      className="flex flex-col gap-3"
+      className={cn("flex flex-col gap-3", className)}
       aria-invalid={invalid || undefined}
       aria-describedby={invalid ? messageId : undefined}
+      {...props}
     >
       <legend className="mb-1.5 font-medium">{title}</legend>
       {children}
@@ -119,16 +123,12 @@ export function ListSection({ title, invalid, onAdd, children }: ListSectionProp
   );
 }
 
-interface RowProps {
-  name: string;
-  onRemove: () => void;
-  children: ReactNode;
-}
+type RowProps = React.ComponentProps<"div"> & { onRemove: () => void };
 
-/** Row groups the inputs of one list row, named after the list and the row's number. */
-export function Row({ name, onRemove, children }: RowProps) {
+/** Row groups the inputs of one list row; the caller names it with its list and row number. */
+export function Row({ onRemove, className, children, ...props }: RowProps) {
   return (
-    <div role="group" aria-label={name} className="flex flex-wrap items-start gap-3">
+    <div role="group" className={cn("flex flex-wrap items-start gap-3", className)} {...props}>
       {children}
       <Button type="button" variant="ghost" className="self-end" onClick={onRemove}>
         Remover

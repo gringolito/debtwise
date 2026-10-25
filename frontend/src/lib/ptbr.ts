@@ -5,7 +5,7 @@ const moneyFormat = new Intl.NumberFormat("pt-BR", { style: "currency", currency
 const percentFormat = new Intl.NumberFormat("pt-BR", {
   style: "percent",
   minimumFractionDigits: 2,
-  maximumFractionDigits: 4,
+  maximumFractionDigits: 6,
 });
 
 // Intl.NumberFormat accepts a decimal string but the standard library's typing only knows numeric

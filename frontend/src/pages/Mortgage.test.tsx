@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { stubMortgageApi } from "@/test/mortgageApi";
-import { registeredMortgage, schedule } from "@/test/mortgageFixtures";
+import { registeredMortgage, schedule, scheduleAfterSave } from "@/test/mortgageFixtures";
 import { renderAt } from "@/test/renderApp";
 import { problem, routes, stubServer } from "@/test/stubServer";
 
@@ -109,14 +109,14 @@ describe("mortgage page with a mortgage", () => {
         .getAllByRole("listitem")
         .map(text);
     expect(await lists("Taxa de juros")).toEqual([
-      "A partir de 10/12/2023 Nominal: 12,00% a.a. (informada) Efetiva: 12,6825% a.a. (calculada)",
+      "A partir de 10/12/2023 Nominal: 12,00% a.a. (informada) Efetiva: 12,682503% a.a. (calculada)",
     ]);
     expect(await lists("MIP")).toEqual([
       "A partir de 10/12/2023 0,03% a.m.",
       "A partir de 01/04/2024 0,05% a.m.",
     ]);
     expect(await lists("DFI")).toEqual(["A partir de 10/12/2023 0,01% a.m."]);
-    expect(await lists("Tarifa de administração")).toEqual(["A partir de 10/12/2023 R$ 10,00"]);
+    expect(await lists("Taxa de administração")).toEqual(["A partir de 10/12/2023 R$ 12,50"]);
   });
 
   it("marks the effective rate as the informed one when it was", async () => {
@@ -144,7 +144,23 @@ describe("mortgage page with a mortgage", () => {
     expect(screen.getByText("Price")).toBeInTheDocument();
   });
 
-  it("shows every month of the schedule in pt-BR", async () => {
+  it("does not round small monthly rates away", async () => {
+    stubMortgageApi({
+      mortgage: {
+        ...registeredMortgage,
+        mip_rates: [{ effective_from: "2023-12-10", rate: "0.00003456" }],
+      },
+    });
+
+    renderAt("/financiamento");
+
+    const mip = await screen.findByRole("region", { name: "MIP" });
+    expect(within(mip).getAllByRole("listitem").map(text)).toEqual([
+      "A partir de 10/12/2023 0,003456% a.m.",
+    ]);
+  });
+
+  it("shows every installment of the schedule in pt-BR", async () => {
     stubMortgageApi({ mortgage: registeredMortgage });
 
     renderAt("/financiamento");
@@ -159,7 +175,7 @@ describe("mortgage page with a mortgage", () => {
         "Amortização",
         "MIP",
         "DFI",
-        "Tarifa",
+        "Taxa adm.",
         "Prestação",
         "Saldo devedor",
       ],
@@ -170,8 +186,8 @@ describe("mortgage page with a mortgage", () => {
         "R$ 10.000,00",
         "R$ 18,00",
         "R$ 10,00",
-        "R$ 10,00",
-        "R$ 10.638,00",
+        "R$ 12,50",
+        "R$ 10.640,50",
         "R$ 50.000,00",
       ],
       [
@@ -181,8 +197,8 @@ describe("mortgage page with a mortgage", () => {
         "R$ 10.000,00",
         "R$ 15,00",
         "R$ 10,00",
-        "R$ 10,00",
-        "R$ 10.535,00",
+        "R$ 12,50",
+        "R$ 10.537,50",
         "R$ 40.000,00",
       ],
       [
@@ -192,8 +208,8 @@ describe("mortgage page with a mortgage", () => {
         "R$ 10.000,00",
         "R$ 12,00",
         "R$ 10,00",
-        "R$ 10,00",
-        "R$ 10.432,00",
+        "R$ 12,50",
+        "R$ 10.434,50",
         "R$ 30.000,00",
       ],
       [
@@ -203,8 +219,8 @@ describe("mortgage page with a mortgage", () => {
         "R$ 10.000,00",
         "R$ 15,00",
         "R$ 10,00",
-        "R$ 10,00",
-        "R$ 10.335,00",
+        "R$ 12,50",
+        "R$ 10.337,50",
         "R$ 20.000,00",
       ],
       [
@@ -214,8 +230,8 @@ describe("mortgage page with a mortgage", () => {
         "R$ 10.000,00",
         "R$ 10,00",
         "R$ 10,00",
-        "R$ 10,00",
-        "R$ 10.230,00",
+        "R$ 12,50",
+        "R$ 10.232,50",
         "R$ 10.000,00",
       ],
       [
@@ -225,8 +241,8 @@ describe("mortgage page with a mortgage", () => {
         "R$ 10.000,00",
         "R$ 5,00",
         "R$ 10,00",
-        "R$ 10,00",
-        "R$ 10.125,00",
+        "R$ 12,50",
+        "R$ 10.127,50",
         "R$ 0,00",
       ],
     ]);
@@ -309,5 +325,53 @@ describe("deleting the mortgage", () => {
       await screen.findByText("Não foi possível excluir o financiamento."),
     ).toBeInTheDocument();
     expect(screen.getByText("R$ 60.000,00")).toBeInTheDocument();
+  });
+});
+
+describe("a schedule that changed on the server", () => {
+  const oldAmounts = ["R$ 10.640,50", "R$ 10.537,50", "R$ 10.127,50"];
+
+  async function expectOnlyNewSchedule() {
+    await screen.findByRole("region", { name: "Condições do contrato" });
+    for (const amount of oldAmounts) {
+      expect(screen.queryByText(amount)).not.toBeInTheDocument();
+    }
+    expect(await screen.findByText("R$ 60.745,00")).toBeInTheDocument();
+    for (const amount of oldAmounts) {
+      expect(screen.queryByText(amount)).not.toBeInTheDocument();
+    }
+  }
+
+  it("never shows the old schedule after the mortgage is edited", async () => {
+    stubMortgageApi({
+      mortgage: registeredMortgage,
+      onSave: () => registeredMortgage,
+      scheduleAfterSave,
+    });
+    renderAt("/financiamento");
+    expect(await screen.findByText("R$ 10.640,50")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("link", { name: "Editar" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
+
+    await expectOnlyNewSchedule();
+  });
+
+  it("never shows the old schedule after the mortgage is deleted and registered again", async () => {
+    stubMortgageApi({
+      mortgage: registeredMortgage,
+      onSave: () => registeredMortgage,
+      scheduleAfterSave,
+    });
+    renderAt("/financiamento");
+    expect(await screen.findByText("R$ 10.640,50")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Cadastrar financiamento" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
+
+    await expectOnlyNewSchedule();
   });
 });

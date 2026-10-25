@@ -1,6 +1,7 @@
 import type { RegisteredMortgage, Schedule } from "@/lib/api";
 
-// A six-month SAC mortgage of R$ 60.000,00 at 12% a year nominal. MIP rises on 2024-04-01.
+// A six-month SAC mortgage of R$ 60.000,00 at 12% a year nominal. MIP rises on 2024-04-01. The
+// admin fee and the DFI premium differ, so a screen that swaps their columns shows it.
 export const registeredMortgage: RegisteredMortgage = {
   contract_date: "2023-12-10",
   original_amount: "60000.00",
@@ -21,11 +22,11 @@ export const registeredMortgage: RegisteredMortgage = {
     { effective_from: "2024-04-01", rate: "0.0005" },
   ],
   dfi_rates: [{ effective_from: "2023-12-10", rate: "0.0001" }],
-  fees: [{ effective_from: "2023-12-10", amount: "10.00" }],
+  fees: [{ effective_from: "2023-12-10", amount: "12.50" }],
 };
 
 export const schedule: Schedule = {
-  months: [
+  installments: [
     {
       number: 1,
       due_date: "2024-01-10",
@@ -33,8 +34,8 @@ export const schedule: Schedule = {
       amortization: "10000.00",
       mip: "18.00",
       dfi: "10.00",
-      fee: "10.00",
-      installment: "10638.00",
+      fee: "12.50",
+      amount: "10640.50",
       outstanding_balance: "50000.00",
     },
     {
@@ -44,8 +45,8 @@ export const schedule: Schedule = {
       amortization: "10000.00",
       mip: "15.00",
       dfi: "10.00",
-      fee: "10.00",
-      installment: "10535.00",
+      fee: "12.50",
+      amount: "10537.50",
       outstanding_balance: "40000.00",
     },
     {
@@ -55,8 +56,8 @@ export const schedule: Schedule = {
       amortization: "10000.00",
       mip: "12.00",
       dfi: "10.00",
-      fee: "10.00",
-      installment: "10432.00",
+      fee: "12.50",
+      amount: "10434.50",
       outstanding_balance: "30000.00",
     },
     {
@@ -66,8 +67,8 @@ export const schedule: Schedule = {
       amortization: "10000.00",
       mip: "15.00",
       dfi: "10.00",
-      fee: "10.00",
-      installment: "10335.00",
+      fee: "12.50",
+      amount: "10337.50",
       outstanding_balance: "20000.00",
     },
     {
@@ -77,8 +78,8 @@ export const schedule: Schedule = {
       amortization: "10000.00",
       mip: "10.00",
       dfi: "10.00",
-      fee: "10.00",
-      installment: "10230.00",
+      fee: "12.50",
+      amount: "10232.50",
       outstanding_balance: "10000.00",
     },
     {
@@ -88,8 +89,26 @@ export const schedule: Schedule = {
       amortization: "10000.00",
       mip: "5.00",
       dfi: "10.00",
-      fee: "10.00",
-      installment: "10125.00",
+      fee: "12.50",
+      amount: "10127.50",
+      outstanding_balance: "0.00",
+    },
+  ],
+};
+
+// What the server answers once the mortgage is saved with a shorter term: one installment that
+// shares no figure with `schedule`.
+export const scheduleAfterSave: Schedule = {
+  installments: [
+    {
+      number: 1,
+      due_date: "2024-01-15",
+      interest: "700.00",
+      amortization: "60000.00",
+      mip: "21.00",
+      dfi: "11.00",
+      fee: "13.00",
+      amount: "60745.00",
       outstanding_balance: "0.00",
     },
   ],

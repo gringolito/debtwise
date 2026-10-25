@@ -13,35 +13,27 @@ import {
 } from "./generated/sdk.gen";
 import type {
   ContractRate,
-  ContractRateTerms,
   ErrorModel,
-  Fee,
   Health,
   IndexHistory,
   IndexStatus,
   IndexValue,
   MarketDataStatus,
-  MonthlyRate,
   MortgageTerms,
   RegisteredMortgage,
   Schedule,
-  ScheduleMonth,
 } from "./generated/types.gen";
 
 export type {
   ContractRate,
-  ContractRateTerms,
-  Fee,
   Health,
   IndexHistory,
   IndexStatus,
   IndexValue,
   MarketDataStatus,
-  MonthlyRate,
   MortgageTerms,
   RegisteredMortgage,
   Schedule,
-  ScheduleMonth,
 };
 export type IndexName = IndexHistory["index"];
 

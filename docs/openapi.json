@@ -38,7 +38,7 @@
         "additionalProperties": false,
         "properties": {
           "basis": {
-            "description": "Whether the rate is nominal, charged a twelfth each month, or effective, what the monthly charge compounds to over a year.",
+            "description": "Whether the contract prints the rate as nominal or as effective.",
             "enum": [
               "nominal",
               "effective"
@@ -52,7 +52,7 @@
           },
           "rate": {
             "description": "Annual rate as a decimal fraction string: 0.12 is 12% a year.",
-            "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]+)?$",
             "type": "string"
           }
         },
@@ -144,7 +144,7 @@
         "properties": {
           "amount": {
             "description": "Monthly amount, in reais, as a decimal string.",
-            "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]+)?$",
             "type": "string"
           },
           "effective_from": {
@@ -304,7 +304,7 @@
           },
           "rate": {
             "description": "Monthly rate as a decimal fraction string: 0.0003 is 0.03% a month.",
-            "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]+)?$",
             "type": "string"
           }
         },
@@ -326,8 +326,8 @@
             "type": "string"
           },
           "appraisal_value": {
-            "description": "Appraisal value of the property, in reais, as a decimal string. DFI is charged on it.",
-            "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "description": "Appraisal value of the property, in reais, as a decimal string.",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]+)?$",
             "type": "string"
           },
           "contract_date": {
@@ -343,7 +343,7 @@
             "type": "array"
           },
           "dfi_rates": {
-            "description": "The DFI property insurance rate charged on the appraisal value, and its later changes.",
+            "description": "The DFI property insurance rate, and its later changes.",
             "items": {
               "$ref": "#/components/schemas/MonthlyRate"
             },
@@ -357,12 +357,12 @@
             "type": "array"
           },
           "first_installment_date": {
-            "description": "Due date of the first installment. Each later one falls due on the same day of the following months, or on the month's last day when it is shorter.",
+            "description": "Due date of the first installment.",
             "format": "date",
             "type": "string"
           },
           "mip_rates": {
-            "description": "The MIP life insurance rate charged on the outstanding balance, and its changes as the borrower moves into a new age band.",
+            "description": "The MIP life insurance rate, and its changes as the borrower moves into a new age band.",
             "items": {
               "$ref": "#/components/schemas/MonthlyRate"
             },
@@ -370,12 +370,13 @@
           },
           "original_amount": {
             "description": "Amount borrowed, in reais, as a decimal string.",
-            "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]+)?$",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]+)?$",
             "type": "string"
           },
           "term_months": {
             "description": "Number of monthly installments.",
             "format": "int64",
+            "maximum": 600,
             "minimum": 1,
             "type": "integer"
           }
@@ -474,24 +475,28 @@
       "Schedule": {
         "additionalProperties": false,
         "properties": {
-          "months": {
+          "installments": {
             "description": "Every installment of the mortgage, in due date order.",
             "items": {
-              "$ref": "#/components/schemas/ScheduleMonth"
+              "$ref": "#/components/schemas/ScheduledInstallment"
             },
             "type": "array"
           }
         },
         "required": [
-          "months"
+          "installments"
         ],
         "type": "object"
       },
-      "ScheduleMonth": {
+      "ScheduledInstallment": {
         "additionalProperties": false,
         "properties": {
           "amortization": {
             "description": "Outstanding balance paid off, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Total the installment charges, in reais, as a decimal string.",
             "type": "string"
           },
           "dfi": {
@@ -505,10 +510,6 @@
           },
           "fee": {
             "description": "Admin fee, in reais, as a decimal string.",
-            "type": "string"
-          },
-          "installment": {
-            "description": "Total the installment charges, in reais, as a decimal string.",
             "type": "string"
           },
           "interest": {
@@ -537,7 +538,7 @@
           "mip",
           "dfi",
           "fee",
-          "installment",
+          "amount",
           "outstanding_balance"
         ],
         "type": "object"

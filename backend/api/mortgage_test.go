@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -29,6 +30,17 @@ func newAPI(t *testing.T) http.Handler {
 	require.NoError(t, err)
 
 	return api.NewHandler(db.New(conn), nil, nil, mortgage.NewStore(conn))
+}
+
+// closedAPI serves the API over a database that no longer answers.
+func closedAPI(t *testing.T, opts ...api.Option) http.Handler {
+	t.Helper()
+
+	conn, err := db.Open(t.Context(), filepath.Join(t.TempDir(), "debtwise.db"))
+	require.NoError(t, err)
+	require.NoError(t, conn.Close())
+
+	return api.NewHandler(db.New(conn), nil, nil, mortgage.NewStore(conn), opts...)
 }
 
 func serve(t *testing.T, handler http.Handler, method, path, body string) *httptest.ResponseRecorder {
@@ -60,7 +72,7 @@ const sacMortgage = `{
 		{"effective_from": "2024-04-01", "rate": "0.0005"}
 	],
 	"dfi_rates": [{"effective_from": "2023-12-10", "rate": "0.0001"}],
-	"fees": [{"effective_from": "2023-12-10", "amount": "10.00"}]
+	"fees": [{"effective_from": "2023-12-10", "amount": "12.50"}]
 }`
 
 // sacMortgageRead is sacMortgage as the API answers it, with the effective rate derived.
@@ -82,7 +94,7 @@ const sacMortgageRead = `{
 		{"effective_from": "2024-04-01", "rate": "0.0005"}
 	],
 	"dfi_rates": [{"effective_from": "2023-12-10", "rate": "0.0001"}],
-	"fees": [{"effective_from": "2023-12-10", "amount": "10.00"}]
+	"fees": [{"effective_from": "2023-12-10", "amount": "12.50"}]
 }`
 
 func TestMortgageIsRegisteredAndReadBack(t *testing.T) {
@@ -108,24 +120,24 @@ func TestMortgageScheduleIsServed(t *testing.T) {
 	rec := serve(t, handler, http.MethodGet, "/mortgage/schedule", "")
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.JSONEq(t, `{"months": [
+	assert.JSONEq(t, `{"installments": [
 		{"number": 1, "due_date": "2024-01-10", "interest": "600.00", "amortization": "10000.00",
-		 "mip": "18.00", "dfi": "10.00", "fee": "10.00", "installment": "10638.00",
+		 "mip": "18.00", "dfi": "10.00", "fee": "12.50", "amount": "10640.50",
 		 "outstanding_balance": "50000.00"},
 		{"number": 2, "due_date": "2024-02-10", "interest": "500.00", "amortization": "10000.00",
-		 "mip": "15.00", "dfi": "10.00", "fee": "10.00", "installment": "10535.00",
+		 "mip": "15.00", "dfi": "10.00", "fee": "12.50", "amount": "10537.50",
 		 "outstanding_balance": "40000.00"},
 		{"number": 3, "due_date": "2024-03-10", "interest": "400.00", "amortization": "10000.00",
-		 "mip": "12.00", "dfi": "10.00", "fee": "10.00", "installment": "10432.00",
+		 "mip": "12.00", "dfi": "10.00", "fee": "12.50", "amount": "10434.50",
 		 "outstanding_balance": "30000.00"},
 		{"number": 4, "due_date": "2024-04-10", "interest": "300.00", "amortization": "10000.00",
-		 "mip": "15.00", "dfi": "10.00", "fee": "10.00", "installment": "10335.00",
+		 "mip": "15.00", "dfi": "10.00", "fee": "12.50", "amount": "10337.50",
 		 "outstanding_balance": "20000.00"},
 		{"number": 5, "due_date": "2024-05-10", "interest": "200.00", "amortization": "10000.00",
-		 "mip": "10.00", "dfi": "10.00", "fee": "10.00", "installment": "10230.00",
+		 "mip": "10.00", "dfi": "10.00", "fee": "12.50", "amount": "10232.50",
 		 "outstanding_balance": "10000.00"},
 		{"number": 6, "due_date": "2024-06-10", "interest": "100.00", "amortization": "10000.00",
-		 "mip": "5.00", "dfi": "10.00", "fee": "10.00", "installment": "10125.00",
+		 "mip": "5.00", "dfi": "10.00", "fee": "12.50", "amount": "10127.50",
 		 "outstanding_balance": "0.00"}
 	]}`, rec.Body.String())
 }
@@ -251,7 +263,7 @@ func withField(t *testing.T, field, raw string) string {
 func TestInvalidMortgageIsRejected(t *testing.T) {
 	t.Parallel()
 
-	const decimalPattern = `expected string to match pattern ^(0|[1-9][0-9]*)(\.[0-9]+)?$`
+	const decimalPattern = `expected string to match pattern ^(0|[1-9][0-9]{0,14})(\.[0-9]+)?$`
 
 	tests := []struct {
 		name string
@@ -267,6 +279,31 @@ func TestInvalidMortgageIsRejected(t *testing.T) {
 			name: "negative original amount",
 			body: withField(t, "original_amount", `"-60000.00"`),
 			want: []errorDetail{{"body.original_amount", decimalPattern}},
+		},
+		{
+			name: "original amount over 15 digits",
+			body: withField(t, "original_amount", `"1234567890123456"`),
+			want: []errorDetail{{"body.original_amount", decimalPattern}},
+		},
+		{
+			name: "term over 50 years",
+			body: withField(t, "term_months", "601"),
+			want: []errorDetail{{"body.term_months", "expected number <= 600"}},
+		},
+		{
+			name: "contract date not a date",
+			body: withField(t, "contract_date", `"10/12/2023"`),
+			want: []errorDetail{{"body.contract_date", "expected string to be RFC 3339 date"}},
+		},
+		{
+			name: "negative MIP rate",
+			body: withField(t, "mip_rates", `[{"effective_from": "2023-12-10", "rate": "-0.0003"}]`),
+			want: []errorDetail{{"body.mip_rates[0].rate", decimalPattern}},
+		},
+		{
+			name: "unknown rate basis",
+			body: withField(t, "contract_rates", `[{"effective_from": "2023-12-10", "rate": "0.12", "basis": "annual"}]`),
+			want: []errorDetail{{"body.contract_rates[0].basis", `expected value to be one of "nominal, effective"`}},
 		},
 		{
 			name: "zero original amount",
@@ -349,6 +386,65 @@ func TestInvalidMortgageIsRejected(t *testing.T) {
 
 			assert.Equal(t, http.StatusNotFound, serve(t, handler, http.MethodGet, "/mortgage", "").Code,
 				"a rejected mortgage is not registered")
+		})
+	}
+}
+
+// The limits themselves are valid.
+func TestMortgageOnTheLimitsIsAccepted(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		field string
+		raw   string
+	}{
+		{name: "first installment on the contract date", field: "first_installment_date", raw: `"2023-12-10"`},
+		{name: "fee effective on the first installment date", field: "fees", raw: `[{"effective_from": "2024-01-10", "amount": "12.50"}]`},
+		{name: "term of 50 years", field: "term_months", raw: "600"},
+		{name: "original amount of 15 digits", field: "original_amount", raw: `"999999999999999.99"`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			rec := serve(t, newAPI(t), http.MethodPut, "/mortgage", withField(t, tt.field, tt.raw))
+
+			assert.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		})
+	}
+}
+
+// A database failure is a 500 that answers no detail of its cause, never a missing mortgage.
+func TestMortgageFailsWhenTheDatabaseDoesNotAnswer(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+	}{
+		{name: "read", method: http.MethodGet, path: "/mortgage"},
+		{name: "save", method: http.MethodPut, path: "/mortgage", body: sacMortgage},
+		{name: "delete", method: http.MethodDelete, path: "/mortgage"},
+		{name: "schedule", method: http.MethodGet, path: "/mortgage/schedule"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			rec := serve(t, closedAPI(t, api.WithLogger(slog.New(slog.DiscardHandler))), tt.method, tt.path, tt.body)
+
+			require.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
+
+			var problem struct {
+				Detail string `json:"detail"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &problem))
+			assert.Equal(t, "the server could not complete the request; report it with its request_id", problem.Detail)
 		})
 	}
 }

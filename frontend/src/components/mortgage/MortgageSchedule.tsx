@@ -17,7 +17,7 @@ const columns = [
   "Amortização",
   "MIP",
   "DFI",
-  "Tarifa",
+  "Taxa adm.",
   "Prestação",
   "Saldo devedor",
 ];
@@ -37,17 +37,17 @@ function ScheduleTable() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data.months.map((month) => (
-          <TableRow key={month.number}>
-            <TableCell>{month.number}</TableCell>
-            <TableCell>{formatDate(month.due_date)}</TableCell>
-            <TableCell>{formatMoney(month.interest)}</TableCell>
-            <TableCell>{formatMoney(month.amortization)}</TableCell>
-            <TableCell>{formatMoney(month.mip)}</TableCell>
-            <TableCell>{formatMoney(month.dfi)}</TableCell>
-            <TableCell>{formatMoney(month.fee)}</TableCell>
-            <TableCell>{formatMoney(month.installment)}</TableCell>
-            <TableCell>{formatMoney(month.outstanding_balance)}</TableCell>
+        {data.installments.map((installment) => (
+          <TableRow key={installment.number}>
+            <TableCell>{installment.number}</TableCell>
+            <TableCell>{formatDate(installment.due_date)}</TableCell>
+            <TableCell>{formatMoney(installment.interest)}</TableCell>
+            <TableCell>{formatMoney(installment.amortization)}</TableCell>
+            <TableCell>{formatMoney(installment.mip)}</TableCell>
+            <TableCell>{formatMoney(installment.dfi)}</TableCell>
+            <TableCell>{formatMoney(installment.fee)}</TableCell>
+            <TableCell>{formatMoney(installment.amount)}</TableCell>
+            <TableCell>{formatMoney(installment.outstanding_balance)}</TableCell>
           </TableRow>
         ))}
       </TableBody>
