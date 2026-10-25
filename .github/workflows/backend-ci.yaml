@@ -1,0 +1,69 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'go.work'
+      - 'go.work.sum'
+      - 'mise.toml'
+      - '.tool-versions'
+      - '.github/workflows/backend-ci.yaml'
+  # The coverage gate compares a pull request against the last run on main.
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'go.work'
+      - 'go.work.sum'
+      - 'mise.toml'
+      - '.tool-versions'
+      - '.github/workflows/backend-ci.yaml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+      - run: mise run lint:backend
+
+  format:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+      - run: mise run verify:format:backend
+
+  sqlc-verify:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+      - run: mise run verify:sqlc
+
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
+      - run: mise run test:backend
+      - uses: gringolito/go-covergrid@787afedd436da0843ba7e582bafe7c9c3ca90eed # v1.0.0
+        with:
+          profile: backend/cover.out
+          config: ./backend/.testcoverage.yml
+          diff-threshold: '-1.0'
