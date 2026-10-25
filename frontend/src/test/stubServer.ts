@@ -7,7 +7,9 @@ export interface RecordedRequest {
 
 // Stubs the network under the generated SDK, answering every request with `respond`, so the
 // tests cover the wire contract.
-export function stubServer(respond: (req: RecordedRequest) => Response): RecordedRequest[] {
+export function stubServer(
+  respond: (req: RecordedRequest) => Response | Promise<Response>,
+): RecordedRequest[] {
   const requests: RecordedRequest[] = [];
   vi.stubGlobal(
     "fetch",
@@ -23,7 +25,7 @@ export function stubServer(respond: (req: RecordedRequest) => Response): Recorde
 // Stubs the network with one handler per "METHOD /path", so a test answers each endpoint on its own.
 // A request with no handler gets a 404 problem document and is still recorded.
 export function stubRoutes(
-  routes: Record<string, (req: RecordedRequest) => Response>,
+  routes: Record<string, (req: RecordedRequest) => Response | Promise<Response>>,
 ): RecordedRequest[] {
   return stubServer((req) => {
     const key = `${req.method} ${new URL(req.url).pathname}`;

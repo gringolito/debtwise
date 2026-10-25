@@ -22,6 +22,13 @@ export async function fetchHealth(): Promise<Health> {
   return data;
 }
 
+/** indexHistoriesKey prefixes the query key of every index's history, to invalidate them all. */
+export const indexHistoriesKey = ["index-history"] as const;
+
+export function indexHistoryKey(index: IndexName) {
+  return [...indexHistoriesKey, index] as const;
+}
+
 export async function fetchIndexHistory(index: IndexName): Promise<IndexHistory> {
   const { data } = await indexHistory({ path: { index }, throwOnError: true });
   return data;

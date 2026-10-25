@@ -1,9 +1,9 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { IndexCard } from "@/pages/indices/IndexCard";
-import { useMarketData } from "@/pages/indices/useMarketData";
+import { IndexCard } from "@/pages/indexes/IndexCard";
+import { useMarketData } from "@/pages/indexes/useMarketData";
 
-export function Indices() {
+export function Indexes() {
   const { status, refresh, refreshing } = useMarketData();
 
   return (

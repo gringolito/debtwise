@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { IndexValue, MarketDataStatus } from "@/lib/api";
 import { renderAt } from "@/test/renderAt";
@@ -10,7 +10,7 @@ const FRESH_STATUS: MarketDataStatus = {
   refreshing: false,
   indexes: [
     { index: "tr", status: "fresh", refreshed_at: "2026-10-25T18:23:39Z" },
-    { index: "poupanca", status: "fresh", refreshed_at: "2026-10-25T18:23:40Z" },
+    { index: "poupanca_yield", status: "fresh", refreshed_at: "2026-10-25T18:23:40Z" },
     { index: "selic_target", status: "fresh", refreshed_at: "2026-10-25T18:23:41Z" },
     { index: "selic", status: "fresh", refreshed_at: "2026-10-25T18:23:42Z" },
     { index: "ipca", status: "fresh", refreshed_at: "2026-10-25T18:23:43Z" },
@@ -31,7 +31,7 @@ const TR_VALUES = [
 
 const HISTORIES: Record<string, IndexValue[]> = {
   tr: TR_VALUES,
-  poupanca: [
+  poupanca_yield: [
     value("2024-02-01", "2024-03-01", "0.5000"),
     value("2024-03-01", "2024-04-01", "0.6115"),
   ],
@@ -68,7 +68,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("indices page", () => {
+describe("indexes page", () => {
   it("is reached from the nav in the header", async () => {
     stubBackend({ status: FRESH_STATUS, histories: HISTORIES });
 
@@ -87,7 +87,7 @@ describe("indices page", () => {
     const cards = await screen.findAllByRole("region");
     expect(cards.map((card) => card.getAttribute("aria-label"))).toEqual([
       "TR",
-      "Poupança",
+      "Remuneração da poupança",
       "Selic meta",
       "Selic diária",
       "IPCA",
@@ -114,7 +114,7 @@ describe("latest value and refresh time", () => {
         refreshed: "25/10/2026 18:23",
       },
       {
-        name: "Poupança",
+        name: "Remuneração da poupança",
         value: "0,6115%",
         period: "01/03/2024 a 01/04/2024",
         refreshed: "25/10/2026 18:23",
@@ -160,7 +160,7 @@ describe("history chart", () => {
 
     renderAt("/indices");
 
-    for (const name of ["TR", "Poupança", "Selic meta", "Selic diária", "IPCA"]) {
+    for (const name of ["TR", "Remuneração da poupança", "Selic meta", "Selic diária", "IPCA"]) {
       const card = within(await screen.findByRole("region", { name }));
       expect(await card.findByRole("img", { name: `Histórico de ${name}` })).toBeInTheDocument();
     }
@@ -260,13 +260,13 @@ describe("warnings", () => {
 
   it("warns that an index has no data yet", async () => {
     stubBackend({
-      ...withStatuses({ index: "poupanca", status: "missing" }),
-      histories: { ...HISTORIES, poupanca: [] },
+      ...withStatuses({ index: "poupanca_yield", status: "missing" }),
+      histories: { ...HISTORIES, poupanca_yield: [] },
     });
 
     renderAt("/indices");
 
-    const card = within(await screen.findByRole("region", { name: "Poupança" }));
+    const card = within(await screen.findByRole("region", { name: "Remuneração da poupança" }));
     expect(await card.findByRole("alert")).toHaveTextContent("Ainda não há dados deste índice.");
     expect(screen.getAllByRole("alert")).toHaveLength(1);
   });
@@ -277,7 +277,7 @@ describe("refresh", () => {
   const get = (path: string) => ({ method: "GET", url: new URL(path, origin).href });
   const HISTORY_PATHS = [
     "/api/indexes/tr/history",
-    "/api/indexes/poupanca/history",
+    "/api/indexes/poupanca_yield/history",
     "/api/indexes/selic_target/history",
     "/api/indexes/selic/history",
     "/api/indexes/ipca/history",
@@ -340,14 +340,43 @@ describe("refresh", () => {
     expect(screen.getByRole("button", { name: "Atualizar" })).toBeEnabled();
     const tr = within(screen.getByRole("region", { name: "TR" }));
     expect(tr.getByText("Atualizado em 25/10/2026 18:30")).toBeInTheDocument();
-    expect(requests).toEqual([
+    const expectedRequests = [
       get("/api/market-data/status"),
       ...HISTORY_PATHS.map(get),
       { method: "POST", url: new URL("/api/market-data/refresh", origin).href },
       get("/api/market-data/status"),
       get("/api/market-data/status"),
       ...HISTORY_PATHS.map(get),
-    ]);
+    ];
+    expect(requests).toEqual(expectedRequests);
+
+    // The refresh is over, so the page stops polling.
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(requests).toEqual(expectedRequests);
+  });
+
+  it("keeps the button disabled while the refresh request is pending", async () => {
+    let answer: (response: Response) => void = () => {};
+    const post = new Promise<Response>((resolve) => {
+      answer = resolve;
+    });
+    stubRoutes({
+      "GET /api/market-data/status": () => Response.json(FRESH_STATUS),
+      "POST /api/market-data/refresh": () => post,
+      ...Object.fromEntries(
+        Object.keys(HISTORIES).map((index) => [
+          `GET /api/indexes/${index}/history`,
+          () => Response.json({ index, values: HISTORIES[index] }),
+        ]),
+      ),
+    });
+
+    renderAt("/indices");
+    fireEvent.click(await screen.findByRole("button", { name: "Atualizar" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Atualizar" })).toBeDisabled());
+    answer(Response.json({ ...FRESH_STATUS, refreshing: true }, { status: 202 }));
+    expect(await screen.findByRole("button", { name: "Atualizando…" })).toBeDisabled();
   });
 
   it("shows a refresh that another client started", async () => {

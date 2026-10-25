@@ -8,7 +8,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { Home } from "@/pages/Home";
-import { Indices } from "@/pages/Indices";
+import { Indexes } from "@/pages/Indexes";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -33,13 +33,13 @@ const rootRoute = createRootRoute({
 });
 
 const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: Home });
-const indicesRoute = createRoute({
+const indexesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/indices",
-  component: Indices,
+  component: Indexes,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, indicesRoute]);
+const routeTree = rootRoute.addChildren([homeRoute, indexesRoute]);
 
 export type AppRouter = Router<typeof routeTree>;
 

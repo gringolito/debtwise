@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { fetchIndexHistory, type IndexName, type IndexStatus } from "@/lib/api";
+import { fetchIndexHistory, indexHistoryKey, type IndexName, type IndexStatus } from "@/lib/api";
 import { formatDateTime, formatPercent, formatPeriod } from "@/lib/format";
-import { IndexHistoryChart } from "@/pages/indices/IndexHistoryChart";
-import { IndexWarning } from "@/pages/indices/IndexWarning";
+import { IndexHistoryChart } from "@/pages/indexes/IndexHistoryChart";
+import { IndexWarning } from "@/pages/indexes/IndexWarning";
 
 const INDEX_COPY: Record<IndexName, { title: string; unit: string }> = {
   tr: { title: "TR", unit: "% no período" },
-  poupanca: { title: "Poupança", unit: "% no período" },
+  poupanca_yield: { title: "Remuneração da poupança", unit: "% no período" },
   selic_target: { title: "Selic meta", unit: "% a.a." },
   selic: { title: "Selic diária", unit: "% a.d." },
   ipca: { title: "IPCA", unit: "% no mês" },
@@ -17,7 +17,7 @@ const INDEX_COPY: Record<IndexName, { title: string; unit: string }> = {
 export function IndexCard({ status }: { status: IndexStatus }) {
   const { title, unit } = INDEX_COPY[status.index];
   const history = useQuery({
-    queryKey: ["index-history", status.index],
+    queryKey: indexHistoryKey(status.index),
     queryFn: () => fetchIndexHistory(status.index),
   });
   const values = history.data?.values ?? [];

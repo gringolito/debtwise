@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { fetchMarketDataStatus, startMarketDataRefresh } from "@/lib/api";
+import { fetchMarketDataStatus, indexHistoriesKey, startMarketDataRefresh } from "@/lib/api";
 
 const STATUS_KEY = ["market-data", "status"];
 const POLL_MS = 2000;
@@ -25,7 +25,7 @@ export function useMarketData() {
   const wasRefreshing = useRef(false);
   useEffect(() => {
     if (wasRefreshing.current && !refreshing) {
-      void queryClient.invalidateQueries({ queryKey: ["index-history"] });
+      void queryClient.invalidateQueries({ queryKey: indexHistoriesKey });
     }
     wasRefreshing.current = refreshing;
   }, [refreshing, queryClient]);
