@@ -9,6 +9,8 @@ import {
 } from "@tanstack/react-router";
 import { Home } from "@/pages/Home";
 import { Indexes } from "@/pages/Indexes";
+import { Mortgage } from "@/pages/Mortgage";
+import { MortgageForm } from "@/pages/MortgageForm";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -21,6 +23,9 @@ const rootRoute = createRootRoute({
           </Link>
           <Link to="/indices" className="text-muted-foreground [&.active]:text-foreground">
             Índices
+          </Link>
+          <Link to="/financiamento" className="text-muted-foreground [&.active]:text-foreground">
+            Financiamento
           </Link>
         </nav>
       </header>
@@ -39,7 +44,24 @@ const indexesRoute = createRoute({
   component: Indexes,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, indexesRoute]);
+const mortgageRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/financiamento",
+  component: Mortgage,
+});
+
+const mortgageFormRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/financiamento/editar",
+  component: MortgageForm,
+});
+
+const routeTree = rootRoute.addChildren([
+  homeRoute,
+  indexesRoute,
+  mortgageRoute,
+  mortgageFormRoute,
+]);
 
 export type AppRouter = Router<typeof routeTree>;
 

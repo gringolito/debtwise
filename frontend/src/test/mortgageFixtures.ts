@@ -1,0 +1,96 @@
+import type { RegisteredMortgage, Schedule } from "@/lib/api";
+
+// A six-month SAC mortgage of R$ 60.000,00 at 12% a year nominal. MIP rises on 2024-04-01.
+export const registeredMortgage: RegisteredMortgage = {
+  contract_date: "2023-12-10",
+  original_amount: "60000.00",
+  term_months: 6,
+  first_installment_date: "2024-01-10",
+  amortization_system: "sac",
+  appraisal_value: "100000.00",
+  contract_rates: [
+    {
+      effective_from: "2023-12-10",
+      basis: "nominal",
+      nominal: "0.12",
+      effective: "0.126825030131969720661201",
+    },
+  ],
+  mip_rates: [
+    { effective_from: "2023-12-10", rate: "0.0003" },
+    { effective_from: "2024-04-01", rate: "0.0005" },
+  ],
+  dfi_rates: [{ effective_from: "2023-12-10", rate: "0.0001" }],
+  fees: [{ effective_from: "2023-12-10", amount: "10.00" }],
+};
+
+export const schedule: Schedule = {
+  months: [
+    {
+      number: 1,
+      due_date: "2024-01-10",
+      interest: "600.00",
+      amortization: "10000.00",
+      mip: "18.00",
+      dfi: "10.00",
+      fee: "10.00",
+      installment: "10638.00",
+      outstanding_balance: "50000.00",
+    },
+    {
+      number: 2,
+      due_date: "2024-02-10",
+      interest: "500.00",
+      amortization: "10000.00",
+      mip: "15.00",
+      dfi: "10.00",
+      fee: "10.00",
+      installment: "10535.00",
+      outstanding_balance: "40000.00",
+    },
+    {
+      number: 3,
+      due_date: "2024-03-10",
+      interest: "400.00",
+      amortization: "10000.00",
+      mip: "12.00",
+      dfi: "10.00",
+      fee: "10.00",
+      installment: "10432.00",
+      outstanding_balance: "30000.00",
+    },
+    {
+      number: 4,
+      due_date: "2024-04-10",
+      interest: "300.00",
+      amortization: "10000.00",
+      mip: "15.00",
+      dfi: "10.00",
+      fee: "10.00",
+      installment: "10335.00",
+      outstanding_balance: "20000.00",
+    },
+    {
+      number: 5,
+      due_date: "2024-05-10",
+      interest: "200.00",
+      amortization: "10000.00",
+      mip: "10.00",
+      dfi: "10.00",
+      fee: "10.00",
+      installment: "10230.00",
+      outstanding_balance: "10000.00",
+    },
+    {
+      number: 6,
+      due_date: "2024-06-10",
+      interest: "100.00",
+      amortization: "10000.00",
+      mip: "5.00",
+      dfi: "10.00",
+      fee: "10.00",
+      installment: "10125.00",
+      outstanding_balance: "0.00",
+    },
+  ],
+};
