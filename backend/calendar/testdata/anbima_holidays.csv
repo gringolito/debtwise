@@ -1,4 +1,5 @@
-# ANBIMA national holidays (feriados nacionais), 2001 to 2099.
+# ANBIMA national holidays (feriados nacionais), 2001 to 2099. The calendar tests check
+# NationalHolidays against this list.
 # Source: ANBIMA, https://www.anbima.com.br/feriados/arqs/feriados_nacionais.xls
 # Version: the spreadsheet saved by ANBIMA on 2023-12-22, retrieved on 2026-10-25.
 # ANBIMA's terms forbid automated scraping, so this copy is refreshed by hand: download the

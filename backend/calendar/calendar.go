@@ -1,82 +1,63 @@
 // Package calendar counts business days on the Brazilian market calendar: weekdays that are not
-// ANBIMA national holidays. Holidays that fall on a weekend take no extra day, and December 31,
-// which ANBIMA leaves off its list, is a business day.
+// national holidays. It derives the holidays from the rules that set them, which reproduce
+// ANBIMA's national holiday list for every year that list covers, 2001 to 2099. Holidays that fall
+// on a weekend take no extra day, and December 31, which is not a national holiday, is a business
+// day.
 package calendar
 
 import (
-	_ "embed"
-	"encoding/csv"
-	"fmt"
 	"slices"
-	"strings"
 	"time"
 )
 
-// anbimaHolidays is ANBIMA's national holiday list, kept as data because ANBIMA's terms forbid
-// scraping it. Its header says where it comes from and how to refresh it.
-//
-//go:embed anbima_holidays.csv
-var anbimaHolidays string
+// NationalHolidays returns the national holidays of year in date order, at midnight UTC, once each
+// when two of them fall on the same date. November 20 is a holiday from 2024 on (Lei 14.759/2023).
+func NationalHolidays(year int) []time.Time {
+	easter := easterSunday(year)
 
-// Calendar counts business days. Its zero value has no holidays and counts weekdays only.
-type Calendar struct {
-	holidays []time.Time // weekday holidays at midnight UTC, ascending
-}
-
-// New returns the calendar of the ANBIMA national holidays from 2001 to 2099.
-func New() (*Calendar, error) {
-	return parseHolidays(anbimaHolidays)
-}
-
-// parseHolidays reads a holiday list laid out like anbima_holidays.csv.
-func parseHolidays(data string) (*Calendar, error) {
-	r := csv.NewReader(strings.NewReader(data))
-	r.Comment = '#'
-	r.FieldsPerRecord = 2
-
-	if _, err := r.Read(); err != nil {
-		return nil, fmt.Errorf("calendar: read holiday list header: %w", err)
+	holidays := []time.Time{
+		date(year, time.January, 1),
+		easter.AddDate(0, 0, -48), // Carnaval Monday
+		easter.AddDate(0, 0, -47), // Carnaval Tuesday
+		easter.AddDate(0, 0, -2),  // Good Friday
+		date(year, time.April, 21),
+		date(year, time.May, 1),
+		easter.AddDate(0, 0, 60), // Corpus Christi
+		date(year, time.September, 7),
+		date(year, time.October, 12),
+		date(year, time.November, 2),
+		date(year, time.November, 15),
+		date(year, time.December, 25),
 	}
-
-	records, err := r.ReadAll()
-	if err != nil {
-		return nil, fmt.Errorf("calendar: read holiday list: %w", err)
-	}
-
-	holidays := make([]time.Time, 0, len(records))
-
-	for _, record := range records {
-		day, err := time.Parse(time.DateOnly, record[0])
-		if err != nil {
-			return nil, fmt.Errorf("calendar: parse holiday %q: %w", record[0], err)
-		}
-
-		if !isWeekend(day) {
-			holidays = append(holidays, day)
-		}
+	if year >= 2024 {
+		holidays = append(holidays, date(year, time.November, 20))
 	}
 
 	slices.SortFunc(holidays, time.Time.Compare)
 
-	return &Calendar{holidays: slices.CompactFunc(holidays, time.Time.Equal)}, nil
+	return slices.CompactFunc(holidays, time.Time.Equal)
 }
 
 // BusinessDays counts the business days from the date of from, inclusive, to the date of to,
 // exclusive, as Tesouro counts them from settlement to a bond's flow. Each date is the calendar
 // date in its time's own location. The count is negative when to comes before from.
-func (c *Calendar) BusinessDays(from, to time.Time) int {
+func BusinessDays(from, to time.Time) int {
 	start, end := civilDate(from), civilDate(to)
 	if end.Before(start) {
-		return -c.BusinessDays(to, from)
+		return -BusinessDays(to, from)
 	}
 
-	return weekdays(start, end) - c.holidaysBefore(end) + c.holidaysBefore(start)
-}
+	count := weekdays(start, end)
 
-func (c *Calendar) holidaysBefore(day time.Time) int {
-	n, _ := slices.BinarySearchFunc(c.holidays, day, time.Time.Compare)
+	for year := start.Year(); year <= end.Year(); year++ {
+		for _, holiday := range NationalHolidays(year) {
+			if !isWeekend(holiday) && !holiday.Before(start) && holiday.Before(end) {
+				count--
+			}
+		}
+	}
 
-	return n
+	return count
 }
 
 // weekdays counts the weekdays from start, inclusive, to end, exclusive.
@@ -93,10 +74,32 @@ func weekdays(start, end time.Time) int {
 	return count
 }
 
+// easterSunday returns the Gregorian Easter Sunday of year, at midnight UTC, by the anonymous
+// Gregorian algorithm (Meeus/Jones/Butcher).
+func easterSunday(year int) time.Time {
+	a := year % 19
+	b, c := year/100, year%100
+	d, e := b/4, b%4
+	f := (b + 8) / 25
+	g := (b - f + 1) / 3
+	h := (19*a + b - d - g + 15) % 30
+	i, k := c/4, c%4
+	l := (32 + 2*e + 2*i - h - k) % 7
+	m := (a + 11*h + 22*l) / 451
+	month := (h + l - 7*m + 114) / 31
+	day := (h+l-7*m+114)%31 + 1
+
+	return date(year, time.Month(month), day)
+}
+
+func date(year int, month time.Month, day int) time.Time {
+	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+}
+
 func civilDate(t time.Time) time.Time {
 	year, month, day := t.Date()
 
-	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+	return date(year, month, day)
 }
 
 func isWeekend(day time.Time) bool {

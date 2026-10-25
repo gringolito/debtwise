@@ -1,6 +1,10 @@
 package calendar_test
 
 import (
+	"bytes"
+	"encoding/csv"
+	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -10,11 +14,46 @@ import (
 	"github.com/gringolito/debtwise/backend/calendar"
 )
 
-func TestBusinessDays(t *testing.T) {
+// The rules have to reproduce ANBIMA's published list for every year it covers, weekend holidays
+// included. Two holidays on one date, as in 2079, count once.
+func TestNationalHolidaysMatchANBIMA(t *testing.T) {
 	t.Parallel()
 
-	cal, err := calendar.New()
+	data, err := os.ReadFile("testdata/anbima_holidays.csv")
 	require.NoError(t, err)
+
+	r := csv.NewReader(bytes.NewReader(data))
+	r.Comment = '#'
+	r.FieldsPerRecord = 2
+
+	records, err := r.ReadAll()
+	require.NoError(t, err)
+
+	anbima := map[int][]string{}
+
+	for _, record := range records[1:] {
+		day, err := time.Parse(time.DateOnly, record[0])
+		require.NoError(t, err)
+
+		if !slices.Contains(anbima[day.Year()], record[0]) {
+			anbima[day.Year()] = append(anbima[day.Year()], record[0])
+		}
+	}
+
+	require.Len(t, anbima, 99, "the list covers 2001 to 2099")
+
+	for year, want := range anbima {
+		got := make([]string, 0, len(want))
+		for _, holiday := range calendar.NationalHolidays(year) {
+			got = append(got, holiday.Format(time.DateOnly))
+		}
+
+		assert.Equal(t, want, got, "holidays of %d", year)
+	}
+}
+
+func TestBusinessDays(t *testing.T) {
+	t.Parallel()
 
 	// Settlement date of the worked examples in Tesouro's "Metodologia de Cálculo dos Títulos
 	// Públicos Federais Ofertados nos Leilões Primários", which publishes their business days.
@@ -108,7 +147,7 @@ func TestBusinessDays(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, tt.want, cal.BusinessDays(tt.from, tt.to))
+			assert.Equal(t, tt.want, calendar.BusinessDays(tt.from, tt.to))
 		})
 	}
 }
