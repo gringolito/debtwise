@@ -90,11 +90,18 @@ func TestArithmetic(t *testing.T) {
 			want: "0.3333333333333333333333333333333333",
 		},
 		{
-			name: "a tie at the 34th digit rounds half to even",
+			name: "a tie at the 34th digit rounds down to an even digit",
 			op:   decimal.Decimal.Add,
 			x:    "1.000000000000000000000000000000000",
 			y:    "0.0000000000000000000000000000000005",
 			want: "1",
+		},
+		{
+			name: "a tie at the 34th digit rounds up to an even digit",
+			op:   decimal.Decimal.Add,
+			x:    "1.000000000000000000000000000000001",
+			y:    "0.0000000000000000000000000000000005",
+			want: "1.000000000000000000000000000000002",
 		},
 		{
 			name: "fractional power",
@@ -135,6 +142,47 @@ func TestUndefinedArithmeticPanics(t *testing.T) {
 
 			x, y := parse(t, tt.x), parse(t, tt.y)
 			assert.Panics(t, func() { tt.op(x, y) })
+		})
+	}
+}
+
+// Coefficients wider than 128 bits live behind a pointer that copies of a Decimal share, so an
+// operation that wrote into its operand would change every copy.
+func TestOperationsLeaveOperandsUnchanged(t *testing.T) {
+	t.Parallel()
+
+	const wide = "12345678901234567890.12345678901234567890"
+
+	tests := []struct {
+		name string
+		op   func(decimal.Decimal) decimal.Decimal
+	}{
+		{name: "add", op: func(x decimal.Decimal) decimal.Decimal { return x.Add(decimal.FromInt(1)) }},
+		{name: "sub", op: func(x decimal.Decimal) decimal.Decimal { return x.Sub(decimal.FromInt(1)) }},
+		{name: "mul", op: func(x decimal.Decimal) decimal.Decimal { return x.Mul(decimal.FromInt(3)) }},
+		{name: "quo", op: func(x decimal.Decimal) decimal.Decimal { return x.Quo(decimal.FromInt(3)) }},
+		{name: "pow", op: func(x decimal.Decimal) decimal.Decimal { return x.Pow(decimal.FromInt(2)) }},
+		{name: "truncate exponent", op: decimal.Decimal.TruncateExponent},
+		{name: "truncate unit price", op: decimal.Decimal.TruncateUnitPrice},
+		{name: "round coupon", op: decimal.Decimal.RoundCoupon},
+		{name: "round discounted flow", op: decimal.Decimal.RoundDiscountedFlow},
+		{name: "monthly to annual", op: decimal.MonthlyToAnnual},
+		{name: "annual to monthly", op: decimal.AnnualToMonthly},
+		{name: "nominal to effective", op: decimal.NominalToEffective},
+		{name: "effective to nominal", op: decimal.EffectiveToNominal},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			x := parse(t, wide)
+			copied := x
+
+			tt.op(x)
+
+			assert.Equal(t, wide, x.String())
+			assert.Equal(t, wide, copied.String())
 		})
 	}
 }

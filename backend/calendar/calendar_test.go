@@ -75,6 +75,21 @@ func TestBusinessDays(t *testing.T) {
 			from: date(2026, time.January, 1), to: date(2026, time.January, 5),
 			want: 1,
 		},
+		{
+			name: "New Year on a Friday before a weekend",
+			from: date(2027, time.January, 1), to: date(2027, time.January, 4),
+			want: 0,
+		},
+		{
+			name: "Carnaval decades ahead",
+			from: date(2050, time.February, 18), to: date(2050, time.February, 25),
+			want: 3,
+		},
+		{
+			name: "last year of the list, across Christmas and December 31",
+			from: date(2099, time.December, 24), to: date(2100, time.January, 1),
+			want: 5,
+		},
 		{name: "same day", from: date(2026, time.March, 2), to: date(2026, time.March, 2), want: 0},
 		{
 			name: "to before from counts backwards",
