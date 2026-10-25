@@ -198,7 +198,7 @@ func TestStatusWarnsWhenTheLastRefreshIsStale(t *testing.T) {
 
 	s := newServer(t, sgsWithRows(nil))
 
-	require.NoError(t, s.job.Refresh(t.Context(), time.Now().Add(-25*time.Hour)))
+	require.NoError(t, s.job.Refresh(t.Context(), time.Now().Add(-49*time.Hour)))
 
 	status := s.status(t)
 	require.Len(t, status.Indexes, 5)

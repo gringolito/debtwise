@@ -234,8 +234,8 @@ func TestStatusTellsHowFreshEachIndexIs(t *testing.T) {
 	status, err := job.Status(t.Context(), now)
 	require.NoError(t, err)
 	assert.Equal(t, []marketdata.IndexStatus{
-		{Index: indexes.TR, State: marketdata.Fresh, RefreshedAt: now.Add(-24 * time.Hour)},
-		{Index: indexes.PoupancaYield, State: marketdata.Stale, RefreshedAt: now.Add(-24*time.Hour - time.Second)},
+		{Index: indexes.TR, State: marketdata.Fresh, RefreshedAt: now.Add(-48 * time.Hour)},
+		{Index: indexes.PoupancaYield, State: marketdata.Stale, RefreshedAt: now.Add(-48*time.Hour - time.Second)},
 		{Index: indexes.SelicTarget, State: marketdata.Failed, FailedAt: now.Add(-time.Minute)},
 		{
 			Index:       indexes.Selic,

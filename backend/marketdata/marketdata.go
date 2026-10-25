@@ -16,9 +16,10 @@ import (
 
 const (
 	// DefaultInterval is how often Run refreshes when no WithInterval option sets it.
-	DefaultInterval = 6 * time.Hour
-	// StaleAfter is how long after its last successful refresh an index counts as stale.
-	StaleAfter = 24 * time.Hour
+	DefaultInterval = 24 * time.Hour
+	// StaleAfter is how long after its last successful refresh an index counts as stale: long
+	// enough to miss one daily refresh.
+	StaleAfter = 48 * time.Hour
 	// lookahead extends every request past today, because the Selic target series publishes the
 	// target in force up to the next Copom meeting.
 	lookahead = 90 * 24 * time.Hour

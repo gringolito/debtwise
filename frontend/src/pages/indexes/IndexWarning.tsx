@@ -9,7 +9,7 @@ export function IndexWarning({ status }: { status: IndexStatus }) {
       return (
         <Alert variant="warning">
           <AlertDescription>
-            Dados desatualizados: a última atualização foi há mais de um dia.
+            Dados desatualizados: a última atualização foi há mais de dois dias.
           </AlertDescription>
         </Alert>
       );

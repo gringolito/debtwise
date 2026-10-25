@@ -215,7 +215,7 @@ describe("warnings", () => {
 
     const card = within(await screen.findByRole("region", { name: "Selic diária" }));
     expect(await card.findByRole("alert")).toHaveTextContent(
-      "Dados desatualizados: a última atualização foi há mais de um dia.",
+      "Dados desatualizados: a última atualização foi há mais de dois dias.",
     );
     expect(card.getByText("Atualizado em 23/10/2026 09:05")).toBeInTheDocument();
     expect(screen.getAllByRole("alert")).toHaveLength(1);
