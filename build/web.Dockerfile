@@ -3,7 +3,12 @@
 FROM --platform=${BUILDPLATFORM} node:24.22.1-slim AS build
 WORKDIR /app
 
-COPY frontend/package.json frontend/package-lock.json ./
+# renovate: datasource=npm depName=npm
+ARG NPM_VERSION=12.2.1
+RUN --mount=type=cache,target=/root/.npm \
+    npm install --global npm@${NPM_VERSION}
+
+COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 

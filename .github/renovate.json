@@ -3,7 +3,8 @@
   "extends": [
     "config:recommended",
     ":semanticCommitTypeAll(chore)",
-    "security:gomodIndirectSecurityUpdates"
+    "security:gomodIndirectSecurityUpdates",
+    "customManagers:dockerfileVersions"
   ],
   "timezone": "America/Sao_Paulo",
   "schedule": ["before 6am"],
@@ -66,6 +67,11 @@
       "matchManagers": ["gomod", "mise"],
       "matchDepNames": ["go", "golang"],
       "groupName": "go toolchain"
+    },
+    {
+      "description": "Node.js and npm are pinned in mise.toml, frontend/package.json devEngines and build/web.Dockerfile; bump every pin in one PR so they cannot drift.",
+      "matchDepNames": ["node", "npm"],
+      "groupName": "node toolchain"
     }
   ]
 }

@@ -4,7 +4,8 @@
 
 [tools]
 go = "1.27.3"                   # Keep in sync with backend/go.mod
-node = "24.22.1"                # LTS
+node = "24.22.1"                # LTS; keep in sync with frontend/package.json devEngines
+npm = "12.2.1"                  # Keep in sync with frontend/package.json devEngines
 sqlc = "1.31.1"
 "go:github.com/pressly/goose/v3/cmd/goose" = "v3.29.0"
 # Keep in sync with the version the gringolito/go-covergrid action runs in CI.
