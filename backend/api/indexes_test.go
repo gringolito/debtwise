@@ -94,24 +94,32 @@ func TestRefreshingAgainKeepsOneValuePerPeriod(t *testing.T) {
 		226: trRows(),
 		432: {{Start: date(2099, time.January, 1), Value: mustDecimal("13.75")}},
 	})
+
+	start := time.Now()
 	s := newServer(t, source)
+	firstRefreshDone := time.Now()
 
 	revised := trRows()
-	revised[0].Value = mustDecimal("0.0625")
+	revised[1].Value = mustDecimal("0.0335")
 	source.answer(226, revised)
 
 	// An hour after the first refresh, so a fetch time the second refresh failed to replace shows.
 	later := time.Now().Add(time.Hour).Truncate(time.Second).UTC()
 	require.NoError(t, s.job.Refresh(t.Context(), later))
 
-	want := wantTR()
-	want[0].Value = "0.0625"
+	got := s.history(t, "tr").Values
+	require.Len(t, got, 4)
+	assert.Equal(t, wantTR()[:1], withoutFetchTimes(t, got[:1], start, firstRefreshDone),
+		"a period before the latest stored start is not refetched")
+
+	want := wantTR()[1:]
+	want[0].Value = "0.0335"
 
 	for i := range want {
 		want[i].FetchedAt = later
 	}
 
-	assert.Equal(t, want, s.history(t, "tr").Values,
+	assert.Equal(t, want, got[1:],
 		"a refetched period keeps one row, with the latest value and fetch time")
 
 	assert.Equal(t, date(2024, time.March, 1), source.lastFrom(226),

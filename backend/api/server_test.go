@@ -23,8 +23,8 @@ import (
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
 )
 
-// fakeSGS answers every request for a series with the rows it holds for it and its error, and
-// records the date each request starts from.
+// fakeSGS answers every request for a series with the rows it holds for it that start on or after
+// the date the request starts from, as SGS does, and its error. It records each request's start.
 type fakeSGS struct {
 	mu       sync.Mutex
 	rows     map[int][]sgs.Observation
@@ -37,8 +37,17 @@ func (f *fakeSGS) Observations(_ context.Context, series int, from, _ time.Time)
 	defer f.mu.Unlock()
 
 	f.from[series] = from
+	day := date(from.Date())
 
-	return f.rows[series], f.failures[series]
+	var rows []sgs.Observation
+
+	for _, row := range f.rows[series] {
+		if !row.Start.Before(day) {
+			rows = append(rows, row)
+		}
+	}
+
+	return rows, f.failures[series]
 }
 
 func (f *fakeSGS) fail(series int, err error) {
