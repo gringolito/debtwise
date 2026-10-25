@@ -15,8 +15,6 @@ services:
     restart: unless-stopped
     depends_on:
       - server
-    environment:
-      BACKEND_UPSTREAM: server:8080
     ports:
       - "${DEBTWISE_PORT:-8000}:80"
 

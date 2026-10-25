@@ -6,7 +6,7 @@
 	encode gzip zstd
 
 	handle /api/* {
-		reverse_proxy {$BACKEND_UPSTREAM:debtwise-server:8080} {
+		reverse_proxy {$BACKEND_UPSTREAM:server:8080} {
 			transport http {
 				keepalive 1m
 			}
