@@ -185,7 +185,7 @@ export type MortgageTerms = {
      */
     contract_rates: Array<ContractRateTerms>;
     /**
-     * The DFI property insurance rate, and its later changes.
+     * The DFI rate, and its later changes.
      */
     dfi_rates: Array<MonthlyRate>;
     /**
@@ -197,7 +197,7 @@ export type MortgageTerms = {
      */
     first_installment_date: string;
     /**
-     * The MIP life insurance rate, and its changes as the borrower moves into a new age band.
+     * The MIP rate, and its changes as the borrower moves into a new age band.
      */
     mip_rates: Array<MonthlyRate>;
     /**
@@ -228,7 +228,7 @@ export type RegisteredMortgage = {
      */
     contract_rates: Array<ContractRate>;
     /**
-     * The DFI property insurance rate and its changes, in date order.
+     * The DFI rate and its changes, in date order.
      */
     dfi_rates: Array<MonthlyRate>;
     /**
@@ -240,7 +240,7 @@ export type RegisteredMortgage = {
      */
     first_installment_date: string;
     /**
-     * The MIP life insurance rate and its changes, in date order.
+     * The MIP rate and its changes, in date order.
      */
     mip_rates: Array<MonthlyRate>;
     /**
@@ -270,7 +270,7 @@ export type ScheduledInstallment = {
      */
     amount: string;
     /**
-     * DFI property insurance premium, in reais, as a decimal string.
+     * DFI premium, in reais, as a decimal string.
      */
     dfi: string;
     /**
@@ -286,7 +286,7 @@ export type ScheduledInstallment = {
      */
     interest: string;
     /**
-     * MIP life insurance premium, in reais, as a decimal string.
+     * MIP premium, in reais, as a decimal string.
      */
     mip: string;
     /**

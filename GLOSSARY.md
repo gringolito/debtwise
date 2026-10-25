@@ -73,9 +73,15 @@ One scheduled monthly payment on the mortgage, with everything the bank charges 
 included. It is what the owner pays out of pocket each month.
 _Avoid_: Payment (also covers prepayments), parcel (a mistranslation of "parcela")
 
+**Schedule** (evolução do financiamento):
+The mortgage's installments month by month, each with what it charges and the outstanding balance
+it leaves. The owner checks it against the bank's statements.
+_Avoid_: Amortization table (names the amortization system's split only), extrato (the bank's
+statement, not DebtWise's calculation)
+
 **MIP** (Morte e Invalidez Permanente):
 The mortgage's life and disability insurance premium, charged with each installment on the
-outstanding balance. Its rate rises as the borrower moves into an older age band.
+outstanding balance. Its rate follows the borrower's age band.
 _Avoid_: Life insurance (the policy, not the premium charged), seguro habitacional (covers MIP and
 DFI together)
 
@@ -87,8 +93,8 @@ policy the owner may hold apart from the mortgage)
 
 **Appraisal Value** (valor de avaliação):
 The bank's valuation of the property behind a mortgage. DFI is charged on it.
-_Avoid_: Property value and market value (what the property would sell for, and market value is a
-lot's sale value here), purchase price (what the owner paid)
+_Avoid_: Property value (what the property would sell for), market value (a lot's sale value in
+DebtWise), purchase price (what the owner paid)
 
 **Admin Fee** (taxa de administração):
 The fixed monthly fee the bank charges with each installment for managing the mortgage.

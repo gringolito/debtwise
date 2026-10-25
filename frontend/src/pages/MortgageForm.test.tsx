@@ -419,3 +419,191 @@ describe("loading the form", () => {
     expect(await screen.findByText("Carregando financiamento…")).toBeInTheDocument();
   });
 });
+
+describe("money typed with several thousands groups", () => {
+  it.each([
+    ["1.250.000,00", "1250000.00"],
+    ["1.250.000", "1250000"],
+  ])("sends %s as %s", async (typed, sent) => {
+    const requests = stubMortgageApi({
+      mortgage: registeredMortgage,
+      onSave: () => problem(422, "Unprocessable Entity", "validation failed"),
+    });
+    renderAt("/financiamento/editar");
+
+    await screen.findByRole("heading", { name: "Editar financiamento" });
+    fill("Valor financiado", typed);
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await screen.findByRole("alert");
+    expect(putBodies(requests)).toHaveLength(1);
+    expect(putBodies(requests)[0]).toMatchObject({ original_amount: sent });
+  });
+});
+
+describe("rates saved with fewer than two fraction digits", () => {
+  it("prefills them as the whole percent they are", async () => {
+    stubMortgageApi({
+      mortgage: {
+        ...registeredMortgage,
+        contract_rates: [
+          {
+            effective_from: "2023-12-10",
+            basis: "nominal",
+            nominal: "0.1",
+            effective: "0.104713",
+          },
+        ],
+        mip_rates: [
+          { effective_from: "2023-12-10", rate: "0.5" },
+          { effective_from: "2024-04-01", rate: "0.05" },
+        ],
+        dfi_rates: [{ effective_from: "2023-12-10", rate: "1" }],
+      },
+    });
+    renderAt("/financiamento/editar");
+
+    expect(await screen.findByLabelText("Taxa de juros 1 (% a.a.)")).toHaveValue("10");
+    expect(screen.getByLabelText("Taxa do MIP 1 (% a.m.)")).toHaveValue("50");
+    expect(screen.getByLabelText("Taxa do MIP 2 (% a.m.)")).toHaveValue("5");
+    expect(screen.getByLabelText("Taxa do DFI 1 (% a.m.)")).toHaveValue("100");
+  });
+});
+
+describe("each location the API can reject", () => {
+  const twoRowsEach: RegisteredMortgage = {
+    ...registeredMortgage,
+    contract_rates: [
+      { effective_from: "2023-12-10", basis: "nominal", nominal: "0.12", effective: "0.1268" },
+      { effective_from: "2024-06-10", basis: "nominal", nominal: "0.11", effective: "0.1157" },
+    ],
+    mip_rates: [
+      { effective_from: "2023-12-10", rate: "0.0003" },
+      { effective_from: "2024-04-01", rate: "0.0005" },
+    ],
+    dfi_rates: [
+      { effective_from: "2023-12-10", rate: "0.0001" },
+      { effective_from: "2024-04-01", rate: "0.0002" },
+    ],
+    fees: [
+      { effective_from: "2023-12-10", amount: "12.50" },
+      { effective_from: "2024-04-01", amount: "15.00" },
+    ],
+  };
+
+  const inputs = [
+    ["body.contract_date", "Data do contrato"],
+    ["body.original_amount", "Valor financiado"],
+    ["body.term_months", "Prazo (meses)"],
+    ["body.first_installment_date", "Primeira prestação"],
+    ["body.amortization_system", "Sistema de amortização"],
+    ["body.appraisal_value", "Valor de avaliação"],
+    ["body.contract_rates[1].effective_from", "Vigência da taxa de juros 2"],
+    ["body.contract_rates[1].rate", "Taxa de juros 2 (% a.a.)"],
+    ["body.contract_rates[1].basis", "Base da taxa de juros 2"],
+    ["body.mip_rates[1].effective_from", "Vigência do MIP 2"],
+    ["body.mip_rates[1].rate", "Taxa do MIP 2 (% a.m.)"],
+    ["body.dfi_rates[1].effective_from", "Vigência do DFI 2"],
+    ["body.dfi_rates[1].rate", "Taxa do DFI 2 (% a.m.)"],
+    ["body.fees[1].effective_from", "Vigência da taxa de administração 2"],
+    ["body.fees[1].amount", "Valor da taxa de administração 2 (R$)"],
+  ] as const;
+
+  const lists = [
+    ["body.contract_rates", "Taxa de juros"],
+    ["body.mip_rates", "MIP"],
+    ["body.dfi_rates", "DFI"],
+    ["body.fees", "Taxa de administração"],
+  ] as const;
+
+  async function rejectAt(location: string) {
+    stubMortgageApi({
+      mortgage: twoRowsEach,
+      onSave: () =>
+        problem(422, "Unprocessable Entity", "validation failed", [
+          { location, message: "is not acceptable" },
+        ]),
+    });
+    renderAt("/financiamento/editar");
+    await screen.findByRole("heading", { name: "Editar financiamento" });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await screen.findByRole("alert");
+  }
+
+  it.each(inputs)("marks only the input of %s", async (location, label) => {
+    await rejectAt(location);
+
+    expect(screen.getByLabelText(label)).toHaveAttribute("aria-invalid", "true");
+    for (const [, other] of inputs.filter(([, name]) => name !== label)) {
+      expect(screen.getByLabelText(other)).not.toHaveAttribute("aria-invalid");
+    }
+    for (const [, list] of lists) {
+      expect(group(list)).not.toHaveAttribute("aria-invalid");
+    }
+    expect(screen.getAllByText("Valor inválido.")).toHaveLength(1);
+  });
+
+  it.each(lists)("marks only the list of %s", async (location, title) => {
+    await rejectAt(location);
+
+    expect(group(title)).toHaveAttribute("aria-invalid", "true");
+    for (const [, other] of lists.filter(([, name]) => name !== title)) {
+      expect(group(other)).not.toHaveAttribute("aria-invalid");
+    }
+    for (const [, label] of inputs) {
+      expect(screen.getByLabelText(label)).not.toHaveAttribute("aria-invalid");
+    }
+    expect(screen.getAllByText("Confira as linhas desta lista.")).toHaveLength(1);
+  });
+});
+
+describe("removing a middle row", () => {
+  const threeRowsEach: RegisteredMortgage = {
+    ...registeredMortgage,
+    contract_rates: [
+      { effective_from: "2023-12-10", basis: "nominal", nominal: "0.12", effective: "0.1268" },
+      { effective_from: "2024-06-10", basis: "effective", nominal: "0.0957", effective: "0.1" },
+      { effective_from: "2025-01-10", basis: "nominal", nominal: "0.09", effective: "0.0938" },
+    ],
+    fees: [
+      { effective_from: "2023-12-10", amount: "12.50" },
+      { effective_from: "2024-06-10", amount: "15.00" },
+      { effective_from: "2025-01-10", amount: "20.00" },
+    ],
+  };
+
+  it("sends the remaining contract rates and fees in order", async () => {
+    const requests = stubMortgageApi({
+      mortgage: threeRowsEach,
+      onSave: () => registeredMortgage,
+    });
+    renderAt("/financiamento/editar");
+    await screen.findByRole("heading", { name: "Editar financiamento" });
+
+    fireEvent.click(within(group("Taxa de juros 2")).getByRole("button", { name: "Remover" }));
+    fireEvent.click(
+      within(group("Taxa de administração 2")).getByRole("button", { name: "Remover" }),
+    );
+
+    expect(screen.queryByRole("group", { name: "Taxa de juros 3" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("group", { name: "Taxa de administração 3" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Taxa de juros 2 (% a.a.)")).toHaveValue("9");
+    expect(screen.getByLabelText("Valor da taxa de administração 2 (R$)")).toHaveValue("20,00");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await savedPage();
+    expect(putBodies(requests)).toHaveLength(1);
+    expect(putBodies(requests)[0]).toMatchObject({
+      contract_rates: [
+        { effective_from: "2023-12-10", rate: "0.12", basis: "nominal" },
+        { effective_from: "2025-01-10", rate: "0.09", basis: "nominal" },
+      ],
+      fees: [
+        { effective_from: "2023-12-10", amount: "12.50" },
+        { effective_from: "2025-01-10", amount: "20.00" },
+      ],
+    });
+  });
+});

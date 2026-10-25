@@ -267,64 +267,93 @@ func TestSACAmortizesTheBalanceOverTheMonthsLeft(t *testing.T) {
 }
 
 // At 0% Price splits the balance evenly, 8,333.33 a month, and the last installment pays the
-// 4 centavos rounding left.
+// 4 centavos rounding left. A rate too small to show at 34 significant digits does the same.
 func TestPriceScheduleWithoutInterest(t *testing.T) {
 	t.Parallel()
 
-	terms := priceTerms(t, mortgage.ContractRate{
-		EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0"), Basis: mortgage.Nominal,
-	})
+	tests := []struct {
+		name string
+		rate string
+	}{
+		{name: "zero", rate: "0"},
+		{name: "below the precision", rate: "0.00000000000000000000000000000000001"},
+	}
 
-	assert.Equal(t, []row{
-		{1, "2024-01-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "91666.67"},
-		{2, "2024-02-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "83333.34"},
-		{3, "2024-03-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "75000.01"},
-		{4, "2024-04-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "66666.68"},
-		{5, "2024-05-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "58333.35"},
-		{6, "2024-06-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "50000.02"},
-		{7, "2024-07-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "41666.69"},
-		{8, "2024-08-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "33333.36"},
-		{9, "2024-09-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "25000.03"},
-		{10, "2024-10-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "16666.70"},
-		{11, "2024-11-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "8333.37"},
-		{12, "2024-12-10", "0.00", "8333.37", "0.00", "0.00", "0.00", "8333.37", "0.00"},
-	}, schedule(terms))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			terms := priceTerms(t, mortgage.ContractRate{
+				EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, tt.rate), Basis: mortgage.Nominal,
+			})
+
+			assert.Equal(t, []row{
+				{1, "2024-01-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "91666.67"},
+				{2, "2024-02-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "83333.34"},
+				{3, "2024-03-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "75000.01"},
+				{4, "2024-04-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "66666.68"},
+				{5, "2024-05-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "58333.35"},
+				{6, "2024-06-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "50000.02"},
+				{7, "2024-07-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "41666.69"},
+				{8, "2024-08-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "33333.36"},
+				{9, "2024-09-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "25000.03"},
+				{10, "2024-10-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "16666.70"},
+				{11, "2024-11-10", "0.00", "8333.33", "0.00", "0.00", "0.00", "8333.33", "8333.37"},
+				{12, "2024-12-10", "0.00", "8333.37", "0.00", "0.00", "0.00", "8333.37", "0.00"},
+			}, schedule(terms))
+		})
+	}
 }
 
-// A 30-year Price mortgage at 10% a year effective, with installments on the 31st that fall on
-// each month's last day, a MIP age band from June 2030, and figures worked out independently at 60
-// significant digits.
+// A 30-year Price mortgage at 10% a year effective, entered on either basis, with installments on
+// the 31st that fall on each month's last day, a MIP age band from June 2030, and figures worked
+// out independently at 60 significant digits.
 func TestThirtyYearPriceSchedule(t *testing.T) {
 	t.Parallel()
 
-	terms := mortgage.Terms{
-		ContractDate:         date(t, "2023-12-31"),
-		OriginalAmount:       dec(t, "250000.00"),
-		TermMonths:           360,
-		FirstInstallmentDate: date(t, "2024-01-31"),
-		AmortizationSystem:   mortgage.Price,
-		AppraisalValue:       dec(t, "320000.00"),
-		ContractRates: []mortgage.ContractRate{
-			{EffectiveFrom: date(t, "2023-12-31"), Rate: dec(t, "0.10"), Basis: mortgage.Effective},
-		},
-		MIPRates: []mortgage.MonthlyRate{
-			{EffectiveFrom: date(t, "2023-12-31"), Rate: dec(t, "0.000258")},
-			{EffectiveFrom: date(t, "2030-06-01"), Rate: dec(t, "0.000412")},
-		},
-		DFIRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-31"), Rate: dec(t, "0.000071")}},
-		Fees:     []mortgage.Fee{{EffectiveFrom: date(t, "2023-12-31"), Amount: dec(t, "25.00")}},
+	tests := []struct {
+		name  string
+		rate  string
+		basis mortgage.RateBasis
+	}{
+		{name: "effective", rate: "0.10", basis: mortgage.Effective},
+		{name: "nominal", rate: "0.095689685146844892792382130678764", basis: mortgage.Nominal},
 	}
 
-	rows := schedule(terms)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	require.Len(t, rows, 360)
-	assert.Equal(t, []row{
-		{1, "2024-01-31", "1993.54", "121.19", "64.50", "22.72", "25.00", "2226.95", "249878.81"},
-		{2, "2024-02-29", "1992.57", "122.16", "64.47", "22.72", "25.00", "2226.92", "249756.65"},
-		{12, "2024-12-31", "1982.47", "132.26", "64.14", "22.72", "25.00", "2226.59", "248480.15"},
-		{13, "2025-01-31", "1981.42", "133.31", "64.11", "22.72", "25.00", "2226.56", "248346.84"},
-		{77, "2030-05-31", "1893.10", "221.63", "61.25", "22.72", "25.00", "2223.70", "237182.66"},
-		{78, "2030-06-30", "1891.33", "223.40", "97.72", "22.72", "25.00", "2260.17", "236959.26"},
-		{360, "2053-12-31", "16.68", "2092.13", "0.86", "22.72", "25.00", "2157.39", "0.00"},
-	}, []row{rows[0], rows[1], rows[11], rows[12], rows[76], rows[77], rows[359]})
+			terms := mortgage.Terms{
+				ContractDate:         date(t, "2023-12-31"),
+				OriginalAmount:       dec(t, "250000.00"),
+				TermMonths:           360,
+				FirstInstallmentDate: date(t, "2024-01-31"),
+				AmortizationSystem:   mortgage.Price,
+				AppraisalValue:       dec(t, "320000.00"),
+				ContractRates: []mortgage.ContractRate{
+					{EffectiveFrom: date(t, "2023-12-31"), Rate: dec(t, tt.rate), Basis: tt.basis},
+				},
+				MIPRates: []mortgage.MonthlyRate{
+					{EffectiveFrom: date(t, "2023-12-31"), Rate: dec(t, "0.000258")},
+					{EffectiveFrom: date(t, "2030-06-01"), Rate: dec(t, "0.000412")},
+				},
+				DFIRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-31"), Rate: dec(t, "0.000071")}},
+				Fees:     []mortgage.Fee{{EffectiveFrom: date(t, "2023-12-31"), Amount: dec(t, "25.00")}},
+			}
+
+			rows := schedule(terms)
+
+			require.Len(t, rows, 360)
+			assert.Equal(t, []row{
+				{1, "2024-01-31", "1993.54", "121.19", "64.50", "22.72", "25.00", "2226.95", "249878.81"},
+				{2, "2024-02-29", "1992.57", "122.16", "64.47", "22.72", "25.00", "2226.92", "249756.65"},
+				{12, "2024-12-31", "1982.47", "132.26", "64.14", "22.72", "25.00", "2226.59", "248480.15"},
+				{13, "2025-01-31", "1981.42", "133.31", "64.11", "22.72", "25.00", "2226.56", "248346.84"},
+				{77, "2030-05-31", "1893.10", "221.63", "61.25", "22.72", "25.00", "2223.70", "237182.66"},
+				{78, "2030-06-30", "1891.33", "223.40", "97.72", "22.72", "25.00", "2260.17", "236959.26"},
+				{360, "2053-12-31", "16.68", "2092.13", "0.86", "22.72", "25.00", "2157.39", "0.00"},
+			}, []row{rows[0], rows[1], rows[11], rows[12], rows[76], rows[77], rows[359]})
+		})
+	}
 }

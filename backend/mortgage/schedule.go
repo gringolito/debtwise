@@ -82,14 +82,14 @@ func (t Terms) Schedule() iter.Seq[Installment] {
 }
 
 // pricePayment returns the level amortization plus interest that pays balance off over months at
-// a monthly rate.
+// a monthly rate. A rate too small to discount at all, zero included, splits the balance evenly.
 func pricePayment(balance, rate decimal.Decimal, months int) decimal.Decimal {
-	if rate.Cmp(decimal.Decimal{}) == 0 {
+	one := decimal.FromInt(1)
+
+	discount := one.Sub(one.Add(rate).Pow(decimal.FromInt(int64(-months))))
+	if discount.Cmp(decimal.Decimal{}) == 0 {
 		return balance.Quo(decimal.FromInt(int64(months))).RoundCents()
 	}
-
-	one := decimal.FromInt(1)
-	discount := one.Sub(one.Add(rate).Pow(decimal.FromInt(int64(-months))))
 
 	return balance.Mul(rate).Quo(discount).RoundCents()
 }

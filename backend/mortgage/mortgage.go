@@ -60,11 +60,11 @@ type ContractRate struct {
 
 // Nominal returns the rate as a nominal annual rate.
 func (r ContractRate) Nominal() decimal.Decimal {
-	if r.Basis == Nominal {
-		return r.Rate
+	if r.Basis == Effective {
+		return decimal.EffectiveToNominal(r.Rate)
 	}
 
-	return decimal.EffectiveToNominal(r.Rate)
+	return r.Rate
 }
 
 // Effective returns the rate as an effective annual rate.
@@ -81,7 +81,7 @@ func (r ContractRate) monthly() decimal.Decimal {
 		return decimal.AnnualToMonthly(r.Rate)
 	}
 
-	return r.Rate.Quo(decimal.FromInt(12))
+	return decimal.NominalToMonthly(r.Rate)
 }
 
 func (r ContractRate) effectiveFrom() time.Time { return r.EffectiveFrom }

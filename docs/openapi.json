@@ -52,7 +52,7 @@
           },
           "rate": {
             "description": "Annual rate as a decimal fraction string: 0.12 is 12% a year.",
-            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]+)?$",
+            "pattern": "^(0|[1-9][0-9]{0,2})(\\.[0-9]{1,12})?$",
             "type": "string"
           }
         },
@@ -144,7 +144,7 @@
         "properties": {
           "amount": {
             "description": "Monthly amount, in reais, as a decimal string.",
-            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]+)?$",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
             "type": "string"
           },
           "effective_from": {
@@ -304,7 +304,7 @@
           },
           "rate": {
             "description": "Monthly rate as a decimal fraction string: 0.0003 is 0.03% a month.",
-            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]+)?$",
+            "pattern": "^(0|[1-9][0-9]{0,2})(\\.[0-9]{1,12})?$",
             "type": "string"
           }
         },
@@ -327,7 +327,7 @@
           },
           "appraisal_value": {
             "description": "Appraisal value of the property, in reais, as a decimal string.",
-            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]+)?$",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
             "type": "string"
           },
           "contract_date": {
@@ -343,7 +343,7 @@
             "type": "array"
           },
           "dfi_rates": {
-            "description": "The DFI property insurance rate, and its later changes.",
+            "description": "The DFI rate, and its later changes.",
             "items": {
               "$ref": "#/components/schemas/MonthlyRate"
             },
@@ -362,7 +362,7 @@
             "type": "string"
           },
           "mip_rates": {
-            "description": "The MIP life insurance rate, and its changes as the borrower moves into a new age band.",
+            "description": "The MIP rate, and its changes as the borrower moves into a new age band.",
             "items": {
               "$ref": "#/components/schemas/MonthlyRate"
             },
@@ -370,7 +370,7 @@
           },
           "original_amount": {
             "description": "Amount borrowed, in reais, as a decimal string.",
-            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]+)?$",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
             "type": "string"
           },
           "term_months": {
@@ -423,7 +423,7 @@
             "type": "array"
           },
           "dfi_rates": {
-            "description": "The DFI property insurance rate and its changes, in date order.",
+            "description": "The DFI rate and its changes, in date order.",
             "items": {
               "$ref": "#/components/schemas/MonthlyRate"
             },
@@ -442,7 +442,7 @@
             "type": "string"
           },
           "mip_rates": {
-            "description": "The MIP life insurance rate and its changes, in date order.",
+            "description": "The MIP rate and its changes, in date order.",
             "items": {
               "$ref": "#/components/schemas/MonthlyRate"
             },
@@ -500,7 +500,7 @@
             "type": "string"
           },
           "dfi": {
-            "description": "DFI property insurance premium, in reais, as a decimal string.",
+            "description": "DFI premium, in reais, as a decimal string.",
             "type": "string"
           },
           "due_date": {
@@ -517,7 +517,7 @@
             "type": "string"
           },
           "mip": {
-            "description": "MIP life insurance premium, in reais, as a decimal string.",
+            "description": "MIP premium, in reais, as a decimal string.",
             "type": "string"
           },
           "number": {

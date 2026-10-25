@@ -263,7 +263,10 @@ func withField(t *testing.T, field, raw string) string {
 func TestInvalidMortgageIsRejected(t *testing.T) {
 	t.Parallel()
 
-	const decimalPattern = `expected string to match pattern ^(0|[1-9][0-9]{0,14})(\.[0-9]+)?$`
+	const (
+		moneyPattern = `expected string to match pattern ^(0|[1-9][0-9]{0,14})(\.[0-9]{1,2})?$`
+		ratePattern  = `expected string to match pattern ^(0|[1-9][0-9]{0,2})(\.[0-9]{1,12})?$`
+	)
 
 	tests := []struct {
 		name string
@@ -278,12 +281,22 @@ func TestInvalidMortgageIsRejected(t *testing.T) {
 		{
 			name: "negative original amount",
 			body: withField(t, "original_amount", `"-60000.00"`),
-			want: []errorDetail{{"body.original_amount", decimalPattern}},
+			want: []errorDetail{{"body.original_amount", moneyPattern}},
 		},
 		{
 			name: "original amount over 15 digits",
 			body: withField(t, "original_amount", `"1234567890123456"`),
-			want: []errorDetail{{"body.original_amount", decimalPattern}},
+			want: []errorDetail{{"body.original_amount", moneyPattern}},
+		},
+		{
+			name: "original amount below a centavo",
+			body: withField(t, "original_amount", `"60000.005"`),
+			want: []errorDetail{{"body.original_amount", moneyPattern}},
+		},
+		{
+			name: "contract rate over 12 places",
+			body: withField(t, "contract_rates", `[{"effective_from": "2023-12-10", "rate": "0.1234567890123", "basis": "nominal"}]`),
+			want: []errorDetail{{"body.contract_rates[0].rate", ratePattern}},
 		},
 		{
 			name: "term over 50 years",
@@ -298,7 +311,7 @@ func TestInvalidMortgageIsRejected(t *testing.T) {
 		{
 			name: "negative MIP rate",
 			body: withField(t, "mip_rates", `[{"effective_from": "2023-12-10", "rate": "-0.0003"}]`),
-			want: []errorDetail{{"body.mip_rates[0].rate", decimalPattern}},
+			want: []errorDetail{{"body.mip_rates[0].rate", ratePattern}},
 		},
 		{
 			name: "unknown rate basis",
@@ -313,17 +326,17 @@ func TestInvalidMortgageIsRejected(t *testing.T) {
 		{
 			name: "negative appraisal value",
 			body: withField(t, "appraisal_value", `"-1"`),
-			want: []errorDetail{{"body.appraisal_value", decimalPattern}},
+			want: []errorDetail{{"body.appraisal_value", moneyPattern}},
 		},
 		{
 			name: "negative fee",
 			body: withField(t, "fees", `[{"effective_from": "2023-12-10", "amount": "-10.00"}]`),
-			want: []errorDetail{{"body.fees[0].amount", decimalPattern}},
+			want: []errorDetail{{"body.fees[0].amount", moneyPattern}},
 		},
 		{
 			name: "negative contract rate",
 			body: withField(t, "contract_rates", `[{"effective_from": "2023-12-10", "rate": "-0.12", "basis": "nominal"}]`),
-			want: []errorDetail{{"body.contract_rates[0].rate", decimalPattern}},
+			want: []errorDetail{{"body.contract_rates[0].rate", ratePattern}},
 		},
 		{
 			name: "first installment before the contract date",
@@ -403,6 +416,11 @@ func TestMortgageOnTheLimitsIsAccepted(t *testing.T) {
 		{name: "fee effective on the first installment date", field: "fees", raw: `[{"effective_from": "2024-01-10", "amount": "12.50"}]`},
 		{name: "term of 50 years", field: "term_months", raw: "600"},
 		{name: "original amount of 15 digits", field: "original_amount", raw: `"999999999999999.99"`},
+		{
+			name:  "contract rate of 12 places",
+			field: "contract_rates",
+			raw:   `[{"effective_from": "2023-12-10", "rate": "0.123456789012", "basis": "nominal"}]`,
+		},
 	}
 
 	for _, tt := range tests {

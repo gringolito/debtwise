@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// No operation can answer a 4xx yet, so this test registers one that requires a query
-// parameter.
+// The test registers its own operation, one that requires a query parameter, so the failure it
+// checks doesn't depend on any domain's rules.
 func TestClientFailureAnswersItsProblemAndIsLoggedAtDebug(t *testing.T) {
 	t.Parallel()
 
