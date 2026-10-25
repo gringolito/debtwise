@@ -79,7 +79,8 @@ func New(opts ...Option) *Client {
 //
 // The API caps a window at 10 years and the client does not know a series' periodicity, so it
 // requests every range in windows of 5 years or less, one after the other.
-// A window without rows adds nothing; any other failure stops the call.
+// A window without rows adds nothing. Any other failure stops the call, which returns the rows
+// of the windows before it with the error.
 func (c *Client) Observations(ctx context.Context, series int, from, to time.Time) ([]Observation, error) {
 	from, to = midnightUTC(from), midnightUTC(to)
 
@@ -93,7 +94,7 @@ func (c *Client) Observations(ctx context.Context, series int, from, to time.Tim
 
 		window, err := c.window(ctx, series, start, end)
 		if err != nil {
-			return nil, fmt.Errorf("sgs: series %d from %s to %s: %w",
+			return observations, fmt.Errorf("sgs: series %d from %s to %s: %w",
 				series, start.Format(apiDate), end.Format(apiDate), err)
 		}
 
@@ -103,14 +104,12 @@ func (c *Client) Observations(ctx context.Context, series int, from, to time.Tim
 	return observations, nil
 }
 
-// midnightUTC returns the calendar date of t as midnight UTC.
 func midnightUTC(t time.Time) time.Time {
 	year, month, day := t.Date()
 
 	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
 }
 
-// row is a row as the API sends it.
 type row struct {
 	Start string `json:"data"`
 	End   string `json:"dataFim"`
@@ -138,7 +137,6 @@ func (r row) observation() (Observation, error) {
 	return Observation{Start: start, End: end, Value: value}, nil
 }
 
-// notFoundBody is the body of a 404.
 type notFoundBody struct {
 	Error struct {
 		StatusCode int    `json:"statusCode"`

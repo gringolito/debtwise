@@ -17,16 +17,16 @@ import (
 type Index string
 
 const (
-	TR          Index = "tr"
-	Poupanca    Index = "poupanca"
-	SelicTarget Index = "selic_target"
-	Selic       Index = "selic"
-	IPCA        Index = "ipca"
+	TR            Index = "tr"
+	PoupancaYield Index = "poupanca_yield"
+	SelicTarget   Index = "selic_target"
+	Selic         Index = "selic"
+	IPCA          Index = "ipca"
 )
 
 // All returns every index DebtWise keeps, in the order the API lists them.
 func All() []Index {
-	return []Index{TR, Poupanca, SelicTarget, Selic, IPCA}
+	return []Index{TR, PoupancaYield, SelicTarget, Selic, IPCA}
 }
 
 // Value is one published value of an index, for the period from PeriodStart to PeriodEnd. A
@@ -39,9 +39,9 @@ type Value struct {
 	FetchedAt time.Time
 }
 
-// Refresh is when an index was last refreshed successfully, zero when it never was, and when its
-// latest refresh failed, zero when that refresh succeeded.
-type Refresh struct {
+// RefreshTimes are when an index was last refreshed successfully, zero when it never was, and
+// when its latest refresh failed, zero when that refresh succeeded.
+type RefreshTimes struct {
 	Index       Index
 	RefreshedAt time.Time
 	FailedAt    time.Time
@@ -61,6 +61,27 @@ func NewStore(conn *sql.DB) *Store {
 // SaveRefresh stores the values a refresh of index fetched at at, replacing the stored value of
 // any period it fetched again, and records the refresh.
 func (s *Store) SaveRefresh(ctx context.Context, index Index, values []Value, at time.Time) error {
+	return s.save(ctx, index, values, func(queries *db.Queries) error {
+		return queries.RecordIndexRefreshed(ctx, db.RecordIndexRefreshedParams{
+			Series:      string(index),
+			RefreshedAt: sql.NullString{String: formatTime(at), Valid: true},
+		})
+	})
+}
+
+// SaveFailure stores the values a refresh of index fetched before it failed at at, as
+// SaveRefresh does, and records the failure.
+func (s *Store) SaveFailure(ctx context.Context, index Index, values []Value, at time.Time) error {
+	return s.save(ctx, index, values, func(queries *db.Queries) error {
+		return queries.RecordIndexFailed(ctx, db.RecordIndexFailedParams{
+			Series:   string(index),
+			FailedAt: sql.NullString{String: formatTime(at), Valid: true},
+		})
+	})
+}
+
+// save stores values and records how their refresh ended, in one transaction.
+func (s *Store) save(ctx context.Context, index Index, values []Value, record func(*db.Queries) error) error {
 	tx, err := s.conn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("indexes: save refresh of %s: %w", index, err)
@@ -82,29 +103,12 @@ func (s *Store) SaveRefresh(ctx context.Context, index Index, values []Value, at
 		}
 	}
 
-	err = queries.RecordIndexRefreshed(ctx, db.RecordIndexRefreshedParams{
-		Series:      string(index),
-		RefreshedAt: sql.NullString{String: formatTime(at), Valid: true},
-	})
-	if err != nil {
+	if err := record(queries); err != nil {
 		return fmt.Errorf("indexes: record refresh of %s: %w", index, err)
 	}
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("indexes: save refresh of %s: %w", index, err)
-	}
-
-	return nil
-}
-
-// SaveFailure records that a refresh of index failed at at.
-func (s *Store) SaveFailure(ctx context.Context, index Index, at time.Time) error {
-	err := db.New(s.conn).RecordIndexFailed(ctx, db.RecordIndexFailedParams{
-		Series:   string(index),
-		FailedAt: sql.NullString{String: formatTime(at), Valid: true},
-	})
-	if err != nil {
-		return fmt.Errorf("indexes: record failed refresh of %s: %w", index, err)
 	}
 
 	return nil
@@ -150,26 +154,26 @@ func (s *Store) LatestPeriodStart(ctx context.Context, index Index) (time.Time, 
 	return start, nil
 }
 
-// Refreshes returns the recorded refreshes, one per index that was ever refreshed or failed to.
-func (s *Store) Refreshes(ctx context.Context) ([]Refresh, error) {
+// RefreshTimes returns the refresh times of every index that was ever refreshed or failed to.
+func (s *Store) RefreshTimes(ctx context.Context) ([]RefreshTimes, error) {
 	rows, err := db.New(s.conn).ListIndexRefreshes(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("indexes: refreshes: %w", err)
+		return nil, fmt.Errorf("indexes: refresh times: %w", err)
 	}
 
-	refreshes := make([]Refresh, 0, len(rows))
+	times := make([]RefreshTimes, 0, len(rows))
 	for _, row := range rows {
 		refreshedAt, refreshedErr := parseNullTime(row.RefreshedAt)
 		failedAt, failedErr := parseNullTime(row.FailedAt)
 
 		if err := errors.Join(refreshedErr, failedErr); err != nil {
-			return nil, fmt.Errorf("indexes: refreshes of %s: %w", row.Series, err)
+			return nil, fmt.Errorf("indexes: refresh times of %s: %w", row.Series, err)
 		}
 
-		refreshes = append(refreshes, Refresh{Index: Index(row.Series), RefreshedAt: refreshedAt, FailedAt: failedAt})
+		times = append(times, RefreshTimes{Index: Index(row.Series), RefreshedAt: refreshedAt, FailedAt: failedAt})
 	}
 
-	return refreshes, nil
+	return times, nil
 }
 
 func valueFromRow(row db.ListIndexValuesRow) (Value, error) {

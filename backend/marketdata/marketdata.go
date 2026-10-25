@@ -33,8 +33,8 @@ type Source interface {
 type Store interface {
 	LatestPeriodStart(ctx context.Context, index indexes.Index) (time.Time, error)
 	SaveRefresh(ctx context.Context, index indexes.Index, values []indexes.Value, at time.Time) error
-	SaveFailure(ctx context.Context, index indexes.Index, at time.Time) error
-	Refreshes(ctx context.Context) ([]indexes.Refresh, error)
+	SaveFailure(ctx context.Context, index indexes.Index, values []indexes.Value, at time.Time) error
+	RefreshTimes(ctx context.Context) ([]indexes.RefreshTimes, error)
 }
 
 // sgsIndex is an index and the SGS series it is published as.
@@ -47,7 +47,7 @@ type sgsIndex struct {
 func sgsIndexes() []sgsIndex {
 	return []sgsIndex{
 		{index: indexes.TR, series: 226},
-		{index: indexes.Poupanca, series: 195},
+		{index: indexes.PoupancaYield, series: 195},
 		{index: indexes.SelicTarget, series: 432},
 		{index: indexes.Selic, series: 11},
 		{index: indexes.IPCA, series: 433},
@@ -128,29 +128,41 @@ func (j *Job) Run(ctx context.Context) {
 		case <-ticker.C:
 		}
 
-		j.setRunning(true)
+		j.start()
 
 		if err := j.Refresh(ctx, time.Now()); err != nil && ctx.Err() == nil {
 			j.logger.ErrorContext(ctx, "market data refresh failed", "err", err)
 		}
 
-		j.setRunning(false)
+		j.finish()
 	}
 }
 
-func (j *Job) setRunning(running bool) {
+// start marks a refresh as running. A trigger still queued is served by this refresh, so start
+// takes it back.
+func (j *Job) start() {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 
-	if running {
-		j.pending = false
-	}
+	j.pending = false
+	j.running = true
 
-	j.running = running
+	select {
+	case <-j.trigger:
+	default:
+	}
+}
+
+func (j *Job) finish() {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+
+	j.running = false
 }
 
 // Refresh fetches every index from its source and stores what it fetched at now. An index whose
-// fetch fails keeps its values and has the failure recorded; the others are stored anyway.
+// fetch fails keeps its values, gains those fetched before the failure, and has the failure
+// recorded; the others are stored anyway.
 func (j *Job) Refresh(ctx context.Context, now time.Time) error {
 	all := sgsIndexes()
 	errs := make([]error, len(all))
@@ -166,14 +178,18 @@ func (j *Job) Refresh(ctx context.Context, now time.Time) error {
 }
 
 func (j *Job) refresh(ctx context.Context, s sgsIndex, now time.Time) error {
-	err := j.fetch(ctx, s, now)
+	values, err := j.fetch(ctx, s, now)
+	if err == nil {
+		err = j.store.SaveRefresh(ctx, s.index, values, now)
+	}
+
 	if err == nil {
 		return nil
 	}
 
 	// A refresh cut short by its caller is no failure of the source.
 	if ctx.Err() == nil {
-		if saveErr := j.store.SaveFailure(ctx, s.index, now); saveErr != nil {
+		if saveErr := j.store.SaveFailure(ctx, s.index, values, now); saveErr != nil {
 			err = errors.Join(err, saveErr)
 		}
 	}
@@ -181,22 +197,25 @@ func (j *Job) refresh(ctx context.Context, s sgsIndex, now time.Time) error {
 	return fmt.Errorf("marketdata: refresh %s: %w", s.index, err)
 }
 
-// fetch stores the values of an index from its latest stored period on, so that values its
-// source revised for that period replace the stored ones.
-func (j *Job) fetch(ctx context.Context, s sgsIndex, now time.Time) error {
+// fetch returns the values of an index from its latest stored period on, so that values its
+// source revised for that period replace the stored ones. When the source fails partway, fetch
+// returns the values fetched before the failure with the error.
+func (j *Job) fetch(ctx context.Context, s sgsIndex, now time.Time) ([]indexes.Value, error) {
 	from, err := j.store.LatestPeriodStart(ctx, s.index)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if from.IsZero() {
+	switch {
+	case from.IsZero():
 		from = backfillFrom()
+	case from.After(now):
+		// Rows dated after today, such as the Selic target in force up to the next Copom
+		// meeting, are refetched in case the target changed.
+		from = now
 	}
 
 	observations, err := j.source.Observations(ctx, s.series, from, now.Add(lookahead))
-	if err != nil {
-		return err
-	}
 
 	values := make([]indexes.Value, 0, len(observations))
 	for _, o := range observations {
@@ -208,7 +227,7 @@ func (j *Job) fetch(ctx context.Context, s sgsIndex, now time.Time) error {
 		values = append(values, indexes.Value{PeriodStart: o.Start, PeriodEnd: end, Value: o.Value, FetchedAt: now})
 	}
 
-	return j.store.SaveRefresh(ctx, s.index, values, now)
+	return values, err
 }
 
 // State is how fresh an index's stored values are.
@@ -242,14 +261,14 @@ type Status struct {
 
 // Status reports how fresh every index is at now, in the order of indexes.All.
 func (j *Job) Status(ctx context.Context, now time.Time) (Status, error) {
-	refreshes, err := j.store.Refreshes(ctx)
+	times, err := j.store.RefreshTimes(ctx)
 	if err != nil {
 		return Status{}, fmt.Errorf("marketdata: status: %w", err)
 	}
 
-	byIndex := make(map[indexes.Index]indexes.Refresh, len(refreshes))
-	for _, r := range refreshes {
-		byIndex[r.Index] = r
+	byIndex := make(map[indexes.Index]indexes.RefreshTimes, len(times))
+	for _, t := range times {
+		byIndex[t.Index] = t
 	}
 
 	all := indexes.All()
@@ -275,7 +294,7 @@ func (j *Job) refreshing() bool {
 	return j.pending || j.running
 }
 
-func state(r indexes.Refresh, now time.Time) State {
+func state(r indexes.RefreshTimes, now time.Time) State {
 	switch {
 	case !r.FailedAt.IsZero():
 		return Failed

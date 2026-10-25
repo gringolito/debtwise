@@ -23,22 +23,22 @@ import (
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
 )
 
-// fakeSGS answers every request for a series with the rows it holds for it, or with its error.
+// fakeSGS answers every request for a series with the rows it holds for it and its error, and
+// records the date each request starts from.
 type fakeSGS struct {
 	mu       sync.Mutex
 	rows     map[int][]sgs.Observation
 	failures map[int]error
+	from     map[int]time.Time
 }
 
-func (f *fakeSGS) Observations(_ context.Context, series int, _, _ time.Time) ([]sgs.Observation, error) {
+func (f *fakeSGS) Observations(_ context.Context, series int, from, _ time.Time) ([]sgs.Observation, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	if err := f.failures[series]; err != nil {
-		return nil, err
-	}
+	f.from[series] = from
 
-	return f.rows[series], nil
+	return f.rows[series], f.failures[series]
 }
 
 func (f *fakeSGS) fail(series int, err error) {
@@ -53,12 +53,21 @@ func (f *fakeSGS) answer(series int, rows []sgs.Observation) {
 	defer f.mu.Unlock()
 
 	f.rows[series] = rows
+	delete(f.failures, series)
+}
+
+// lastFrom returns the date the latest request for series started from.
+func (f *fakeSGS) lastFrom(series int) time.Time {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return f.from[series]
 }
 
 // sgsWithRows answers one row for every series DebtWise reads, or the rows passed for the
 // series they key.
 func sgsWithRows(rows map[int][]sgs.Observation) *fakeSGS {
-	f := &fakeSGS{rows: map[int][]sgs.Observation{}, failures: map[int]error{}}
+	f := &fakeSGS{rows: map[int][]sgs.Observation{}, failures: map[int]error{}, from: map[int]time.Time{}}
 	for _, series := range []int{226, 195, 432, 11, 433} {
 		f.rows[series] = []sgs.Observation{{Start: date(2026, time.September, 1), Value: mustDecimal("1.00")}}
 	}
@@ -66,6 +75,11 @@ func sgsWithRows(rows map[int][]sgs.Observation) *fakeSGS {
 	maps.Copy(f.rows, rows)
 
 	return f
+}
+
+// wantDefaultRow is the history the row sgsWithRows answers by default is stored as.
+func wantDefaultRow() []indexValue {
+	return []indexValue{{PeriodStart: "2026-09-01", PeriodEnd: "2026-09-01", Value: "1.00"}}
 }
 
 type server struct {
@@ -151,12 +165,17 @@ func (s server) status(t *testing.T) marketDataStatus {
 	return status
 }
 
-// refresh asks for a market-data refresh and waits for it to finish.
+// refresh asks for a market-data refresh, checks the answer says it is refreshing, and waits for
+// the refresh to finish.
 func (s server) refresh(t *testing.T) {
 	t.Helper()
 
 	rec := s.do(t, http.MethodPost, "/api/market-data/refresh")
 	require.Equal(t, http.StatusAccepted, rec.Code, rec.Body.String())
+
+	var started marketDataStatus
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &started))
+	require.True(t, started.Refreshing, "the answer to a refresh says it is refreshing")
 
 	s.waitForRefresh(t)
 }

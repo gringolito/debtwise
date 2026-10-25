@@ -52,7 +52,7 @@ func operations() map[string]func(context.Context, *indexes.Store) error {
 			return s.SaveRefresh(ctx, indexes.TR, nil, time.Now())
 		},
 		"save failure": func(ctx context.Context, s *indexes.Store) error {
-			return s.SaveFailure(ctx, indexes.TR, time.Now())
+			return s.SaveFailure(ctx, indexes.TR, oneValue(), time.Now())
 		},
 		"history": func(ctx context.Context, s *indexes.Store) error {
 			_, err := s.History(ctx, indexes.TR)
@@ -64,8 +64,8 @@ func operations() map[string]func(context.Context, *indexes.Store) error {
 
 			return err
 		},
-		"refreshes": func(ctx context.Context, s *indexes.Store) error {
-			_, err := s.Refreshes(ctx)
+		"refresh times": func(ctx context.Context, s *indexes.Store) error {
+			_, err := s.RefreshTimes(ctx)
 
 			return err
 		},
@@ -126,7 +126,7 @@ func TestStoreFailsOnStoredDataItCannotRead(t *testing.T) {
 		{
 			name:      "a refresh time that is not a time",
 			insert:    `INSERT INTO index_refreshes VALUES ('tr', 'yesterday', NULL)`,
-			operation: "refreshes",
+			operation: "refresh times",
 		},
 	}
 

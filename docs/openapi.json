@@ -99,7 +99,7 @@
           "index": {
             "enum": [
               "tr",
-              "poupanca",
+              "poupanca_yield",
               "selic_target",
               "selic",
               "ipca"
@@ -131,7 +131,7 @@
           "index": {
             "enum": [
               "tr",
-              "poupanca",
+              "poupanca_yield",
               "selic_target",
               "selic",
               "ipca"
@@ -266,7 +266,7 @@
               "description": "The index.",
               "enum": [
                 "tr",
-                "poupanca",
+                "poupanca_yield",
                 "selic_target",
                 "selic",
                 "ipca"

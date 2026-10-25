@@ -58,7 +58,7 @@ export type Health = {
 };
 
 export type IndexHistory = {
-    index: 'tr' | 'poupanca' | 'selic_target' | 'selic' | 'ipca';
+    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
     /**
      * Every stored value of the index, oldest period first.
      */
@@ -70,7 +70,7 @@ export type IndexStatus = {
      * When the latest refresh of the index failed. Absent unless status is failed.
      */
     failed_at?: string;
-    index: 'tr' | 'poupanca' | 'selic_target' | 'selic' | 'ipca';
+    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
     /**
      * When the index was last refreshed successfully. Absent when it never was.
      */
@@ -142,7 +142,7 @@ export type IndexHistoryData = {
         /**
          * The index.
          */
-        index: 'tr' | 'poupanca' | 'selic_target' | 'selic' | 'ipca';
+        index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
     };
     query?: never;
     url: '/indexes/{index}/history';

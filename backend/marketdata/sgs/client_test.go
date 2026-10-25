@@ -98,6 +98,17 @@ func (r *replayer) requested() []string {
 // window2010to2014 is the first window of the 2010s, as "dataInicial-dataFinal".
 const window2010to2014 = "01/01/2010-31/12/2014"
 
+// ipca2022 are the rows of testdata/433.json, as rows formats them.
+func ipca2022() []string {
+	return []string{
+		"2022-06-01 - 0.67",
+		"2022-07-01 - -0.68",
+		"2022-08-01 - -0.36",
+		"2022-09-01 - -0.29",
+		"2022-10-01 - 0.59",
+	}
+}
+
 // windows returns the "dataInicial-dataFinal" of every request, after checking that each one asks
 // for series in JSON.
 func (r *replayer) windows(t *testing.T, series int) []string {
@@ -247,13 +258,7 @@ func TestObservationsParsesRecordedSeries(t *testing.T) {
 			file:   "433.json",
 			from:   date(2022, 6, 1),
 			to:     date(2022, 10, 1),
-			want: []string{
-				"2022-06-01 - 0.67",
-				"2022-07-01 - -0.68",
-				"2022-08-01 - -0.36",
-				"2022-09-01 - -0.29",
-				"2022-10-01 - 0.59",
-			},
+			want:   ipca2022(),
 		},
 	}
 
@@ -363,12 +368,7 @@ func TestObservationsConcatenatesWindowsInOrder(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Len(t, server.requested(), 6)
-	assert.Equal(t, []string{
-		"2022-06-01 - 0.67",
-		"2022-07-01 - -0.68",
-		"2022-08-01 - -0.36",
-		"2022-09-01 - -0.29",
-		"2022-10-01 - 0.59",
+	assert.Equal(t, append(ipca2022(),
 		"2024-10-01 - 0.040168",
 		"2024-10-02 - 0.040168",
 		"2024-10-03 - 0.040168",
@@ -387,7 +387,7 @@ func TestObservationsConcatenatesWindowsInOrder(t *testing.T) {
 		"2024-03-08 2024-04-08 0.5197",
 		"2024-03-09 2024-04-09 0.5551",
 		"2024-03-10 2024-04-10 0.5809",
-	}, rows(t, got))
+	), rows(t, got))
 }
 
 func TestObservationsAnswersNothingWhenToIsBeforeFrom(t *testing.T) {
@@ -496,7 +496,7 @@ func TestObservationsFailsOnAnUnusableBaseURL(t *testing.T) {
 	assert.Empty(t, got)
 }
 
-func TestObservationsStopsAtTheFirstFailingWindow(t *testing.T) {
+func TestObservationsStopsAtTheFirstFailingWindowWithTheRowsBeforeIt(t *testing.T) {
 	t.Parallel()
 
 	client, server := newClient(t,
@@ -507,7 +507,7 @@ func TestObservationsStopsAtTheFirstFailingWindow(t *testing.T) {
 	got, err := client.Observations(context.Background(), 11, date(2000, 1, 1), date(2026, 10, 25))
 
 	require.ErrorContains(t, err, "sgs: series 11 from 01/01/2005 to 31/12/2009: status 502")
-	assert.Empty(t, got)
+	assert.Equal(t, ipca2022(), rows(t, got), "the rows of the windows that answered")
 	assert.Len(t, server.requested(), 2)
 }
 

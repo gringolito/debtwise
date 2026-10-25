@@ -82,17 +82,18 @@ func TestRefreshStoresTheHistoryOfEveryIndex(t *testing.T) {
 		{PeriodStart: "2026-08-01", PeriodEnd: "2026-08-01", Value: "-0.32"},
 	}, withoutFetchTimes(t, ipca.Values, start, time.Now()))
 
-	for _, index := range []string{"poupanca", "selic"} {
-		assert.Equal(t, []indexValue{
-			{PeriodStart: "2026-09-01", PeriodEnd: "2026-09-01", Value: "1.00"},
-		}, withoutFetchTimes(t, s.history(t, index).Values, start, time.Now()), index)
+	for _, index := range []string{"poupanca_yield", "selic"} {
+		assert.Equal(t, wantDefaultRow(), withoutFetchTimes(t, s.history(t, index).Values, start, time.Now()), index)
 	}
 }
 
 func TestRefreshingAgainKeepsOneValuePerPeriod(t *testing.T) {
 	t.Parallel()
 
-	source := sgsWithRows(map[int][]sgs.Observation{226: trRows()})
+	source := sgsWithRows(map[int][]sgs.Observation{
+		226: trRows(),
+		432: {{Start: date(2099, time.January, 1), Value: mustDecimal("13.75")}},
+	})
 	s := newServer(t, source)
 
 	revised := trRows()
@@ -107,12 +108,18 @@ func TestRefreshingAgainKeepsOneValuePerPeriod(t *testing.T) {
 	want[0].Value = "0.0625"
 	assert.Equal(t, want, withoutFetchTimes(t, s.history(t, "tr").Values, secondRefresh, time.Now()),
 		"a refetched period keeps one row, with the latest value and fetch time")
+
+	assert.Equal(t, date(2024, time.March, 1), source.lastFrom(226),
+		"the second refresh starts from the latest stored period")
+	assert.WithinRange(t, source.lastFrom(432), secondRefresh, time.Now(),
+		"and from today for an index whose latest stored period is in the future")
 }
 
 func TestRefreshThatFailsForOneIndexStoresTheOthers(t *testing.T) {
 	t.Parallel()
 
 	source := sgsWithRows(map[int][]sgs.Observation{226: trRows()})
+	// The default row for 432 comes back with the error, as rows fetched before a failing window do.
 	source.fail(432, errors.New("sgs: series 432: status 502"))
 
 	start := time.Now()
@@ -120,13 +127,14 @@ func TestRefreshThatFailsForOneIndexStoresTheOthers(t *testing.T) {
 	firstRefreshDone := time.Now()
 
 	assert.Equal(t, wantTR(), withoutFetchTimes(t, s.history(t, "tr").Values, start, firstRefreshDone))
-	assert.Empty(t, s.history(t, "selic_target").Values)
+	assert.Equal(t, wantDefaultRow(), withoutFetchTimes(t, s.history(t, "selic_target").Values, start, firstRefreshDone),
+		"a failed index keeps what it fetched before the failure")
 
 	status := s.status(t)
 	assert.False(t, status.Refreshing)
 	require.Len(t, status.Indexes, 5)
 
-	for i, index := range []string{"tr", "poupanca", "selic_target", "selic", "ipca"} {
+	for i, index := range []string{"tr", "poupanca_yield", "selic_target", "selic", "ipca"} {
 		got := status.Indexes[i]
 		assert.Equal(t, index, got.Index)
 
@@ -145,13 +153,17 @@ func TestRefreshThatFailsForOneIndexStoresTheOthers(t *testing.T) {
 		assert.WithinRange(t, *got.RefreshedAt, start.Truncate(time.Second), firstRefreshDone, index)
 	}
 
+	source.answer(226, nil)
 	source.fail(226, errors.New("sgs: series 226: status 406"))
+	source.answer(432, []sgs.Observation{{Start: date(2026, time.October, 1), Value: mustDecimal("13.75")}})
 
 	secondRefresh := time.Now()
 
 	s.refresh(t)
 
-	tr := s.status(t).Indexes[0]
+	status = s.status(t)
+
+	tr := status.Indexes[0]
 	assert.Equal(t, "failed", tr.Status, "an index whose latest refresh failed")
 	require.NotNil(t, tr.RefreshedAt)
 	assert.WithinRange(t, *tr.RefreshedAt, start.Truncate(time.Second), firstRefreshDone,
@@ -160,6 +172,12 @@ func TestRefreshThatFailsForOneIndexStoresTheOthers(t *testing.T) {
 	assert.WithinRange(t, *tr.FailedAt, secondRefresh.Truncate(time.Second), time.Now())
 	assert.Equal(t, wantTR(), withoutFetchTimes(t, s.history(t, "tr").Values, start, firstRefreshDone),
 		"and keeps the values it had")
+
+	selicTarget := status.Indexes[2]
+	assert.Equal(t, "fresh", selicTarget.Status, "an index whose refresh succeeds after a failure")
+	assert.Nil(t, selicTarget.FailedAt)
+	require.NotNil(t, selicTarget.RefreshedAt)
+	assert.WithinRange(t, *selicTarget.RefreshedAt, secondRefresh.Truncate(time.Second), time.Now())
 }
 
 func TestStatusWarnsWhenTheLastRefreshIsStale(t *testing.T) {
