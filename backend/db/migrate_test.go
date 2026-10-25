@@ -62,6 +62,41 @@ func TestPingAnswersOnAnOpenDatabase(t *testing.T) {
 	assert.Equal(t, int64(1), got)
 }
 
+func TestOpenSetsThePragmasOnEveryConnection(t *testing.T) {
+	t.Parallel()
+
+	pool, err := db.Open(t.Context(), filepath.Join(t.TempDir(), "debtwise.db"))
+	require.NoError(t, err)
+
+	t.Cleanup(func() { _ = pool.Close() })
+
+	want := map[string]string{
+		"journal_mode": "wal",
+		"foreign_keys": "1",
+		"busy_timeout": "5000",
+		"cache_size":   "-40000",
+		"mmap_size":    "268435456",
+		"temp_store":   "2",
+	}
+
+	// Held together, so the pool has to open a second connection.
+	for range 2 {
+		conn, err := pool.Conn(t.Context())
+		require.NoError(t, err)
+
+		t.Cleanup(func() { _ = conn.Close() })
+
+		got := make(map[string]string, len(want))
+		for pragma := range want {
+			var value string
+			require.NoError(t, conn.QueryRowContext(t.Context(), "PRAGMA "+pragma).Scan(&value))
+			got[pragma] = value
+		}
+
+		assert.Equal(t, want, got)
+	}
+}
+
 func TestOpenFailsWhenTheFileCannotBeCreated(t *testing.T) {
 	t.Parallel()
 

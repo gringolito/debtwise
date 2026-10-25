@@ -15,14 +15,18 @@ import (
 //go:embed migrations/*.sql
 var embeddedMigrations embed.FS
 
+// pragmas run on every connection the pool opens: cache_size is 40 MB, mmap_size 256 MB.
+const pragmas = "_pragma=foreign_keys(1)" +
+	"&_pragma=busy_timeout(5000)" +
+	"&_pragma=journal_mode(WAL)" +
+	"&_pragma=cache_size(-40000)" +
+	"&_pragma=mmap_size(268435456)" +
+	"&_pragma=temp_store(MEMORY)"
+
 // Open opens the SQLite file at path, creating it when it does not exist, and checks that it
 // answers.
 func Open(ctx context.Context, path string) (*sql.DB, error) {
-	dsn := (&url.URL{
-		Scheme:   "file",
-		Opaque:   path,
-		RawQuery: "_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)",
-	}).String()
+	dsn := (&url.URL{Scheme: "file", Opaque: path, RawQuery: pragmas}).String()
 
 	conn, err := sql.Open("sqlite", dsn)
 	if err != nil {
