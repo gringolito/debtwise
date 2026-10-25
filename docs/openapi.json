@@ -107,7 +107,7 @@
             "type": "string"
           },
           "values": {
-            "description": "Every stored value of the index, oldest period first.",
+            "description": "The values of the index, oldest period first.",
             "items": {
               "$ref": "#/components/schemas/IndexValue"
             },
@@ -202,7 +202,7 @@
             "type": "array"
           },
           "refreshing": {
-            "description": "Whether a refresh is pending or running.",
+            "description": "Whether a refresh is in progress.",
             "type": "boolean"
           }
         },
@@ -254,7 +254,7 @@
     },
     "/indexes/{index}/history": {
       "get": {
-        "description": "Lists every published value of an index that has been fetched from its source.",
+        "description": "Lists the published values of an index, as of its latest refresh.",
         "operationId": "index-history",
         "parameters": [
           {

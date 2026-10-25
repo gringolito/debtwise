@@ -100,19 +100,24 @@ func TestRefreshingAgainKeepsOneValuePerPeriod(t *testing.T) {
 	revised[0].Value = mustDecimal("0.0625")
 	source.answer(226, revised)
 
-	secondRefresh := time.Now()
-
-	s.refresh(t)
+	// An hour after the first refresh, so a fetch time the second refresh failed to replace shows.
+	later := time.Now().Add(time.Hour).Truncate(time.Second).UTC()
+	require.NoError(t, s.job.Refresh(t.Context(), later))
 
 	want := wantTR()
 	want[0].Value = "0.0625"
-	assert.Equal(t, want, withoutFetchTimes(t, s.history(t, "tr").Values, secondRefresh, time.Now()),
+
+	for i := range want {
+		want[i].FetchedAt = later
+	}
+
+	assert.Equal(t, want, s.history(t, "tr").Values,
 		"a refetched period keeps one row, with the latest value and fetch time")
 
 	assert.Equal(t, date(2024, time.March, 1), source.lastFrom(226),
 		"the second refresh starts from the latest stored period")
-	assert.WithinRange(t, source.lastFrom(432), secondRefresh, time.Now(),
-		"and from today for an index whose latest stored period is in the future")
+	assert.Equal(t, later, source.lastFrom(432),
+		"and from now for an index whose latest stored period is in the future")
 }
 
 func TestRefreshThatFailsForOneIndexStoresTheOthers(t *testing.T) {

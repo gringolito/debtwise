@@ -11,8 +11,8 @@ import (
 	"github.com/gringolito/debtwise/backend/marketdata"
 )
 
-// IndexHistory is the subset of *indexes.Store the API reads.
-type IndexHistory interface {
+// IndexStore is the subset of *indexes.Store the API reads.
+type IndexStore interface {
 	History(ctx context.Context, index indexes.Index) ([]indexes.Value, error)
 }
 
@@ -22,15 +22,24 @@ type MarketData interface {
 	Trigger()
 }
 
-// indexCode is an index in a path, documented with every index the API knows.
+// indexCode is an index, documented with every index the API knows.
 type indexCode string
 
 func (indexCode) Schema(huma.Registry) *huma.Schema {
-	all := indexes.All()
-	enum := make([]any, 0, len(all))
+	return enumSchema(indexes.All())
+}
 
-	for _, index := range all {
-		enum = append(enum, string(index))
+// stateCode is how fresh an index is, documented with every state the API answers.
+type stateCode string
+
+func (stateCode) Schema(huma.Registry) *huma.Schema {
+	return enumSchema(marketdata.States())
+}
+
+func enumSchema[T ~string](values []T) *huma.Schema {
+	enum := make([]any, 0, len(values))
+	for _, v := range values {
+		enum = append(enum, string(v))
 	}
 
 	return &huma.Schema{Type: huma.TypeString, Enum: enum}
@@ -45,7 +54,7 @@ type indexValue struct {
 
 type indexHistory struct {
 	Index  indexCode    `json:"index"`
-	Values []indexValue `json:"values" nullable:"false" doc:"Every stored value of the index, oldest period first."`
+	Values []indexValue `json:"values" nullable:"false" doc:"The values of the index, oldest period first."`
 }
 
 type indexHistoryOutput struct {
@@ -54,13 +63,13 @@ type indexHistoryOutput struct {
 
 type indexStatus struct {
 	Index       indexCode  `json:"index"`
-	Status      string     `json:"status" enum:"fresh,stale,failed,missing" doc:"fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed."`
+	Status      stateCode  `json:"status" doc:"fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed."`
 	RefreshedAt *time.Time `json:"refreshed_at,omitempty" doc:"When the index was last refreshed successfully. Absent when it never was."`
 	FailedAt    *time.Time `json:"failed_at,omitempty" doc:"When the latest refresh of the index failed. Absent unless status is failed."`
 }
 
 type marketDataStatus struct {
-	Refreshing bool          `json:"refreshing" doc:"Whether a refresh is pending or running."`
+	Refreshing bool          `json:"refreshing" doc:"Whether a refresh is in progress."`
 	Indexes    []indexStatus `json:"indexes" nullable:"false" doc:"How fresh each index is."`
 }
 
@@ -68,19 +77,19 @@ type marketDataStatusOutput struct {
 	Body marketDataStatus
 }
 
-func registerIndexes(humaAPI huma.API, history IndexHistory, marketData MarketData) {
+func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData) {
 	register(humaAPI, huma.Operation{
 		OperationID: "index-history",
 		Method:      http.MethodGet,
 		Path:        "/indexes/{index}/history",
 		Summary:     "List the history of an index",
-		Description: "Lists every published value of an index that has been fetched from its source.",
+		Description: "Lists the published values of an index, as of its latest refresh.",
 		Tags:        []string{"Indexes"},
 	}, func(ctx context.Context, input *struct {
 		Index indexCode `path:"index" doc:"The index."`
 	},
 	) (*indexHistoryOutput, error) {
-		values, err := history.History(ctx, indexes.Index(input.Index))
+		values, err := store.History(ctx, indexes.Index(input.Index))
 		if err != nil {
 			return nil, err
 		}
@@ -140,7 +149,7 @@ func statusOutput(ctx context.Context, marketData MarketData) (*marketDataStatus
 	for _, s := range status.Indexes {
 		out.Body.Indexes = append(out.Body.Indexes, indexStatus{
 			Index:       indexCode(s.Index),
-			Status:      string(s.State),
+			Status:      stateCode(s.State),
 			RefreshedAt: timeOrNil(s.RefreshedAt),
 			FailedAt:    timeOrNil(s.FailedAt),
 		})

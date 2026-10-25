@@ -28,7 +28,7 @@ export const health = <ThrowOnError extends boolean = false>(options?: Options<H
 /**
  * List the history of an index
  *
- * Lists every published value of an index that has been fetched from its source.
+ * Lists the published values of an index, as of its latest refresh.
  */
 export const indexHistory = <ThrowOnError extends boolean = false>(options: Options<IndexHistoryData, ThrowOnError>) => (options.client ?? client).get<IndexHistoryResponses, IndexHistoryErrors, ThrowOnError>({ url: '/indexes/{index}/history', ...options });
 

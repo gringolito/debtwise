@@ -60,7 +60,7 @@ export type Health = {
 export type IndexHistory = {
     index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
     /**
-     * Every stored value of the index, oldest period first.
+     * The values of the index, oldest period first.
      */
     values: Array<IndexValue>;
 };
@@ -106,7 +106,7 @@ export type MarketDataStatus = {
      */
     indexes: Array<IndexStatus>;
     /**
-     * Whether a refresh is pending or running.
+     * Whether a refresh is in progress.
      */
     refreshing: boolean;
 };

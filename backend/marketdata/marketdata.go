@@ -180,11 +180,9 @@ func (j *Job) Refresh(ctx context.Context, now time.Time) error {
 func (j *Job) refresh(ctx context.Context, s sgsIndex, now time.Time) error {
 	values, err := j.fetch(ctx, s, now)
 	if err == nil {
-		err = j.store.SaveRefresh(ctx, s.index, values, now)
-	}
-
-	if err == nil {
-		return nil
+		if err = j.store.SaveRefresh(ctx, s.index, values, now); err == nil {
+			return nil
+		}
 	}
 
 	// A refresh cut short by its caller is no failure of the source.
@@ -243,6 +241,11 @@ const (
 	// Missing is an index that was never refreshed.
 	Missing State = "missing"
 )
+
+// States returns every State.
+func States() []State {
+	return []State{Fresh, Stale, Failed, Missing}
+}
 
 // IndexStatus is how fresh one index is. RefreshedAt and FailedAt are zero when it never
 // happened.
