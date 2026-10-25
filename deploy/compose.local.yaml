@@ -1,0 +1,13 @@
+# Builds both images from source instead of pulling them: `mise run docker:up`.
+services:
+  debtwise-server:
+    image: debtwise/server:local
+    build:
+      context: ../backend
+      dockerfile: ../build/server.Dockerfile
+
+  web:
+    image: debtwise/web:local
+    build:
+      context: ..
+      dockerfile: build/web.Dockerfile

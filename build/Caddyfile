@@ -1,0 +1,26 @@
+{
+	admin off
+}
+
+:80 {
+	encode gzip zstd
+
+	handle /api/* {
+		reverse_proxy {$BACKEND_UPSTREAM:debtwise-server:8080} {
+			transport http {
+				keepalive 1m
+			}
+		}
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

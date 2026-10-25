@@ -1,0 +1,22 @@
+# DebtWise for self-hosting: `docker compose -f deploy/compose.yaml up -d`, then open
+# http://localhost:8000. All data lives in one SQLite file on the debtwise-data volume.
+services:
+  debtwise-server:
+    image: ${SERVER_IMAGE:-docker.io/gringolito/debtwise-server:edge}
+    restart: unless-stopped
+    environment:
+      DB_PATH: /data/debtwise.db
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - debtwise-data:/data
+
+  web:
+    image: ${WEB_IMAGE:-docker.io/gringolito/debtwise-web:edge}
+    restart: unless-stopped
+    depends_on:
+      - debtwise-server
+    ports:
+      - "${DEBTWISE_PORT:-8000}:80"
+
+volumes:
+  debtwise-data:
