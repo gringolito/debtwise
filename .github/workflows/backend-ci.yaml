@@ -67,3 +67,4 @@ jobs:
           profile: backend/cover.out
           config: ./backend/.testcoverage.yml
           diff-threshold: '-1.0'
+          attachment-token: ${{ secrets.COVERGRID_ATTACHMENT_TOKEN }}
