@@ -1,0 +1,18 @@
+{{- if .Values.ingress.enabled }}
+DebtWise is served at:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+Reach DebtWise with a port-forward, then open http://localhost:8000:
+
+  kubectl --namespace {{ .Release.Namespace }} port-forward service/{{ include "debtwise.web.fullname" . }} 8000:{{ .Values.web.service.port }}
+{{- end }}
+
+{{- if not .Values.persistence.enabled }}
+
+WARNING: persistence is disabled, so the database is lost whenever the server pod is replaced.
+{{- else if .Values.persistence.keepOnUninstall }}
+
+`helm uninstall` leaves the {{ include "debtwise.claimName" . }} claim and its database in place.
+{{- end }}

@@ -1,0 +1,10 @@
+apiVersion: v2
+name: debtwise
+description: Compare paying off a mortgage early with investing the extra cash.
+type: application
+# CI stamps version and appVersion when it publishes the chart; see .github/workflows/publish.yaml.
+version: 0.0.0
+appVersion: edge
+home: https://github.com/gringolito/debtwise
+sources:
+  - https://github.com/gringolito/debtwise

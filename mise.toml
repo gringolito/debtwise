@@ -7,6 +7,7 @@ go = "1.27.3"                   # Keep in sync with backend/go.mod
 node = "24.22.1"                # LTS; keep in sync with frontend/package.json devEngines
 npm = "12.2.1"                  # Keep in sync with frontend/package.json devEngines
 sqlc = "1.31.1"
+helm = "4.3.1"
 "go:github.com/pressly/goose/v3/cmd/goose" = "v3.29.0"
 # Keep in sync with the version the gringolito/go-covergrid action runs in CI.
 "go:github.com/vladopajic/go-test-coverage/v2" = "v2.20.1"
@@ -14,8 +15,9 @@ sqlc = "1.31.1"
 [env]
 _.file = ".env"
 
-SERVER_IMAGE = { default = "docker.io/gringolito/debtwise-server:edge" }
-WEB_IMAGE = { default = "docker.io/gringolito/debtwise-web:edge" }
+SERVER_IMAGE = { default = "ghcr.io/gringolito/debtwise/server:edge" }
+WEB_IMAGE = { default = "ghcr.io/gringolito/debtwise/web:edge" }
+CHART_REPO = { default = "oci://ghcr.io/gringolito/debtwise/charts" }
 DB_PATH = { default = "debtwise.db" }
 
 # ---------------------------------------------------------------------------
@@ -98,7 +100,7 @@ run = "git diff --exit-code -- docs/openapi.json frontend/src/lib/api/generated"
 
 [tasks."lint:all"]
 description = "Run all the project's linters"
-depends = ["lint:backend", "lint:frontend"]
+depends = ["lint:backend", "lint:frontend", "lint:helm"]
 
 [tasks."lint:backend"]
 description = "Lint Go with golangci-lint"
@@ -112,6 +114,10 @@ run = [
   "npm run lint",
   "npm run typecheck",
 ]
+
+[tasks."lint:helm"]
+description = "Lint the Helm chart"
+run = "helm lint --strict deploy/helm/debtwise"
 
 [tasks."format:all"]
 description = "Run all the project's code-style formatting tools"
@@ -204,11 +210,11 @@ description = "Build the debtwise container images"
 depends = ["build:image:server", "build:image:web"]
 
 [tasks."build:image:server"]
-description = "Build the debtwise-server container image"
+description = "Build the debtwise server container image"
 run = 'docker build -f build/server.Dockerfile -t "$SERVER_IMAGE" backend'
 
 [tasks."build:image:web"]
-description = "Build the debtwise-web (Caddy + frontend) container image"
+description = "Build the debtwise web (Caddy + frontend) container image"
 run = 'docker build -f build/web.Dockerfile -t "$WEB_IMAGE" .'
 
 [tasks."push:image:all"]
@@ -216,15 +222,31 @@ description = "Build and push multi-arch debtwise container images"
 depends = ["push:image:server", "push:image:web"]
 
 [tasks."push:image:server"]
-description = "Build and push the multi-arch debtwise-server container image"
+description = "Build and push the multi-arch debtwise server container image"
 run = '''
 docker buildx build --platform linux/amd64,linux/arm64 \
   -f build/server.Dockerfile -t "$SERVER_IMAGE" --push backend
 '''
 
 [tasks."push:image:web"]
-description = "Build and push the multi-arch debtwise-web container image"
+description = "Build and push the multi-arch debtwise web container image"
 run = '''
 docker buildx build --platform linux/amd64,linux/arm64 \
   -f build/web.Dockerfile -t "$WEB_IMAGE" --push .
+'''
+
+# ---------------------------------------------------------------------------
+# Helm chart
+# ---------------------------------------------------------------------------
+
+[tasks."push:chart"]
+description = "Package the Helm chart as CHART_VERSION for APP_VERSION images and push it to CHART_REPO"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+dist=$(mktemp -d)
+trap 'rm -rf "$dist"' EXIT
+helm package deploy/helm/debtwise --destination "$dist" \
+  --version "${CHART_VERSION:?set CHART_VERSION}" --app-version "${APP_VERSION:?set APP_VERSION}"
+helm push "$dist"/debtwise-"$CHART_VERSION".tgz "$CHART_REPO"
 '''

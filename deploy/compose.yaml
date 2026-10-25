@@ -2,7 +2,7 @@
 # http://localhost:8000. All data lives in one SQLite file on the debtwise-data volume.
 services:
   server:
-    image: ${SERVER_IMAGE:-docker.io/gringolito/debtwise-server:edge}
+    image: ${SERVER_IMAGE:-ghcr.io/gringolito/debtwise/server:edge}
     restart: unless-stopped
     environment:
       DB_PATH: /data/debtwise.db
@@ -11,7 +11,7 @@ services:
       - debtwise-data:/data
 
   web:
-    image: ${WEB_IMAGE:-docker.io/gringolito/debtwise-web:edge}
+    image: ${WEB_IMAGE:-ghcr.io/gringolito/debtwise/web:edge}
     restart: unless-stopped
     depends_on:
       - server
