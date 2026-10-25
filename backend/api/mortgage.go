@@ -1,0 +1,301 @@
+package api
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/danielgtaylor/huma/v2"
+
+	"github.com/gringolito/debtwise/backend/decimal"
+	"github.com/gringolito/debtwise/backend/mortgage"
+)
+
+// Mortgages is the subset of *mortgage.Store the API uses.
+type Mortgages interface {
+	Find(ctx context.Context) (mortgage.Terms, error)
+	Save(ctx context.Context, terms mortgage.Terms) error
+	Delete(ctx context.Context) error
+}
+
+type mortgageTerms struct {
+	ContractDate         string              `json:"contract_date" format:"date" doc:"Date the contract was signed."`
+	OriginalAmount       string              `json:"original_amount" pattern:"^(0|[1-9][0-9]*)(\\.[0-9]+)?$" doc:"Amount borrowed, in reais, as a decimal string."`
+	TermMonths           int                 `json:"term_months" minimum:"1" doc:"Number of monthly installments."`
+	FirstInstallmentDate string              `json:"first_installment_date" format:"date" doc:"Due date of the first installment. Each later one falls due on the same day of the following months, or on the month's last day when it is shorter."`
+	AmortizationSystem   string              `json:"amortization_system" enum:"sac,price" doc:"How each installment splits into amortization and interest."`
+	AppraisalValue       string              `json:"appraisal_value" pattern:"^(0|[1-9][0-9]*)(\\.[0-9]+)?$" doc:"Appraisal value of the property, in reais, as a decimal string. DFI is charged on it."`
+	ContractRates        []contractRateTerms `json:"contract_rates" nullable:"false" doc:"The contract's interest rate, and its later changes."`
+	MIPRates             []monthlyRate       `json:"mip_rates" nullable:"false" doc:"The MIP life insurance rate charged on the outstanding balance, and its changes as the borrower moves into a new age band."`
+	DFIRates             []monthlyRate       `json:"dfi_rates" nullable:"false" doc:"The DFI property insurance rate charged on the appraisal value, and its later changes."`
+	Fees                 []fee               `json:"fees" nullable:"false" doc:"The monthly admin fee, and its later changes."`
+}
+
+type contractRateTerms struct {
+	EffectiveFrom string `json:"effective_from" format:"date" doc:"Installments due on or after this date pay this rate, until a later row's date."`
+	Rate          string `json:"rate" pattern:"^(0|[1-9][0-9]*)(\\.[0-9]+)?$" doc:"Annual rate as a decimal fraction string: 0.12 is 12% a year."`
+	Basis         string `json:"basis" enum:"nominal,effective" doc:"Whether the rate is nominal, charged a twelfth each month, or effective, what the monthly charge compounds to over a year."`
+}
+
+type monthlyRate struct {
+	EffectiveFrom string `json:"effective_from" format:"date" doc:"Installments due on or after this date pay this rate, until a later row's date."`
+	Rate          string `json:"rate" pattern:"^(0|[1-9][0-9]*)(\\.[0-9]+)?$" doc:"Monthly rate as a decimal fraction string: 0.0003 is 0.03% a month."`
+}
+
+type fee struct {
+	EffectiveFrom string `json:"effective_from" format:"date" doc:"Installments due on or after this date pay this fee, until a later row's date."`
+	Amount        string `json:"amount" pattern:"^(0|[1-9][0-9]*)(\\.[0-9]+)?$" doc:"Monthly amount, in reais, as a decimal string."`
+}
+
+type registeredMortgage struct {
+	ContractDate         string         `json:"contract_date" format:"date" doc:"Date the contract was signed."`
+	OriginalAmount       string         `json:"original_amount" doc:"Amount borrowed, in reais, as a decimal string."`
+	TermMonths           int            `json:"term_months" doc:"Number of monthly installments."`
+	FirstInstallmentDate string         `json:"first_installment_date" format:"date" doc:"Due date of the first installment."`
+	AmortizationSystem   string         `json:"amortization_system" enum:"sac,price" doc:"How each installment splits into amortization and interest."`
+	AppraisalValue       string         `json:"appraisal_value" doc:"Appraisal value of the property, in reais, as a decimal string."`
+	ContractRates        []contractRate `json:"contract_rates" nullable:"false" doc:"The contract's interest rate and its later changes, in date order."`
+	MIPRates             []monthlyRate  `json:"mip_rates" nullable:"false" doc:"The MIP life insurance rate and its changes, in date order."`
+	DFIRates             []monthlyRate  `json:"dfi_rates" nullable:"false" doc:"The DFI property insurance rate and its changes, in date order."`
+	Fees                 []fee          `json:"fees" nullable:"false" doc:"The monthly admin fee and its changes, in date order."`
+}
+
+type contractRate struct {
+	EffectiveFrom string `json:"effective_from" format:"date" doc:"Installments due on or after this date pay this rate, until a later row's date."`
+	Basis         string `json:"basis" enum:"nominal,effective" doc:"The basis the rate was entered on; the other one is derived from it."`
+	Nominal       string `json:"nominal" doc:"Annual rate on the nominal basis, as a decimal fraction string."`
+	Effective     string `json:"effective" doc:"Annual rate on the effective basis, as a decimal fraction string."`
+}
+
+type schedule struct {
+	Months []scheduleMonth `json:"months" nullable:"false" doc:"Every installment of the mortgage, in due date order."`
+}
+
+type scheduleMonth struct {
+	Number             int    `json:"number" doc:"Installment number, counting from 1."`
+	DueDate            string `json:"due_date" format:"date" doc:"Date the installment falls due."`
+	Interest           string `json:"interest" doc:"Interest charged, in reais, as a decimal string."`
+	Amortization       string `json:"amortization" doc:"Outstanding balance paid off, in reais, as a decimal string."`
+	MIP                string `json:"mip" doc:"MIP life insurance premium, in reais, as a decimal string."`
+	DFI                string `json:"dfi" doc:"DFI property insurance premium, in reais, as a decimal string."`
+	Fee                string `json:"fee" doc:"Admin fee, in reais, as a decimal string."`
+	Installment        string `json:"installment" doc:"Total the installment charges, in reais, as a decimal string."`
+	OutstandingBalance string `json:"outstanding_balance" doc:"Outstanding balance after the installment, in reais, as a decimal string."`
+}
+
+type mortgageOutput struct {
+	Body registeredMortgage
+}
+
+type scheduleOutput struct {
+	Body schedule
+}
+
+const (
+	mortgagePath = "/mortgage"
+	mortgageTag  = "Mortgage"
+)
+
+func registerMortgage(humaAPI huma.API, mortgages Mortgages) {
+	register(humaAPI, huma.Operation{
+		OperationID: "read-mortgage",
+		Method:      http.MethodGet,
+		Path:        mortgagePath,
+		Summary:     "Read the mortgage",
+		Description: "Returns the registered mortgage's terms, with each contract rate on both the nominal and the effective basis.",
+		Tags:        []string{mortgageTag},
+	}, func(ctx context.Context, _ *struct{}) (*mortgageOutput, error) {
+		terms, err := mortgages.Find(ctx)
+		if err != nil {
+			return nil, mortgageFailure(err)
+		}
+
+		return &mortgageOutput{Body: newRegisteredMortgage(terms)}, nil
+	})
+
+	register(humaAPI, huma.Operation{
+		OperationID: "save-mortgage",
+		Method:      http.MethodPut,
+		Path:        mortgagePath,
+		Summary:     "Register or edit the mortgage",
+		Description: "Registers the owner's mortgage, or replaces the terms of the one already registered, and returns it as a read would.",
+		Tags:        []string{mortgageTag},
+	}, func(ctx context.Context, in *struct{ Body mortgageTerms }) (*mortgageOutput, error) {
+		terms, err := in.Body.terms()
+		if err != nil {
+			return nil, err
+		}
+
+		if violations := terms.Validate(); len(violations) > 0 {
+			details := make([]error, 0, len(violations))
+			for _, v := range violations {
+				details = append(details, &huma.ErrorDetail{Location: "body." + v.Field, Message: v.Reason})
+			}
+
+			return nil, huma.Error422UnprocessableEntity("validation failed", details...)
+		}
+
+		if err := mortgages.Save(ctx, terms); err != nil {
+			return nil, err
+		}
+
+		saved, err := mortgages.Find(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return &mortgageOutput{Body: newRegisteredMortgage(saved)}, nil
+	})
+
+	register(humaAPI, huma.Operation{
+		OperationID:   "delete-mortgage",
+		Method:        http.MethodDelete,
+		Path:          mortgagePath,
+		DefaultStatus: http.StatusNoContent,
+		Summary:       "Delete the mortgage",
+		Description:   "Deletes the registered mortgage with all its terms.",
+		Tags:          []string{mortgageTag},
+	}, func(ctx context.Context, _ *struct{}) (*struct{}, error) {
+		if err := mortgages.Delete(ctx); err != nil {
+			return nil, mortgageFailure(err)
+		}
+
+		return &struct{}{}, nil
+	})
+
+	register(humaAPI, huma.Operation{
+		OperationID: "read-mortgage-schedule",
+		Method:      http.MethodGet,
+		Path:        mortgagePath + "/schedule",
+		Summary:     "Read the mortgage schedule",
+		Description: "Returns the registered mortgage's installments month by month, to check against bank statements.",
+		Tags:        []string{mortgageTag},
+	}, func(ctx context.Context, _ *struct{}) (*scheduleOutput, error) {
+		terms, err := mortgages.Find(ctx)
+		if err != nil {
+			return nil, mortgageFailure(err)
+		}
+
+		out := &scheduleOutput{Body: schedule{Months: make([]scheduleMonth, 0, terms.TermMonths)}}
+		for m := range terms.Schedule() {
+			out.Body.Months = append(out.Body.Months, scheduleMonth{
+				Number:             m.Number,
+				DueDate:            m.DueDate.Format(time.DateOnly),
+				Interest:           m.Interest.String(),
+				Amortization:       m.Amortization.String(),
+				MIP:                m.MIP.String(),
+				DFI:                m.DFI.String(),
+				Fee:                m.Fee.String(),
+				Installment:        m.Installment.String(),
+				OutstandingBalance: m.OutstandingBalance.String(),
+			})
+		}
+
+		return out, nil
+	})
+}
+
+func mortgageFailure(err error) error {
+	if errors.Is(err, mortgage.ErrNotFound) {
+		return huma.Error404NotFound("no mortgage is registered")
+	}
+
+	return err
+}
+
+// terms converts a body whose dates and decimals the schema has already checked.
+func (b mortgageTerms) terms() (mortgage.Terms, error) {
+	var p parser
+
+	terms := mortgage.Terms{
+		ContractDate:         p.date(b.ContractDate),
+		OriginalAmount:       p.decimal(b.OriginalAmount),
+		TermMonths:           b.TermMonths,
+		FirstInstallmentDate: p.date(b.FirstInstallmentDate),
+		AmortizationSystem:   mortgage.AmortizationSystem(b.AmortizationSystem),
+		AppraisalValue:       p.decimal(b.AppraisalValue),
+	}
+
+	for _, r := range b.ContractRates {
+		terms.ContractRates = append(terms.ContractRates, mortgage.ContractRate{
+			EffectiveFrom: p.date(r.EffectiveFrom), Rate: p.decimal(r.Rate), Basis: mortgage.RateBasis(r.Basis),
+		})
+	}
+
+	for _, r := range b.MIPRates {
+		terms.MIPRates = append(terms.MIPRates, mortgage.MonthlyRate{EffectiveFrom: p.date(r.EffectiveFrom), Rate: p.decimal(r.Rate)})
+	}
+
+	for _, r := range b.DFIRates {
+		terms.DFIRates = append(terms.DFIRates, mortgage.MonthlyRate{EffectiveFrom: p.date(r.EffectiveFrom), Rate: p.decimal(r.Rate)})
+	}
+
+	for _, f := range b.Fees {
+		terms.Fees = append(terms.Fees, mortgage.Fee{EffectiveFrom: p.date(f.EffectiveFrom), Amount: p.decimal(f.Amount)})
+	}
+
+	if p.err != nil {
+		return mortgage.Terms{}, fmt.Errorf("read mortgage terms: %w", p.err)
+	}
+
+	return terms, nil
+}
+
+func newRegisteredMortgage(terms mortgage.Terms) registeredMortgage {
+	out := registeredMortgage{
+		ContractDate:         terms.ContractDate.Format(time.DateOnly),
+		OriginalAmount:       terms.OriginalAmount.String(),
+		TermMonths:           terms.TermMonths,
+		FirstInstallmentDate: terms.FirstInstallmentDate.Format(time.DateOnly),
+		AmortizationSystem:   string(terms.AmortizationSystem),
+		AppraisalValue:       terms.AppraisalValue.String(),
+		ContractRates:        make([]contractRate, 0, len(terms.ContractRates)),
+		MIPRates:             make([]monthlyRate, 0, len(terms.MIPRates)),
+		DFIRates:             make([]monthlyRate, 0, len(terms.DFIRates)),
+		Fees:                 make([]fee, 0, len(terms.Fees)),
+	}
+
+	for _, r := range terms.ContractRates {
+		out.ContractRates = append(out.ContractRates, contractRate{
+			EffectiveFrom: r.EffectiveFrom.Format(time.DateOnly),
+			Basis:         string(r.Basis),
+			Nominal:       r.Nominal().String(),
+			Effective:     r.Effective().String(),
+		})
+	}
+
+	for _, r := range terms.MIPRates {
+		out.MIPRates = append(out.MIPRates, monthlyRate{EffectiveFrom: r.EffectiveFrom.Format(time.DateOnly), Rate: r.Rate.String()})
+	}
+
+	for _, r := range terms.DFIRates {
+		out.DFIRates = append(out.DFIRates, monthlyRate{EffectiveFrom: r.EffectiveFrom.Format(time.DateOnly), Rate: r.Rate.String()})
+	}
+
+	for _, f := range terms.Fees {
+		out.Fees = append(out.Fees, fee{EffectiveFrom: f.EffectiveFrom.Format(time.DateOnly), Amount: f.Amount.String()})
+	}
+
+	return out
+}
+
+// parser reads dates and decimal strings, collecting their errors.
+type parser struct {
+	err error
+}
+
+func (p *parser) date(s string) time.Time {
+	d, err := time.Parse(time.DateOnly, s)
+	p.err = errors.Join(p.err, err)
+
+	return d
+}
+
+func (p *parser) decimal(s string) decimal.Decimal {
+	d, err := decimal.Parse(s)
+	p.err = errors.Join(p.err, err)
+
+	return d
+}

@@ -32,7 +32,9 @@ func WithLogger(l *slog.Logger) Option {
 // Each failed operation is logged once with its request_id: a 5xx at Error with the cause its
 // handler returned, a 4xx at Debug. A 4xx answers its problem detail; a 5xx answers only its
 // status and request_id.
-func NewHandler(database Database, store IndexStore, marketData MarketData, opts ...Option) http.Handler {
+func NewHandler(
+	database Database, store IndexStore, marketData MarketData, mortgages Mortgages, opts ...Option,
+) http.Handler {
 	var o options
 	for _, opt := range opts {
 		opt(&o)
@@ -46,6 +48,7 @@ func NewHandler(database Database, store IndexStore, marketData MarketData, opts
 	return newHandler(logger, func(humaAPI huma.API) {
 		registerHealth(humaAPI, database)
 		registerIndexes(humaAPI, store, marketData)
+		registerMortgage(humaAPI, mortgages)
 	})
 }
 

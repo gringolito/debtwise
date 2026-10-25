@@ -54,9 +54,12 @@ func compound(rate, power *apd.Decimal) *apd.Decimal {
 	return &z
 }
 
+// rounded rounds x to ctx and drops the trailing zeros rounding leaves.
 func rounded(x *apd.Decimal) Decimal {
 	var z Decimal
 	must(ctx.Round(&z.d, x))
+
+	_, _ = z.d.Reduce(&z.d)
 
 	return z
 }

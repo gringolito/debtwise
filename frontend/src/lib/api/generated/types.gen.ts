@@ -4,6 +4,40 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}/api` | (string & {});
 };
 
+export type ContractRate = {
+    /**
+     * The basis the rate was entered on; the other one is derived from it.
+     */
+    basis: 'nominal' | 'effective';
+    /**
+     * Annual rate on the effective basis, as a decimal fraction string.
+     */
+    effective: string;
+    /**
+     * Installments due on or after this date pay this rate, until a later row's date.
+     */
+    effective_from: string;
+    /**
+     * Annual rate on the nominal basis, as a decimal fraction string.
+     */
+    nominal: string;
+};
+
+export type ContractRateTerms = {
+    /**
+     * Whether the rate is nominal, charged a twelfth each month, or effective, what the monthly charge compounds to over a year.
+     */
+    basis: 'nominal' | 'effective';
+    /**
+     * Installments due on or after this date pay this rate, until a later row's date.
+     */
+    effective_from: string;
+    /**
+     * Annual rate as a decimal fraction string: 0.12 is 12% a year.
+     */
+    rate: string;
+};
+
 export type ErrorDetail = {
     /**
      * Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
@@ -48,6 +82,17 @@ export type ErrorModel = {
      * A URI reference to human-readable documentation for the error.
      */
     type?: string;
+};
+
+export type Fee = {
+    /**
+     * Monthly amount, in reais, as a decimal string.
+     */
+    amount: string;
+    /**
+     * Installments due on or after this date pay this fee, until a later row's date.
+     */
+    effective_from: string;
 };
 
 export type Health = {
@@ -109,6 +154,149 @@ export type MarketDataStatus = {
      * Whether a refresh is in progress.
      */
     refreshing: boolean;
+};
+
+export type MonthlyRate = {
+    /**
+     * Installments due on or after this date pay this rate, until a later row's date.
+     */
+    effective_from: string;
+    /**
+     * Monthly rate as a decimal fraction string: 0.0003 is 0.03% a month.
+     */
+    rate: string;
+};
+
+export type MortgageTerms = {
+    /**
+     * How each installment splits into amortization and interest.
+     */
+    amortization_system: 'sac' | 'price';
+    /**
+     * Appraisal value of the property, in reais, as a decimal string. DFI is charged on it.
+     */
+    appraisal_value: string;
+    /**
+     * Date the contract was signed.
+     */
+    contract_date: string;
+    /**
+     * The contract's interest rate, and its later changes.
+     */
+    contract_rates: Array<ContractRateTerms>;
+    /**
+     * The DFI property insurance rate charged on the appraisal value, and its later changes.
+     */
+    dfi_rates: Array<MonthlyRate>;
+    /**
+     * The monthly admin fee, and its later changes.
+     */
+    fees: Array<Fee>;
+    /**
+     * Due date of the first installment. Each later one falls due on the same day of the following months, or on the month's last day when it is shorter.
+     */
+    first_installment_date: string;
+    /**
+     * The MIP life insurance rate charged on the outstanding balance, and its changes as the borrower moves into a new age band.
+     */
+    mip_rates: Array<MonthlyRate>;
+    /**
+     * Amount borrowed, in reais, as a decimal string.
+     */
+    original_amount: string;
+    /**
+     * Number of monthly installments.
+     */
+    term_months: number;
+};
+
+export type RegisteredMortgage = {
+    /**
+     * How each installment splits into amortization and interest.
+     */
+    amortization_system: 'sac' | 'price';
+    /**
+     * Appraisal value of the property, in reais, as a decimal string.
+     */
+    appraisal_value: string;
+    /**
+     * Date the contract was signed.
+     */
+    contract_date: string;
+    /**
+     * The contract's interest rate and its later changes, in date order.
+     */
+    contract_rates: Array<ContractRate>;
+    /**
+     * The DFI property insurance rate and its changes, in date order.
+     */
+    dfi_rates: Array<MonthlyRate>;
+    /**
+     * The monthly admin fee and its changes, in date order.
+     */
+    fees: Array<Fee>;
+    /**
+     * Due date of the first installment.
+     */
+    first_installment_date: string;
+    /**
+     * The MIP life insurance rate and its changes, in date order.
+     */
+    mip_rates: Array<MonthlyRate>;
+    /**
+     * Amount borrowed, in reais, as a decimal string.
+     */
+    original_amount: string;
+    /**
+     * Number of monthly installments.
+     */
+    term_months: number;
+};
+
+export type Schedule = {
+    /**
+     * Every installment of the mortgage, in due date order.
+     */
+    months: Array<ScheduleMonth>;
+};
+
+export type ScheduleMonth = {
+    /**
+     * Outstanding balance paid off, in reais, as a decimal string.
+     */
+    amortization: string;
+    /**
+     * DFI property insurance premium, in reais, as a decimal string.
+     */
+    dfi: string;
+    /**
+     * Date the installment falls due.
+     */
+    due_date: string;
+    /**
+     * Admin fee, in reais, as a decimal string.
+     */
+    fee: string;
+    /**
+     * Total the installment charges, in reais, as a decimal string.
+     */
+    installment: string;
+    /**
+     * Interest charged, in reais, as a decimal string.
+     */
+    interest: string;
+    /**
+     * MIP life insurance premium, in reais, as a decimal string.
+     */
+    mip: string;
+    /**
+     * Installment number, counting from 1.
+     */
+    number: number;
+    /**
+     * Outstanding balance after the installment, in reais, as a decimal string.
+     */
+    outstanding_balance: string;
 };
 
 export type HealthData = {
@@ -215,3 +403,103 @@ export type MarketDataStatusResponses = {
 };
 
 export type MarketDataStatusResponse = MarketDataStatusResponses[keyof MarketDataStatusResponses];
+
+export type DeleteMortgageData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mortgage';
+};
+
+export type DeleteMortgageErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type DeleteMortgageError = DeleteMortgageErrors[keyof DeleteMortgageErrors];
+
+export type DeleteMortgageResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type DeleteMortgageResponse = DeleteMortgageResponses[keyof DeleteMortgageResponses];
+
+export type ReadMortgageData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mortgage';
+};
+
+export type ReadMortgageErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type ReadMortgageError = ReadMortgageErrors[keyof ReadMortgageErrors];
+
+export type ReadMortgageResponses = {
+    /**
+     * OK
+     */
+    200: RegisteredMortgage;
+};
+
+export type ReadMortgageResponse = ReadMortgageResponses[keyof ReadMortgageResponses];
+
+export type SaveMortgageData = {
+    body: MortgageTerms;
+    path?: never;
+    query?: never;
+    url: '/mortgage';
+};
+
+export type SaveMortgageErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type SaveMortgageError = SaveMortgageErrors[keyof SaveMortgageErrors];
+
+export type SaveMortgageResponses = {
+    /**
+     * OK
+     */
+    200: RegisteredMortgage;
+};
+
+export type SaveMortgageResponse = SaveMortgageResponses[keyof SaveMortgageResponses];
+
+export type ReadMortgageScheduleData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mortgage/schedule';
+};
+
+export type ReadMortgageScheduleErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type ReadMortgageScheduleError = ReadMortgageScheduleErrors[keyof ReadMortgageScheduleErrors];
+
+export type ReadMortgageScheduleResponses = {
+    /**
+     * OK
+     */
+    200: Schedule;
+};
+
+export type ReadMortgageScheduleResponse = ReadMortgageScheduleResponses[keyof ReadMortgageScheduleResponses];

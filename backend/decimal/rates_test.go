@@ -44,11 +44,12 @@ func TestRateConversions(t *testing.T) {
 		{name: "zero stays zero", convert: decimal.EffectiveToNominal, rate: "0", want: "0"},
 	}
 
+	// Compared as text: a converted rate carries no trailing zeros, so the API shows it as it is.
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			assertDecimal(t, tt.want, tt.convert(parse(t, tt.rate)))
+			assert.Equal(t, tt.want, tt.convert(parse(t, tt.rate)).String())
 		})
 	}
 }
