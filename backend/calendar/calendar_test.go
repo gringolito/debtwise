@@ -29,26 +29,22 @@ func TestNationalHolidaysMatchANBIMA(t *testing.T) {
 	records, err := r.ReadAll()
 	require.NoError(t, err)
 
-	anbima := map[int][]string{}
+	// time.Parse reads each date at midnight UTC, the instant NationalHolidays promises.
+	anbima := map[int][]time.Time{}
 
 	for _, record := range records[1:] {
 		day, err := time.Parse(time.DateOnly, record[0])
 		require.NoError(t, err)
 
-		if !slices.Contains(anbima[day.Year()], record[0]) {
-			anbima[day.Year()] = append(anbima[day.Year()], record[0])
+		if !slices.ContainsFunc(anbima[day.Year()], day.Equal) {
+			anbima[day.Year()] = append(anbima[day.Year()], day)
 		}
 	}
 
 	require.Len(t, anbima, 99, "the list covers 2001 to 2099")
 
 	for year, want := range anbima {
-		got := make([]string, 0, len(want))
-		for _, holiday := range calendar.NationalHolidays(year) {
-			got = append(got, holiday.Format(time.DateOnly))
-		}
-
-		assert.Equal(t, want, got, "holidays of %d", year)
+		assert.Equal(t, want, calendar.NationalHolidays(year), "holidays of %d", year)
 	}
 }
 
