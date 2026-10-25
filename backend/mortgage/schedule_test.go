@@ -357,3 +357,19 @@ func TestThirtyYearPriceSchedule(t *testing.T) {
 		})
 	}
 }
+
+// A caller that stops ranging early gets no more installments.
+func TestScheduleStopsWhenTheCallerDoes(t *testing.T) {
+	t.Parallel()
+
+	var numbers []int
+
+	for installment := range sacTerms(t).Schedule() {
+		numbers = append(numbers, installment.Number)
+		if installment.Number == 2 {
+			break
+		}
+	}
+
+	assert.Equal(t, []int{1, 2}, numbers)
+}

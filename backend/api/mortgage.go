@@ -16,7 +16,7 @@ import (
 // Mortgages is the subset of *mortgage.Store the API uses.
 type Mortgages interface {
 	Find(ctx context.Context) (mortgage.Terms, error)
-	Save(ctx context.Context, terms mortgage.Terms) error
+	Save(ctx context.Context, terms mortgage.Terms) (mortgage.Terms, error)
 	Delete(ctx context.Context) error
 }
 
@@ -137,13 +137,9 @@ func registerMortgage(humaAPI huma.API, mortgages Mortgages) {
 			return nil, huma.Error422UnprocessableEntity("validation failed", details...)
 		}
 
-		if err := mortgages.Save(ctx, terms); err != nil {
-			return nil, err
-		}
-
-		saved, err := mortgages.Find(ctx)
+		saved, err := mortgages.Save(ctx, terms)
 		if err != nil {
-			return nil, mortgageFailure(err)
+			return nil, err
 		}
 
 		return &mortgageOutput{Body: newRegisteredMortgage(saved)}, nil

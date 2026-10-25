@@ -35,7 +35,9 @@ func (unused) Trigger() {}
 
 func (unused) Find(context.Context) (mortgage.Terms, error) { return mortgage.Terms{}, nil }
 
-func (unused) Save(context.Context, mortgage.Terms) error { return nil }
+func (unused) Save(context.Context, mortgage.Terms) (mortgage.Terms, error) {
+	return mortgage.Terms{}, nil
+}
 
 func (unused) Delete(context.Context) error { return nil }
 

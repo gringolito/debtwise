@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -17,8 +18,8 @@ import (
 	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
-// newAPI serves the API over a fresh, migrated database.
-func newAPI(t *testing.T) http.Handler {
+// migratedDatabase is a fresh database with every migration applied.
+func migratedDatabase(t *testing.T) *sql.DB {
 	t.Helper()
 
 	conn, err := db.Open(t.Context(), filepath.Join(t.TempDir(), "debtwise.db"))
@@ -28,6 +29,15 @@ func newAPI(t *testing.T) http.Handler {
 
 	_, err = db.Migrate(t.Context(), conn)
 	require.NoError(t, err)
+
+	return conn
+}
+
+// newAPI serves the API over a fresh, migrated database.
+func newAPI(t *testing.T) http.Handler {
+	t.Helper()
+
+	conn := migratedDatabase(t)
 
 	return api.NewHandler(db.New(conn), nil, nil, mortgage.NewStore(conn))
 }
@@ -496,4 +506,108 @@ func TestMortgageFailsWhenTheDatabaseDoesNotAnswer(t *testing.T) {
 			assert.Equal(t, "the server could not complete the request; report it with its request_id", problem.Detail)
 		})
 	}
+}
+
+// failingOn makes every statement of kind ("INSERT", "UPDATE" or "DELETE") on table fail.
+func failingOn(kind, table string) string {
+	return "CREATE TRIGGER fail_" + table + " BEFORE " + kind + " ON " + table +
+		" BEGIN SELECT RAISE(FAIL, 'injected failure'); END"
+}
+
+// A registered mortgage whose data is missing or damaged fails to read with a 500, never as a
+// missing mortgage or a panic.
+func TestDamagedMortgageFailsToRead(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		damage string
+	}{
+		{name: "no mortgages table", damage: "DROP TABLE mortgages"},
+		{name: "no contract rates table", damage: "DROP TABLE mortgage_contract_rates"},
+		{name: "no MIP rates table", damage: "DROP TABLE mortgage_mip_rates"},
+		{name: "no DFI rates table", damage: "DROP TABLE mortgage_dfi_rates"},
+		{name: "no fees table", damage: "DROP TABLE mortgage_fees"},
+		{name: "an amount that is no decimal", damage: "UPDATE mortgages SET original_amount = 'lots'"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			conn := migratedDatabase(t)
+			handler := api.NewHandler(db.New(conn), nil, nil, mortgage.NewStore(conn), api.WithLogger(slog.New(slog.DiscardHandler)))
+			require.Equal(t, http.StatusOK, serve(t, handler, http.MethodPut, "/mortgage", sacMortgage).Code)
+
+			_, err := conn.ExecContext(t.Context(), tt.damage)
+			require.NoError(t, err)
+
+			rec := serve(t, handler, http.MethodGet, "/mortgage", "")
+
+			assert.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
+		})
+	}
+}
+
+// A save the database refuses part way fails with a 500 and leaves the terms as they were: the
+// registered mortgage, or none.
+func TestRefusedSaveKeepsTheTermsAsTheyWere(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		registered bool
+		damage     string
+	}{
+		{name: "registering", damage: failingOn("INSERT", "mortgages")},
+		{name: "editing", registered: true, damage: failingOn("UPDATE", "mortgages")},
+		{name: "clearing the old rows", registered: true, damage: failingOn("DELETE", "mortgage_contract_rates")},
+		{name: "a contract rate", damage: failingOn("INSERT", "mortgage_contract_rates")},
+		{name: "a MIP rate", registered: true, damage: failingOn("INSERT", "mortgage_mip_rates")},
+		{name: "a DFI rate", damage: failingOn("INSERT", "mortgage_dfi_rates")},
+		{name: "a fee", registered: true, damage: failingOn("INSERT", "mortgage_fees")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			conn := migratedDatabase(t)
+			handler := api.NewHandler(db.New(conn), nil, nil, mortgage.NewStore(conn), api.WithLogger(slog.New(slog.DiscardHandler)))
+
+			if tt.registered {
+				require.Equal(t, http.StatusOK, serve(t, handler, http.MethodPut, "/mortgage", sacMortgage).Code)
+			}
+
+			_, err := conn.ExecContext(t.Context(), tt.damage)
+			require.NoError(t, err)
+
+			rec := serve(t, handler, http.MethodPut, "/mortgage", withField(t, "term_months", "12"))
+			require.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
+
+			read := serve(t, handler, http.MethodGet, "/mortgage", "")
+			if !tt.registered {
+				assert.Equal(t, http.StatusNotFound, read.Code, read.Body.String())
+
+				return
+			}
+
+			require.Equal(t, http.StatusOK, read.Code, read.Body.String())
+			assert.JSONEq(t, sacMortgageRead, read.Body.String())
+		})
+	}
+}
+
+func TestSaveFailsWithoutTheMortgagesTable(t *testing.T) {
+	t.Parallel()
+
+	conn := migratedDatabase(t)
+	handler := api.NewHandler(db.New(conn), nil, nil, mortgage.NewStore(conn), api.WithLogger(slog.New(slog.DiscardHandler)))
+
+	_, err := conn.ExecContext(t.Context(), "DROP TABLE mortgages")
+	require.NoError(t, err)
+
+	rec := serve(t, handler, http.MethodPut, "/mortgage", sacMortgage)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
 }

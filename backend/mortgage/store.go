@@ -30,16 +30,9 @@ func (s *Store) Find(ctx context.Context) (Terms, error) {
 	var terms Terms
 
 	err := s.inTx(ctx, func(q *db.Queries) error {
-		row, err := q.FindMortgage(ctx)
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNotFound
-		}
+		var err error
 
-		if err != nil {
-			return fmt.Errorf("mortgage: find: %w", err)
-		}
-
-		terms, err = readTerms(ctx, q, row)
+		terms, err = find(ctx, q)
 
 		return err
 	})
@@ -47,16 +40,27 @@ func (s *Store) Find(ctx context.Context) (Terms, error) {
 	return terms, err
 }
 
-// Save registers terms as the owner's mortgage, replacing the terms of the one already registered.
-func (s *Store) Save(ctx context.Context, terms Terms) error {
-	return s.inTx(ctx, func(q *db.Queries) error {
+// Save registers terms as the owner's mortgage, replacing the terms of the one already registered,
+// and returns them as Find would.
+func (s *Store) Save(ctx context.Context, terms Terms) (Terms, error) {
+	var saved Terms
+
+	err := s.inTx(ctx, func(q *db.Queries) error {
 		id, err := saveMortgage(ctx, q, terms)
 		if err != nil {
 			return err
 		}
 
-		return saveRows(ctx, q, id, terms)
+		if err := saveRows(ctx, q, id, terms); err != nil {
+			return err
+		}
+
+		saved, err = find(ctx, q)
+
+		return err
 	})
+
+	return saved, err
 }
 
 // Delete removes the registered mortgage, or returns ErrNotFound.
@@ -90,6 +94,19 @@ func (s *Store) inTx(ctx context.Context, fn func(*db.Queries) error) error {
 	}
 
 	return nil
+}
+
+func find(ctx context.Context, q *db.Queries) (Terms, error) {
+	row, err := q.FindMortgage(ctx)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Terms{}, ErrNotFound
+	}
+
+	if err != nil {
+		return Terms{}, fmt.Errorf("mortgage: find: %w", err)
+	}
+
+	return readTerms(ctx, q, row)
 }
 
 func saveMortgage(ctx context.Context, q *db.Queries, terms Terms) (int64, error) {
