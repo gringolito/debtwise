@@ -97,6 +97,21 @@ func TestNTNBPriceMatchesTesouroWorkedExample(t *testing.T) {
 	assert.Equal(t, "1678.012540", bond.IPCAUnitPrice(rate, settlement, mustDecimal(t, "1728.461136")).String())
 }
 
+// A buyer settling on a coupon date doesn't get that coupon, so the quotation drops by about the
+// coupon, 2.956301% of the VNA, from the business day before: here Friday 2010-02-12 to Monday
+// 2010-02-15.
+func TestNTNBQuotationLeavesOutTheCouponPaidOnSettlement(t *testing.T) {
+	t.Parallel()
+
+	bond := bonds.Bond{Type: bonds.NTNB, Maturity: date(2010, time.August, 15)}
+	rate := mustDecimal(t, "0.0829")
+
+	drop := bond.Quotation(rate, date(2010, time.February, 12)).Sub(bond.Quotation(rate, date(2010, time.February, 15)))
+
+	assert.True(t, drop.Cmp(mustDecimal(t, "2.9")) > 0 && drop.Cmp(mustDecimal(t, "2.96")) < 0,
+		"quotation drops by %s", drop)
+}
+
 // Tesouro Direto's NTN-B 2017 example from the IPCA index numbers: the VNA of 2011-12-15 projected
 // to 2012-01-03 with Tesouro's 0.53% for December, priced at 5.32% a year, is R$ 2.187,17.
 func TestNTNBPriceFromIndexNumbersMatchesTesouroDireto(t *testing.T) {

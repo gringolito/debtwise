@@ -126,15 +126,21 @@ bonds qualify.
 _Avoid_: Investment (also the act of investing), asset (too broad), título público (also covers
 bonds DebtWise doesn't compare)
 
-**Quote** (cotação):
+**Quote** (preço e taxa):
 The rates and unit prices Tesouro Direto offers for a bond on a day: a buy side while it sells the
 bond, and a sell side at which it buys the bond back. A lot's market value comes from the sell side.
-_Avoid_: Price (only one side of a quote), offer (a quote can lack the buy side)
+_Avoid_: Price (only one side of a quote), offer (a quote can lack the buy side), cotação (Tesouro's
+name for an NTN-B's quotation)
 
 **Unit Price** (preço unitário, PU):
 The price of one bond at a rate for settlement on a date, as Tesouro computes it. Each side of a
 quote carries one, and every purchase, sale and valuation of a lot starts from it.
 _Avoid_: Face value (what the bond pays at maturity), market value (per lot, not per bond)
+
+**Quotation** (cotação):
+An NTN-B's or NTN-B Principal's price as a percentage of its updated nominal value (VNA), as
+Tesouro computes it from a rate. The VNA times the quotation gives the bond's unit price.
+_Avoid_: Quote (the rates and unit prices Tesouro Direto offers for a bond on a day)
 
 **Lot**:
 One purchase of a bond on one date at one rate. Lots of the same bond stay apart because their tax
