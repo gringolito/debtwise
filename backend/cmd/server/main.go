@@ -19,6 +19,7 @@ import (
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/marketdata"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
+	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
 func main() {
@@ -78,7 +79,7 @@ func run(logger *slog.Logger, level *slog.LevelVar) error {
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           api.NewHandler(db.New(conn), store, job, api.WithLogger(logger)),
+		Handler:           api.NewHandler(db.New(conn), store, job, mortgage.NewStore(conn), api.WithLogger(logger)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,

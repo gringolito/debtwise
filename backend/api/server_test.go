@@ -135,7 +135,7 @@ func newServer(t *testing.T, source marketdata.Source) server {
 		<-done
 	})
 
-	s := server{handler: api.NewHandler(db.New(conn), store, job, api.WithLogger(logger)), job: job, conn: conn}
+	s := server{handler: api.NewHandler(db.New(conn), store, job, nil, api.WithLogger(logger)), job: job, conn: conn}
 	s.waitForRefresh(t)
 
 	return s

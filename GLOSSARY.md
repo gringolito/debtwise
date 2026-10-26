@@ -42,6 +42,13 @@ The contract rule that splits each installment into amortization and interest. I
 prepayment changes the installments that follow.
 _Avoid_: Amortization table (names one system's output, not the rule)
 
+**Contract Rate** (taxa de juros do contrato):
+The annual interest rate a mortgage contract charges on the outstanding balance, on top of any
+indexer correction. A contract prints it as nominal or as effective, two ways of writing the same
+rate.
+_Avoid_: Interest rate (also covers bond rates), CET (the total cost rate, which includes insurance
+and fees)
+
 **Indexer** (indexador):
 The index a mortgage contract uses to correct the outstanding balance before interest is charged.
 Unlike the contract rate, it follows published data month by month, which is what makes a
@@ -65,6 +72,33 @@ borrowed, not what is owed now)
 One scheduled monthly payment on the mortgage, with everything the bank charges that month
 included. It is what the owner pays out of pocket each month.
 _Avoid_: Payment (also covers prepayments), parcel (a mistranslation of "parcela")
+
+**Schedule** (evolução do financiamento):
+The mortgage's installments month by month, each with what it charges and the outstanding balance
+it leaves. The owner checks it against the bank's statements.
+_Avoid_: Amortization table (names the amortization system's split only), extrato (the bank's
+statement, not DebtWise's calculation)
+
+**MIP** (Morte e Invalidez Permanente):
+The mortgage's life and disability insurance premium, charged with each installment on the
+outstanding balance. Its rate follows the borrower's age band.
+_Avoid_: Life insurance (the policy, not the premium charged), seguro habitacional (covers MIP and
+DFI together)
+
+**DFI** (Danos Físicos ao Imóvel):
+The mortgage's property damage insurance premium, charged with each installment on the appraisal
+value. Unlike MIP, it doesn't fall as the outstanding balance does.
+_Avoid_: Property insurance (the policy, not the premium charged), home insurance (an optional
+policy the owner may hold apart from the mortgage)
+
+**Appraisal Value** (valor de avaliação):
+The bank's valuation of the property behind a mortgage. DFI is charged on it.
+_Avoid_: Property value (what the property would sell for), market value (a lot's sale value in
+DebtWise), purchase price (what the owner paid)
+
+**Admin Fee** (taxa de administração):
+The fixed monthly fee the bank charges with each installment for managing the mortgage.
+_Avoid_: Custody fee (charged by B3 on bonds), tarifa (any bank fee, not this one)
 
 **Prepayment** (amortização extraordinária):
 A payment against the outstanding balance outside the schedule, which either shortens the term or

@@ -44,6 +44,11 @@ linters:
       key-naming-case: "snake"
   exclusions:
     generated: strict
+    rules:
+      # Tests compare against literal tables, such as a whole schedule, whose values repeat.
+      - path: _test\.go
+        linters:
+          - goconst
 formatters:
   enable:
     - gofmt

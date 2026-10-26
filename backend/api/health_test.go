@@ -41,7 +41,7 @@ func closedDatabase(t *testing.T) *db.Queries {
 func TestHealthReportsOKWhileTheDatabaseAnswers(t *testing.T) {
 	t.Parallel()
 
-	handler := api.NewHandler(openDatabase(t), nil, nil)
+	handler := api.NewHandler(openDatabase(t), nil, nil, nil)
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/health", nil))
@@ -56,7 +56,7 @@ func TestHealthFailsWhenTheDatabaseDoesNotAnswer(t *testing.T) {
 	var logs bytes.Buffer
 
 	logger := slog.New(slog.NewJSONHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	handler := api.NewHandler(closedDatabase(t), nil, nil, api.WithLogger(logger))
+	handler := api.NewHandler(closedDatabase(t), nil, nil, nil, api.WithLogger(logger))
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/health", nil))
@@ -97,7 +97,7 @@ func TestHealthFailsWhenTheDatabaseDoesNotAnswer(t *testing.T) {
 func TestEveryRequestGetsItsOwnRequestID(t *testing.T) {
 	t.Parallel()
 
-	handler := api.NewHandler(closedDatabase(t), nil, nil, api.WithLogger(slog.New(slog.DiscardHandler)))
+	handler := api.NewHandler(closedDatabase(t), nil, nil, nil, api.WithLogger(slog.New(slog.DiscardHandler)))
 
 	requestIDs := make(map[string]bool)
 
@@ -123,7 +123,7 @@ func TestEveryRequestGetsItsOwnRequestID(t *testing.T) {
 func TestOpenAPIContractIsServed(t *testing.T) {
 	t.Parallel()
 
-	handler := api.NewHandler(openDatabase(t), nil, nil)
+	handler := api.NewHandler(openDatabase(t), nil, nil, nil)
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/openapi.json", nil))
@@ -146,5 +146,11 @@ func TestOpenAPIContractIsServed(t *testing.T) {
 		"/indexes/{index}/history": {get: {OperationID: "index-history"}},
 		"/market-data/status":      {get: {OperationID: "market-data-status"}},
 		"/market-data/refresh":     {"post": {OperationID: "refresh-market-data"}},
+		"/mortgage": {
+			get:      {OperationID: "read-mortgage"},
+			"put":    {OperationID: "save-mortgage"},
+			"delete": {OperationID: "delete-mortgage"},
+		},
+		"/mortgage/schedule": {get: {OperationID: "read-mortgage-schedule"}},
 	}, contract.Paths)
 }

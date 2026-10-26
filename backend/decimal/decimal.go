@@ -103,6 +103,17 @@ func (x Decimal) Pow(y Decimal) Decimal {
 	return z
 }
 
+// quantize rounds x to places decimal places in the given direction.
+func (x Decimal) quantize(places int32, rounding apd.Rounder) Decimal {
+	c := ctx
+	c.Rounding = rounding
+
+	var z Decimal
+	must(c.Quantize(&z.d, &x.d, -places))
+
+	return z
+}
+
 // must panics on the conditions ctx traps. They are programming errors, such as division by zero,
 // in the same way they are for Go's integers.
 func must(_ apd.Condition, err error) {

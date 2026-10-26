@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses } from './types.gen';
+import type { DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -45,3 +45,38 @@ export const refreshMarketData = <ThrowOnError extends boolean = false>(options?
  * Reports, for each index, when it was last refreshed from its source and whether that data is stale or its latest refresh failed.
  */
 export const marketDataStatus = <ThrowOnError extends boolean = false>(options?: Options<MarketDataStatusData, ThrowOnError>) => (options?.client ?? client).get<MarketDataStatusResponses, MarketDataStatusErrors, ThrowOnError>({ url: '/market-data/status', ...options });
+
+/**
+ * Delete the mortgage
+ *
+ * Deletes the registered mortgage with all its terms.
+ */
+export const deleteMortgage = <ThrowOnError extends boolean = false>(options?: Options<DeleteMortgageData, ThrowOnError>) => (options?.client ?? client).delete<DeleteMortgageResponses, DeleteMortgageErrors, ThrowOnError>({ url: '/mortgage', ...options });
+
+/**
+ * Read the mortgage
+ *
+ * Returns the registered mortgage's terms, with each contract rate on both the nominal and the effective basis.
+ */
+export const readMortgage = <ThrowOnError extends boolean = false>(options?: Options<ReadMortgageData, ThrowOnError>) => (options?.client ?? client).get<ReadMortgageResponses, ReadMortgageErrors, ThrowOnError>({ url: '/mortgage', ...options });
+
+/**
+ * Register or edit the mortgage
+ *
+ * Registers the owner's mortgage, or replaces the terms of the one already registered, and returns it as a read would.
+ */
+export const saveMortgage = <ThrowOnError extends boolean = false>(options: Options<SaveMortgageData, ThrowOnError>) => (options.client ?? client).put<SaveMortgageResponses, SaveMortgageErrors, ThrowOnError>({
+    url: '/mortgage',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Read the mortgage schedule
+ *
+ * Returns the registered mortgage's installments month by month, to check against bank statements.
+ */
+export const readMortgageSchedule = <ThrowOnError extends boolean = false>(options?: Options<ReadMortgageScheduleData, ThrowOnError>) => (options?.client ?? client).get<ReadMortgageScheduleResponses, ReadMortgageScheduleErrors, ThrowOnError>({ url: '/mortgage/schedule', ...options });

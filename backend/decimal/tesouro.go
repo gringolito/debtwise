@@ -24,13 +24,3 @@ func (x Decimal) RoundCoupon() Decimal {
 func (x Decimal) RoundDiscountedFlow() Decimal {
 	return x.quantize(9, apd.RoundHalfUp)
 }
-
-func (x Decimal) quantize(places int32, rounding apd.Rounder) Decimal {
-	c := ctx
-	c.Rounding = rounding
-
-	var z Decimal
-	must(c.Quantize(&z.d, &x.d, -places))
-
-	return z
-}

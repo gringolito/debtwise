@@ -1,6 +1,68 @@
 {
   "components": {
     "schemas": {
+      "ContractRate": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "description": "The basis the rate was entered on; the other one is derived from it.",
+            "enum": [
+              "nominal",
+              "effective"
+            ],
+            "type": "string"
+          },
+          "effective": {
+            "description": "Annual rate on the effective basis, as a decimal fraction string.",
+            "type": "string"
+          },
+          "effective_from": {
+            "description": "Installments due on or after this date pay this rate, until a later row's date.",
+            "format": "date",
+            "type": "string"
+          },
+          "nominal": {
+            "description": "Annual rate on the nominal basis, as a decimal fraction string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effective_from",
+          "basis",
+          "nominal",
+          "effective"
+        ],
+        "type": "object"
+      },
+      "ContractRateTerms": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "description": "Whether the contract prints the rate as nominal or as effective.",
+            "enum": [
+              "nominal",
+              "effective"
+            ],
+            "type": "string"
+          },
+          "effective_from": {
+            "description": "Installments due on or after this date pay this rate, until a later row's date.",
+            "format": "date",
+            "type": "string"
+          },
+          "rate": {
+            "description": "Annual rate as a decimal fraction string: 0.12 is 12% a year.",
+            "pattern": "^(0|[1-9][0-9]{0,2})(\\.[0-9]{1,12})?$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effective_from",
+          "rate",
+          "basis"
+        ],
+        "type": "object"
+      },
       "ErrorDetail": {
         "additionalProperties": false,
         "properties": {
@@ -75,6 +137,26 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "Fee": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "Monthly amount, in reais, as a decimal string.",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
+            "type": "string"
+          },
+          "effective_from": {
+            "description": "Installments due on or after this date pay this fee, until a later row's date.",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effective_from",
+          "amount"
+        ],
         "type": "object"
       },
       "Health": {
@@ -209,6 +291,255 @@
         "required": [
           "refreshing",
           "indexes"
+        ],
+        "type": "object"
+      },
+      "MonthlyRate": {
+        "additionalProperties": false,
+        "properties": {
+          "effective_from": {
+            "description": "Installments due on or after this date pay this rate, until a later row's date.",
+            "format": "date",
+            "type": "string"
+          },
+          "rate": {
+            "description": "Monthly rate as a decimal fraction string: 0.0003 is 0.03% a month.",
+            "pattern": "^(0|[1-9][0-9]{0,2})(\\.[0-9]{1,12})?$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "effective_from",
+          "rate"
+        ],
+        "type": "object"
+      },
+      "MortgageTerms": {
+        "additionalProperties": false,
+        "properties": {
+          "amortization_system": {
+            "description": "How each installment splits into amortization and interest.",
+            "enum": [
+              "sac",
+              "price"
+            ],
+            "type": "string"
+          },
+          "appraisal_value": {
+            "description": "Appraisal value of the property, in reais, as a decimal string.",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
+            "type": "string"
+          },
+          "contract_date": {
+            "description": "Date the contract was signed.",
+            "format": "date",
+            "type": "string"
+          },
+          "contract_rates": {
+            "description": "The contract's interest rate, and its later changes.",
+            "items": {
+              "$ref": "#/components/schemas/ContractRateTerms"
+            },
+            "type": "array"
+          },
+          "dfi_rates": {
+            "description": "The DFI (property damage insurance) rate, and its later changes.",
+            "items": {
+              "$ref": "#/components/schemas/MonthlyRate"
+            },
+            "type": "array"
+          },
+          "fees": {
+            "description": "The monthly admin fee, and its later changes.",
+            "items": {
+              "$ref": "#/components/schemas/Fee"
+            },
+            "type": "array"
+          },
+          "first_installment_date": {
+            "description": "Due date of the first installment.",
+            "format": "date",
+            "type": "string"
+          },
+          "mip_rates": {
+            "description": "The MIP (life and disability insurance) rate, and its changes as the borrower moves into a new age band.",
+            "items": {
+              "$ref": "#/components/schemas/MonthlyRate"
+            },
+            "type": "array"
+          },
+          "original_amount": {
+            "description": "Amount borrowed, in reais, as a decimal string.",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
+            "type": "string"
+          },
+          "term_months": {
+            "description": "Number of monthly installments.",
+            "format": "int64",
+            "maximum": 600,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "contract_date",
+          "original_amount",
+          "term_months",
+          "first_installment_date",
+          "amortization_system",
+          "appraisal_value",
+          "contract_rates",
+          "mip_rates",
+          "dfi_rates",
+          "fees"
+        ],
+        "type": "object"
+      },
+      "RegisteredMortgage": {
+        "additionalProperties": false,
+        "properties": {
+          "amortization_system": {
+            "description": "How each installment splits into amortization and interest.",
+            "enum": [
+              "sac",
+              "price"
+            ],
+            "type": "string"
+          },
+          "appraisal_value": {
+            "description": "Appraisal value of the property, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "contract_date": {
+            "description": "Date the contract was signed.",
+            "format": "date",
+            "type": "string"
+          },
+          "contract_rates": {
+            "description": "The contract's interest rate and its later changes, in date order.",
+            "items": {
+              "$ref": "#/components/schemas/ContractRate"
+            },
+            "type": "array"
+          },
+          "dfi_rates": {
+            "description": "The DFI (property damage insurance) rate and its changes, in date order.",
+            "items": {
+              "$ref": "#/components/schemas/MonthlyRate"
+            },
+            "type": "array"
+          },
+          "fees": {
+            "description": "The monthly admin fee and its changes, in date order.",
+            "items": {
+              "$ref": "#/components/schemas/Fee"
+            },
+            "type": "array"
+          },
+          "first_installment_date": {
+            "description": "Due date of the first installment.",
+            "format": "date",
+            "type": "string"
+          },
+          "mip_rates": {
+            "description": "The MIP (life and disability insurance) rate and its changes, in date order.",
+            "items": {
+              "$ref": "#/components/schemas/MonthlyRate"
+            },
+            "type": "array"
+          },
+          "original_amount": {
+            "description": "Amount borrowed, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "term_months": {
+            "description": "Number of monthly installments.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "contract_date",
+          "original_amount",
+          "term_months",
+          "first_installment_date",
+          "amortization_system",
+          "appraisal_value",
+          "contract_rates",
+          "mip_rates",
+          "dfi_rates",
+          "fees"
+        ],
+        "type": "object"
+      },
+      "Schedule": {
+        "additionalProperties": false,
+        "properties": {
+          "installments": {
+            "description": "Every installment of the mortgage, in due date order.",
+            "items": {
+              "$ref": "#/components/schemas/ScheduledInstallment"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "installments"
+        ],
+        "type": "object"
+      },
+      "ScheduledInstallment": {
+        "additionalProperties": false,
+        "properties": {
+          "amortization": {
+            "description": "Outstanding balance paid off, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Total the installment charges, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "dfi": {
+            "description": "DFI (property damage insurance) premium, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "due_date": {
+            "description": "Date the installment falls due.",
+            "format": "date",
+            "type": "string"
+          },
+          "fee": {
+            "description": "Admin fee, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "interest": {
+            "description": "Interest charged, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "mip": {
+            "description": "MIP (life and disability insurance) premium, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "number": {
+            "description": "Installment number, counting from 1.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "outstanding_balance": {
+            "description": "Outstanding balance after the installment, in reais, as a decimal string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "due_date",
+          "interest",
+          "amortization",
+          "mip",
+          "dfi",
+          "fee",
+          "amount",
+          "outstanding_balance"
         ],
         "type": "object"
       }
@@ -364,6 +695,133 @@
         "summary": "Report how fresh the market data is",
         "tags": [
           "Market data"
+        ]
+      }
+    },
+    "/mortgage": {
+      "delete": {
+        "description": "Deletes the registered mortgage with all its terms.",
+        "operationId": "delete-mortgage",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Delete the mortgage",
+        "tags": [
+          "Mortgage"
+        ]
+      },
+      "get": {
+        "description": "Returns the registered mortgage's terms, with each contract rate on both the nominal and the effective basis.",
+        "operationId": "read-mortgage",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredMortgage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Read the mortgage",
+        "tags": [
+          "Mortgage"
+        ]
+      },
+      "put": {
+        "description": "Registers the owner's mortgage, or replaces the terms of the one already registered, and returns it as a read would.",
+        "operationId": "save-mortgage",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MortgageTerms"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredMortgage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Register or edit the mortgage",
+        "tags": [
+          "Mortgage"
+        ]
+      }
+    },
+    "/mortgage/schedule": {
+      "get": {
+        "description": "Returns the registered mortgage's installments month by month, to check against bank statements.",
+        "operationId": "read-mortgage-schedule",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Schedule"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Read the mortgage schedule",
+        "tags": [
+          "Mortgage"
         ]
       }
     }

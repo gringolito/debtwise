@@ -41,14 +41,22 @@ func TestRateConversions(t *testing.T) {
 			rate:    "0.10",
 			want:    "0.095689685146844892792382130678764",
 		},
+		{name: "nominal to monthly", convert: decimal.NominalToMonthly, rate: "0.12", want: "0.01"},
+		{
+			name:    "nominal to monthly rounds at 34 digits",
+			convert: decimal.NominalToMonthly,
+			rate:    "0.10",
+			want:    "0.008333333333333333333333333333333333",
+		},
 		{name: "zero stays zero", convert: decimal.EffectiveToNominal, rate: "0", want: "0"},
 	}
 
+	// Compared as text: a converted rate carries no trailing zeros, so the API shows it as it is.
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			assertDecimal(t, tt.want, tt.convert(parse(t, tt.rate)))
+			assert.Equal(t, tt.want, tt.convert(parse(t, tt.rate)).String())
 		})
 	}
 }

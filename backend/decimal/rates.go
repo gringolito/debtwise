@@ -26,6 +26,15 @@ func AnnualToMonthly(annual Decimal) Decimal {
 	return rounded(compound(&annual.d, &oneTwelfth))
 }
 
+// NominalToMonthly returns the monthly rate a contract charges for a nominal annual rate: a
+// twelfth of it.
+func NominalToMonthly(nominal Decimal) Decimal {
+	var monthly apd.Decimal
+	must(wide.Quo(&monthly, &nominal.d, &twelve))
+
+	return rounded(&monthly)
+}
+
 // NominalToEffective returns the effective annual rate of a nominal annual rate that a contract
 // compounds monthly, a twelfth of it each month.
 func NominalToEffective(nominal Decimal) Decimal {
@@ -54,9 +63,12 @@ func compound(rate, power *apd.Decimal) *apd.Decimal {
 	return &z
 }
 
+// rounded rounds x to ctx and drops the trailing zeros rounding leaves.
 func rounded(x *apd.Decimal) Decimal {
 	var z Decimal
 	must(ctx.Round(&z.d, x))
+
+	_, _ = z.d.Reduce(&z.d)
 
 	return z
 }

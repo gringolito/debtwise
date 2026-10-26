@@ -21,3 +21,38 @@ type IndexValue struct {
 	Value       string
 	FetchedAt   string
 }
+
+type Mortgage struct {
+	ID                   int64
+	ContractDate         string
+	OriginalAmount       string
+	TermMonths           int64
+	FirstInstallmentDate string
+	AmortizationSystem   string
+	AppraisalValue       string
+}
+
+type MortgageContractRate struct {
+	MortgageID    int64
+	EffectiveFrom string
+	Rate          string
+	Basis         string
+}
+
+type MortgageDfiRate struct {
+	MortgageID    int64
+	EffectiveFrom string
+	Rate          string
+}
+
+type MortgageFee struct {
+	MortgageID    int64
+	EffectiveFrom string
+	Amount        string
+}
+
+type MortgageMipRate struct {
+	MortgageID    int64
+	EffectiveFrom string
+	Rate          string
+}
