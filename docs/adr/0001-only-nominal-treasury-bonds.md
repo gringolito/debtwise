@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0007
+---
+
 # Only nominal treasury bonds compete with a prepayment
 
 DebtWise compares a prepayment only against Tesouro Prefixado (LTN) and Tesouro Prefixado com Juros

@@ -121,8 +121,8 @@ different figure)
 ### Investments
 
 **Bond** (título):
-A Tesouro Direto security that DebtWise can compare against a prepayment. ADR-0001 sets which
-bonds qualify.
+A Tesouro Direto security that DebtWise can compare against a prepayment. ADR-0007 sets which
+bonds qualify, by the mortgage's indexer.
 _Avoid_: Investment (also the act of investing), asset (too broad), título público (also covers
 bonds DebtWise doesn't compare)
 
