@@ -59,6 +59,16 @@ func EffectiveToNominal(effective Decimal) Decimal {
 	return rounded(nominal)
 }
 
+// PercentToFraction returns the fraction a percentage stands for, 0.1276 for 12.76, keeping every
+// place the percentage has.
+func PercentToFraction(percent Decimal) Decimal {
+	var z Decimal
+	z.d.Set(&percent.d)
+	z.d.Exponent -= 2
+
+	return z
+}
+
 // compound returns (1 + rate)^power - 1.
 func compound(rate, power *apd.Decimal) *apd.Decimal {
 	var z apd.Decimal

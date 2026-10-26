@@ -27,14 +27,22 @@ func WithLogger(l *slog.Logger) Option {
 	return func(o *options) { o.logger = l }
 }
 
+// Services are what the API's operations read and write. A caller sets only those its requests
+// reach: an operation whose service is nil fails if it is called.
+type Services struct {
+	Database   Database
+	Indexes    IndexStore
+	MarketData MarketData
+	Mortgages  Mortgages
+	Quotes     Quotes
+}
+
 // NewHandler serves the API under /api, and its OpenAPI contract at /api/openapi.json.
 //
 // Each failed operation is logged once with its request_id: a 5xx at Error with the cause its
 // handler returned, a 4xx at Debug. A 4xx answers its problem detail; a 5xx answers only its
 // status and request_id.
-func NewHandler(
-	database Database, store IndexStore, marketData MarketData, mortgages Mortgages, opts ...Option,
-) http.Handler {
+func NewHandler(services Services, opts ...Option) http.Handler {
 	var o options
 	for _, opt := range opts {
 		opt(&o)
@@ -46,9 +54,10 @@ func NewHandler(
 	}
 
 	return newHandler(logger, func(humaAPI huma.API) {
-		registerHealth(humaAPI, database)
-		registerIndexes(humaAPI, store, marketData)
-		registerMortgage(humaAPI, mortgages, store)
+		registerHealth(humaAPI, services.Database)
+		registerIndexes(humaAPI, services.Indexes, services.MarketData)
+		registerBonds(humaAPI, services.Quotes)
+		registerMortgage(humaAPI, services.Mortgages, services.Indexes)
 	})
 }
 

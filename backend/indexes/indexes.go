@@ -22,11 +22,13 @@ const (
 	SelicTarget   Index = "selic_target"
 	Selic         Index = "selic"
 	IPCA          Index = "ipca"
+	// IPCANumber is IBGE's IPCA index number, from which Tesouro corrects NTN-B values.
+	IPCANumber Index = "ipca_number"
 )
 
 // All returns every index DebtWise keeps, in the order the API lists them.
 func All() []Index {
-	return []Index{TR, PoupancaYield, SelicTarget, Selic, IPCA}
+	return []Index{TR, PoupancaYield, SelicTarget, Selic, IPCA, IPCANumber}
 }
 
 // Value is one published value of an index, for the period from PeriodStart to PeriodEnd. A

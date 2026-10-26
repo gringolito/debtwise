@@ -1,0 +1,395 @@
+package api_test
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/gringolito/debtwise/backend/decimal"
+	"github.com/gringolito/debtwise/backend/marketdata/radar"
+)
+
+const (
+	ltn2027   = "Tesouro Prefixado 2027"
+	ltn2029   = "Tesouro Prefixado 2029"
+	ntnf2027  = "Tesouro Prefixado com Juros Semestrais 2027"
+	ntnf2037  = "Tesouro Prefixado com Juros Semestrais 2037"
+	ntnbp2032 = "Tesouro IPCA+ 2032"
+	ntnbp2035 = "Tesouro IPCA+ 2035"
+	ntnb2037  = "Tesouro IPCA+ com Juros Semestrais 2037"
+)
+
+// radarNames lists the LTN, NTN-F, NTN-B Principal and NTN-B bonds, out of order, among others
+// DebtWise does not compare, the way Radar lists every Tesouro Direto bond.
+func radarNames() []string {
+	return []string{
+		"Tesouro Educa+ 2030",
+		ntnb2037,
+		ntnbp2035,
+		ntnf2037,
+		ltn2029,
+		ntnf2027,
+		"Tesouro Renda+ Aposentadoria Extra 2050",
+		"Tesouro Prefixado 2029 (antigo)",
+		ntnbp2032,
+		"Tesouro Selic 2031",
+		ltn2027,
+	}
+}
+
+// radarBonds are the bonds Radar answers for radarNames' four kinds: some on offer and some that
+// Tesouro Direto only buys back.
+func radarBonds() []radar.Bond {
+	return []radar.Bond{
+		{
+			Name:            ltn2027,
+			Maturity:        date(2027, time.January, 1),
+			RedemptionRate:  new(mustDecimal("0.1347")),
+			RedemptionPrice: mustDecimal("977.19"),
+		},
+		{
+			Name:            ltn2029,
+			Maturity:        date(2029, time.January, 1),
+			InvestmentRate:  new(mustDecimal("0.1276")),
+			InvestmentPrice: mustDecimal("771.26"),
+			RedemptionRate:  new(mustDecimal("0.1288")),
+			RedemptionPrice: mustDecimal("769.49"),
+		},
+		{
+			// A buy rate without a buy price is no offer either.
+			Name:            ntnf2027,
+			Maturity:        date(2027, time.January, 1),
+			InvestmentRate:  new(mustDecimal("0.1320")),
+			RedemptionRate:  new(mustDecimal("0.1333")),
+			RedemptionPrice: mustDecimal("1025.12"),
+		},
+		{
+			Name:            ntnf2037,
+			Maturity:        date(2037, time.January, 1),
+			InvestmentRate:  new(mustDecimal("0.1288")),
+			InvestmentPrice: mustDecimal("880.05"),
+			RedemptionRate:  new(mustDecimal("0.1300")),
+			RedemptionPrice: mustDecimal("874.38"),
+		},
+		{
+			Name:            ntnbp2032,
+			Maturity:        date(2032, time.August, 15),
+			InvestmentRate:  new(mustDecimal("0.0672")),
+			InvestmentPrice: mustDecimal("3278.12"),
+			RedemptionRate:  new(mustDecimal("0.0684")),
+			RedemptionPrice: mustDecimal("3256.93"),
+		},
+		{
+			Name:            ntnbp2035,
+			Maturity:        date(2035, time.May, 15),
+			RedemptionRate:  new(mustDecimal("0.0682")),
+			RedemptionPrice: mustDecimal("2724.45"),
+		},
+		{
+			Name:            ntnb2037,
+			Maturity:        date(2037, time.May, 15),
+			InvestmentRate:  new(mustDecimal("0.0670")),
+			InvestmentPrice: mustDecimal("4669.3"),
+			RedemptionRate:  new(mustDecimal("0.0682")),
+			RedemptionPrice: mustDecimal("4629.32"),
+		},
+	}
+}
+
+// quotingRadar lists radarNames and quotes radarBonds.
+func quotingRadar() *fakeRadar {
+	return radarWithBonds(radarNames(), radarBonds()...)
+}
+
+type bondPrice struct {
+	Rate      string `json:"rate"`
+	UnitPrice string `json:"unit_price"`
+}
+
+type bondQuote struct {
+	Type      string     `json:"type"`
+	Maturity  string     `json:"maturity"`
+	Buy       *bondPrice `json:"buy"`
+	Sell      bondPrice  `json:"sell"`
+	FetchedAt time.Time  `json:"fetched_at"`
+}
+
+// wantQuotes are the quotes radarBonds are listed as, without their fetch time.
+func wantQuotes() []bondQuote {
+	return []bondQuote{
+		{Type: "ltn", Maturity: "2027-01-01", Sell: bondPrice{Rate: "0.1347", UnitPrice: "977.19"}},
+		{
+			Type:     "ltn",
+			Maturity: "2029-01-01",
+			Buy:      &bondPrice{Rate: "0.1276", UnitPrice: "771.26"},
+			Sell:     bondPrice{Rate: "0.1288", UnitPrice: "769.49"},
+		},
+		{Type: "ntn_f", Maturity: "2027-01-01", Sell: bondPrice{Rate: "0.1333", UnitPrice: "1025.12"}},
+		{
+			Type:     "ntn_f",
+			Maturity: "2037-01-01",
+			Buy:      &bondPrice{Rate: "0.1288", UnitPrice: "880.05"},
+			Sell:     bondPrice{Rate: "0.1300", UnitPrice: "874.38"},
+		},
+		{
+			Type:     "ntn_b_principal",
+			Maturity: "2032-08-15",
+			Buy:      &bondPrice{Rate: "0.0672", UnitPrice: "3278.12"},
+			Sell:     bondPrice{Rate: "0.0684", UnitPrice: "3256.93"},
+		},
+		{Type: "ntn_b_principal", Maturity: "2035-05-15", Sell: bondPrice{Rate: "0.0682", UnitPrice: "2724.45"}},
+		{
+			Type:     "ntn_b",
+			Maturity: "2037-05-15",
+			Buy:      &bondPrice{Rate: "0.0670", UnitPrice: "4669.3"},
+			Sell:     bondPrice{Rate: "0.0682", UnitPrice: "4629.32"},
+		},
+	}
+}
+
+func (s server) bonds(t *testing.T) []bondQuote {
+	t.Helper()
+
+	rec := s.do(t, http.MethodGet, "/api/bonds")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	var catalogue struct {
+		Bonds []bondQuote `json:"bonds"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &catalogue))
+	require.NotNil(t, catalogue.Bonds, "bonds is a list, never null")
+
+	return catalogue.Bonds
+}
+
+// withoutQuoteFetchTimes checks every quote was fetched within [from, to] and returns the quotes
+// with their fetch time cleared, to compare them with literals.
+func withoutQuoteFetchTimes(t *testing.T, quotes []bondQuote, from, to time.Time) []bondQuote {
+	t.Helper()
+
+	cleared := make([]bondQuote, 0, len(quotes))
+	for _, q := range quotes {
+		assert.WithinRange(t, q.FetchedAt, from.Truncate(time.Second), to, "fetched_at of %+v", q)
+		q.FetchedAt = time.Time{}
+		cleared = append(cleared, q)
+	}
+
+	return cleared
+}
+
+func TestRefreshListsTheBondsDebtWiseComparesWithTheirPrices(t *testing.T) {
+	t.Parallel()
+
+	start := time.Now()
+	s := newServer(t, sgsWithRows(nil), quotingRadar())
+	refreshed := time.Now()
+
+	assert.Equal(t, wantQuotes(), withoutQuoteFetchTimes(t, s.bonds(t), start, refreshed),
+		"LTN, NTN-F, NTN-B Principal, then NTN-B, each by maturity, and no other bond")
+
+	status := s.status(t).Bonds
+	assert.Equal(t, "fresh", status.Status)
+	assert.Nil(t, status.FailedAt)
+	require.NotNil(t, status.RefreshedAt)
+	assert.WithinRange(t, *status.RefreshedAt, start.Truncate(time.Second), refreshed)
+}
+
+func TestABondNotOnOfferHasNoBuySide(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t, sgsWithRows(nil), quotingRadar())
+
+	rec := s.do(t, http.MethodGet, "/api/bonds")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	var catalogue struct {
+		Bonds []map[string]json.RawMessage `json:"bonds"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &catalogue))
+
+	offered := make([]bool, 0, len(catalogue.Bonds))
+	for _, b := range catalogue.Bonds {
+		_, ok := b["buy"]
+		offered = append(offered, ok)
+	}
+
+	assert.Equal(t, []bool{false, true, false, true, true, false, true}, offered,
+		"buy is absent, not null, when not on offer")
+}
+
+func TestBondReadsFailOnDamagedStoredData(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		damage string
+		path   string
+	}{
+		{name: "a quote's rate", damage: "UPDATE bond_quotes SET sell_rate = 'x'", path: "/api/bonds"},
+		{
+			name:   "a quote's maturity",
+			damage: "UPDATE bond_quotes SET maturity = 'x' WHERE type = 'ltn' AND maturity = '2029-01-01'",
+			path:   "/api/bonds",
+		},
+		{name: "a quote's buy price", damage: "UPDATE bond_quotes SET buy_unit_price = 'x' WHERE buy_rate IS NOT NULL", path: "/api/bonds"},
+		{name: "the refresh time", damage: "UPDATE bond_quote_refreshes SET refreshed_at = 'x'", path: "/api/market-data/status"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			s := newServer(t, sgsWithRows(nil), quotingRadar())
+
+			_, err := s.conn.ExecContext(t.Context(), tt.damage)
+			require.NoError(t, err)
+
+			rec := s.do(t, http.MethodGet, tt.path)
+			assert.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
+		})
+	}
+}
+
+func TestRefreshReplacesTheBondsOnOffer(t *testing.T) {
+	t.Parallel()
+
+	radarSource := quotingRadar()
+	s := newServer(t, sgsWithRows(nil), radarSource)
+
+	radarSource.list([]string{ltn2029, "Tesouro Selic 2031"})
+
+	secondRefresh := time.Now()
+
+	s.refresh(t)
+
+	assert.Equal(t, wantQuotes()[1:2], withoutQuoteFetchTimes(t, s.bonds(t), secondRefresh, time.Now()),
+		"a bond no longer listed leaves the catalogue")
+}
+
+// errRefused is how the radar client reports an answer with no bond code: a missing token or an
+// exhausted quota.
+var errRefused = errors.New(`radar: bond "Tesouro Prefixado 2029": Token ausente. Gere um em https://radaropcoes.com`)
+
+func TestARefusedFirstRefreshStoresNoPrices(t *testing.T) {
+	t.Parallel()
+
+	radarSource := quotingRadar()
+	radarSource.fail(ltn2029, errRefused)
+
+	start := time.Now()
+	s := newServer(t, sgsWithRows(nil), radarSource)
+
+	assert.Empty(t, s.bonds(t))
+
+	status := s.status(t).Bonds
+	assert.Equal(t, "failed", status.Status)
+	assert.Nil(t, status.RefreshedAt)
+	require.NotNil(t, status.FailedAt)
+	assert.WithinRange(t, *status.FailedAt, start.Truncate(time.Second), time.Now())
+}
+
+func TestARefreshAfterAFailedOneIsFreshAgain(t *testing.T) {
+	t.Parallel()
+
+	radarSource := quotingRadar()
+	radarSource.fail(ntnf2037, errors.New(`radar: bond "Tesouro Prefixado com Juros Semestrais 2037": status 502`))
+
+	s := newServer(t, sgsWithRows(nil), radarSource)
+	require.Equal(t, "failed", s.status(t).Bonds.Status)
+
+	radarSource.fail(ntnf2037, nil)
+
+	secondRefresh := time.Now()
+
+	s.refresh(t)
+
+	assert.Equal(t, wantQuotes(), withoutQuoteFetchTimes(t, s.bonds(t), secondRefresh, time.Now()))
+
+	status := s.status(t).Bonds
+	assert.Equal(t, "fresh", status.Status)
+	assert.Nil(t, status.FailedAt)
+	require.NotNil(t, status.RefreshedAt)
+	assert.WithinRange(t, *status.RefreshedAt, secondRefresh.Truncate(time.Second), time.Now())
+}
+
+func TestARefreshRadarCannotQuoteKeepsTheStoredPrices(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		damage func(*fakeRadar)
+	}{
+		{
+			name:   "a bond refused for a missing token or an exhausted quota",
+			damage: func(f *fakeRadar) { f.fail(ltn2029, errRefused) },
+		},
+		{
+			name:   "a bond list that fails",
+			damage: func(f *fakeRadar) { f.failList(errors.New("radar: bond list: status 502")) },
+		},
+		{
+			name:   "a list without a bond DebtWise compares",
+			damage: func(f *fakeRadar) { f.list([]string{"Tesouro Selic 2031", "Tesouro Educa+ 2030"}) },
+		},
+		{
+			name:   "a bond listed twice, which the catalogue cannot hold",
+			damage: func(f *fakeRadar) { f.list(append(radarNames(), ltn2029)) },
+		},
+		{
+			name: "a bond with a buy price but no buy rate",
+			damage: func(f *fakeRadar) {
+				b := radarBonds()[6]
+				b.InvestmentRate = nil
+				f.answer(b)
+			},
+		},
+		{
+			name: "a bond without a sell price",
+			damage: func(f *fakeRadar) {
+				b := radarBonds()[2]
+				b.RedemptionPrice = decimal.Decimal{}
+				f.answer(b)
+			},
+		},
+		{
+			name: "a bond without a sell rate",
+			damage: func(f *fakeRadar) {
+				b := radarBonds()[3]
+				b.RedemptionRate = nil
+				f.answer(b)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			radarSource := quotingRadar()
+
+			start := time.Now()
+			s := newServer(t, sgsWithRows(nil), radarSource)
+			firstRefreshDone := time.Now()
+
+			tt.damage(radarSource)
+
+			// An hour on, so a quote the failed refresh rewrote would show its later fetch time.
+			later := time.Now().Add(time.Hour)
+			require.Error(t, s.job.Refresh(t.Context(), later))
+
+			assert.Equal(t, wantQuotes(), withoutQuoteFetchTimes(t, s.bonds(t), start, firstRefreshDone))
+
+			status := s.status(t).Bonds
+			assert.Equal(t, "failed", status.Status)
+			require.NotNil(t, status.RefreshedAt)
+			assert.WithinRange(t, *status.RefreshedAt, start.Truncate(time.Second), firstRefreshDone)
+			require.NotNil(t, status.FailedAt)
+			assert.WithinRange(t, *status.FailedAt, later.Truncate(time.Second), later)
+		})
+	}
+}

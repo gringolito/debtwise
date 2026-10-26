@@ -65,6 +65,42 @@ func TestNamedRoundingPlacesAndDirection(t *testing.T) {
 			input: "48.1193716105",
 			want:  "48.119371611",
 		},
+		{
+			name:  "pro rata factor truncates at 14 places",
+			op:    decimal.Decimal.TruncateFactor,
+			input: "1.000999999999999",
+			want:  "1.00099999999999",
+		},
+		{
+			name:  "VNA truncates at 6 places",
+			op:    decimal.Decimal.TruncateVNA,
+			input: "2097.58333230",
+			want:  "2097.583332",
+		},
+		{
+			name:  "quotation truncates at 4 places",
+			op:    decimal.Decimal.TruncateQuotation,
+			input: "103.933962",
+			want:  "103.9339",
+		},
+		{
+			name:  "quotation coupon rounds a tie at 6 places up",
+			op:    decimal.Decimal.RoundQuotationCoupon,
+			input: "2.9563005",
+			want:  "2.956301",
+		},
+		{
+			name:  "quotation flow rounds a tie at 10 places up",
+			op:    decimal.Decimal.RoundQuotationFlow,
+			input: "2.89985359765",
+			want:  "2.8998535977",
+		},
+		{
+			name:  "index ratio truncates at 16 places",
+			op:    decimal.Decimal.TruncateIndexRatio,
+			input: "2.09758333230123456789",
+			want:  "2.0975833323012345",
+		},
 	}
 
 	for _, tt := range tests {

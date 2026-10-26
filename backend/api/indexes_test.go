@@ -63,8 +63,9 @@ func TestRefreshStoresTheHistoryOfEveryIndex(t *testing.T) {
 			{Start: date(2026, time.October, 24), Value: mustDecimal("13.75")},
 			{Start: date(2026, time.November, 4), Value: mustDecimal("13.75")},
 		},
-		433: {{Start: date(2026, time.August, 1), Value: mustDecimal("-0.32")}},
-	}))
+		433:  {{Start: date(2026, time.August, 1), Value: mustDecimal("-0.32")}},
+		2266: {{Start: date(2026, time.August, 1), Value: mustDecimal("7329.25")}},
+	}), quotingRadar())
 
 	tr := s.history(t, "tr")
 	assert.Equal(t, "tr", tr.Index)
@@ -82,6 +83,11 @@ func TestRefreshStoresTheHistoryOfEveryIndex(t *testing.T) {
 		{PeriodStart: "2026-08-01", PeriodEnd: "2026-08-01", Value: "-0.32"},
 	}, withoutFetchTimes(t, ipca.Values, start, time.Now()))
 
+	ipcaNumber := s.history(t, "ipca_number")
+	assert.Equal(t, []indexValue{
+		{PeriodStart: "2026-08-01", PeriodEnd: "2026-08-01", Value: "7329.25"},
+	}, withoutFetchTimes(t, ipcaNumber.Values, start, time.Now()))
+
 	for _, index := range []string{"poupanca_yield", "selic"} {
 		assert.Equal(t, wantDefaultRow(), withoutFetchTimes(t, s.history(t, index).Values, start, time.Now()), index)
 	}
@@ -96,7 +102,7 @@ func TestRefreshingAgainKeepsOneValuePerPeriod(t *testing.T) {
 	})
 
 	start := time.Now()
-	s := newServer(t, source)
+	s := newServer(t, source, quotingRadar())
 	firstRefreshDone := time.Now()
 
 	revised := trRows()
@@ -136,7 +142,7 @@ func TestRefreshThatFailsForOneIndexStoresTheOthers(t *testing.T) {
 	source.fail(432, errors.New("sgs: series 432: status 502"))
 
 	start := time.Now()
-	s := newServer(t, source)
+	s := newServer(t, source, quotingRadar())
 	firstRefreshDone := time.Now()
 
 	assert.Equal(t, wantTR(), withoutFetchTimes(t, s.history(t, "tr").Values, start, firstRefreshDone))
@@ -145,9 +151,9 @@ func TestRefreshThatFailsForOneIndexStoresTheOthers(t *testing.T) {
 
 	status := s.status(t)
 	assert.False(t, status.Refreshing)
-	require.Len(t, status.Indexes, 5)
+	require.Len(t, status.Indexes, 6)
 
-	for i, index := range []string{"tr", "poupanca_yield", "selic_target", "selic", "ipca"} {
+	for i, index := range []string{"tr", "poupanca_yield", "selic_target", "selic", "ipca", "ipca_number"} {
 		got := status.Indexes[i]
 		assert.Equal(t, index, got.Index)
 
@@ -196,31 +202,33 @@ func TestRefreshThatFailsForOneIndexStoresTheOthers(t *testing.T) {
 func TestStatusWarnsWhenTheLastRefreshIsStale(t *testing.T) {
 	t.Parallel()
 
-	s := newServer(t, sgsWithRows(nil))
+	s := newServer(t, sgsWithRows(nil), quotingRadar())
 
 	require.NoError(t, s.job.Refresh(t.Context(), time.Now().Add(-49*time.Hour)))
 
 	status := s.status(t)
-	require.Len(t, status.Indexes, 5)
+	require.Len(t, status.Indexes, 6)
 
 	for _, index := range status.Indexes {
 		assert.Equal(t, "stale", index.Status, index.Index)
 	}
+
+	assert.Equal(t, "stale", status.Bonds.Status, "bonds")
 }
 
 func TestHistoryOfAnUnknownIndexIsRefused(t *testing.T) {
 	t.Parallel()
 
-	s := newServer(t, sgsWithRows(nil))
+	s := newServer(t, sgsWithRows(nil), quotingRadar())
 
 	rec := s.do(t, http.MethodGet, "/api/indexes/cdi/history")
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
 }
 
-func TestIndexOperationsFailWhenTheDatabaseDoesNotAnswer(t *testing.T) {
+func TestMarketDataOperationsFailWhenTheDatabaseDoesNotAnswer(t *testing.T) {
 	t.Parallel()
 
-	s := newServer(t, sgsWithRows(nil))
+	s := newServer(t, sgsWithRows(nil), quotingRadar())
 	require.NoError(t, s.conn.Close())
 
 	tests := []struct {
@@ -228,6 +236,7 @@ func TestIndexOperationsFailWhenTheDatabaseDoesNotAnswer(t *testing.T) {
 		path   string
 	}{
 		{method: http.MethodGet, path: "/api/indexes/tr/history"},
+		{method: http.MethodGet, path: "/api/bonds"},
 		{method: http.MethodGet, path: "/api/market-data/status"},
 		{method: http.MethodPost, path: "/api/market-data/refresh"},
 	}

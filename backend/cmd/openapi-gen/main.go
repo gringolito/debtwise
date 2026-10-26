@@ -9,37 +9,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"time"
 
 	"github.com/gringolito/debtwise/backend/api"
-	"github.com/gringolito/debtwise/backend/indexes"
-	"github.com/gringolito/debtwise/backend/marketdata"
-	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
 const outputPath = "../docs/openapi.json"
-
-// unused stands in for the database and the domain packages, which serving the contract never
-// reads.
-type unused struct{}
-
-func (unused) Ping(context.Context) (int64, error) { return 0, nil }
-
-func (unused) History(context.Context, indexes.Index) ([]indexes.Value, error) { return nil, nil }
-
-func (unused) Status(context.Context, time.Time) (marketdata.Status, error) {
-	return marketdata.Status{}, nil
-}
-
-func (unused) Trigger() {}
-
-func (unused) Find(context.Context) (mortgage.Terms, error) { return mortgage.Terms{}, nil }
-
-func (unused) Save(context.Context, mortgage.Terms) (mortgage.Terms, error) {
-	return mortgage.Terms{}, nil
-}
-
-func (unused) Delete(context.Context) error { return nil }
 
 func main() {
 	if err := run(); err != nil {
@@ -52,7 +26,8 @@ func main() {
 func run() error {
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/openapi.json", nil)
 	rec := httptest.NewRecorder()
-	api.NewHandler(unused{}, unused{}, unused{}, unused{}).ServeHTTP(rec, req)
+	// Serving the contract reaches no service, so none is set.
+	api.NewHandler(api.Services{}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		return fmt.Errorf("GET /api/openapi.json returned %d", rec.Code)

@@ -14,11 +14,14 @@ import (
 	"time"
 
 	"github.com/gringolito/debtwise/backend/api"
+	"github.com/gringolito/debtwise/backend/bonds"
 	"github.com/gringolito/debtwise/backend/config"
 	"github.com/gringolito/debtwise/backend/db"
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/marketdata"
+	"github.com/gringolito/debtwise/backend/marketdata/radar"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
+	"github.com/gringolito/debtwise/backend/marketdata/sidra"
 	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
@@ -60,7 +63,9 @@ func run(logger *slog.Logger, level *slog.LevelVar) error {
 	logger.InfoContext(ctx, "database ready", "path", cfg.DBPath, "applied_migrations", applied)
 
 	store := indexes.NewStore(conn)
-	job := marketdata.New(sgs.New(), store, marketdata.WithLogger(logger))
+	quotes := bonds.NewStore(conn)
+	sources := marketdata.Sources{SGS: sgs.New(), SIDRA: sidra.New(), Radar: radar.New(cfg.RadarToken)}
+	job := marketdata.New(sources, store, quotes, marketdata.WithLogger(logger))
 
 	jobCtx, stopJob := context.WithCancel(ctx)
 	jobDone := make(chan struct{})
@@ -78,8 +83,14 @@ func run(logger *slog.Logger, level *slog.LevelVar) error {
 	}()
 
 	srv := &http.Server{
-		Addr:              ":" + cfg.Port,
-		Handler:           api.NewHandler(db.New(conn), store, job, mortgage.NewStore(conn), api.WithLogger(logger)),
+		Addr: ":" + cfg.Port,
+		Handler: api.NewHandler(api.Services{
+			Database:   db.New(conn),
+			Indexes:    store,
+			MarketData: job,
+			Mortgages:  mortgage.NewStore(conn),
+			Quotes:     quotes,
+		}, api.WithLogger(logger)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,

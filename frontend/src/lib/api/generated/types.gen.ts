@@ -4,6 +4,62 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}/api` | (string & {});
 };
 
+export type BondCatalogue = {
+    /**
+     * The bonds, grouped by type in the order the type's values are listed, each group by maturity.
+     */
+    bonds: Array<BondQuote>;
+};
+
+export type BondPrice = {
+    /**
+     * The yearly rate, as a decimal fraction: 0.1276 is 12.76% a year. For ntn_b_principal and ntn_b it is the real rate over IPCA.
+     */
+    rate: string;
+    /**
+     * The price of one bond in reais, as a decimal string.
+     */
+    unit_price: string;
+};
+
+export type BondQuote = {
+    /**
+     * The rate and price the bond is bought at. Absent when Tesouro Direto does not sell it.
+     */
+    buy?: BondPrice;
+    /**
+     * When the quote was fetched from its source.
+     */
+    fetched_at: string;
+    /**
+     * The date the bond matures.
+     */
+    maturity: string;
+    /**
+     * The rate and price the bond is sold back at.
+     */
+    sell: BondPrice;
+    /**
+     * ltn: Tesouro Prefixado; ntn_f: Tesouro Prefixado com Juros Semestrais; ntn_b_principal: Tesouro IPCA+; ntn_b: Tesouro IPCA+ com Juros Semestrais.
+     */
+    type: 'ltn' | 'ntn_f' | 'ntn_b_principal' | 'ntn_b';
+};
+
+export type BondsStatus = {
+    /**
+     * When the latest refresh of the bond prices failed. Absent unless status is failed.
+     */
+    failed_at?: string;
+    /**
+     * When the bond prices were last refreshed successfully. Absent when they never were.
+     */
+    refreshed_at?: string;
+    /**
+     * fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed.
+     */
+    status: 'fresh' | 'stale' | 'failed' | 'missing';
+};
+
 export type ContractRate = {
     /**
      * The basis the rate was entered on; the other one is derived from it.
@@ -42,7 +98,7 @@ export type CorrectionIndex = {
     /**
      * The index the value belongs to.
      */
-    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
+    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
     /**
      * The last day of the period the value covers. Equals period_start when the index is dated by month.
      */
@@ -126,7 +182,7 @@ export type Health = {
 };
 
 export type IndexHistory = {
-    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
+    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
     /**
      * The values of the index, oldest period first.
      */
@@ -138,7 +194,7 @@ export type IndexStatus = {
      * When the latest refresh of the index failed. Absent unless status is failed.
      */
     failed_at?: string;
-    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
+    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
     /**
      * When the index was last refreshed successfully. Absent when it never was.
      */
@@ -169,6 +225,10 @@ export type IndexValue = {
 };
 
 export type MarketDataStatus = {
+    /**
+     * How fresh the bond prices are.
+     */
+    bonds: BondsStatus;
     /**
      * How fresh each index is.
      */
@@ -338,6 +398,31 @@ export type ScheduledInstallment = {
     outstanding_balance: string;
 };
 
+export type ListBondsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bonds';
+};
+
+export type ListBondsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type ListBondsError = ListBondsErrors[keyof ListBondsErrors];
+
+export type ListBondsResponses = {
+    /**
+     * OK
+     */
+    200: BondCatalogue;
+};
+
+export type ListBondsResponse = ListBondsResponses[keyof ListBondsResponses];
+
 export type HealthData = {
     body?: never;
     path?: never;
@@ -369,7 +454,7 @@ export type IndexHistoryData = {
         /**
          * The index.
          */
-        index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
+        index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
     };
     query?: never;
     url: '/indexes/{index}/history';

@@ -15,14 +15,18 @@ type Config struct {
 	DBPath string
 	// LogLevel is the lowest level the server logs.
 	LogLevel slog.Level
+	// RadarToken is the Radar Opções API token that current bond prices load with. Without it
+	// every refresh of the bond prices fails.
+	RadarToken string
 }
 
 // Load reads the settings through getenv, such as os.Getenv, and applies the defaults for
 // those left unset.
 func Load(getenv func(string) string) (Config, error) {
 	cfg := Config{
-		Port:   cmp.Or(getenv("PORT"), "8080"),
-		DBPath: cmp.Or(getenv("DB_PATH"), "debtwise.db"),
+		Port:       cmp.Or(getenv("PORT"), "8080"),
+		DBPath:     cmp.Or(getenv("DB_PATH"), "debtwise.db"),
+		RadarToken: getenv("RADAR_TOKEN"),
 	}
 
 	port, err := strconv.ParseUint(cfg.Port, 10, 16)

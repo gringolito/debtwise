@@ -71,6 +71,19 @@ export function formatRate(fraction: string): string {
   return percentFormat.format(fraction as DecimalString);
 }
 
+/**
+ * formatNumber writes a decimal string the pt-BR way, without the zeros that pad its places:
+ * "7329.2500000000000" is "7.329,25".
+ */
+export function formatNumber(decimal: string): string {
+  const places = (decimal.split(".")[1] ?? "").replace(/0+$/, "").length;
+  const format = new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: places,
+    maximumFractionDigits: places,
+  });
+  return format.format(decimal as DecimalString);
+}
+
 /** moneyToInput turns the API's "60000.00" into the "60000,00" the owner types. */
 export function moneyToInput(decimal: string): string {
   return decimal.replace(".", ",");

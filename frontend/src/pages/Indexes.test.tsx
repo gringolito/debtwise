@@ -14,7 +14,9 @@ const FRESH_STATUS: MarketDataStatus = {
     { index: "selic_target", status: "fresh", refreshed_at: "2026-10-25T18:23:41Z" },
     { index: "selic", status: "fresh", refreshed_at: "2026-10-25T18:23:42Z" },
     { index: "ipca", status: "fresh", refreshed_at: "2026-10-25T18:23:43Z" },
+    { index: "ipca_number", status: "fresh", refreshed_at: "2026-10-25T18:23:44Z" },
   ],
+  bonds: { status: "fresh", refreshed_at: "2026-10-25T18:24:00Z" },
 };
 
 function value(periodStart: string, periodEnd: string, v: string): IndexValue {
@@ -44,6 +46,11 @@ const HISTORIES: Record<string, IndexValue[]> = {
     value("2024-03-20", "2024-03-20", "0.040168"),
   ],
   ipca: [value("2024-01-01", "2024-01-01", "0.42"), value("2024-02-01", "2024-02-01", "-0.32")],
+  ipca_number: [
+    value("2024-01-01", "2024-01-01", "6873.5500000000000"),
+    // SIDRA pads index numbers to 13 places.
+    value("2024-02-01", "2024-02-01", "6927.8500000000000"),
+  ],
 };
 
 interface Backend {
@@ -91,12 +98,14 @@ describe("indexes page", () => {
       "Selic meta",
       "Selic diária",
       "IPCA",
+      "IPCA (número-índice)",
     ]);
     expect(within(cards[0]).getByText("% no período")).toBeInTheDocument();
     expect(within(cards[1]).getByText("% no período")).toBeInTheDocument();
     expect(within(cards[2]).getByText("% a.a.")).toBeInTheDocument();
     expect(within(cards[3]).getByText("% a.d.")).toBeInTheDocument();
     expect(within(cards[4]).getByText("% no mês")).toBeInTheDocument();
+    expect(within(cards[5]).getByText("dez/1993 = 100")).toBeInTheDocument();
   });
 });
 
@@ -127,6 +136,12 @@ describe("latest value and refresh time", () => {
         refreshed: "25/10/2026 18:23",
       },
       { name: "IPCA", value: "-0,32%", period: "01/02/2024", refreshed: "25/10/2026 18:23" },
+      {
+        name: "IPCA (número-índice)",
+        value: "6.927,85",
+        period: "01/02/2024",
+        refreshed: "25/10/2026 18:23",
+      },
     ];
     for (const { name, value, period, refreshed } of expected) {
       const card = within(await screen.findByRole("region", { name }));
@@ -139,7 +154,7 @@ describe("latest value and refresh time", () => {
   it("says an index was never refreshed", async () => {
     stubBackend({
       status: {
-        refreshing: false,
+        ...FRESH_STATUS,
         indexes: FRESH_STATUS.indexes.map((s) =>
           s.index === "ipca" ? { index: "ipca", status: "missing" } : s,
         ),
@@ -160,7 +175,15 @@ describe("history chart", () => {
 
     renderAt("/indices");
 
-    for (const name of ["TR", "Remuneração da poupança", "Selic meta", "Selic diária", "IPCA"]) {
+    const names = [
+      "TR",
+      "Remuneração da poupança",
+      "Selic meta",
+      "Selic diária",
+      "IPCA",
+      "IPCA (número-índice)",
+    ];
+    for (const name of names) {
       const card = within(await screen.findByRole("region", { name }));
       expect(await card.findByRole("img", { name: `Histórico de ${name}` })).toBeInTheDocument();
     }
@@ -169,7 +192,7 @@ describe("history chart", () => {
   it("draws no chart for an index without values", async () => {
     stubBackend({
       status: {
-        refreshing: false,
+        ...FRESH_STATUS,
         indexes: FRESH_STATUS.indexes.map((s) =>
           s.index === "ipca" ? { index: "ipca", status: "missing" } : s,
         ),
@@ -190,7 +213,7 @@ describe("warnings", () => {
   function withStatuses(...overrides: MarketDataStatus["indexes"]): Backend {
     return {
       status: {
-        refreshing: false,
+        ...FRESH_STATUS,
         indexes: FRESH_STATUS.indexes.map((s) => overrides.find((o) => o.index === s.index) ?? s),
       },
       histories: HISTORIES,
@@ -281,6 +304,7 @@ describe("refresh", () => {
     "/api/indexes/selic_target/history",
     "/api/indexes/selic/history",
     "/api/indexes/ipca/history",
+    "/api/indexes/ipca_number/history",
   ];
 
   afterEach(() => {
@@ -292,7 +316,7 @@ describe("refresh", () => {
     const statuses = [
       { ...FRESH_STATUS, refreshing: true },
       {
-        refreshing: false,
+        ...FRESH_STATUS,
         indexes: FRESH_STATUS.indexes.map((s) =>
           s.index === "tr" ? { ...s, refreshed_at: "2026-10-25T18:30:00Z" } : s,
         ),

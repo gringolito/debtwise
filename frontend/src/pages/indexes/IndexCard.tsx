@@ -2,21 +2,22 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchIndexHistory, indexHistoryKey, type IndexName, type IndexStatus } from "@/lib/api";
-import { formatDateTime, formatPercent, formatPeriod } from "@/lib/format";
+import { formatDateTime, formatNumber, formatPercent, formatPeriod } from "@/lib/format";
 import { indexNames } from "@/lib/indexNames";
 import { IndexHistoryChart } from "@/pages/indexes/IndexHistoryChart";
-import { IndexWarning } from "@/pages/indexes/IndexWarning";
+import { FreshnessWarning } from "@/pages/marketdata/FreshnessWarning";
 
-const INDEX_UNITS: Record<IndexName, { unit: string }> = {
-  tr: { unit: "% no período" },
-  poupanca_yield: { unit: "% no período" },
-  selic_target: { unit: "% a.a." },
-  selic: { unit: "% a.d." },
-  ipca: { unit: "% no mês" },
+const INDEX_UNITS: Record<IndexName, { unit: string; format: (value: string) => string }> = {
+  tr: { unit: "% no período", format: formatPercent },
+  poupanca_yield: { unit: "% no período", format: formatPercent },
+  selic_target: { unit: "% a.a.", format: formatPercent },
+  selic: { unit: "% a.d.", format: formatPercent },
+  ipca: { unit: "% no mês", format: formatPercent },
+  ipca_number: { unit: "dez/1993 = 100", format: formatNumber },
 };
 
 export function IndexCard({ status }: { status: IndexStatus }) {
-  const { unit } = INDEX_UNITS[status.index];
+  const { unit, format } = INDEX_UNITS[status.index];
   const title = indexNames[status.index];
   const history = useQuery({
     queryKey: indexHistoryKey(status.index),
@@ -38,7 +39,7 @@ export function IndexCard({ status }: { status: IndexStatus }) {
               ? `Atualizado em ${formatDateTime(status.refreshed_at)}`
               : "Nunca atualizado"}
           </p>
-          <IndexWarning status={status} />
+          <FreshnessWarning status={status} missing="Ainda não há dados deste índice." />
           {history.isError && (
             <Alert variant="destructive">
               <AlertDescription>Não foi possível carregar o histórico.</AlertDescription>
@@ -46,7 +47,7 @@ export function IndexCard({ status }: { status: IndexStatus }) {
           )}
           {latest && (
             <div>
-              <p className="text-2xl font-semibold">{formatPercent(latest.value)}</p>
+              <p className="text-2xl font-semibold">{format(latest.value)}</p>
               <p className="text-muted-foreground">
                 {formatPeriod(latest.period_start, latest.period_end)}
               </p>

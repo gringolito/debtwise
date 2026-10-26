@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -16,15 +17,19 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gringolito/debtwise/backend/api"
+	"github.com/gringolito/debtwise/backend/bonds"
 	"github.com/gringolito/debtwise/backend/db"
 	"github.com/gringolito/debtwise/backend/decimal"
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/marketdata"
+	"github.com/gringolito/debtwise/backend/marketdata/radar"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
+	"github.com/gringolito/debtwise/backend/marketdata/sidra"
 )
 
-// fakeSGS answers every request for a series with the rows it holds for it that start on or after
-// the date the request starts from, as SGS does, and its error. It records each request's start.
+// fakeSGS stands in for SGS and SIDRA. It answers every request for a series, a SIDRA request
+// under its variable as the series, with the rows it holds for it that start on or after the date
+// the request starts from, as SGS does, and its error. It records each request's start.
 type fakeSGS struct {
 	mu       sync.Mutex
 	rows     map[int][]sgs.Observation
@@ -50,6 +55,17 @@ func (f *fakeSGS) Observations(_ context.Context, series int, from, _ time.Time)
 	return rows, f.failures[series]
 }
 
+func (f *fakeSGS) MonthlyValues(ctx context.Context, _, variable int, from, to time.Time) ([]sidra.Value, error) {
+	rows, err := f.Observations(ctx, variable, from, to)
+
+	values := make([]sidra.Value, 0, len(rows))
+	for _, r := range rows {
+		values = append(values, sidra.Value{Month: r.Start, Value: r.Value})
+	}
+
+	return values, err
+}
+
 func (f *fakeSGS) fail(series int, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -73,11 +89,11 @@ func (f *fakeSGS) lastFrom(series int) time.Time {
 	return f.from[series]
 }
 
-// sgsWithRows answers one row for every series DebtWise reads, or the rows passed for the
-// series they key.
+// sgsWithRows answers one row for every series DebtWise reads, SIDRA's IPCA index numbers
+// (variable 2266) among them, or the rows passed for the series they key.
 func sgsWithRows(rows map[int][]sgs.Observation) *fakeSGS {
 	f := &fakeSGS{rows: map[int][]sgs.Observation{}, failures: map[int]error{}, from: map[int]time.Time{}}
-	for _, series := range []int{226, 195, 432, 11, 433} {
+	for _, series := range []int{226, 195, 432, 11, 433, 2266} {
 		f.rows[series] = []sgs.Observation{{Start: date(2026, time.September, 1), Value: mustDecimal("1.00")}}
 	}
 
@@ -89,6 +105,77 @@ func sgsWithRows(rows map[int][]sgs.Observation) *fakeSGS {
 // wantDefaultRow is the history the row sgsWithRows answers by default is stored as.
 func wantDefaultRow() []indexValue {
 	return []indexValue{{PeriodStart: "2026-09-01", PeriodEnd: "2026-09-01", Value: "1.00"}}
+}
+
+// fakeRadar lists names, or fails the list with listErr, and answers each bond it holds, or its
+// failure. A bond it neither holds nor fails answers an error, so asking for it fails the refresh.
+type fakeRadar struct {
+	mu       sync.Mutex
+	names    []string
+	listErr  error
+	bonds    map[string]radar.Bond
+	failures map[string]error
+}
+
+func (f *fakeRadar) Names(context.Context) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return f.names, f.listErr
+}
+
+func (f *fakeRadar) Bond(_ context.Context, name string) (radar.Bond, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if err := f.failures[name]; err != nil {
+		return radar.Bond{}, err
+	}
+
+	b, ok := f.bonds[name]
+	if !ok {
+		return radar.Bond{}, errors.New("fakeRadar: unexpected request for " + name)
+	}
+
+	return b, nil
+}
+
+func (f *fakeRadar) fail(name string, err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.failures[name] = err
+}
+
+func (f *fakeRadar) list(names []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.names = names
+}
+
+func (f *fakeRadar) failList(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.listErr = err
+}
+
+func (f *fakeRadar) answer(b radar.Bond) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.bonds[b.Name] = b
+}
+
+// radarWithBonds lists names and holds bonds.
+func radarWithBonds(names []string, bonds ...radar.Bond) *fakeRadar {
+	f := &fakeRadar{names: names, bonds: map[string]radar.Bond{}, failures: map[string]error{}}
+	for _, b := range bonds {
+		f.bonds[b.Name] = b
+	}
+
+	return f
 }
 
 type server struct {
@@ -112,14 +199,17 @@ func openMigrated(t *testing.T) *sql.DB {
 }
 
 // newServer serves the API over a migrated database, with the market-data refresh job running
-// against source until the test ends. It returns once the job's first refresh is over.
-func newServer(t *testing.T, source marketdata.Source) server {
+// against indexSource, for SGS and SIDRA, and quoteSource until the test ends. It returns once the
+// job's first refresh is over.
+func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteSource) server {
 	t.Helper()
 
 	conn := openMigrated(t)
 	store := indexes.NewStore(conn)
+	quotes := bonds.NewStore(conn)
 	logger := slog.New(slog.DiscardHandler)
-	job := marketdata.New(source, store, marketdata.WithLogger(logger))
+	sources := marketdata.Sources{SGS: indexSource, SIDRA: indexSource, Radar: quoteSource}
+	job := marketdata.New(sources, store, quotes, marketdata.WithLogger(logger))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -135,7 +225,16 @@ func newServer(t *testing.T, source marketdata.Source) server {
 		<-done
 	})
 
-	s := server{handler: api.NewHandler(db.New(conn), store, job, nil, api.WithLogger(logger)), job: job, conn: conn}
+	s := server{
+		handler: api.NewHandler(api.Services{
+			Database:   db.New(conn),
+			Indexes:    store,
+			MarketData: job,
+			Quotes:     quotes,
+		}, api.WithLogger(logger)),
+		job:  job,
+		conn: conn,
+	}
 	s.waitForRefresh(t)
 
 	return s
@@ -150,16 +249,21 @@ func (s server) do(t *testing.T, method, path string) *httptest.ResponseRecorder
 	return rec
 }
 
-type indexStatus struct {
-	Index       string     `json:"index"`
+type freshness struct {
 	Status      string     `json:"status"`
 	RefreshedAt *time.Time `json:"refreshed_at"`
 	FailedAt    *time.Time `json:"failed_at"`
 }
 
+type indexStatus struct {
+	Index string `json:"index"`
+	freshness
+}
+
 type marketDataStatus struct {
 	Refreshing bool          `json:"refreshing"`
 	Indexes    []indexStatus `json:"indexes"`
+	Bonds      freshness     `json:"bonds"`
 }
 
 func (s server) status(t *testing.T) marketDataStatus {

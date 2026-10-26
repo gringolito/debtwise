@@ -6,4 +6,5 @@ export const indexNames: Record<IndexName, string> = {
   selic_target: "Selic meta",
   selic: "Selic diária",
   ipca: "IPCA",
+  ipca_number: "IPCA (número-índice)",
 };

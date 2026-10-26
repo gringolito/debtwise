@@ -1,6 +1,109 @@
 {
   "components": {
     "schemas": {
+      "BondCatalogue": {
+        "additionalProperties": false,
+        "properties": {
+          "bonds": {
+            "description": "The bonds, grouped by type in the order the type's values are listed, each group by maturity.",
+            "items": {
+              "$ref": "#/components/schemas/BondQuote"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "bonds"
+        ],
+        "type": "object"
+      },
+      "BondPrice": {
+        "additionalProperties": false,
+        "properties": {
+          "rate": {
+            "description": "The yearly rate, as a decimal fraction: 0.1276 is 12.76% a year. For ntn_b_principal and ntn_b it is the real rate over IPCA.",
+            "type": "string"
+          },
+          "unit_price": {
+            "description": "The price of one bond in reais, as a decimal string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rate",
+          "unit_price"
+        ],
+        "type": "object"
+      },
+      "BondQuote": {
+        "additionalProperties": false,
+        "properties": {
+          "buy": {
+            "$ref": "#/components/schemas/BondPrice",
+            "description": "The rate and price the bond is bought at. Absent when Tesouro Direto does not sell it."
+          },
+          "fetched_at": {
+            "description": "When the quote was fetched from its source.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "maturity": {
+            "description": "The date the bond matures.",
+            "format": "date",
+            "type": "string"
+          },
+          "sell": {
+            "$ref": "#/components/schemas/BondPrice",
+            "description": "The rate and price the bond is sold back at."
+          },
+          "type": {
+            "description": "ltn: Tesouro Prefixado; ntn_f: Tesouro Prefixado com Juros Semestrais; ntn_b_principal: Tesouro IPCA+; ntn_b: Tesouro IPCA+ com Juros Semestrais.",
+            "enum": [
+              "ltn",
+              "ntn_f",
+              "ntn_b_principal",
+              "ntn_b"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "maturity",
+          "sell",
+          "fetched_at"
+        ],
+        "type": "object"
+      },
+      "BondsStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "failed_at": {
+            "description": "When the latest refresh of the bond prices failed. Absent unless status is failed.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "refreshed_at": {
+            "description": "When the bond prices were last refreshed successfully. Absent when they never were.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "description": "fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed.",
+            "enum": [
+              "fresh",
+              "stale",
+              "failed",
+              "missing"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
       "ContractRate": {
         "additionalProperties": false,
         "properties": {
@@ -73,7 +176,8 @@
               "poupanca_yield",
               "selic_target",
               "selic",
-              "ipca"
+              "ipca",
+              "ipca_number"
             ],
             "type": "string"
           },
@@ -229,7 +333,8 @@
               "poupanca_yield",
               "selic_target",
               "selic",
-              "ipca"
+              "ipca",
+              "ipca_number"
             ],
             "type": "string"
           },
@@ -261,7 +366,8 @@
               "poupanca_yield",
               "selic_target",
               "selic",
-              "ipca"
+              "ipca",
+              "ipca_number"
             ],
             "type": "string"
           },
@@ -321,6 +427,10 @@
       "MarketDataStatus": {
         "additionalProperties": false,
         "properties": {
+          "bonds": {
+            "$ref": "#/components/schemas/BondsStatus",
+            "description": "How fresh the bond prices are."
+          },
           "indexes": {
             "description": "How fresh each index is.",
             "items": {
@@ -335,7 +445,8 @@
         },
         "required": [
           "refreshing",
-          "indexes"
+          "indexes",
+          "bonds"
         ],
         "type": "object"
       },
@@ -631,6 +742,38 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/bonds": {
+      "get": {
+        "description": "Lists the Tesouro Direto bonds DebtWise compares with their buy and sell rates and prices, as of the latest refresh of the market data.",
+        "operationId": "list-bonds",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BondCatalogue"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the bonds with their prices",
+        "tags": [
+          "Bonds"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "description": "Reports whether the server is up and able to read its data.",
@@ -680,7 +823,8 @@
                 "poupanca_yield",
                 "selic_target",
                 "selic",
-                "ipca"
+                "ipca",
+                "ipca_number"
               ],
               "type": "string"
             }
@@ -716,7 +860,7 @@
     },
     "/market-data/refresh": {
       "post": {
-        "description": "Starts refreshing every index from its source and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.",
+        "description": "Starts refreshing every index and the bond prices from their sources and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.",
         "operationId": "refresh-market-data",
         "responses": {
           "202": {
@@ -748,7 +892,7 @@
     },
     "/market-data/status": {
       "get": {
-        "description": "Reports, for each index, when it was last refreshed from its source and whether that data is stale or its latest refresh failed.",
+        "description": "Reports, for each index and for the bond prices, when they were last refreshed from their source and whether that data is stale or its latest refresh failed.",
         "operationId": "market-data-status",
         "responses": {
           "200": {
