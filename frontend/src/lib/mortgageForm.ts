@@ -5,6 +5,7 @@ import {
   type RegisteredMortgage,
 } from "@/lib/api";
 import { fractionToPercent, inputToMoney, moneyToInput, percentToFraction } from "@/lib/format";
+import { indexNames } from "@/lib/indexNames";
 
 export type Basis = ContractRate["basis"];
 export type AmortizationSystem = MortgageTerms["amortization_system"];
@@ -12,6 +13,15 @@ export type AmortizationSystem = MortgageTerms["amortization_system"];
 export const amortizationSystemLabels: Record<AmortizationSystem, string> = {
   sac: "SAC",
   price: "Price",
+};
+
+export type Indexer = MortgageTerms["indexer"];
+
+export const indexerLabels: Record<Indexer, string> = {
+  none: "Nenhum (prefixado)",
+  tr: indexNames.tr,
+  poupanca_yield: indexNames.poupanca_yield,
+  ipca: indexNames.ipca,
 };
 
 /** A row in an editable list; `id` keeps a row's inputs with it when another row is removed. */
@@ -40,6 +50,7 @@ export interface FormValues {
   termMonths: string;
   firstInstallmentDate: string;
   amortizationSystem: AmortizationSystem;
+  indexer: Indexer;
   appraisalValue: string;
   contractRates: ContractRateRow[];
   mipRates: MonthlyRateRow[];
@@ -70,6 +81,7 @@ export function emptyValues(): FormValues {
     termMonths: "",
     firstInstallmentDate: "",
     amortizationSystem: "sac",
+    indexer: "none",
     appraisalValue: "",
     contractRates: [blankContractRate()],
     mipRates: [blankMonthlyRate()],
@@ -93,6 +105,7 @@ export function valuesFromMortgage(mortgage: RegisteredMortgage): FormValues {
     termMonths: String(mortgage.term_months),
     firstInstallmentDate: mortgage.first_installment_date,
     amortizationSystem: mortgage.amortization_system,
+    indexer: mortgage.indexer,
     appraisalValue: moneyToInput(mortgage.appraisal_value),
     contractRates: mortgage.contract_rates.map((r) => ({
       id: nextRowId(),
@@ -127,6 +140,7 @@ export function termsFromValues(values: FormValues): MortgageTerms {
     term_months: termToNumber(values.termMonths),
     first_installment_date: values.firstInstallmentDate,
     amortization_system: values.amortizationSystem,
+    indexer: values.indexer,
     appraisal_value: inputToMoney(values.appraisalValue),
     contract_rates: values.contractRates.map((r) => ({
       effective_from: r.effectiveFrom,

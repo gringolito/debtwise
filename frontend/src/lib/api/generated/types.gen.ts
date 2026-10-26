@@ -38,6 +38,29 @@ export type ContractRateTerms = {
     rate: string;
 };
 
+export type CorrectionIndex = {
+    /**
+     * The index the value belongs to.
+     */
+    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
+    /**
+     * The last day of the period the value covers. Equals period_start when the index is dated by month.
+     */
+    period_end: string;
+    /**
+     * The first day of the period the value covers.
+     */
+    period_start: string;
+    /**
+     * published: the balance was corrected by the published value; missing: no value is available for the period yet, so the balance was not corrected by it.
+     */
+    status: 'published' | 'missing';
+    /**
+     * The index value for the period, in percent, as a decimal string. Absent when status is missing.
+     */
+    value?: string;
+};
+
 export type ErrorDetail = {
     /**
      * Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
@@ -197,6 +220,10 @@ export type MortgageTerms = {
      */
     first_installment_date: string;
     /**
+     * The index the contract corrects the outstanding balance by: TR, the poupança yield, IPCA, or none for a fixed-rate contract.
+     */
+    indexer: 'none' | 'tr' | 'poupanca_yield' | 'ipca';
+    /**
      * The MIP (life and disability insurance) rate, and its changes as the borrower moves into a new age band.
      */
     mip_rates: Array<MonthlyRate>;
@@ -240,6 +267,10 @@ export type RegisteredMortgage = {
      */
     first_installment_date: string;
     /**
+     * The index the contract corrects the outstanding balance by: TR, the poupança yield, IPCA, or none for a fixed-rate contract.
+     */
+    indexer: 'none' | 'tr' | 'poupanca_yield' | 'ipca';
+    /**
      * The MIP (life and disability insurance) rate and its changes, in date order.
      */
     mip_rates: Array<MonthlyRate>;
@@ -270,6 +301,10 @@ export type ScheduledInstallment = {
      */
     amount: string;
     /**
+     * Indexer correction added to the outstanding balance before interest is charged, in reais, as a decimal string.
+     */
+    correction: string;
+    /**
      * DFI (property damage insurance) premium, in reais, as a decimal string.
      */
     dfi: string;
@@ -281,6 +316,10 @@ export type ScheduledInstallment = {
      * Admin fee, in reais, as a decimal string.
      */
     fee: string;
+    /**
+     * The index values behind the correction, oldest period first. Empty when no index value applies to the installment.
+     */
+    index_values: Array<CorrectionIndex>;
     /**
      * Interest charged, in reais, as a decimal string.
      */

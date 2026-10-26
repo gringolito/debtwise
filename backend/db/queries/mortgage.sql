@@ -4,14 +4,14 @@ SELECT * FROM mortgages ORDER BY id LIMIT 1;
 -- name: InsertMortgage :one
 INSERT INTO mortgages (
     contract_date, original_amount, term_months, first_installment_date, amortization_system,
-    appraisal_value
-) VALUES (?, ?, ?, ?, ?, ?)
+    indexer, appraisal_value
+) VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING id;
 
 -- name: UpdateMortgage :exec
 UPDATE mortgages
 SET contract_date = ?, original_amount = ?, term_months = ?, first_installment_date = ?,
-    amortization_system = ?, appraisal_value = ?
+    amortization_system = ?, indexer = ?, appraisal_value = ?
 WHERE id = ?;
 
 -- name: DeleteMortgages :execrows

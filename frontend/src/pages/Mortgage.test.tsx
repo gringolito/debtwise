@@ -1,7 +1,17 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { CorrectionIndex } from "@/lib/api";
 import { stubMortgageApi } from "@/test/mortgageApi";
-import { registeredMortgage, schedule, scheduleAfterSave } from "@/test/mortgageFixtures";
+import {
+  deferredSchedule,
+  ipcaMortgage,
+  ipcaSchedule,
+  registeredMortgage,
+  schedule,
+  scheduleAfterSave,
+  trMortgage,
+  trSchedule,
+} from "@/test/mortgageFixtures";
 import { renderAt } from "@/test/renderAt";
 import { problem, stubRoutes } from "@/test/stubServer";
 
@@ -91,6 +101,7 @@ describe("mortgage page with a mortgage", () => {
       ["Prazo", "6 meses"],
       ["Primeira prestação", "10/01/2024"],
       ["Sistema de amortização", "SAC"],
+      ["Indexador", "Nenhum (prefixado)"],
       ["Valor de avaliação", "R$ 100.000,00"],
     ]);
   });
@@ -167,6 +178,8 @@ describe("mortgage page with a mortgage", () => {
       [
         "Nº",
         "Vencimento",
+        "Índice",
+        "Correção",
         "Juros",
         "Amortização",
         "MIP",
@@ -178,6 +191,8 @@ describe("mortgage page with a mortgage", () => {
       [
         "1",
         "10/01/2024",
+        "—",
+        "R$ 0,00",
         "R$ 600,00",
         "R$ 10.000,00",
         "R$ 18,00",
@@ -189,6 +204,8 @@ describe("mortgage page with a mortgage", () => {
       [
         "2",
         "10/02/2024",
+        "—",
+        "R$ 0,00",
         "R$ 500,00",
         "R$ 10.000,00",
         "R$ 15,00",
@@ -200,6 +217,8 @@ describe("mortgage page with a mortgage", () => {
       [
         "3",
         "10/03/2024",
+        "—",
+        "R$ 0,00",
         "R$ 400,00",
         "R$ 10.000,00",
         "R$ 12,00",
@@ -211,6 +230,8 @@ describe("mortgage page with a mortgage", () => {
       [
         "4",
         "10/04/2024",
+        "—",
+        "R$ 0,00",
         "R$ 300,00",
         "R$ 10.000,00",
         "R$ 15,00",
@@ -222,6 +243,8 @@ describe("mortgage page with a mortgage", () => {
       [
         "5",
         "10/05/2024",
+        "—",
+        "R$ 0,00",
         "R$ 200,00",
         "R$ 10.000,00",
         "R$ 10,00",
@@ -233,6 +256,8 @@ describe("mortgage page with a mortgage", () => {
       [
         "6",
         "10/06/2024",
+        "—",
+        "R$ 0,00",
         "R$ 100,00",
         "R$ 10.000,00",
         "R$ 5,00",
@@ -242,6 +267,27 @@ describe("mortgage page with a mortgage", () => {
         "R$ 0,00",
       ],
     ]);
+  });
+
+  it("shows the indexer of the mortgage among its terms", async () => {
+    stubMortgageApi({ mortgage: trMortgage });
+
+    renderAt("/financiamento");
+
+    const terms = await screen.findByRole("region", { name: "Condições do contrato" });
+    const entries = within(terms)
+      .getAllByRole("term")
+      .map((term) => [text(term), text(term.nextElementSibling as HTMLElement)]);
+    expect(entries).toContainEqual(["Indexador", "TR"]);
+  });
+
+  it("shows no warning above the schedule of a mortgage without an indexer", async () => {
+    stubMortgageApi({ mortgage: registeredMortgage });
+
+    renderAt("/financiamento");
+
+    await screen.findByRole("table");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("says the schedule could not load while still showing the terms", async () => {
@@ -268,6 +314,167 @@ describe("mortgage page with a mortgage", () => {
     renderAt("/financiamento");
 
     expect(await screen.findByText("Carregando evolução…")).toBeInTheDocument();
+  });
+});
+
+describe("the schedule of an indexed mortgage", () => {
+  const header = [
+    "Nº",
+    "Vencimento",
+    "Índice",
+    "Correção",
+    "Juros",
+    "Amortização",
+    "MIP",
+    "DFI",
+    "Taxa adm.",
+    "Prestação",
+    "Saldo devedor",
+  ];
+
+  it("shows each correction with the index value and period behind it", async () => {
+    stubMortgageApi({ mortgage: trMortgage, schedule: trSchedule });
+
+    renderAt("/financiamento");
+
+    const table = await screen.findByRole("table");
+    expect(rowTexts(table)).toEqual([
+      header,
+      [
+        "1",
+        "10/01/2024",
+        "TR 0,0539% 10/12/2023 a 10/01/2024",
+        "R$ 32,34",
+        "R$ 603,23",
+        "R$ 10.000,00",
+        "R$ 18,00",
+        "R$ 10,00",
+        "R$ 12,50",
+        "R$ 10.643,73",
+        "R$ 50.032,34",
+      ],
+      [
+        "2",
+        "10/02/2024",
+        "TR Sem índice 10/01/2024 a 10/02/2024",
+        "R$ 0,00",
+        "R$ 500,00",
+        "R$ 10.000,00",
+        "R$ 15,00",
+        "R$ 10,00",
+        "R$ 12,50",
+        "R$ 10.537,50",
+        "R$ 40.032,34",
+      ],
+      [
+        "3",
+        "10/03/2024",
+        "—",
+        "R$ 0,00",
+        "R$ 400,00",
+        "R$ 10.000,00",
+        "R$ 12,00",
+        "R$ 10,00",
+        "R$ 12,50",
+        "R$ 10.434,50",
+        "R$ 30.032,34",
+      ],
+    ]);
+  });
+
+  it("shows an IPCA value with the month it is for", async () => {
+    stubMortgageApi({ mortgage: ipcaMortgage, schedule: ipcaSchedule });
+
+    renderAt("/financiamento");
+
+    const table = await screen.findByRole("table");
+    expect(rowTexts(table).slice(1)).toEqual([
+      [
+        "1",
+        "10/01/2024",
+        "IPCA 0,56% dez/2023",
+        "R$ 336,00",
+        "R$ 603,23",
+        "R$ 10.000,00",
+        "R$ 18,00",
+        "R$ 10,00",
+        "R$ 12,50",
+        "R$ 10.643,73",
+        "R$ 50.336,00",
+      ],
+    ]);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("warns above the schedule how many past months have no published index", async () => {
+    stubMortgageApi({ mortgage: trMortgage, schedule: trSchedule });
+
+    renderAt("/financiamento");
+
+    const alert = await screen.findByRole("alert");
+    expect(text(alert)).toBe(
+      "Faltam valores publicados de TR para 1 mês passado. Esse mês não foi corrigido. Atualize os dados de mercado na página Índices.",
+    );
+    expect(within(alert).getByRole("link", { name: "Índices" })).toHaveAttribute(
+      "href",
+      "/indices",
+    );
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(
+      alert.compareDocumentPosition(screen.getByRole("table")) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("counts every month without a published index", async () => {
+    const missing = (start: string, end: string): CorrectionIndex => ({
+      index: "poupanca_yield",
+      status: "missing",
+      period_start: start,
+      period_end: end,
+    });
+    const [first, second, third] = trSchedule.installments;
+    stubMortgageApi({
+      mortgage: { ...trMortgage, indexer: "poupanca_yield" },
+      schedule: {
+        installments: [
+          { ...first, index_values: [missing("2023-12-10", "2024-01-10")] },
+          { ...second, index_values: [missing("2024-01-10", "2024-02-10")] },
+          third,
+        ],
+      },
+    });
+
+    renderAt("/financiamento");
+
+    expect(text(await screen.findByRole("alert"))).toBe(
+      "Faltam valores publicados de Remuneração da poupança para 2 meses passados. Esses meses não foram corrigidos. Atualize os dados de mercado na página Índices.",
+    );
+  });
+
+  it("lists each index value of an installment on its own line and counts the missing ones", async () => {
+    stubMortgageApi({ mortgage: trMortgage, schedule: deferredSchedule });
+
+    renderAt("/financiamento");
+
+    const table = await screen.findByRole("table");
+    expect(rowTexts(table).slice(1)).toEqual([
+      [
+        "1",
+        "10/03/2024",
+        "TR Sem índice 10/12/2023 a 10/01/2024 TR Sem índice 10/01/2024 a 10/02/2024 TR 0,2166% 10/02/2024 a 10/03/2024",
+        "R$ 108,30",
+        "R$ 603,23",
+        "R$ 10.000,00",
+        "R$ 18,00",
+        "R$ 10,00",
+        "R$ 12,50",
+        "R$ 10.643,73",
+        "R$ 50.108,30",
+      ],
+    ]);
+    expect(text(await screen.findByRole("alert"))).toBe(
+      "Faltam valores publicados de TR para 2 meses passados. Esses meses não foram corrigidos. Atualize os dados de mercado na página Índices.",
+    );
   });
 });
 

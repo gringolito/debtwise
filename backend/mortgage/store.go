@@ -118,6 +118,7 @@ func saveMortgage(ctx context.Context, q *db.Queries, terms Terms) (int64, error
 			TermMonths:           int64(terms.TermMonths),
 			FirstInstallmentDate: formatDate(terms.FirstInstallmentDate),
 			AmortizationSystem:   string(terms.AmortizationSystem),
+			Indexer:              string(terms.Indexer),
 			AppraisalValue:       terms.AppraisalValue.String(),
 		})
 		if err != nil {
@@ -138,6 +139,7 @@ func saveMortgage(ctx context.Context, q *db.Queries, terms Terms) (int64, error
 		TermMonths:           int64(terms.TermMonths),
 		FirstInstallmentDate: formatDate(terms.FirstInstallmentDate),
 		AmortizationSystem:   string(terms.AmortizationSystem),
+		Indexer:              string(terms.Indexer),
 		AppraisalValue:       terms.AppraisalValue.String(),
 	})
 	if err != nil {
@@ -205,6 +207,7 @@ func readTerms(ctx context.Context, q *db.Queries, row db.Mortgage) (Terms, erro
 		TermMonths:           int(row.TermMonths),
 		FirstInstallmentDate: p.date(row.FirstInstallmentDate),
 		AmortizationSystem:   AmortizationSystem(row.AmortizationSystem),
+		Indexer:              Indexer(row.Indexer),
 		AppraisalValue:       p.decimal(row.AppraisalValue),
 	}
 

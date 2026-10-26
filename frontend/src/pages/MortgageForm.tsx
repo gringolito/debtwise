@@ -10,6 +10,8 @@ import {
   amortizationSystemLabels,
   emptyValues,
   type FormValues,
+  type Indexer,
+  indexerLabels,
   invalidLocations,
   termsFromValues,
   valuesFromMortgage,
@@ -19,6 +21,10 @@ import { useMortgage, useSaveMortgage } from "@/lib/mortgageQueries";
 const systemOptions = (
   Object.entries(amortizationSystemLabels) as [AmortizationSystem, string][]
 ).map(([value, label]) => ({ value, label }));
+
+const indexerOptions = (Object.entries(indexerLabels) as [Indexer, string][]).map(
+  ([value, label]) => ({ value, label }),
+);
 
 type ListName = "contractRates" | "mipRates" | "dfiRates" | "fees";
 
@@ -95,6 +101,13 @@ function MortgageFormFields({ mortgage }: { mortgage: RegisteredMortgage | null 
           value={values.amortizationSystem}
           onChange={(value) => set("amortizationSystem", value)}
           invalid={isInvalid("amortization_system")}
+        />
+        <SelectField
+          label="Indexador"
+          options={indexerOptions}
+          value={values.indexer}
+          onChange={(value) => set("indexer", value)}
+          invalid={isInvalid("indexer")}
         />
         <TextField
           label="Valor de avaliação"

@@ -15,6 +15,27 @@ export function formatPeriod(start: string, end: string): string {
   return `${formatDate(start)} a ${formatDate(end)}`;
 }
 
+const MONTH_NAMES = [
+  "jan",
+  "fev",
+  "mar",
+  "abr",
+  "mai",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "out",
+  "nov",
+  "dez",
+];
+
+/** formatMonth writes the month of an ISO date the short pt-BR way: "2023-12-01" is "dez/2023". */
+export function formatMonth(isoDate: string): string {
+  const [year, month] = isoDate.split("-");
+  return `${MONTH_NAMES[Number(month) - 1]}/${year}`;
+}
+
 const timeFormat = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 const dateFormat = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",

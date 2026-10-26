@@ -58,7 +58,7 @@ func (q *Queries) DeleteMortgages(ctx context.Context) (int64, error) {
 }
 
 const findMortgage = `-- name: FindMortgage :one
-SELECT id, contract_date, original_amount, term_months, first_installment_date, amortization_system, appraisal_value FROM mortgages ORDER BY id LIMIT 1
+SELECT id, contract_date, original_amount, term_months, first_installment_date, amortization_system, appraisal_value, indexer FROM mortgages ORDER BY id LIMIT 1
 `
 
 func (q *Queries) FindMortgage(ctx context.Context) (Mortgage, error) {
@@ -72,6 +72,7 @@ func (q *Queries) FindMortgage(ctx context.Context) (Mortgage, error) {
 		&i.FirstInstallmentDate,
 		&i.AmortizationSystem,
 		&i.AppraisalValue,
+		&i.Indexer,
 	)
 	return i, err
 }
@@ -79,8 +80,8 @@ func (q *Queries) FindMortgage(ctx context.Context) (Mortgage, error) {
 const insertMortgage = `-- name: InsertMortgage :one
 INSERT INTO mortgages (
     contract_date, original_amount, term_months, first_installment_date, amortization_system,
-    appraisal_value
-) VALUES (?, ?, ?, ?, ?, ?)
+    indexer, appraisal_value
+) VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING id
 `
 
@@ -90,6 +91,7 @@ type InsertMortgageParams struct {
 	TermMonths           int64
 	FirstInstallmentDate string
 	AmortizationSystem   string
+	Indexer              string
 	AppraisalValue       string
 }
 
@@ -100,6 +102,7 @@ func (q *Queries) InsertMortgage(ctx context.Context, arg InsertMortgageParams) 
 		arg.TermMonths,
 		arg.FirstInstallmentDate,
 		arg.AmortizationSystem,
+		arg.Indexer,
 		arg.AppraisalValue,
 	)
 	var id int64
@@ -306,7 +309,7 @@ func (q *Queries) ListMortgageMIPRates(ctx context.Context, mortgageID int64) ([
 const updateMortgage = `-- name: UpdateMortgage :exec
 UPDATE mortgages
 SET contract_date = ?, original_amount = ?, term_months = ?, first_installment_date = ?,
-    amortization_system = ?, appraisal_value = ?
+    amortization_system = ?, indexer = ?, appraisal_value = ?
 WHERE id = ?
 `
 
@@ -316,6 +319,7 @@ type UpdateMortgageParams struct {
 	TermMonths           int64
 	FirstInstallmentDate string
 	AmortizationSystem   string
+	Indexer              string
 	AppraisalValue       string
 	ID                   int64
 }
@@ -327,6 +331,7 @@ func (q *Queries) UpdateMortgage(ctx context.Context, arg UpdateMortgageParams) 
 		arg.TermMonths,
 		arg.FirstInstallmentDate,
 		arg.AmortizationSystem,
+		arg.Indexer,
 		arg.AppraisalValue,
 		arg.ID,
 	)

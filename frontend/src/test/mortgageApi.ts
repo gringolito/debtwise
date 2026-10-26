@@ -5,6 +5,8 @@ import { problem, stubRoutes } from "./stubServer";
 interface MortgageApiOptions {
   /** The mortgage registered before the test starts; none by default. */
   mortgage?: RegisteredMortgage;
+  /** The schedule served before any save; the six-installment `schedule` fixture by default. */
+  schedule?: Schedule;
   /** Answers a PUT; a registered mortgage means success and is what the next GET returns. */
   onSave?: (body: unknown) => RegisteredMortgage | Response;
   /** The schedule the server serves once a PUT succeeds, in place of the first one. */
@@ -13,9 +15,14 @@ interface MortgageApiOptions {
 
 // Fakes the mortgage endpoints with the state the real server keeps: PUT registers, DELETE
 // removes, and the schedule exists while a mortgage does.
-export function stubMortgageApi({ mortgage, onSave, scheduleAfterSave }: MortgageApiOptions = {}) {
+export function stubMortgageApi({
+  mortgage,
+  schedule: initialSchedule = schedule,
+  onSave,
+  scheduleAfterSave,
+}: MortgageApiOptions = {}) {
   let registered = mortgage ?? null;
-  let served = schedule;
+  let served = initialSchedule;
   const notFound = () => problem(404, "Not Found", "no mortgage is registered");
 
   return stubRoutes({

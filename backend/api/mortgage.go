@@ -26,6 +26,7 @@ type mortgageTerms struct {
 	TermMonths           int                 `json:"term_months" minimum:"1" maximum:"600" doc:"Number of monthly installments."`
 	FirstInstallmentDate string              `json:"first_installment_date" format:"date" doc:"Due date of the first installment."`
 	AmortizationSystem   string              `json:"amortization_system" enum:"sac,price" doc:"How each installment splits into amortization and interest."`
+	Indexer              string              `json:"indexer" enum:"none,tr,poupanca_yield,ipca" doc:"The index the contract corrects the outstanding balance by: TR, the poupança yield, IPCA, or none for a fixed-rate contract."`
 	AppraisalValue       string              `json:"appraisal_value" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"Appraisal value of the property, in reais, as a decimal string."`
 	ContractRates        []contractRateTerms `json:"contract_rates" nullable:"false" doc:"The contract's interest rate, and its later changes."`
 	MIPRates             []monthlyRate       `json:"mip_rates" nullable:"false" doc:"The MIP (life and disability insurance) rate, and its changes as the borrower moves into a new age band."`
@@ -55,6 +56,7 @@ type registeredMortgage struct {
 	TermMonths           int            `json:"term_months" doc:"Number of monthly installments."`
 	FirstInstallmentDate string         `json:"first_installment_date" format:"date" doc:"Due date of the first installment."`
 	AmortizationSystem   string         `json:"amortization_system" enum:"sac,price" doc:"How each installment splits into amortization and interest."`
+	Indexer              string         `json:"indexer" enum:"none,tr,poupanca_yield,ipca" doc:"The index the contract corrects the outstanding balance by: TR, the poupança yield, IPCA, or none for a fixed-rate contract."`
 	AppraisalValue       string         `json:"appraisal_value" doc:"Appraisal value of the property, in reais, as a decimal string."`
 	ContractRates        []contractRate `json:"contract_rates" nullable:"false" doc:"The contract's interest rate and its later changes, in date order."`
 	MIPRates             []monthlyRate  `json:"mip_rates" nullable:"false" doc:"The MIP (life and disability insurance) rate and its changes, in date order."`
@@ -74,15 +76,25 @@ type schedule struct {
 }
 
 type scheduledInstallment struct {
-	Number             int    `json:"number" doc:"Installment number, counting from 1."`
-	DueDate            string `json:"due_date" format:"date" doc:"Date the installment falls due."`
-	Interest           string `json:"interest" doc:"Interest charged, in reais, as a decimal string."`
-	Amortization       string `json:"amortization" doc:"Outstanding balance paid off, in reais, as a decimal string."`
-	MIP                string `json:"mip" doc:"MIP (life and disability insurance) premium, in reais, as a decimal string."`
-	DFI                string `json:"dfi" doc:"DFI (property damage insurance) premium, in reais, as a decimal string."`
-	Fee                string `json:"fee" doc:"Admin fee, in reais, as a decimal string."`
-	Amount             string `json:"amount" doc:"Total the installment charges, in reais, as a decimal string."`
-	OutstandingBalance string `json:"outstanding_balance" doc:"Outstanding balance after the installment, in reais, as a decimal string."`
+	Number             int               `json:"number" doc:"Installment number, counting from 1."`
+	DueDate            string            `json:"due_date" format:"date" doc:"Date the installment falls due."`
+	Correction         string            `json:"correction" doc:"Indexer correction added to the outstanding balance before interest is charged, in reais, as a decimal string."`
+	IndexValues        []correctionIndex `json:"index_values" nullable:"false" doc:"The index values behind the correction, oldest period first. Empty when no index value applies to the installment."`
+	Interest           string            `json:"interest" doc:"Interest charged, in reais, as a decimal string."`
+	Amortization       string            `json:"amortization" doc:"Outstanding balance paid off, in reais, as a decimal string."`
+	MIP                string            `json:"mip" doc:"MIP (life and disability insurance) premium, in reais, as a decimal string."`
+	DFI                string            `json:"dfi" doc:"DFI (property damage insurance) premium, in reais, as a decimal string."`
+	Fee                string            `json:"fee" doc:"Admin fee, in reais, as a decimal string."`
+	Amount             string            `json:"amount" doc:"Total the installment charges, in reais, as a decimal string."`
+	OutstandingBalance string            `json:"outstanding_balance" doc:"Outstanding balance after the installment, in reais, as a decimal string."`
+}
+
+type correctionIndex struct {
+	Index       indexCode `json:"index" doc:"The index the value belongs to."`
+	Status      string    `json:"status" enum:"published,missing" doc:"published: the balance was corrected by the published value; missing: no value is available for the period yet, so the balance was not corrected by it."`
+	Value       string    `json:"value,omitempty" doc:"The index value for the period, in percent, as a decimal string. Absent when status is missing."`
+	PeriodStart string    `json:"period_start" format:"date" doc:"The first day of the period the value covers."`
+	PeriodEnd   string    `json:"period_end" format:"date" doc:"The last day of the period the value covers. Equals period_start when the index is dated by month."`
 }
 
 type mortgageOutput struct {
@@ -98,7 +110,7 @@ const (
 	mortgageTag  = "Mortgage"
 )
 
-func registerMortgage(humaAPI huma.API, mortgages Mortgages) {
+func registerMortgage(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
 	register(humaAPI, huma.Operation{
 		OperationID: "read-mortgage",
 		Method:      http.MethodGet,
@@ -174,11 +186,20 @@ func registerMortgage(humaAPI huma.API, mortgages Mortgages) {
 			return nil, mortgageFailure(err)
 		}
 
+		history := mortgage.History{}
+		for _, index := range terms.Indexer.Indexes() {
+			if history[index], err = store.History(ctx, index); err != nil {
+				return nil, err
+			}
+		}
+
 		out := &scheduleOutput{Body: schedule{Installments: make([]scheduledInstallment, 0, terms.TermMonths)}}
-		for m := range terms.Schedule() {
+		for m := range terms.Schedule(history, time.Now()) {
 			out.Body.Installments = append(out.Body.Installments, scheduledInstallment{
 				Number:             m.Number,
 				DueDate:            m.DueDate.Format(time.DateOnly),
+				Correction:         m.Correction.String(),
+				IndexValues:        newCorrectionIndexes(m.IndexValues),
 				Interest:           m.Interest.String(),
 				Amortization:       m.Amortization.String(),
 				MIP:                m.MIP.String(),
@@ -201,6 +222,27 @@ func mortgageFailure(err error) error {
 	return err
 }
 
+func newCorrectionIndexes(values []mortgage.IndexValue) []correctionIndex {
+	out := make([]correctionIndex, 0, len(values))
+
+	for _, v := range values {
+		index := correctionIndex{
+			Index:       indexCode(v.Index),
+			Status:      "published",
+			Value:       v.Value.String(),
+			PeriodStart: v.PeriodStart.Format(time.DateOnly),
+			PeriodEnd:   v.PeriodEnd.Format(time.DateOnly),
+		}
+		if v.Missing {
+			index.Status, index.Value = "missing", ""
+		}
+
+		out = append(out, index)
+	}
+
+	return out
+}
+
 // terms converts a body whose dates and decimals the schema has already checked.
 func (b mortgageTerms) terms() (mortgage.Terms, error) {
 	var p parser
@@ -211,6 +253,7 @@ func (b mortgageTerms) terms() (mortgage.Terms, error) {
 		TermMonths:           b.TermMonths,
 		FirstInstallmentDate: p.date(b.FirstInstallmentDate),
 		AmortizationSystem:   mortgage.AmortizationSystem(b.AmortizationSystem),
+		Indexer:              mortgage.Indexer(b.Indexer),
 		AppraisalValue:       p.decimal(b.AppraisalValue),
 	}
 
@@ -246,6 +289,7 @@ func newRegisteredMortgage(terms mortgage.Terms) registeredMortgage {
 		TermMonths:           terms.TermMonths,
 		FirstInstallmentDate: terms.FirstInstallmentDate.Format(time.DateOnly),
 		AmortizationSystem:   string(terms.AmortizationSystem),
+		Indexer:              string(terms.Indexer),
 		AppraisalValue:       terms.AppraisalValue.String(),
 		ContractRates:        make([]contractRate, 0, len(terms.ContractRates)),
 		MIPRates:             make([]monthlyRate, 0, len(terms.MIPRates)),
