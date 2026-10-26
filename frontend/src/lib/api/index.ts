@@ -5,6 +5,7 @@ import {
   deleteMortgage,
   health,
   indexHistory,
+  listBonds,
   marketDataStatus,
   readMortgage,
   readMortgageSchedule,
@@ -12,6 +13,10 @@ import {
   saveMortgage,
 } from "./generated/sdk.gen";
 import type {
+  BondCatalogue,
+  BondPrice,
+  BondQuote,
+  BondsStatus,
   ContractRate,
   CorrectionIndex,
   ErrorModel,
@@ -27,6 +32,10 @@ import type {
 } from "./generated/types.gen";
 
 export type {
+  BondCatalogue,
+  BondPrice,
+  BondQuote,
+  BondsStatus,
   ContractRate,
   CorrectionIndex,
   Health,
@@ -86,6 +95,14 @@ export async function fetchMarketDataStatus(): Promise<MarketDataStatus> {
 
 export async function startMarketDataRefresh(): Promise<MarketDataStatus> {
   const { data } = await refreshMarketData({ throwOnError: true });
+  return data;
+}
+
+/** bondsKey is the query key of the bond catalogue. */
+export const bondsKey = ["bonds"] as const;
+
+export async function fetchBonds(): Promise<BondCatalogue> {
+  const { data } = await listBonds({ throwOnError: true });
   return data;
 }
 

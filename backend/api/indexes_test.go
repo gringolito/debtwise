@@ -64,7 +64,7 @@ func TestRefreshStoresTheHistoryOfEveryIndex(t *testing.T) {
 			{Start: date(2026, time.November, 4), Value: mustDecimal("13.75")},
 		},
 		433: {{Start: date(2026, time.August, 1), Value: mustDecimal("-0.32")}},
-	}))
+	}), quotingRadar())
 
 	tr := s.history(t, "tr")
 	assert.Equal(t, "tr", tr.Index)
@@ -96,7 +96,7 @@ func TestRefreshingAgainKeepsOneValuePerPeriod(t *testing.T) {
 	})
 
 	start := time.Now()
-	s := newServer(t, source)
+	s := newServer(t, source, quotingRadar())
 	firstRefreshDone := time.Now()
 
 	revised := trRows()
@@ -136,7 +136,7 @@ func TestRefreshThatFailsForOneIndexStoresTheOthers(t *testing.T) {
 	source.fail(432, errors.New("sgs: series 432: status 502"))
 
 	start := time.Now()
-	s := newServer(t, source)
+	s := newServer(t, source, quotingRadar())
 	firstRefreshDone := time.Now()
 
 	assert.Equal(t, wantTR(), withoutFetchTimes(t, s.history(t, "tr").Values, start, firstRefreshDone))
@@ -196,7 +196,7 @@ func TestRefreshThatFailsForOneIndexStoresTheOthers(t *testing.T) {
 func TestStatusWarnsWhenTheLastRefreshIsStale(t *testing.T) {
 	t.Parallel()
 
-	s := newServer(t, sgsWithRows(nil))
+	s := newServer(t, sgsWithRows(nil), quotingRadar())
 
 	require.NoError(t, s.job.Refresh(t.Context(), time.Now().Add(-49*time.Hour)))
 
@@ -206,21 +206,23 @@ func TestStatusWarnsWhenTheLastRefreshIsStale(t *testing.T) {
 	for _, index := range status.Indexes {
 		assert.Equal(t, "stale", index.Status, index.Index)
 	}
+
+	assert.Equal(t, "stale", status.Bonds.Status, "bonds")
 }
 
 func TestHistoryOfAnUnknownIndexIsRefused(t *testing.T) {
 	t.Parallel()
 
-	s := newServer(t, sgsWithRows(nil))
+	s := newServer(t, sgsWithRows(nil), quotingRadar())
 
 	rec := s.do(t, http.MethodGet, "/api/indexes/cdi/history")
 	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
 }
 
-func TestIndexOperationsFailWhenTheDatabaseDoesNotAnswer(t *testing.T) {
+func TestMarketDataOperationsFailWhenTheDatabaseDoesNotAnswer(t *testing.T) {
 	t.Parallel()
 
-	s := newServer(t, sgsWithRows(nil))
+	s := newServer(t, sgsWithRows(nil), quotingRadar())
 	require.NoError(t, s.conn.Close())
 
 	tests := []struct {
@@ -228,6 +230,7 @@ func TestIndexOperationsFailWhenTheDatabaseDoesNotAnswer(t *testing.T) {
 		path   string
 	}{
 		{method: http.MethodGet, path: "/api/indexes/tr/history"},
+		{method: http.MethodGet, path: "/api/bonds"},
 		{method: http.MethodGet, path: "/api/market-data/status"},
 		{method: http.MethodPost, path: "/api/market-data/refresh"},
 	}

@@ -1,9 +1,14 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { IndexStatus } from "@/lib/api";
+import type { BondsStatus } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 
-/** IndexWarning says what is wrong with an index's data, and renders nothing when it is fresh. */
-export function IndexWarning({ status }: { status: IndexStatus }) {
+type Freshness = Pick<BondsStatus, "status" | "failed_at">;
+
+/**
+ * FreshnessWarning says what is wrong with a kind of market data, and renders nothing when it is
+ * fresh. `missing` is what it says when there is no data yet.
+ */
+export function FreshnessWarning({ status, missing }: { status: Freshness; missing: string }) {
   switch (status.status) {
     case "stale":
       return (
@@ -25,7 +30,7 @@ export function IndexWarning({ status }: { status: IndexStatus }) {
     case "missing":
       return (
         <Alert variant="warning">
-          <AlertDescription>Ainda não há dados deste índice.</AlertDescription>
+          <AlertDescription>{missing}</AlertDescription>
         </Alert>
       );
     default:

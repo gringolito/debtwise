@@ -14,6 +14,10 @@ docker compose -f deploy/compose.yaml up -d
 All data lives in one SQLite file on the `debtwise-data` volume. The server applies pending
 database migrations when it starts. Set `DEBTWISE_PORT` to serve on another port.
 
+Current bond prices come from the [Radar Opções](https://radaropcoes.com) API. Generate a token
+on your Radar Opções profile and set `RADAR_TOKEN` to it before starting; without one, every
+refresh of the bond prices fails.
+
 The compose file runs the `ghcr.io/gringolito/debtwise/server:edge` and
 `ghcr.io/gringolito/debtwise/web:edge` images. `mise run build:image:all` builds both from source
 under those names.
@@ -45,6 +49,19 @@ The server keeps its SQLite file on a 1Gi `ReadWriteOnce` claim and always runs 
 `helm uninstall` leaves that claim in place, so reinstalling picks up the same data; set
 `persistence.keepOnUninstall=false` to delete it with the release. Set `ingress.enabled=true` and
 `ingress.hosts` to expose the web service, or follow the port-forward printed after the install.
+
+Pass the Radar Opções token from a Secret through `server.extraEnv`:
+
+```yaml
+server:
+  extraEnv:
+    - name: RADAR_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: debtwise-radar
+          key: token
+```
+
 `values.yaml` lists the rest of the settings.
 
 ## Development

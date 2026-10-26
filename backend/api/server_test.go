@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"maps"
 	"net/http"
@@ -16,10 +17,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gringolito/debtwise/backend/api"
+	"github.com/gringolito/debtwise/backend/bonds"
 	"github.com/gringolito/debtwise/backend/db"
 	"github.com/gringolito/debtwise/backend/decimal"
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/marketdata"
+	"github.com/gringolito/debtwise/backend/marketdata/radar"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
 )
 
@@ -91,6 +94,77 @@ func wantDefaultRow() []indexValue {
 	return []indexValue{{PeriodStart: "2026-09-01", PeriodEnd: "2026-09-01", Value: "1.00"}}
 }
 
+// fakeRadar lists names, or fails the list with listErr, and answers each bond it holds, or its
+// failure. A bond it neither holds nor fails answers an error, so asking for it fails the refresh.
+type fakeRadar struct {
+	mu       sync.Mutex
+	names    []string
+	listErr  error
+	bonds    map[string]radar.Bond
+	failures map[string]error
+}
+
+func (f *fakeRadar) Names(context.Context) ([]string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return f.names, f.listErr
+}
+
+func (f *fakeRadar) Bond(_ context.Context, name string) (radar.Bond, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if err := f.failures[name]; err != nil {
+		return radar.Bond{}, err
+	}
+
+	b, ok := f.bonds[name]
+	if !ok {
+		return radar.Bond{}, errors.New("fakeRadar: unexpected request for " + name)
+	}
+
+	return b, nil
+}
+
+func (f *fakeRadar) fail(name string, err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.failures[name] = err
+}
+
+func (f *fakeRadar) list(names []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.names = names
+}
+
+func (f *fakeRadar) failList(err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.listErr = err
+}
+
+func (f *fakeRadar) answer(b radar.Bond) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.bonds[b.Name] = b
+}
+
+// radarWithBonds lists names and holds bonds.
+func radarWithBonds(names []string, bonds ...radar.Bond) *fakeRadar {
+	f := &fakeRadar{names: names, bonds: map[string]radar.Bond{}, failures: map[string]error{}}
+	for _, b := range bonds {
+		f.bonds[b.Name] = b
+	}
+
+	return f
+}
+
 type server struct {
 	handler http.Handler
 	job     *marketdata.Job
@@ -112,14 +186,16 @@ func openMigrated(t *testing.T) *sql.DB {
 }
 
 // newServer serves the API over a migrated database, with the market-data refresh job running
-// against source until the test ends. It returns once the job's first refresh is over.
-func newServer(t *testing.T, source marketdata.Source) server {
+// against indexSource and quoteSource until the test ends. It returns once the job's first refresh
+// is over.
+func newServer(t *testing.T, indexSource marketdata.IndexSource, quoteSource marketdata.QuoteSource) server {
 	t.Helper()
 
 	conn := openMigrated(t)
 	store := indexes.NewStore(conn)
+	quotes := bonds.NewStore(conn)
 	logger := slog.New(slog.DiscardHandler)
-	job := marketdata.New(source, store, marketdata.WithLogger(logger))
+	job := marketdata.New(indexSource, store, quoteSource, quotes, marketdata.WithLogger(logger))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -135,7 +211,11 @@ func newServer(t *testing.T, source marketdata.Source) server {
 		<-done
 	})
 
-	s := server{handler: api.NewHandler(db.New(conn), store, job, nil, api.WithLogger(logger)), job: job, conn: conn}
+	s := server{
+		handler: api.NewHandler(db.New(conn), store, job, nil, quotes, api.WithLogger(logger)),
+		job:     job,
+		conn:    conn,
+	}
 	s.waitForRefresh(t)
 
 	return s
@@ -150,16 +230,21 @@ func (s server) do(t *testing.T, method, path string) *httptest.ResponseRecorder
 	return rec
 }
 
-type indexStatus struct {
-	Index       string     `json:"index"`
+type freshness struct {
 	Status      string     `json:"status"`
 	RefreshedAt *time.Time `json:"refreshed_at"`
 	FailedAt    *time.Time `json:"failed_at"`
 }
 
+type indexStatus struct {
+	Index string `json:"index"`
+	freshness
+}
+
 type marketDataStatus struct {
 	Refreshing bool          `json:"refreshing"`
 	Indexes    []indexStatus `json:"indexes"`
+	Bonds      freshness     `json:"bonds"`
 }
 
 func (s server) status(t *testing.T) marketDataStatus {

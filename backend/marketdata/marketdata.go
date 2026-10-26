@@ -1,5 +1,5 @@
 // Package marketdata refreshes DebtWise's market data from its external sources, on a schedule and
-// on demand, and reports how fresh each index is.
+// on demand, and reports how fresh each index and the bond quotes are.
 package marketdata
 
 import (
@@ -25,13 +25,13 @@ const (
 	lookahead = 90 * 24 * time.Hour
 )
 
-// Source is the subset of *sgs.Client the job reads.
-type Source interface {
+// IndexSource is the subset of *sgs.Client the job reads.
+type IndexSource interface {
 	Observations(ctx context.Context, series int, from, to time.Time) ([]sgs.Observation, error)
 }
 
-// Store is the subset of *indexes.Store the job reads and writes.
-type Store interface {
+// IndexStore is the subset of *indexes.Store the job reads and writes.
+type IndexStore interface {
 	LatestPeriodStart(ctx context.Context, index indexes.Index) (time.Time, error)
 	SaveRefresh(ctx context.Context, index indexes.Index, values []indexes.Value, at time.Time) error
 	SaveFailure(ctx context.Context, index indexes.Index, values []indexes.Value, at time.Time) error
@@ -72,13 +72,15 @@ func WithInterval(d time.Duration) Option {
 	return func(j *Job) { j.interval = d }
 }
 
-// Job refreshes every index from its source.
+// Job refreshes every index and the bond quotes from their sources.
 type Job struct {
-	source   Source
-	store    Store
-	logger   *slog.Logger
-	interval time.Duration
-	trigger  chan struct{}
+	indexSource IndexSource
+	indexStore  IndexStore
+	quoteSource QuoteSource
+	quoteStore  QuoteStore
+	logger      *slog.Logger
+	interval    time.Duration
+	trigger     chan struct{}
 
 	mu      sync.Mutex
 	pending bool
@@ -86,8 +88,15 @@ type Job struct {
 }
 
 // New returns a job with a refresh already pending, which Run starts with.
-func New(source Source, store Store, opts ...Option) *Job {
-	j := &Job{source: source, store: store, interval: DefaultInterval, trigger: make(chan struct{}, 1)}
+func New(indexSource IndexSource, indexStore IndexStore, quoteSource QuoteSource, quoteStore QuoteStore, opts ...Option) *Job {
+	j := &Job{
+		indexSource: indexSource,
+		indexStore:  indexStore,
+		quoteSource: quoteSource,
+		quoteStore:  quoteStore,
+		interval:    DefaultInterval,
+		trigger:     make(chan struct{}, 1),
+	}
 	for _, opt := range opts {
 		opt(j)
 	}
@@ -161,34 +170,39 @@ func (j *Job) finish() {
 	j.running = false
 }
 
-// Refresh fetches every index from its source and stores what it fetched at now. An index whose
-// fetch fails keeps its values, gains those fetched before the failure, and has the failure
-// recorded; the others are stored anyway.
+// Refresh fetches every index and the bond quotes from their sources and stores what it fetched at
+// now. An index whose fetch fails keeps its values, gains those fetched before the failure, and has
+// the failure recorded; failed quotes keep the stored ones and have the failure recorded. The
+// others are stored anyway.
 func (j *Job) Refresh(ctx context.Context, now time.Time) error {
 	all := sgsIndexes()
-	errs := make([]error, len(all))
+	errs := make([]error, len(all), len(all)+1)
+
+	var quotesErr error
 
 	var wg sync.WaitGroup
 	for i, s := range all {
 		wg.Go(func() { errs[i] = j.refresh(ctx, s, now) })
 	}
 
+	wg.Go(func() { quotesErr = j.refreshQuotes(ctx, now) })
+
 	wg.Wait()
 
-	return errors.Join(errs...)
+	return errors.Join(append(errs, quotesErr)...)
 }
 
 func (j *Job) refresh(ctx context.Context, s sgsIndex, now time.Time) error {
 	values, err := j.fetch(ctx, s, now)
 	if err == nil {
-		if err = j.store.SaveRefresh(ctx, s.index, values, now); err == nil {
+		if err = j.indexStore.SaveRefresh(ctx, s.index, values, now); err == nil {
 			return nil
 		}
 	}
 
 	// A refresh cut short by its caller is no failure of the source.
 	if ctx.Err() == nil {
-		if saveErr := j.store.SaveFailure(ctx, s.index, values, now); saveErr != nil {
+		if saveErr := j.indexStore.SaveFailure(ctx, s.index, values, now); saveErr != nil {
 			err = errors.Join(err, saveErr)
 		}
 	}
@@ -200,7 +214,7 @@ func (j *Job) refresh(ctx context.Context, s sgsIndex, now time.Time) error {
 // source revised for that period replace the stored ones. When the source fails partway, fetch
 // returns the values fetched before the failure with the error.
 func (j *Job) fetch(ctx context.Context, s sgsIndex, now time.Time) ([]indexes.Value, error) {
-	from, err := j.store.LatestPeriodStart(ctx, s.index)
+	from, err := j.indexStore.LatestPeriodStart(ctx, s.index)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +228,7 @@ func (j *Job) fetch(ctx context.Context, s sgsIndex, now time.Time) ([]indexes.V
 		from = now
 	}
 
-	observations, err := j.source.Observations(ctx, s.series, from, now.Add(lookahead))
+	observations, err := j.indexSource.Observations(ctx, s.series, from, now.Add(lookahead))
 
 	values := make([]indexes.Value, 0, len(observations))
 	for _, o := range observations {
@@ -229,17 +243,17 @@ func (j *Job) fetch(ctx context.Context, s sgsIndex, now time.Time) ([]indexes.V
 	return values, err
 }
 
-// State is how fresh an index's stored values are.
+// State is how fresh an index's stored values, or the stored bond quotes, are.
 type State string
 
 const (
-	// Fresh is an index refreshed successfully within StaleAfter.
+	// Fresh is data refreshed successfully within StaleAfter.
 	Fresh State = "fresh"
-	// Stale is an index whose last successful refresh is older than StaleAfter.
+	// Stale is data whose last successful refresh is older than StaleAfter.
 	Stale State = "stale"
-	// Failed is an index whose latest refresh failed.
+	// Failed is data whose latest refresh failed.
 	Failed State = "failed"
-	// Missing is an index that was never refreshed.
+	// Missing is data that was never refreshed.
 	Missing State = "missing"
 )
 
@@ -248,24 +262,37 @@ func States() []State {
 	return []State{Fresh, Stale, Failed, Missing}
 }
 
-// IndexStatus is how fresh one index is. RefreshedAt and FailedAt are zero when it never
+// Freshness is how fresh some market data is. RefreshedAt and FailedAt are zero when it never
 // happened.
-type IndexStatus struct {
-	Index       indexes.Index
+type Freshness struct {
 	State       State
 	RefreshedAt time.Time
 	FailedAt    time.Time
 }
 
-// Status is whether a refresh is pending or running, and how fresh every index is.
+// IndexStatus is how fresh one index is.
+type IndexStatus struct {
+	Index indexes.Index
+	Freshness
+}
+
+// Status is whether a refresh is pending or running, and how fresh every index and the bond quotes
+// are.
 type Status struct {
 	Refreshing bool
 	Indexes    []IndexStatus
+	Quotes     Freshness
 }
 
-// Status reports how fresh every index is at now, in the order of indexes.All.
+// Status reports how fresh every index, in the order of indexes.All, and the bond quotes are at
+// now.
 func (j *Job) Status(ctx context.Context, now time.Time) (Status, error) {
-	times, err := j.store.RefreshTimes(ctx)
+	times, err := j.indexStore.RefreshTimes(ctx)
+	if err != nil {
+		return Status{}, fmt.Errorf("marketdata: status: %w", err)
+	}
+
+	quoteTimes, err := j.quoteStore.RefreshTimes(ctx)
 	if err != nil {
 		return Status{}, fmt.Errorf("marketdata: status: %w", err)
 	}
@@ -276,15 +303,17 @@ func (j *Job) Status(ctx context.Context, now time.Time) (Status, error) {
 	}
 
 	all := indexes.All()
-	status := Status{Refreshing: j.refreshing(), Indexes: make([]IndexStatus, 0, len(all))}
+	status := Status{
+		Refreshing: j.refreshing(),
+		Indexes:    make([]IndexStatus, 0, len(all)),
+		Quotes:     freshness(quoteTimes.RefreshedAt, quoteTimes.FailedAt, now),
+	}
 
 	for _, index := range all {
 		r := byIndex[index]
 		status.Indexes = append(status.Indexes, IndexStatus{
-			Index:       index,
-			State:       state(r, now),
-			RefreshedAt: r.RefreshedAt,
-			FailedAt:    r.FailedAt,
+			Index:     index,
+			Freshness: freshness(r.RefreshedAt, r.FailedAt, now),
 		})
 	}
 
@@ -298,15 +327,17 @@ func (j *Job) refreshing() bool {
 	return j.pending || j.running
 }
 
-func state(r indexes.RefreshTimes, now time.Time) State {
+func freshness(refreshedAt, failedAt, now time.Time) Freshness {
+	f := Freshness{State: Fresh, RefreshedAt: refreshedAt, FailedAt: failedAt}
+
 	switch {
-	case !r.FailedAt.IsZero():
-		return Failed
-	case r.RefreshedAt.IsZero():
-		return Missing
-	case now.Sub(r.RefreshedAt) > StaleAfter:
-		return Stale
-	default:
-		return Fresh
+	case !failedAt.IsZero():
+		f.State = Failed
+	case refreshedAt.IsZero():
+		f.State = Missing
+	case now.Sub(refreshedAt) > StaleAfter:
+		f.State = Stale
 	}
+
+	return f
 }

@@ -5,7 +5,7 @@ import { fetchIndexHistory, indexHistoryKey, type IndexName, type IndexStatus } 
 import { formatDateTime, formatPercent, formatPeriod } from "@/lib/format";
 import { indexNames } from "@/lib/indexNames";
 import { IndexHistoryChart } from "@/pages/indexes/IndexHistoryChart";
-import { IndexWarning } from "@/pages/indexes/IndexWarning";
+import { FreshnessWarning } from "@/pages/marketdata/FreshnessWarning";
 
 const INDEX_UNITS: Record<IndexName, { unit: string }> = {
   tr: { unit: "% no período" },
@@ -38,7 +38,7 @@ export function IndexCard({ status }: { status: IndexStatus }) {
               ? `Atualizado em ${formatDateTime(status.refreshed_at)}`
               : "Nunca atualizado"}
           </p>
-          <IndexWarning status={status} />
+          <FreshnessWarning status={status} missing="Ainda não há dados deste índice." />
           {history.isError && (
             <Alert variant="destructive">
               <AlertDescription>Não foi possível carregar o histórico.</AlertDescription>

@@ -8,6 +8,22 @@ import (
 	"database/sql"
 )
 
+type BondQuote struct {
+	Type          string
+	Maturity      string
+	BuyRate       sql.NullString
+	BuyUnitPrice  sql.NullString
+	SellRate      string
+	SellUnitPrice string
+	FetchedAt     string
+}
+
+type BondQuoteRefresh struct {
+	ID          int64
+	RefreshedAt sql.NullString
+	FailedAt    sql.NullString
+}
+
 type IndexRefresh struct {
 	Series      string
 	RefreshedAt sql.NullString

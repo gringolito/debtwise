@@ -29,7 +29,8 @@ func (indexCode) Schema(huma.Registry) *huma.Schema {
 	return enumSchema(indexes.All())
 }
 
-// stateCode is how fresh an index is, documented with every state the API answers.
+// stateCode is how fresh an index or the bond quotes are, documented with every state the API
+// answers.
 type stateCode string
 
 func (stateCode) Schema(huma.Registry) *huma.Schema {
@@ -61,6 +62,12 @@ type indexHistoryOutput struct {
 	Body indexHistory
 }
 
+type bondsStatus struct {
+	Status      stateCode  `json:"status" doc:"fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed."`
+	RefreshedAt *time.Time `json:"refreshed_at,omitempty" doc:"When the bond prices were last refreshed successfully. Absent when they never were."`
+	FailedAt    *time.Time `json:"failed_at,omitempty" doc:"When the latest refresh of the bond prices failed. Absent unless status is failed."`
+}
+
 type indexStatus struct {
 	Index       indexCode  `json:"index"`
 	Status      stateCode  `json:"status" doc:"fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed."`
@@ -71,6 +78,7 @@ type indexStatus struct {
 type marketDataStatus struct {
 	Refreshing bool          `json:"refreshing" doc:"Whether a refresh is in progress."`
 	Indexes    []indexStatus `json:"indexes" nullable:"false" doc:"How fresh each index is."`
+	Bonds      bondsStatus   `json:"bonds" doc:"How fresh the bond prices are."`
 }
 
 type marketDataStatusOutput struct {
@@ -115,7 +123,7 @@ func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData) 
 		Method:      http.MethodGet,
 		Path:        "/market-data/status",
 		Summary:     "Report how fresh the market data is",
-		Description: "Reports, for each index, when it was last refreshed from its source and whether that data is stale or its latest refresh failed.",
+		Description: "Reports, for each index and for the bond prices, when they were last refreshed from their source and whether that data is stale or its latest refresh failed.",
 		Tags:        []string{"Market data"},
 	}, func(ctx context.Context, _ *struct{}) (*marketDataStatusOutput, error) {
 		return statusOutput(ctx, marketData)
@@ -126,7 +134,7 @@ func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData) 
 		Method:        http.MethodPost,
 		Path:          "/market-data/refresh",
 		Summary:       "Refresh the market data",
-		Description:   "Starts refreshing every index from its source and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.",
+		Description:   "Starts refreshing every index and the bond prices from their sources and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.",
 		Tags:          []string{"Market data"},
 		DefaultStatus: http.StatusAccepted,
 	}, func(ctx context.Context, _ *struct{}) (*marketDataStatusOutput, error) {
@@ -145,6 +153,11 @@ func statusOutput(ctx context.Context, marketData MarketData) (*marketDataStatus
 	out := &marketDataStatusOutput{}
 	out.Body.Refreshing = status.Refreshing
 	out.Body.Indexes = make([]indexStatus, 0, len(status.Indexes))
+	out.Body.Bonds = bondsStatus{
+		Status:      stateCode(status.Quotes.State),
+		RefreshedAt: timeOrNil(status.Quotes.RefreshedAt),
+		FailedAt:    timeOrNil(status.Quotes.FailedAt),
+	}
 
 	for _, s := range status.Indexes {
 		out.Body.Indexes = append(out.Body.Indexes, indexStatus{

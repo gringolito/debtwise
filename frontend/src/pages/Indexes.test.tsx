@@ -15,6 +15,7 @@ const FRESH_STATUS: MarketDataStatus = {
     { index: "selic", status: "fresh", refreshed_at: "2026-10-25T18:23:42Z" },
     { index: "ipca", status: "fresh", refreshed_at: "2026-10-25T18:23:43Z" },
   ],
+  bonds: { status: "fresh", refreshed_at: "2026-10-25T18:24:00Z" },
 };
 
 function value(periodStart: string, periodEnd: string, v: string): IndexValue {
@@ -139,7 +140,7 @@ describe("latest value and refresh time", () => {
   it("says an index was never refreshed", async () => {
     stubBackend({
       status: {
-        refreshing: false,
+        ...FRESH_STATUS,
         indexes: FRESH_STATUS.indexes.map((s) =>
           s.index === "ipca" ? { index: "ipca", status: "missing" } : s,
         ),
@@ -169,7 +170,7 @@ describe("history chart", () => {
   it("draws no chart for an index without values", async () => {
     stubBackend({
       status: {
-        refreshing: false,
+        ...FRESH_STATUS,
         indexes: FRESH_STATUS.indexes.map((s) =>
           s.index === "ipca" ? { index: "ipca", status: "missing" } : s,
         ),
@@ -190,7 +191,7 @@ describe("warnings", () => {
   function withStatuses(...overrides: MarketDataStatus["indexes"]): Backend {
     return {
       status: {
-        refreshing: false,
+        ...FRESH_STATUS,
         indexes: FRESH_STATUS.indexes.map((s) => overrides.find((o) => o.index === s.index) ?? s),
       },
       histories: HISTORIES,
@@ -292,7 +293,7 @@ describe("refresh", () => {
     const statuses = [
       { ...FRESH_STATUS, refreshing: true },
       {
-        refreshing: false,
+        ...FRESH_STATUS,
         indexes: FRESH_STATUS.indexes.map((s) =>
           s.index === "tr" ? { ...s, refreshed_at: "2026-10-25T18:30:00Z" } : s,
         ),

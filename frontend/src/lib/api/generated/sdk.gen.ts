@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses } from './types.gen';
+import type { DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, ListBondsData, ListBondsErrors, ListBondsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -17,6 +17,13 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: Record<string, unknown>;
 };
+
+/**
+ * List the bonds with their prices
+ *
+ * Lists the LTN and NTN-F bonds on Tesouro Direto with their buy and sell rates and prices, as of the latest refresh of the market data.
+ */
+export const listBonds = <ThrowOnError extends boolean = false>(options?: Options<ListBondsData, ThrowOnError>) => (options?.client ?? client).get<ListBondsResponses, ListBondsErrors, ThrowOnError>({ url: '/bonds', ...options });
 
 /**
  * Check server health
@@ -35,14 +42,14 @@ export const indexHistory = <ThrowOnError extends boolean = false>(options: Opti
 /**
  * Refresh the market data
  *
- * Starts refreshing every index from its source and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.
+ * Starts refreshing every index and the bond prices from their sources and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.
  */
 export const refreshMarketData = <ThrowOnError extends boolean = false>(options?: Options<RefreshMarketDataData, ThrowOnError>) => (options?.client ?? client).post<RefreshMarketDataResponses, RefreshMarketDataErrors, ThrowOnError>({ url: '/market-data/refresh', ...options });
 
 /**
  * Report how fresh the market data is
  *
- * Reports, for each index, when it was last refreshed from its source and whether that data is stale or its latest refresh failed.
+ * Reports, for each index and for the bond prices, when they were last refreshed from their source and whether that data is stale or its latest refresh failed.
  */
 export const marketDataStatus = <ThrowOnError extends boolean = false>(options?: Options<MarketDataStatusData, ThrowOnError>) => (options?.client ?? client).get<MarketDataStatusResponses, MarketDataStatusErrors, ThrowOnError>({ url: '/market-data/status', ...options });
 

@@ -33,7 +33,7 @@ func WithLogger(l *slog.Logger) Option {
 // handler returned, a 4xx at Debug. A 4xx answers its problem detail; a 5xx answers only its
 // status and request_id.
 func NewHandler(
-	database Database, store IndexStore, marketData MarketData, mortgages Mortgages, opts ...Option,
+	database Database, store IndexStore, marketData MarketData, mortgages Mortgages, quotes Quotes, opts ...Option,
 ) http.Handler {
 	var o options
 	for _, opt := range opts {
@@ -48,6 +48,7 @@ func NewHandler(
 	return newHandler(logger, func(humaAPI huma.API) {
 		registerHealth(humaAPI, database)
 		registerIndexes(humaAPI, store, marketData)
+		registerBonds(humaAPI, quotes)
 		registerMortgage(humaAPI, mortgages, store)
 	})
 }

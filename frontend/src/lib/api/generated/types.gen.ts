@@ -4,6 +4,62 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}/api` | (string & {});
 };
 
+export type BondCatalogue = {
+    /**
+     * The bonds on Tesouro Direto, LTN before NTN-F and each by maturity.
+     */
+    bonds: Array<BondQuote>;
+};
+
+export type BondPrice = {
+    /**
+     * The yearly rate, as a decimal fraction: 0.1276 is 12.76% a year.
+     */
+    rate: string;
+    /**
+     * The price of one bond in reais, as a decimal string.
+     */
+    unit_price: string;
+};
+
+export type BondQuote = {
+    /**
+     * The rate and price the bond is bought at. Absent when Tesouro Direto does not sell it.
+     */
+    buy?: BondPrice;
+    /**
+     * When the quote was fetched from its source.
+     */
+    fetched_at: string;
+    /**
+     * The date the bond matures.
+     */
+    maturity: string;
+    /**
+     * The rate and price the bond is sold back at.
+     */
+    sell: BondPrice;
+    /**
+     * ltn: Tesouro Prefixado; ntn_f: Tesouro Prefixado com Juros Semestrais.
+     */
+    type: 'ltn' | 'ntn_f';
+};
+
+export type BondsStatus = {
+    /**
+     * When the latest refresh of the bond prices failed. Absent unless status is failed.
+     */
+    failed_at?: string;
+    /**
+     * When the bond prices were last refreshed successfully. Absent when they never were.
+     */
+    refreshed_at?: string;
+    /**
+     * fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed.
+     */
+    status: 'fresh' | 'stale' | 'failed' | 'missing';
+};
+
 export type ContractRate = {
     /**
      * The basis the rate was entered on; the other one is derived from it.
@@ -169,6 +225,10 @@ export type IndexValue = {
 };
 
 export type MarketDataStatus = {
+    /**
+     * How fresh the bond prices are.
+     */
+    bonds: BondsStatus;
     /**
      * How fresh each index is.
      */
@@ -337,6 +397,31 @@ export type ScheduledInstallment = {
      */
     outstanding_balance: string;
 };
+
+export type ListBondsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/bonds';
+};
+
+export type ListBondsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type ListBondsError = ListBondsErrors[keyof ListBondsErrors];
+
+export type ListBondsResponses = {
+    /**
+     * OK
+     */
+    200: BondCatalogue;
+};
+
+export type ListBondsResponse = ListBondsResponses[keyof ListBondsResponses];
 
 export type HealthData = {
     body?: never;

@@ -16,9 +16,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/gringolito/debtwise/backend/bonds"
 	"github.com/gringolito/debtwise/backend/decimal"
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/marketdata"
+	"github.com/gringolito/debtwise/backend/marketdata/radar"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
 )
 
@@ -110,6 +112,72 @@ func (f *fakeStore) savedFailures() []failure {
 	return slices.Clone(f.failures)
 }
 
+// fakeQuoteSource lists one LTN and quotes it. While block is open, a request waits until block
+// closes or its context is done.
+type fakeQuoteSource struct {
+	block chan struct{}
+}
+
+const ltn2029 = "Tesouro Prefixado 2029"
+
+func (f *fakeQuoteSource) Names(ctx context.Context) ([]string, error) {
+	if f.block != nil {
+		select {
+		case <-f.block:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
+	return []string{ltn2029}, nil
+}
+
+func (f *fakeQuoteSource) Bond(_ context.Context, name string) (radar.Bond, error) {
+	if name != ltn2029 {
+		return radar.Bond{}, errors.New("fakeQuoteSource: unexpected request for " + name)
+	}
+
+	rate, price := decimal.FromInt(13), decimal.FromInt(800)
+
+	return radar.Bond{
+		Name:            ltn2029,
+		Maturity:        time.Date(2029, time.January, 1, 0, 0, 0, 0, time.UTC),
+		RedemptionRate:  &rate,
+		RedemptionPrice: price,
+	}, nil
+}
+
+// fakeQuoteStore counts the failures it saves, or fails every call with err.
+type fakeQuoteStore struct {
+	mu       sync.Mutex
+	failures int
+	err      error
+}
+
+func (f *fakeQuoteStore) SaveQuotes(context.Context, []bonds.Quote, time.Time) error {
+	return f.err
+}
+
+func (f *fakeQuoteStore) SaveFailure(context.Context, time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.failures++
+
+	return f.err
+}
+
+func (f *fakeQuoteStore) RefreshTimes(context.Context) (bonds.RefreshTimes, error) {
+	return bonds.RefreshTimes{}, f.err
+}
+
+func (f *fakeQuoteStore) savedFailures() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return f.failures
+}
+
 // runJob runs job until the test ends.
 func runJob(t *testing.T, job *marketdata.Job) {
 	t.Helper()
@@ -142,22 +210,47 @@ func TestRefreshReportsFailuresItCouldNotRecord(t *testing.T) {
 	t.Parallel()
 
 	storeErr := errors.New("database is closed")
-	err := marketdata.New(&fakeSource{}, &fakeStore{err: storeErr}).Refresh(t.Context(), time.Now())
+	err := marketdata.New(&fakeSource{}, &fakeStore{err: storeErr}, &fakeQuoteSource{}, &fakeQuoteStore{err: storeErr}).
+		Refresh(t.Context(), time.Now())
 
 	require.ErrorIs(t, err, storeErr)
 
+	failed := make([]string, 0, len(indexes.All())+1)
+	failed = append(failed, "bonds")
+
 	for _, index := range indexes.All() {
-		assert.ErrorContains(t, err, "marketdata: refresh "+string(index)+": database is closed\ndatabase is closed")
+		failed = append(failed, string(index))
+	}
+
+	for _, source := range failed {
+		assert.ErrorContains(t, err, "marketdata: refresh "+source+": database is closed\ndatabase is closed")
 	}
 }
 
-func TestStatusFailsWhenTheStoreFails(t *testing.T) {
+func TestStatusFailsWhenAStoreFails(t *testing.T) {
 	t.Parallel()
 
 	storeErr := errors.New("database is closed")
-	_, err := marketdata.New(&fakeSource{}, &fakeStore{err: storeErr}).Status(t.Context(), time.Now())
 
-	require.ErrorIs(t, err, storeErr)
+	tests := []struct {
+		name       string
+		indexStore *fakeStore
+		quoteStore *fakeQuoteStore
+	}{
+		{name: "index store", indexStore: &fakeStore{err: storeErr}, quoteStore: &fakeQuoteStore{}},
+		{name: "quote store", indexStore: &fakeStore{}, quoteStore: &fakeQuoteStore{err: storeErr}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := marketdata.New(&fakeSource{}, tt.indexStore, &fakeQuoteSource{}, tt.quoteStore).
+				Status(t.Context(), time.Now())
+
+			require.ErrorIs(t, err, storeErr)
+		})
+	}
 }
 
 func TestRefreshFetchesEachIndexFromWhereItsStoredHistoryEnds(t *testing.T) {
@@ -171,7 +264,7 @@ func TestRefreshFetchesEachIndexFromWhereItsStoredHistoryEnds(t *testing.T) {
 	}}
 	now := time.Date(2026, time.October, 25, 12, 0, 0, 0, time.UTC)
 
-	require.NoError(t, marketdata.New(source, store).Refresh(t.Context(), now))
+	require.NoError(t, marketdata.New(source, store, &fakeQuoteSource{}, &fakeQuoteStore{}).Refresh(t.Context(), now))
 
 	backfillFrom := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 	// Ninety days past now, to take in the Selic target in force up to the next Copom meeting.
@@ -202,7 +295,7 @@ func TestRefreshKeepsWhatAFailedFetchGotBeforeItFailed(t *testing.T) {
 	store := &fakeStore{}
 	now := time.Date(2026, time.October, 25, 12, 0, 0, 0, time.UTC)
 
-	require.Error(t, marketdata.New(source, store).Refresh(t.Context(), now))
+	require.Error(t, marketdata.New(source, store, &fakeQuoteSource{}, &fakeQuoteStore{}).Refresh(t.Context(), now))
 
 	failures := store.savedFailures()
 	slices.SortFunc(failures, func(a, b failure) int { return cmp.Compare(a.index, b.index) })
@@ -229,7 +322,7 @@ func TestStatusTellsHowFreshEachIndexIs(t *testing.T) {
 		{Index: indexes.Selic, RefreshedAt: now.Add(-time.Hour), FailedAt: now.Add(-time.Minute)},
 	}}
 
-	job := marketdata.New(&fakeSource{}, store)
+	job := marketdata.New(&fakeSource{}, store, &fakeQuoteSource{}, &fakeQuoteStore{})
 
 	status, err := job.Status(t.Context(), now)
 	require.NoError(t, err)
@@ -245,6 +338,7 @@ func TestStatusTellsHowFreshEachIndexIs(t *testing.T) {
 		},
 		{Index: indexes.IPCA, State: marketdata.Missing},
 	}, status.Indexes)
+	assert.Equal(t, marketdata.Freshness{State: marketdata.Missing}, status.Quotes, "quotes never refreshed")
 	assert.True(t, status.Refreshing, "a new job has its first refresh pending")
 }
 
@@ -253,7 +347,7 @@ func TestRunRefreshesAtStartEveryIntervalAndWhenTriggered(t *testing.T) {
 
 	synctest.Test(t, func(t *testing.T) {
 		source := &fakeSource{}
-		job := marketdata.New(source, &fakeStore{}, marketdata.WithInterval(time.Hour))
+		job := marketdata.New(source, &fakeStore{}, &fakeQuoteSource{}, &fakeQuoteStore{}, marketdata.WithInterval(time.Hour))
 		runJob(t, job)
 
 		refreshes := func() int {
@@ -283,7 +377,7 @@ func TestATriggerDuringARefreshRunsAnotherAfterIt(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		block := make(chan struct{})
 		source := &fakeSource{block: block}
-		job := marketdata.New(source, &fakeStore{})
+		job := marketdata.New(source, &fakeStore{}, &fakeQuoteSource{}, &fakeQuoteStore{})
 		runJob(t, job)
 
 		synctest.Wait()
@@ -306,7 +400,7 @@ func TestRunLogsAFailedRefreshOnce(t *testing.T) {
 
 		logger := slog.New(slog.NewJSONHandler(&logs, nil))
 		source := &fakeSource{err: errors.New("status 502")}
-		job := marketdata.New(source, &fakeStore{}, marketdata.WithLogger(logger))
+		job := marketdata.New(source, &fakeStore{}, &fakeQuoteSource{}, &fakeQuoteStore{}, marketdata.WithLogger(logger))
 
 		ctx, cancel := context.WithCancel(t.Context())
 		done := make(chan struct{})
@@ -343,7 +437,9 @@ func TestARefreshStoppedByShutdownIsNoFailure(t *testing.T) {
 		var logs bytes.Buffer
 
 		store := &fakeStore{}
-		job := marketdata.New(&fakeSource{block: make(chan struct{})}, store,
+		quoteStore := &fakeQuoteStore{}
+		block := make(chan struct{})
+		job := marketdata.New(&fakeSource{block: block}, store, &fakeQuoteSource{block: block}, quoteStore,
 			marketdata.WithLogger(slog.New(slog.NewJSONHandler(&logs, nil))))
 
 		ctx, cancel := context.WithCancel(t.Context())
@@ -359,7 +455,8 @@ func TestARefreshStoppedByShutdownIsNoFailure(t *testing.T) {
 		cancel()
 		<-done
 
-		assert.Empty(t, store.savedFailures(), "no failure recorded")
+		assert.Empty(t, store.savedFailures(), "no index failure recorded")
+		assert.Zero(t, quoteStore.savedFailures(), "no quote failure recorded")
 		assert.Empty(t, logs.String(), "nothing logged")
 	})
 }

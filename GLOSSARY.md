@@ -126,6 +126,16 @@ bonds qualify.
 _Avoid_: Investment (also the act of investing), asset (too broad), título público (also covers
 bonds DebtWise doesn't compare)
 
+**Quote** (cotação):
+The rates and unit prices Tesouro Direto offers for a bond on a day: a buy side while it sells the
+bond, and a sell side at which it buys the bond back. A lot's market value comes from the sell side.
+_Avoid_: Price (only one side of a quote), offer (a quote can lack the buy side)
+
+**Unit Price** (preço unitário, PU):
+The price of one bond at a rate for settlement on a date, as Tesouro computes it. Each side of a
+quote carries one, and every purchase, sale and valuation of a lot starts from it.
+_Avoid_: Face value (what the bond pays at maturity), market value (per lot, not per bond)
+
 **Lot**:
 One purchase of a bond on one date at one rate. Lots of the same bond stay apart because their tax
 and their early sale checks differ.
@@ -143,8 +153,8 @@ from the market value whenever rates have changed since the purchase.
 _Avoid_: Book value (an accounting term with its own rules)
 
 **Market Value** (valor a mercado):
-What a lot would fetch if sold on a date, at the bond's sell price then. It is the sell side of an
-early sale check.
+What a lot would fetch if sold on a date, at the sell side of its bond's quote then. It is the sell
+side of an early sale check.
 _Avoid_: Current value (could mean the accrual value too), sale price (quoted per bond, not per
 lot)
 

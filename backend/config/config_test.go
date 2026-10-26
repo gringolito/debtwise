@@ -11,11 +11,13 @@ import (
 )
 
 type environment struct {
-	port, dbPath, logLevel string
+	port, dbPath, logLevel, radarToken string
 }
 
 func (e environment) getenv(key string) string {
-	return map[string]string{"PORT": e.port, "DB_PATH": e.dbPath, "LOG_LEVEL": e.logLevel}[key]
+	return map[string]string{
+		"PORT": e.port, "DB_PATH": e.dbPath, "LOG_LEVEL": e.logLevel, "RADAR_TOKEN": e.radarToken,
+	}[key]
 }
 
 func TestLoad(t *testing.T) {
@@ -32,8 +34,10 @@ func TestLoad(t *testing.T) {
 		},
 		{
 			name: "every setting from the environment",
-			env:  environment{port: "9090", dbPath: "/data/debtwise.db", logLevel: "debug"},
-			want: config.Config{Port: "9090", DBPath: "/data/debtwise.db", LogLevel: slog.LevelDebug},
+			env:  environment{port: "9090", dbPath: "/data/debtwise.db", logLevel: "debug", radarToken: "rop_secret"},
+			want: config.Config{
+				Port: "9090", DBPath: "/data/debtwise.db", LogLevel: slog.LevelDebug, RadarToken: "rop_secret",
+			},
 		},
 		{
 			name: "log level in any case",

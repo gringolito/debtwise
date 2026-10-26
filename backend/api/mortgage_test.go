@@ -43,7 +43,7 @@ func newAPI(t *testing.T) http.Handler {
 }
 
 func apiOver(conn *sql.DB) http.Handler {
-	return api.NewHandler(db.New(conn), indexes.NewStore(conn), nil, mortgage.NewStore(conn),
+	return api.NewHandler(db.New(conn), indexes.NewStore(conn), nil, mortgage.NewStore(conn), nil,
 		api.WithLogger(slog.New(slog.DiscardHandler)))
 }
 
@@ -55,7 +55,7 @@ func closedAPI(t *testing.T, opts ...api.Option) http.Handler {
 	require.NoError(t, err)
 	require.NoError(t, conn.Close())
 
-	return api.NewHandler(db.New(conn), indexes.NewStore(conn), nil, mortgage.NewStore(conn), opts...)
+	return api.NewHandler(db.New(conn), indexes.NewStore(conn), nil, mortgage.NewStore(conn), nil, opts...)
 }
 
 func serve(t *testing.T, handler http.Handler, method, path, body string) *httptest.ResponseRecorder {
@@ -693,7 +693,7 @@ func TestDamagedMortgageFailsToRead(t *testing.T) {
 			t.Parallel()
 
 			conn := migratedDatabase(t)
-			handler := api.NewHandler(db.New(conn), nil, nil, mortgage.NewStore(conn), api.WithLogger(slog.New(slog.DiscardHandler)))
+			handler := api.NewHandler(db.New(conn), nil, nil, mortgage.NewStore(conn), nil, api.WithLogger(slog.New(slog.DiscardHandler)))
 			require.Equal(t, http.StatusOK, serve(t, handler, http.MethodPut, "/mortgage", sacMortgage).Code)
 
 			_, err := conn.ExecContext(t.Context(), tt.damage)
@@ -730,7 +730,7 @@ func TestRefusedSaveKeepsTheTermsAsTheyWere(t *testing.T) {
 			t.Parallel()
 
 			conn := migratedDatabase(t)
-			handler := api.NewHandler(db.New(conn), nil, nil, mortgage.NewStore(conn), api.WithLogger(slog.New(slog.DiscardHandler)))
+			handler := api.NewHandler(db.New(conn), nil, nil, mortgage.NewStore(conn), nil, api.WithLogger(slog.New(slog.DiscardHandler)))
 
 			if tt.registered {
 				require.Equal(t, http.StatusOK, serve(t, handler, http.MethodPut, "/mortgage", sacMortgage).Code)
@@ -759,7 +759,7 @@ func TestSaveFailsWithoutTheMortgagesTable(t *testing.T) {
 	t.Parallel()
 
 	conn := migratedDatabase(t)
-	handler := api.NewHandler(db.New(conn), nil, nil, mortgage.NewStore(conn), api.WithLogger(slog.New(slog.DiscardHandler)))
+	handler := api.NewHandler(db.New(conn), nil, nil, mortgage.NewStore(conn), nil, api.WithLogger(slog.New(slog.DiscardHandler)))
 
 	_, err := conn.ExecContext(t.Context(), "DROP TABLE mortgages")
 	require.NoError(t, err)

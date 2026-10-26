@@ -49,6 +49,9 @@ func TestRateConversions(t *testing.T) {
 			want:    "0.008333333333333333333333333333333333",
 		},
 		{name: "zero stays zero", convert: decimal.EffectiveToNominal, rate: "0", want: "0"},
+		{name: "percent to fraction", convert: decimal.PercentToFraction, rate: "12.76", want: "0.1276"},
+		{name: "percent to fraction keeps the places", convert: decimal.PercentToFraction, rate: "13.00", want: "0.1300"},
+		{name: "negative percent to fraction", convert: decimal.PercentToFraction, rate: "-0.05", want: "-0.0005"},
 	}
 
 	// Compared as text: a converted rate carries no trailing zeros, so the API shows it as it is.
