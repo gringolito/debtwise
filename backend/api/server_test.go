@@ -226,9 +226,14 @@ func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteS
 	})
 
 	s := server{
-		handler: api.NewHandler(db.New(conn), store, job, nil, quotes, api.WithLogger(logger)),
-		job:     job,
-		conn:    conn,
+		handler: api.NewHandler(api.Services{
+			Database:   db.New(conn),
+			Indexes:    store,
+			MarketData: job,
+			Quotes:     quotes,
+		}, api.WithLogger(logger)),
+		job:  job,
+		conn: conn,
 	}
 	s.waitForRefresh(t)
 

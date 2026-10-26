@@ -6,7 +6,7 @@ export type ClientOptions = {
 
 export type BondCatalogue = {
     /**
-     * The bonds on Tesouro Direto: LTN, NTN-F, NTN-B Principal, then NTN-B, each by maturity.
+     * The bonds, grouped by type in the order the type's values are listed, each group by maturity.
      */
     bonds: Array<BondQuote>;
 };

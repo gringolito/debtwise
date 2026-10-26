@@ -36,7 +36,7 @@ type bondQuote struct {
 }
 
 type bondCatalogue struct {
-	Bonds []bondQuote `json:"bonds" nullable:"false" doc:"The bonds on Tesouro Direto: LTN, NTN-F, NTN-B Principal, then NTN-B, each by maturity."`
+	Bonds []bondQuote `json:"bonds" nullable:"false" doc:"The bonds, grouped by type in the order the type's values are listed, each group by maturity."`
 }
 
 type bondCatalogueOutput struct {
@@ -49,7 +49,7 @@ func registerBonds(humaAPI huma.API, quotes Quotes) {
 		Method:      http.MethodGet,
 		Path:        "/bonds",
 		Summary:     "List the bonds with their prices",
-		Description: "Lists the LTN and NTN-F bonds on Tesouro Direto with their buy and sell rates and prices, as of the latest refresh of the market data.",
+		Description: "Lists the Tesouro Direto bonds DebtWise compares with their buy and sell rates and prices, as of the latest refresh of the market data.",
 		Tags:        []string{"Bonds"},
 	}, func(ctx context.Context, _ *struct{}) (*bondCatalogueOutput, error) {
 		stored, err := quotes.Quotes(ctx)

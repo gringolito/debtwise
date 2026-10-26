@@ -21,7 +21,7 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 /**
  * List the bonds with their prices
  *
- * Lists the LTN and NTN-F bonds on Tesouro Direto with their buy and sell rates and prices, as of the latest refresh of the market data.
+ * Lists the Tesouro Direto bonds DebtWise compares with their buy and sell rates and prices, as of the latest refresh of the market data.
  */
 export const listBonds = <ThrowOnError extends boolean = false>(options?: Options<ListBondsData, ThrowOnError>) => (options?.client ?? client).get<ListBondsResponses, ListBondsErrors, ThrowOnError>({ url: '/bonds', ...options });
 

@@ -83,8 +83,14 @@ func run(logger *slog.Logger, level *slog.LevelVar) error {
 	}()
 
 	srv := &http.Server{
-		Addr:              ":" + cfg.Port,
-		Handler:           api.NewHandler(db.New(conn), store, job, mortgage.NewStore(conn), quotes, api.WithLogger(logger)),
+		Addr: ":" + cfg.Port,
+		Handler: api.NewHandler(api.Services{
+			Database:   db.New(conn),
+			Indexes:    store,
+			MarketData: job,
+			Mortgages:  mortgage.NewStore(conn),
+			Quotes:     quotes,
+		}, api.WithLogger(logger)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,

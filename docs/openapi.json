@@ -5,7 +5,7 @@
         "additionalProperties": false,
         "properties": {
           "bonds": {
-            "description": "The bonds on Tesouro Direto: LTN, NTN-F, NTN-B Principal, then NTN-B, each by maturity.",
+            "description": "The bonds, grouped by type in the order the type's values are listed, each group by maturity.",
             "items": {
               "$ref": "#/components/schemas/BondQuote"
             },
@@ -744,7 +744,7 @@
   "paths": {
     "/bonds": {
       "get": {
-        "description": "Lists the LTN and NTN-F bonds on Tesouro Direto with their buy and sell rates and prices, as of the latest refresh of the market data.",
+        "description": "Lists the Tesouro Direto bonds DebtWise compares with their buy and sell rates and prices, as of the latest refresh of the market data.",
         "operationId": "list-bonds",
         "responses": {
           "200": {
