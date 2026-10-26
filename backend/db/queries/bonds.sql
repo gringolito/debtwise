@@ -8,7 +8,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?);
 -- name: ListBondQuotes :many
 SELECT type, maturity, buy_rate, buy_unit_price, sell_rate, sell_unit_price, fetched_at
 FROM bond_quotes
-ORDER BY CASE type WHEN 'ltn' THEN 0 ELSE 1 END, maturity;
+ORDER BY CASE type WHEN 'ltn' THEN 0 WHEN 'ntn_f' THEN 1 WHEN 'ntn_b_principal' THEN 2 ELSE 3 END, maturity;
 
 -- name: RecordBondQuotesRefreshed :exec
 INSERT INTO bond_quote_refreshes (id, refreshed_at)

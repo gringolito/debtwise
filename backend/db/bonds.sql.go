@@ -83,7 +83,7 @@ func (q *Queries) ListBondQuoteRefreshes(ctx context.Context) ([]ListBondQuoteRe
 const listBondQuotes = `-- name: ListBondQuotes :many
 SELECT type, maturity, buy_rate, buy_unit_price, sell_rate, sell_unit_price, fetched_at
 FROM bond_quotes
-ORDER BY CASE type WHEN 'ltn' THEN 0 ELSE 1 END, maturity
+ORDER BY CASE type WHEN 'ltn' THEN 0 WHEN 'ntn_f' THEN 1 WHEN 'ntn_b_principal' THEN 2 ELSE 3 END, maturity
 `
 
 func (q *Queries) ListBondQuotes(ctx context.Context) ([]BondQuote, error) {

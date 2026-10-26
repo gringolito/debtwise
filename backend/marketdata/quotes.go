@@ -25,21 +25,29 @@ type QuoteStore interface {
 	RefreshTimes(ctx context.Context) (bonds.RefreshTimes, error)
 }
 
-// tesouroName matches the names Tesouro Direto gives LTN and NTN-F bonds, such as "Tesouro
-// Prefixado 2029" and "Tesouro Prefixado com Juros Semestrais 2037".
-var tesouroName = regexp.MustCompile(`^Tesouro Prefixado( com Juros Semestrais)? \d{4}$`)
+// tesouroName matches the names Tesouro Direto gives the bonds DebtWise compares (ADR-0007), such
+// as "Tesouro Prefixado 2029", "Tesouro IPCA+ 2035" and "Tesouro IPCA+ com Juros Semestrais 2037".
+var tesouroName = regexp.MustCompile(`^Tesouro (Prefixado|IPCA\+)( com Juros Semestrais)? \d{4}$`)
 
 // bondType returns the type of the bond Tesouro Direto names name, or false when DebtWise does not
 // compare it.
 func bondType(name string) (bonds.Type, bool) {
 	match := tesouroName.FindStringSubmatch(name)
-	switch {
-	case match == nil:
+	if match == nil {
 		return "", false
-	case match[1] != "":
+	}
+
+	semestral := match[2] != ""
+
+	switch {
+	case match[1] == "Prefixado" && semestral:
 		return bonds.NTNF, true
-	default:
+	case match[1] == "Prefixado":
 		return bonds.LTN, true
+	case semestral:
+		return bonds.NTNB, true
+	default:
+		return bonds.NTNBPrincipal, true
 	}
 }
 
@@ -64,7 +72,7 @@ func (j *Job) refreshQuotes(ctx context.Context, now time.Time) error {
 }
 
 func (j *Job) fetchQuotes(ctx context.Context, now time.Time) ([]bonds.Quote, error) {
-	names, err := j.quoteSource.Names(ctx)
+	names, err := j.sources.Radar.Names(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +85,7 @@ func (j *Job) fetchQuotes(ctx context.Context, now time.Time) ([]bonds.Quote, er
 			continue
 		}
 
-		b, err := j.quoteSource.Bond(ctx, name)
+		b, err := j.sources.Radar.Bond(ctx, name)
 		if err != nil {
 			return nil, err
 		}
@@ -91,7 +99,7 @@ func (j *Job) fetchQuotes(ctx context.Context, now time.Time) ([]bonds.Quote, er
 	}
 
 	if len(quotes) == 0 {
-		return nil, errors.New("radar lists no LTN or NTN-F")
+		return nil, errors.New("radar lists no bond DebtWise compares")
 	}
 
 	return quotes, nil

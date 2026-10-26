@@ -15,30 +15,34 @@ import (
 )
 
 const (
-	ltn2027  = "Tesouro Prefixado 2027"
-	ltn2029  = "Tesouro Prefixado 2029"
-	ntnf2027 = "Tesouro Prefixado com Juros Semestrais 2027"
-	ntnf2037 = "Tesouro Prefixado com Juros Semestrais 2037"
+	ltn2027   = "Tesouro Prefixado 2027"
+	ltn2029   = "Tesouro Prefixado 2029"
+	ntnf2027  = "Tesouro Prefixado com Juros Semestrais 2027"
+	ntnf2037  = "Tesouro Prefixado com Juros Semestrais 2037"
+	ntnbp2032 = "Tesouro IPCA+ 2032"
+	ntnbp2035 = "Tesouro IPCA+ 2035"
+	ntnb2037  = "Tesouro IPCA+ com Juros Semestrais 2037"
 )
 
-// radarNames lists the LTN and NTN-F bonds, out of order, among others DebtWise does not compare,
-// the way Radar lists every Tesouro Direto bond.
+// radarNames lists the LTN, NTN-F, NTN-B Principal and NTN-B bonds, out of order, among others
+// DebtWise does not compare, the way Radar lists every Tesouro Direto bond.
 func radarNames() []string {
 	return []string{
 		"Tesouro Educa+ 2030",
-		"Tesouro IPCA+ 2035",
+		ntnb2037,
+		ntnbp2035,
 		ntnf2037,
-		"Tesouro IPCA+ com Juros Semestrais 2040",
 		ltn2029,
 		ntnf2027,
 		"Tesouro Renda+ Aposentadoria Extra 2050",
 		"Tesouro Prefixado 2029 (antigo)",
+		ntnbp2032,
 		"Tesouro Selic 2031",
 		ltn2027,
 	}
 }
 
-// radarBonds are the bonds Radar answers for radarNames' LTN and NTN-F: two on offer and two that
+// radarBonds are the bonds Radar answers for radarNames' four kinds: some on offer and some that
 // Tesouro Direto only buys back.
 func radarBonds() []radar.Bond {
 	return []radar.Bond{
@@ -71,6 +75,28 @@ func radarBonds() []radar.Bond {
 			InvestmentPrice: mustDecimal("880.05"),
 			RedemptionRate:  new(mustDecimal("0.1300")),
 			RedemptionPrice: mustDecimal("874.38"),
+		},
+		{
+			Name:            ntnbp2032,
+			Maturity:        date(2032, time.August, 15),
+			InvestmentRate:  new(mustDecimal("0.0672")),
+			InvestmentPrice: mustDecimal("3278.12"),
+			RedemptionRate:  new(mustDecimal("0.0684")),
+			RedemptionPrice: mustDecimal("3256.93"),
+		},
+		{
+			Name:            ntnbp2035,
+			Maturity:        date(2035, time.May, 15),
+			RedemptionRate:  new(mustDecimal("0.0682")),
+			RedemptionPrice: mustDecimal("2724.45"),
+		},
+		{
+			Name:            ntnb2037,
+			Maturity:        date(2037, time.May, 15),
+			InvestmentRate:  new(mustDecimal("0.0670")),
+			InvestmentPrice: mustDecimal("4669.3"),
+			RedemptionRate:  new(mustDecimal("0.0682")),
+			RedemptionPrice: mustDecimal("4629.32"),
 		},
 	}
 }
@@ -110,6 +136,19 @@ func wantQuotes() []bondQuote {
 			Buy:      &bondPrice{Rate: "0.1288", UnitPrice: "880.05"},
 			Sell:     bondPrice{Rate: "0.1300", UnitPrice: "874.38"},
 		},
+		{
+			Type:     "ntn_b_principal",
+			Maturity: "2032-08-15",
+			Buy:      &bondPrice{Rate: "0.0672", UnitPrice: "3278.12"},
+			Sell:     bondPrice{Rate: "0.0684", UnitPrice: "3256.93"},
+		},
+		{Type: "ntn_b_principal", Maturity: "2035-05-15", Sell: bondPrice{Rate: "0.0682", UnitPrice: "2724.45"}},
+		{
+			Type:     "ntn_b",
+			Maturity: "2037-05-15",
+			Buy:      &bondPrice{Rate: "0.0670", UnitPrice: "4669.3"},
+			Sell:     bondPrice{Rate: "0.0682", UnitPrice: "4629.32"},
+		},
 	}
 }
 
@@ -143,7 +182,7 @@ func withoutQuoteFetchTimes(t *testing.T, quotes []bondQuote, from, to time.Time
 	return cleared
 }
 
-func TestRefreshListsTheLTNAndNTNFBondsWithTheirPrices(t *testing.T) {
+func TestRefreshListsTheBondsDebtWiseComparesWithTheirPrices(t *testing.T) {
 	t.Parallel()
 
 	start := time.Now()
@@ -151,7 +190,7 @@ func TestRefreshListsTheLTNAndNTNFBondsWithTheirPrices(t *testing.T) {
 	refreshed := time.Now()
 
 	assert.Equal(t, wantQuotes(), withoutQuoteFetchTimes(t, s.bonds(t), start, refreshed),
-		"LTN before NTN-F, each by maturity, and no other bond")
+		"LTN, NTN-F, NTN-B Principal, then NTN-B, each by maturity, and no other bond")
 
 	status := s.status(t).Bonds
 	assert.Equal(t, "fresh", status.Status)
@@ -179,7 +218,8 @@ func TestABondNotOnOfferHasNoBuySide(t *testing.T) {
 		offered = append(offered, ok)
 	}
 
-	assert.Equal(t, []bool{false, true, false, true}, offered, "buy is absent, not null, when not on offer")
+	assert.Equal(t, []bool{false, true, false, true, true, false, true}, offered,
+		"buy is absent, not null, when not on offer")
 }
 
 func TestBondReadsFailOnDamagedStoredData(t *testing.T) {
@@ -293,8 +333,8 @@ func TestARefreshRadarCannotQuoteKeepsTheStoredPrices(t *testing.T) {
 			damage: func(f *fakeRadar) { f.failList(errors.New("radar: bond list: status 502")) },
 		},
 		{
-			name:   "a list without LTN or NTN-F",
-			damage: func(f *fakeRadar) { f.list([]string{"Tesouro Selic 2031", "Tesouro IPCA+ 2035"}) },
+			name:   "a list without a bond DebtWise compares",
+			damage: func(f *fakeRadar) { f.list([]string{"Tesouro Selic 2031", "Tesouro Educa+ 2030"}) },
 		},
 		{
 			name:   "a bond listed twice, which the catalogue cannot hold",
@@ -303,7 +343,7 @@ func TestARefreshRadarCannotQuoteKeepsTheStoredPrices(t *testing.T) {
 		{
 			name: "a bond with a buy price but no buy rate",
 			damage: func(f *fakeRadar) {
-				b := radarBonds()[1]
+				b := radarBonds()[6]
 				b.InvestmentRate = nil
 				f.answer(b)
 			},

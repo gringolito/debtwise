@@ -4,7 +4,7 @@ package bonds
 
 import "time"
 
-// Type is a kind of bond DebtWise compares (ADR-0001).
+// Type is a kind of bond DebtWise compares (ADR-0007).
 type Type string
 
 const (
@@ -12,11 +12,15 @@ const (
 	LTN Type = "ltn"
 	// NTNF is Tesouro Prefixado com Juros Semestrais, which also pays a coupon every semester.
 	NTNF Type = "ntn_f"
+	// NTNBPrincipal is Tesouro IPCA+, which pays its IPCA-corrected value at maturity.
+	NTNBPrincipal Type = "ntn_b_principal"
+	// NTNB is Tesouro IPCA+ com Juros Semestrais, which also pays a coupon every semester.
+	NTNB Type = "ntn_b"
 )
 
 // Types returns every Type, in the order the catalogue lists them.
 func Types() []Type {
-	return []Type{LTN, NTNF}
+	return []Type{LTN, NTNF, NTNBPrincipal, NTNB}
 }
 
 // Bond is one bond: a type and its maturity date, at midnight UTC.

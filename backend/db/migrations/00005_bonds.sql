@@ -4,7 +4,7 @@
 
 -- +goose Up
 CREATE TABLE bond_quotes (
-    type            TEXT NOT NULL CHECK (type IN ('ltn', 'ntn_f')),
+    type            TEXT NOT NULL CHECK (type IN ('ltn', 'ntn_f', 'ntn_b_principal', 'ntn_b')),
     maturity        TEXT NOT NULL,
     buy_rate        TEXT,
     buy_unit_price  TEXT,

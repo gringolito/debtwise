@@ -24,10 +24,12 @@ import (
 	"github.com/gringolito/debtwise/backend/marketdata"
 	"github.com/gringolito/debtwise/backend/marketdata/radar"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
+	"github.com/gringolito/debtwise/backend/marketdata/sidra"
 )
 
-// fakeSGS answers every request for a series with the rows it holds for it that start on or after
-// the date the request starts from, as SGS does, and its error. It records each request's start.
+// fakeSGS stands in for SGS and SIDRA. It answers every request for a series, a SIDRA request
+// under its variable as the series, with the rows it holds for it that start on or after the date
+// the request starts from, as SGS does, and its error. It records each request's start.
 type fakeSGS struct {
 	mu       sync.Mutex
 	rows     map[int][]sgs.Observation
@@ -53,6 +55,17 @@ func (f *fakeSGS) Observations(_ context.Context, series int, from, _ time.Time)
 	return rows, f.failures[series]
 }
 
+func (f *fakeSGS) MonthlyValues(ctx context.Context, _, variable int, from, to time.Time) ([]sidra.Value, error) {
+	rows, err := f.Observations(ctx, variable, from, to)
+
+	values := make([]sidra.Value, 0, len(rows))
+	for _, r := range rows {
+		values = append(values, sidra.Value{Month: r.Start, Value: r.Value})
+	}
+
+	return values, err
+}
+
 func (f *fakeSGS) fail(series int, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -76,11 +89,11 @@ func (f *fakeSGS) lastFrom(series int) time.Time {
 	return f.from[series]
 }
 
-// sgsWithRows answers one row for every series DebtWise reads, or the rows passed for the
-// series they key.
+// sgsWithRows answers one row for every series DebtWise reads, SIDRA's IPCA index numbers
+// (variable 2266) among them, or the rows passed for the series they key.
 func sgsWithRows(rows map[int][]sgs.Observation) *fakeSGS {
 	f := &fakeSGS{rows: map[int][]sgs.Observation{}, failures: map[int]error{}, from: map[int]time.Time{}}
-	for _, series := range []int{226, 195, 432, 11, 433} {
+	for _, series := range []int{226, 195, 432, 11, 433, 2266} {
 		f.rows[series] = []sgs.Observation{{Start: date(2026, time.September, 1), Value: mustDecimal("1.00")}}
 	}
 
@@ -186,16 +199,17 @@ func openMigrated(t *testing.T) *sql.DB {
 }
 
 // newServer serves the API over a migrated database, with the market-data refresh job running
-// against indexSource and quoteSource until the test ends. It returns once the job's first refresh
-// is over.
-func newServer(t *testing.T, indexSource marketdata.IndexSource, quoteSource marketdata.QuoteSource) server {
+// against indexSource, for SGS and SIDRA, and quoteSource until the test ends. It returns once the
+// job's first refresh is over.
+func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteSource) server {
 	t.Helper()
 
 	conn := openMigrated(t)
 	store := indexes.NewStore(conn)
 	quotes := bonds.NewStore(conn)
 	logger := slog.New(slog.DiscardHandler)
-	job := marketdata.New(indexSource, store, quoteSource, quotes, marketdata.WithLogger(logger))
+	sources := marketdata.Sources{SGS: indexSource, SIDRA: indexSource, Radar: quoteSource}
+	job := marketdata.New(sources, store, quotes, marketdata.WithLogger(logger))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})

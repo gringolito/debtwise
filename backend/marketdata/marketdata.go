@@ -12,6 +12,7 @@ import (
 
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
+	"github.com/gringolito/debtwise/backend/marketdata/sidra"
 )
 
 const (
@@ -30,6 +31,18 @@ type IndexSource interface {
 	Observations(ctx context.Context, series int, from, to time.Time) ([]sgs.Observation, error)
 }
 
+// NumberSource is the subset of *sidra.Client the job reads.
+type NumberSource interface {
+	MonthlyValues(ctx context.Context, table, variable int, from, to time.Time) ([]sidra.Value, error)
+}
+
+// Sources are the external sources the job reads.
+type Sources struct {
+	SGS   IndexSource
+	SIDRA NumberSource
+	Radar QuoteSource
+}
+
 // IndexStore is the subset of *indexes.Store the job reads and writes.
 type IndexStore interface {
 	LatestPeriodStart(ctx context.Context, index indexes.Index) (time.Time, error)
@@ -38,24 +51,62 @@ type IndexStore interface {
 	RefreshTimes(ctx context.Context) ([]indexes.RefreshTimes, error)
 }
 
-// sgsIndex is an index and the SGS series it is published as.
-type sgsIndex struct {
-	index  indexes.Index
-	series int
+// feed is an index and how to fetch its values for the periods from `from` through `to`. When the
+// source fails partway, fetch returns the values fetched before the failure with the error.
+type feed struct {
+	index indexes.Index
+	fetch func(ctx context.Context, from, to time.Time) ([]indexes.Value, error)
 }
 
-// sgsIndexes returns every index with its SGS series, in the order of indexes.All.
-func sgsIndexes() []sgsIndex {
-	return []sgsIndex{
-		{index: indexes.TR, series: 226},
-		{index: indexes.PoupancaYield, series: 195},
-		{index: indexes.SelicTarget, series: 432},
-		{index: indexes.Selic, series: 11},
-		{index: indexes.IPCA, series: 433},
+// IBGE's IPCA index numbers: SIDRA table 1737, variable 2266.
+const (
+	ipcaTable          = 1737
+	ipcaNumberVariable = 2266
+)
+
+// feeds returns every index with its source, in the order of indexes.All.
+func (j *Job) feeds() []feed {
+	return []feed{
+		j.sgsFeed(indexes.TR, 226),
+		j.sgsFeed(indexes.PoupancaYield, 195),
+		j.sgsFeed(indexes.SelicTarget, 432),
+		j.sgsFeed(indexes.Selic, 11),
+		j.sgsFeed(indexes.IPCA, 433),
+		{index: indexes.IPCANumber, fetch: j.fetchIPCANumbers},
 	}
 }
 
-// backfillFrom is the first date fetched for an index that has no values yet.
+func (j *Job) sgsFeed(index indexes.Index, series int) feed {
+	return feed{index: index, fetch: func(ctx context.Context, from, to time.Time) ([]indexes.Value, error) {
+		observations, err := j.sources.SGS.Observations(ctx, series, from, to)
+
+		values := make([]indexes.Value, 0, len(observations))
+		for _, o := range observations {
+			end := o.End
+			if end.IsZero() {
+				end = o.Start
+			}
+
+			values = append(values, indexes.Value{PeriodStart: o.Start, PeriodEnd: end, Value: o.Value})
+		}
+
+		return values, err
+	}}
+}
+
+func (j *Job) fetchIPCANumbers(ctx context.Context, from, to time.Time) ([]indexes.Value, error) {
+	numbers, err := j.sources.SIDRA.MonthlyValues(ctx, ipcaTable, ipcaNumberVariable, from, to)
+
+	values := make([]indexes.Value, 0, len(numbers))
+	for _, n := range numbers {
+		values = append(values, indexes.Value{PeriodStart: n.Month, PeriodEnd: n.Month, Value: n.Value})
+	}
+
+	return values, err
+}
+
+// backfillFrom is the first date fetched for an index that has no values yet. It takes in June
+// 2000, the IPCA index number that Tesouro's VNA starts from.
 func backfillFrom() time.Time {
 	return time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 }
@@ -74,13 +125,12 @@ func WithInterval(d time.Duration) Option {
 
 // Job refreshes every index and the bond quotes from their sources.
 type Job struct {
-	indexSource IndexSource
-	indexStore  IndexStore
-	quoteSource QuoteSource
-	quoteStore  QuoteStore
-	logger      *slog.Logger
-	interval    time.Duration
-	trigger     chan struct{}
+	sources    Sources
+	indexStore IndexStore
+	quoteStore QuoteStore
+	logger     *slog.Logger
+	interval   time.Duration
+	trigger    chan struct{}
 
 	mu      sync.Mutex
 	pending bool
@@ -88,14 +138,13 @@ type Job struct {
 }
 
 // New returns a job with a refresh already pending, which Run starts with.
-func New(indexSource IndexSource, indexStore IndexStore, quoteSource QuoteSource, quoteStore QuoteStore, opts ...Option) *Job {
+func New(sources Sources, indexStore IndexStore, quoteStore QuoteStore, opts ...Option) *Job {
 	j := &Job{
-		indexSource: indexSource,
-		indexStore:  indexStore,
-		quoteSource: quoteSource,
-		quoteStore:  quoteStore,
-		interval:    DefaultInterval,
-		trigger:     make(chan struct{}, 1),
+		sources:    sources,
+		indexStore: indexStore,
+		quoteStore: quoteStore,
+		interval:   DefaultInterval,
+		trigger:    make(chan struct{}, 1),
 	}
 	for _, opt := range opts {
 		opt(j)
@@ -175,14 +224,14 @@ func (j *Job) finish() {
 // the failure recorded; failed quotes keep the stored ones and have the failure recorded. The
 // others are stored anyway.
 func (j *Job) Refresh(ctx context.Context, now time.Time) error {
-	all := sgsIndexes()
+	all := j.feeds()
 	errs := make([]error, len(all), len(all)+1)
 
 	var quotesErr error
 
 	var wg sync.WaitGroup
-	for i, s := range all {
-		wg.Go(func() { errs[i] = j.refresh(ctx, s, now) })
+	for i, f := range all {
+		wg.Go(func() { errs[i] = j.refresh(ctx, f, now) })
 	}
 
 	wg.Go(func() { quotesErr = j.refreshQuotes(ctx, now) })
@@ -192,29 +241,29 @@ func (j *Job) Refresh(ctx context.Context, now time.Time) error {
 	return errors.Join(append(errs, quotesErr)...)
 }
 
-func (j *Job) refresh(ctx context.Context, s sgsIndex, now time.Time) error {
-	values, err := j.fetch(ctx, s, now)
+func (j *Job) refresh(ctx context.Context, f feed, now time.Time) error {
+	values, err := j.fetch(ctx, f, now)
 	if err == nil {
-		if err = j.indexStore.SaveRefresh(ctx, s.index, values, now); err == nil {
+		if err = j.indexStore.SaveRefresh(ctx, f.index, values, now); err == nil {
 			return nil
 		}
 	}
 
 	// A refresh cut short by its caller is no failure of the source.
 	if ctx.Err() == nil {
-		if saveErr := j.indexStore.SaveFailure(ctx, s.index, values, now); saveErr != nil {
+		if saveErr := j.indexStore.SaveFailure(ctx, f.index, values, now); saveErr != nil {
 			err = errors.Join(err, saveErr)
 		}
 	}
 
-	return fmt.Errorf("marketdata: refresh %s: %w", s.index, err)
+	return fmt.Errorf("marketdata: refresh %s: %w", f.index, err)
 }
 
 // fetch returns the values of an index from its latest stored period on, so that values its
-// source revised for that period replace the stored ones. When the source fails partway, fetch
-// returns the values fetched before the failure with the error.
-func (j *Job) fetch(ctx context.Context, s sgsIndex, now time.Time) ([]indexes.Value, error) {
-	from, err := j.indexStore.LatestPeriodStart(ctx, s.index)
+// source revised for that period replace the stored ones, each fetched at now. When the source
+// fails partway, fetch returns the values fetched before the failure with the error.
+func (j *Job) fetch(ctx context.Context, f feed, now time.Time) ([]indexes.Value, error) {
+	from, err := j.indexStore.LatestPeriodStart(ctx, f.index)
 	if err != nil {
 		return nil, err
 	}
@@ -228,16 +277,9 @@ func (j *Job) fetch(ctx context.Context, s sgsIndex, now time.Time) ([]indexes.V
 		from = now
 	}
 
-	observations, err := j.indexSource.Observations(ctx, s.series, from, now.Add(lookahead))
-
-	values := make([]indexes.Value, 0, len(observations))
-	for _, o := range observations {
-		end := o.End
-		if end.IsZero() {
-			end = o.Start
-		}
-
-		values = append(values, indexes.Value{PeriodStart: o.Start, PeriodEnd: end, Value: o.Value, FetchedAt: now})
+	values, err := f.fetch(ctx, from, now.Add(lookahead))
+	for i := range values {
+		values[i].FetchedAt = now
 	}
 
 	return values, err

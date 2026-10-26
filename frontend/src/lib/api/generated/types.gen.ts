@@ -6,14 +6,14 @@ export type ClientOptions = {
 
 export type BondCatalogue = {
     /**
-     * The bonds on Tesouro Direto, LTN before NTN-F and each by maturity.
+     * The bonds on Tesouro Direto: LTN, NTN-F, NTN-B Principal, then NTN-B, each by maturity.
      */
     bonds: Array<BondQuote>;
 };
 
 export type BondPrice = {
     /**
-     * The yearly rate, as a decimal fraction: 0.1276 is 12.76% a year.
+     * The yearly rate, as a decimal fraction: 0.1276 is 12.76% a year. For ntn_b_principal and ntn_b it is the real rate over IPCA.
      */
     rate: string;
     /**
@@ -40,9 +40,9 @@ export type BondQuote = {
      */
     sell: BondPrice;
     /**
-     * ltn: Tesouro Prefixado; ntn_f: Tesouro Prefixado com Juros Semestrais.
+     * ltn: Tesouro Prefixado; ntn_f: Tesouro Prefixado com Juros Semestrais; ntn_b_principal: Tesouro IPCA+; ntn_b: Tesouro IPCA+ com Juros Semestrais.
      */
-    type: 'ltn' | 'ntn_f';
+    type: 'ltn' | 'ntn_f' | 'ntn_b_principal' | 'ntn_b';
 };
 
 export type BondsStatus = {
@@ -98,7 +98,7 @@ export type CorrectionIndex = {
     /**
      * The index the value belongs to.
      */
-    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
+    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
     /**
      * The last day of the period the value covers. Equals period_start when the index is dated by month.
      */
@@ -182,7 +182,7 @@ export type Health = {
 };
 
 export type IndexHistory = {
-    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
+    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
     /**
      * The values of the index, oldest period first.
      */
@@ -194,7 +194,7 @@ export type IndexStatus = {
      * When the latest refresh of the index failed. Absent unless status is failed.
      */
     failed_at?: string;
-    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
+    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
     /**
      * When the index was last refreshed successfully. Absent when it never was.
      */
@@ -454,7 +454,7 @@ export type IndexHistoryData = {
         /**
          * The index.
          */
-        index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca';
+        index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
     };
     query?: never;
     url: '/indexes/{index}/history';

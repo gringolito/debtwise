@@ -5,7 +5,7 @@
         "additionalProperties": false,
         "properties": {
           "bonds": {
-            "description": "The bonds on Tesouro Direto, LTN before NTN-F and each by maturity.",
+            "description": "The bonds on Tesouro Direto: LTN, NTN-F, NTN-B Principal, then NTN-B, each by maturity.",
             "items": {
               "$ref": "#/components/schemas/BondQuote"
             },
@@ -21,7 +21,7 @@
         "additionalProperties": false,
         "properties": {
           "rate": {
-            "description": "The yearly rate, as a decimal fraction: 0.1276 is 12.76% a year.",
+            "description": "The yearly rate, as a decimal fraction: 0.1276 is 12.76% a year. For ntn_b_principal and ntn_b it is the real rate over IPCA.",
             "type": "string"
           },
           "unit_price": {
@@ -57,10 +57,12 @@
             "description": "The rate and price the bond is sold back at."
           },
           "type": {
-            "description": "ltn: Tesouro Prefixado; ntn_f: Tesouro Prefixado com Juros Semestrais.",
+            "description": "ltn: Tesouro Prefixado; ntn_f: Tesouro Prefixado com Juros Semestrais; ntn_b_principal: Tesouro IPCA+; ntn_b: Tesouro IPCA+ com Juros Semestrais.",
             "enum": [
               "ltn",
-              "ntn_f"
+              "ntn_f",
+              "ntn_b_principal",
+              "ntn_b"
             ],
             "type": "string"
           }
@@ -174,7 +176,8 @@
               "poupanca_yield",
               "selic_target",
               "selic",
-              "ipca"
+              "ipca",
+              "ipca_number"
             ],
             "type": "string"
           },
@@ -330,7 +333,8 @@
               "poupanca_yield",
               "selic_target",
               "selic",
-              "ipca"
+              "ipca",
+              "ipca_number"
             ],
             "type": "string"
           },
@@ -362,7 +366,8 @@
               "poupanca_yield",
               "selic_target",
               "selic",
-              "ipca"
+              "ipca",
+              "ipca_number"
             ],
             "type": "string"
           },
@@ -818,7 +823,8 @@
                 "poupanca_yield",
                 "selic_target",
                 "selic",
-                "ipca"
+                "ipca",
+                "ipca_number"
               ],
               "type": "string"
             }

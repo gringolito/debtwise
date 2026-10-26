@@ -18,7 +18,8 @@ const FRESH_STATUS: MarketDataStatus = {
   bonds: { status: "fresh", refreshed_at: "2026-10-25T18:24:00Z" },
 };
 
-// LTN before NTN-F and each by maturity; the 2027 LTN is not on offer, so it has no buy.
+// LTN, NTN-F, NTN-B Principal, then NTN-B, each by maturity; the 2027 LTN is not on offer, so it
+// has no buy. IPCA+ rates are real rates over IPCA.
 const CATALOGUE: BondCatalogue = {
   bonds: [
     {
@@ -39,6 +40,20 @@ const CATALOGUE: BondCatalogue = {
       maturity: "2037-01-01",
       buy: { rate: "0.1312", unit_price: "812.5" },
       sell: { rate: "0.1324", unit_price: "1000.05" },
+      fetched_at: FETCHED_AT,
+    },
+    {
+      type: "ntn_b_principal",
+      maturity: "2032-08-15",
+      buy: { rate: "0.0672", unit_price: "3278.12" },
+      sell: { rate: "0.0684", unit_price: "3256.93" },
+      fetched_at: FETCHED_AT,
+    },
+    {
+      type: "ntn_b",
+      maturity: "2037-05-15",
+      buy: { rate: "0.0670", unit_price: "4669.3" },
+      sell: { rate: "0.0682", unit_price: "4629.32" },
       fetched_at: FETCHED_AT,
     },
   ],
@@ -108,6 +123,22 @@ describe("bonds page", () => {
         "R$ 812,50",
         "13,24%",
         "R$ 1.000,05",
+      ],
+      [
+        "Tesouro IPCA+ 2032",
+        "15/08/2032",
+        "IPCA + 6,72%",
+        "R$ 3.278,12",
+        "IPCA + 6,84%",
+        "R$ 3.256,93",
+      ],
+      [
+        "Tesouro IPCA+ com Juros Semestrais 2037",
+        "15/05/2037",
+        "IPCA + 6,70%",
+        "R$ 4.669,30",
+        "IPCA + 6,82%",
+        "R$ 4.629,32",
       ],
     ]);
   });

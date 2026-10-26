@@ -23,12 +23,12 @@ func (bondType) Schema(huma.Registry) *huma.Schema {
 }
 
 type bondPrice struct {
-	Rate      string `json:"rate" doc:"The yearly rate, as a decimal fraction: 0.1276 is 12.76% a year."`
+	Rate      string `json:"rate" doc:"The yearly rate, as a decimal fraction: 0.1276 is 12.76% a year. For ntn_b_principal and ntn_b it is the real rate over IPCA."`
 	UnitPrice string `json:"unit_price" doc:"The price of one bond in reais, as a decimal string."`
 }
 
 type bondQuote struct {
-	Type      bondType   `json:"type" doc:"ltn: Tesouro Prefixado; ntn_f: Tesouro Prefixado com Juros Semestrais."`
+	Type      bondType   `json:"type" doc:"ltn: Tesouro Prefixado; ntn_f: Tesouro Prefixado com Juros Semestrais; ntn_b_principal: Tesouro IPCA+; ntn_b: Tesouro IPCA+ com Juros Semestrais."`
 	Maturity  string     `json:"maturity" format:"date" doc:"The date the bond matures."`
 	Buy       *bondPrice `json:"buy,omitempty" doc:"The rate and price the bond is bought at. Absent when Tesouro Direto does not sell it."`
 	Sell      bondPrice  `json:"sell" doc:"The rate and price the bond is sold back at."`
@@ -36,7 +36,7 @@ type bondQuote struct {
 }
 
 type bondCatalogue struct {
-	Bonds []bondQuote `json:"bonds" nullable:"false" doc:"The bonds on Tesouro Direto, LTN before NTN-F and each by maturity."`
+	Bonds []bondQuote `json:"bonds" nullable:"false" doc:"The bonds on Tesouro Direto: LTN, NTN-F, NTN-B Principal, then NTN-B, each by maturity."`
 }
 
 type bondCatalogueOutput struct {
