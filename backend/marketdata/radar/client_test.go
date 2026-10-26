@@ -20,7 +20,7 @@ import (
 const jsonType = "application/json"
 
 // response is one reply of the Radar API. The files in testdata hold the bodies recorded from the
-// API, or built from Tesouro Direto's own JSON, which Radar relays field for field.
+// API: the bond list and the token failures without a token, the bonds on 2026-10-26 with one.
 type response struct {
 	status int
 	file   string
@@ -221,10 +221,10 @@ func TestBondReadsTheTreasuryBondOfTheFixture(t *testing.T) {
 				return radar.Bond{
 					Name:            "Tesouro Prefixado 2029",
 					Maturity:        time.Date(2029, time.January, 1, 0, 0, 0, 0, time.UTC),
-					InvestmentRate:  rate(t, "0.1276"),
-					InvestmentPrice: dec(t, "771.26"),
-					RedemptionRate:  rate(t, "0.1288"),
-					RedemptionPrice: dec(t, "769.49"),
+					InvestmentRate:  rate(t, "0.1526"),
+					InvestmentPrice: dec(t, "735.95"),
+					RedemptionRate:  rate(t, "0.1538"),
+					RedemptionPrice: dec(t, "734.3"),
 				}
 			},
 		},
@@ -235,8 +235,9 @@ func TestBondReadsTheTreasuryBondOfTheFixture(t *testing.T) {
 				return radar.Bond{
 					Name:            "Tesouro Prefixado 2027",
 					Maturity:        time.Date(2027, time.January, 1, 0, 0, 0, 0, time.UTC),
-					RedemptionRate:  rate(t, "0.1347"),
-					RedemptionPrice: dec(t, "977.19"),
+					InvestmentPrice: dec(t, "0.0"),
+					RedemptionRate:  rate(t, "0.1368"),
+					RedemptionPrice: dec(t, "977.36"),
 				}
 			},
 		},
@@ -247,10 +248,37 @@ func TestBondReadsTheTreasuryBondOfTheFixture(t *testing.T) {
 				return radar.Bond{
 					Name:            "Tesouro Prefixado com Juros Semestrais 2037",
 					Maturity:        time.Date(2037, time.January, 1, 0, 0, 0, 0, time.UTC),
-					InvestmentRate:  rate(t, "0.1288"),
-					InvestmentPrice: dec(t, "880.05"),
-					RedemptionRate:  rate(t, "0.1300"),
-					RedemptionPrice: dec(t, "874.38"),
+					InvestmentRate:  rate(t, "0.1519"),
+					InvestmentPrice: dec(t, "780.51"),
+					RedemptionRate:  rate(t, "0.1531"),
+					RedemptionPrice: dec(t, "775.81"),
+				}
+			},
+		},
+		{
+			name: "Tesouro IPCA+ 2035",
+			file: "ipca-2035.json",
+			want: func(t *testing.T) radar.Bond {
+				return radar.Bond{
+					Name:            "Tesouro IPCA+ 2035",
+					Maturity:        time.Date(2035, time.May, 15, 0, 0, 0, 0, time.UTC),
+					InvestmentPrice: dec(t, "0.0"),
+					RedemptionRate:  rate(t, "0.0784"),
+					RedemptionPrice: dec(t, "2513.61"),
+				}
+			},
+		},
+		{
+			name: "Tesouro IPCA+ com Juros Semestrais 2037",
+			file: "ipca-juros-semestrais-2037.json",
+			want: func(t *testing.T) radar.Bond {
+				return radar.Bond{
+					Name:            "Tesouro IPCA+ com Juros Semestrais 2037",
+					Maturity:        time.Date(2037, time.May, 15, 0, 0, 0, 0, time.UTC),
+					InvestmentRate:  rate(t, "0.0761"),
+					InvestmentPrice: dec(t, "4378.03"),
+					RedemptionRate:  rate(t, "0.0773"),
+					RedemptionPrice: dec(t, "4341.43"),
 				}
 			},
 		},
