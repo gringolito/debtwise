@@ -18,6 +18,13 @@ type Mortgages interface {
 	Find(ctx context.Context) (mortgage.Terms, error)
 	Save(ctx context.Context, terms mortgage.Terms) (mortgage.Terms, error)
 	Delete(ctx context.Context) error
+	Events(ctx context.Context) (mortgage.Events, error)
+	AddPrepayment(ctx context.Context, p mortgage.Prepayment) (mortgage.Prepayment, error)
+	UpdatePrepayment(ctx context.Context, p mortgage.Prepayment) error
+	DeletePrepayment(ctx context.Context, id int64) error
+	AddStatement(ctx context.Context, s mortgage.Statement) (mortgage.Statement, error)
+	UpdateStatement(ctx context.Context, s mortgage.Statement) error
+	DeleteStatement(ctx context.Context, id int64) error
 }
 
 type mortgageTerms struct {
@@ -86,7 +93,8 @@ type scheduledInstallment struct {
 	DFI                string            `json:"dfi" doc:"DFI (property damage insurance) premium, in reais, as a decimal string."`
 	Fee                string            `json:"fee" doc:"Admin fee, in reais, as a decimal string."`
 	Amount             string            `json:"amount" doc:"Total the installment charges, in reais, as a decimal string."`
-	OutstandingBalance string            `json:"outstanding_balance" doc:"Outstanding balance after the installment, in reais, as a decimal string."`
+	Prepaid            string            `json:"prepaid" doc:"Total of the prepayments made from this installment's due date until the next one's, in reais, as a decimal string."`
+	OutstandingBalance string            `json:"outstanding_balance" doc:"Outstanding balance after the installment and the prepayments and statements up to the next one, in reais, as a decimal string."`
 }
 
 type correctionIndex struct {
@@ -140,13 +148,8 @@ func registerMortgage(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
 			return nil, err
 		}
 
-		if violations := terms.Validate(); len(violations) > 0 {
-			details := make([]error, 0, len(violations))
-			for _, v := range violations {
-				details = append(details, &huma.ErrorDetail{Location: "body." + v.Field, Message: v.Reason})
-			}
-
-			return nil, huma.Error422UnprocessableEntity("validation failed", details...)
+		if err := violationsFailure(terms.Validate()); err != nil {
+			return nil, err
 		}
 
 		saved, err := mortgages.Save(ctx, terms)
@@ -163,7 +166,7 @@ func registerMortgage(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
 		Path:          mortgagePath,
 		DefaultStatus: http.StatusNoContent,
 		Summary:       "Delete the mortgage",
-		Description:   "Deletes the registered mortgage with all its terms.",
+		Description:   "Deletes the registered mortgage with all its terms, prepayments and statements.",
 		Tags:          []string{mortgageTag},
 	}, func(ctx context.Context, _ *struct{}) (*struct{}, error) {
 		if err := mortgages.Delete(ctx); err != nil {
@@ -178,23 +181,16 @@ func registerMortgage(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
 		Method:      http.MethodGet,
 		Path:        mortgagePath + "/schedule",
 		Summary:     "Read the mortgage schedule",
-		Description: "Returns the registered mortgage's installments month by month, to check against bank statements.",
+		Description: "Returns the registered mortgage's installments month by month, with its prepayments and statements replayed, to check against bank statements.",
 		Tags:        []string{mortgageTag},
 	}, func(ctx context.Context, _ *struct{}) (*scheduleOutput, error) {
-		terms, err := mortgages.Find(ctx)
+		terms, history, events, err := replayInputs(ctx, mortgages, store)
 		if err != nil {
-			return nil, mortgageFailure(err)
-		}
-
-		history := mortgage.History{}
-		for _, index := range terms.Indexer.Indexes() {
-			if history[index], err = store.History(ctx, index); err != nil {
-				return nil, err
-			}
+			return nil, err
 		}
 
 		out := &scheduleOutput{Body: schedule{Installments: make([]scheduledInstallment, 0, terms.TermMonths)}}
-		for m := range terms.Schedule(history, time.Now()) {
+		for m := range terms.Schedule(history, events, time.Now()) {
 			out.Body.Installments = append(out.Body.Installments, scheduledInstallment{
 				Number:             m.Number,
 				DueDate:            m.DueDate.Format(time.DateOnly),
@@ -206,20 +202,28 @@ func registerMortgage(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
 				DFI:                m.DFI.String(),
 				Fee:                m.Fee.String(),
 				Amount:             m.Amount.String(),
+				Prepaid:            m.Prepaid.String(),
 				OutstandingBalance: m.OutstandingBalance.String(),
 			})
 		}
 
 		return out, nil
 	})
+
+	registerMortgageEvents(humaAPI, mortgages, store)
 }
 
 func mortgageFailure(err error) error {
-	if errors.Is(err, mortgage.ErrNotFound) {
+	switch {
+	case errors.Is(err, mortgage.ErrNotFound):
 		return huma.Error404NotFound("no mortgage is registered")
+	case errors.Is(err, mortgage.ErrPrepaymentNotFound):
+		return huma.Error404NotFound("no such prepayment")
+	case errors.Is(err, mortgage.ErrStatementNotFound):
+		return huma.Error404NotFound("no such statement")
+	default:
+		return err
 	}
-
-	return err
 }
 
 func newCorrectionIndexes(values []mortgage.IndexValue) []correctionIndex {

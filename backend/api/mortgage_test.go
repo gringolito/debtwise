@@ -143,22 +143,22 @@ func TestMortgageScheduleIsServed(t *testing.T) {
 	assert.JSONEq(t, `{"installments": [
 		{"number": 1, "due_date": "2024-01-10", "correction": "0.00", "index_values": [], "interest": "600.00",
 		 "amortization": "10000.00", "mip": "18.00", "dfi": "10.00", "fee": "12.50", "amount": "10640.50",
-		 "outstanding_balance": "50000.00"},
+		 "prepaid": "0.00", "outstanding_balance": "50000.00"},
 		{"number": 2, "due_date": "2024-02-10", "correction": "0.00", "index_values": [], "interest": "500.00",
 		 "amortization": "10000.00", "mip": "15.00", "dfi": "10.00", "fee": "12.50", "amount": "10537.50",
-		 "outstanding_balance": "40000.00"},
+		 "prepaid": "0.00", "outstanding_balance": "40000.00"},
 		{"number": 3, "due_date": "2024-03-10", "correction": "0.00", "index_values": [], "interest": "400.00",
 		 "amortization": "10000.00", "mip": "12.00", "dfi": "10.00", "fee": "12.50", "amount": "10434.50",
-		 "outstanding_balance": "30000.00"},
+		 "prepaid": "0.00", "outstanding_balance": "30000.00"},
 		{"number": 4, "due_date": "2024-04-10", "correction": "0.00", "index_values": [], "interest": "300.00",
 		 "amortization": "10000.00", "mip": "15.00", "dfi": "10.00", "fee": "12.50", "amount": "10337.50",
-		 "outstanding_balance": "20000.00"},
+		 "prepaid": "0.00", "outstanding_balance": "20000.00"},
 		{"number": 5, "due_date": "2024-05-10", "correction": "0.00", "index_values": [], "interest": "200.00",
 		 "amortization": "10000.00", "mip": "10.00", "dfi": "10.00", "fee": "12.50", "amount": "10232.50",
-		 "outstanding_balance": "10000.00"},
+		 "prepaid": "0.00", "outstanding_balance": "10000.00"},
 		{"number": 6, "due_date": "2024-06-10", "correction": "0.00", "index_values": [], "interest": "100.00",
 		 "amortization": "10000.00", "mip": "5.00", "dfi": "10.00", "fee": "12.50", "amount": "10127.50",
-		 "outstanding_balance": "0.00"}
+		 "prepaid": "0.00", "outstanding_balance": "0.00"}
 	]}`, rec.Body.String())
 }
 
@@ -195,31 +195,31 @@ func TestIndexedMortgageScheduleIsCorrectedByPublishedValues(t *testing.T) {
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0539",
 		                   "period_start": "2023-12-10", "period_end": "2024-01-10"}],
 		 "interest": "600.32", "amortization": "10005.39", "mip": "18.01", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10646.22", "outstanding_balance": "50026.95"},
+		 "amount": "10646.22", "prepaid": "0.00", "outstanding_balance": "50026.95"},
 		{"number": 2, "due_date": "2024-02-10", "correction": "62.53",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.1250",
 		                   "period_start": "2024-01-10", "period_end": "2024-02-10"}],
 		 "interest": "500.89", "amortization": "10017.90", "mip": "15.03", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10556.32", "outstanding_balance": "40071.58"},
+		 "amount": "10556.32", "prepaid": "0.00", "outstanding_balance": "40071.58"},
 		{"number": 3, "due_date": "2024-03-10", "correction": "0.00",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0000",
 		                   "period_start": "2024-02-10", "period_end": "2024-03-10"}],
 		 "interest": "400.72", "amortization": "10017.90", "mip": "12.02", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10453.14", "outstanding_balance": "30053.68"},
+		 "amount": "10453.14", "prepaid": "0.00", "outstanding_balance": "30053.68"},
 		{"number": 4, "due_date": "2024-04-10", "correction": "0.00",
 		 "index_values": [{"index": "tr", "status": "missing", "period_start": "2024-03-10", "period_end": "2024-04-10"}],
 		 "interest": "300.54", "amortization": "10017.89", "mip": "15.03", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10355.96", "outstanding_balance": "20035.79"},
+		 "amount": "10355.96", "prepaid": "0.00", "outstanding_balance": "20035.79"},
 		{"number": 5, "due_date": "2024-05-10", "correction": "16.75",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0836",
 		                   "period_start": "2024-04-10", "period_end": "2024-05-10"}],
 		 "interest": "200.53", "amortization": "10026.27", "mip": "10.03", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10259.33", "outstanding_balance": "10026.27"},
+		 "amount": "10259.33", "prepaid": "0.00", "outstanding_balance": "10026.27"},
 		{"number": 6, "due_date": "2024-06-10", "correction": "4.89",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0488",
 		                   "period_start": "2024-05-10", "period_end": "2024-06-10"}],
 		 "interest": "100.31", "amortization": "10031.16", "mip": "5.02", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10158.99", "outstanding_balance": "0.00"}
+		 "amount": "10158.99", "prepaid": "0.00", "outstanding_balance": "0.00"}
 	]}`, rec.Body.String())
 }
 
@@ -245,7 +245,7 @@ func TestScheduleReadsTheIndexesItsIndexerDerivesFrom(t *testing.T) {
 				"index_values": [{"index": "poupanca_yield", "status": "published", "value": "0.5542",
 				                  "period_start": "2023-12-10", "period_end": "2024-01-10"}],
 				"interest": "603.33", "amortization": "60332.52", "mip": "18.10", "dfi": "10.00", "fee": "12.50",
-				"amount": "60976.45", "outstanding_balance": "0.00"}`,
+				"amount": "60976.45", "prepaid": "0.00", "outstanding_balance": "0.00"}`,
 		},
 		{
 			name:    "IPCA",
@@ -257,7 +257,7 @@ func TestScheduleReadsTheIndexesItsIndexerDerivesFrom(t *testing.T) {
 				"index_values": [{"index": "ipca", "status": "published", "value": "0.28",
 				                  "period_start": "2023-11-01", "period_end": "2023-11-01"}],
 				"interest": "601.68", "amortization": "60168.00", "mip": "18.05", "dfi": "10.00", "fee": "12.50",
-				"amount": "60810.23", "outstanding_balance": "0.00"}`,
+				"amount": "60810.23", "prepaid": "0.00", "outstanding_balance": "0.00"}`,
 		},
 	}
 

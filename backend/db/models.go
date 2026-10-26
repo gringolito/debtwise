@@ -73,3 +73,18 @@ type MortgageMipRate struct {
 	EffectiveFrom string
 	Rate          string
 }
+
+type MortgagePrepayment struct {
+	ID         int64
+	MortgageID int64
+	Date       string
+	Amount     string
+	Effect     string
+}
+
+type MortgageStatement struct {
+	ID                 int64
+	MortgageID         int64
+	Date               string
+	OutstandingBalance string
+}

@@ -16,6 +16,8 @@ interface TextFieldProps {
   value: string;
   onChange: (value: string) => void;
   invalid: boolean;
+  /** What the owner reads next to an invalid input; a generic one when the cause is unknown. */
+  message?: string;
   type?: "text" | "date" | "number";
   inputMode?: "decimal" | "numeric";
 }
@@ -26,6 +28,7 @@ export function TextField({
   value,
   onChange,
   invalid,
+  message = "Valor inválido.",
   type = "text",
   inputMode,
 }: TextFieldProps) {
@@ -44,7 +47,7 @@ export function TextField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
-      {invalid && <Message id={messageId}>Valor inválido.</Message>}
+      {invalid && <Message id={messageId}>{message}</Message>}
     </Field>
   );
 }
@@ -55,7 +58,8 @@ interface SelectFieldProps<T extends string> {
   value: T;
   options: readonly { value: T; label: string }[];
   onChange: (value: T) => void;
-  invalid: boolean;
+  invalid?: boolean;
+  message?: string;
 }
 
 export function SelectField<T extends string>({
@@ -65,6 +69,7 @@ export function SelectField<T extends string>({
   options,
   onChange,
   invalid,
+  message = "Valor inválido.",
 }: SelectFieldProps<T>) {
   const id = useId();
   const messageId = `${id}-message`;
@@ -85,7 +90,7 @@ export function SelectField<T extends string>({
           </NativeSelectOption>
         ))}
       </NativeSelect>
-      {invalid && <Message id={messageId}>Valor inválido.</Message>}
+      {invalid && <Message id={messageId}>{message}</Message>}
     </Field>
   );
 }

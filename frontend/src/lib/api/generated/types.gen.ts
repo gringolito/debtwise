@@ -297,6 +297,47 @@ export type MortgageTerms = {
     term_months: number;
 };
 
+export type Prepayment = {
+    /**
+     * Amount prepaid, in reais, as a decimal string.
+     */
+    amount: string;
+    /**
+     * Date the prepayment was made.
+     */
+    date: string;
+    /**
+     * What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.
+     */
+    effect: 'shorten_term' | 'lower_installment';
+    /**
+     * The prepayment's ID.
+     */
+    id: number;
+};
+
+export type PrepaymentInput = {
+    /**
+     * Amount prepaid, in reais, as a decimal string.
+     */
+    amount: string;
+    /**
+     * Date the prepayment was made.
+     */
+    date: string;
+    /**
+     * What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.
+     */
+    effect: 'shorten_term' | 'lower_installment';
+};
+
+export type PrepaymentList = {
+    /**
+     * Every prepayment recorded on the mortgage, in date order.
+     */
+    prepayments: Array<Prepayment>;
+};
+
 export type RegisteredMortgage = {
     /**
      * How each installment splits into amortization and interest.
@@ -393,9 +434,69 @@ export type ScheduledInstallment = {
      */
     number: number;
     /**
-     * Outstanding balance after the installment, in reais, as a decimal string.
+     * Outstanding balance after the installment and the prepayments and statements up to the next one, in reais, as a decimal string.
      */
     outstanding_balance: string;
+    /**
+     * Total of the prepayments made from this installment's due date until the next one's, in reais, as a decimal string.
+     */
+    prepaid: string;
+};
+
+export type Statement = {
+    /**
+     * Date of the outstanding balance the bank reported.
+     */
+    date: string;
+    /**
+     * The statement's ID.
+     */
+    id: number;
+    /**
+     * Outstanding balance the bank reported, in reais, as a decimal string.
+     */
+    outstanding_balance: string;
+};
+
+export type StatementDrift = {
+    /**
+     * Outstanding balance the schedule shows on the same date, after the installments due by then, in reais, as a decimal string.
+     */
+    computed_balance: string;
+    /**
+     * Date of the outstanding balance the bank reported.
+     */
+    date: string;
+    /**
+     * The reported balance minus the computed one, in reais, as a decimal string. Positive when the bank says more is owed.
+     */
+    drift: string;
+    /**
+     * The statement's ID.
+     */
+    id: number;
+    /**
+     * Outstanding balance the bank reported, in reais, as a decimal string.
+     */
+    outstanding_balance: string;
+};
+
+export type StatementInput = {
+    /**
+     * Date of the outstanding balance the bank reported. One statement per date.
+     */
+    date: string;
+    /**
+     * Outstanding balance the bank reported, in reais, as a decimal string.
+     */
+    outstanding_balance: string;
+};
+
+export type StatementList = {
+    /**
+     * Every statement recorded on the mortgage, in date order, each with its drift from the schedule. Only this list carries the drift.
+     */
+    statements: Array<StatementDrift>;
 };
 
 export type ListBondsData = {
@@ -603,6 +704,116 @@ export type SaveMortgageResponses = {
 
 export type SaveMortgageResponse = SaveMortgageResponses[keyof SaveMortgageResponses];
 
+export type ListPrepaymentsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mortgage/prepayments';
+};
+
+export type ListPrepaymentsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type ListPrepaymentsError = ListPrepaymentsErrors[keyof ListPrepaymentsErrors];
+
+export type ListPrepaymentsResponses = {
+    /**
+     * OK
+     */
+    200: PrepaymentList;
+};
+
+export type ListPrepaymentsResponse = ListPrepaymentsResponses[keyof ListPrepaymentsResponses];
+
+export type AddPrepaymentData = {
+    body: PrepaymentInput;
+    path?: never;
+    query?: never;
+    url: '/mortgage/prepayments';
+};
+
+export type AddPrepaymentErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type AddPrepaymentError = AddPrepaymentErrors[keyof AddPrepaymentErrors];
+
+export type AddPrepaymentResponses = {
+    /**
+     * Created
+     */
+    201: Prepayment;
+};
+
+export type AddPrepaymentResponse = AddPrepaymentResponses[keyof AddPrepaymentResponses];
+
+export type DeletePrepaymentData = {
+    body?: never;
+    path: {
+        /**
+         * The ID the prepayment was recorded with.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/mortgage/prepayments/{id}';
+};
+
+export type DeletePrepaymentErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type DeletePrepaymentError = DeletePrepaymentErrors[keyof DeletePrepaymentErrors];
+
+export type DeletePrepaymentResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type DeletePrepaymentResponse = DeletePrepaymentResponses[keyof DeletePrepaymentResponses];
+
+export type EditPrepaymentData = {
+    body: PrepaymentInput;
+    path: {
+        /**
+         * The ID the prepayment was recorded with.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/mortgage/prepayments/{id}';
+};
+
+export type EditPrepaymentErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type EditPrepaymentError = EditPrepaymentErrors[keyof EditPrepaymentErrors];
+
+export type EditPrepaymentResponses = {
+    /**
+     * OK
+     */
+    200: Prepayment;
+};
+
+export type EditPrepaymentResponse = EditPrepaymentResponses[keyof EditPrepaymentResponses];
+
 export type ReadMortgageScheduleData = {
     body?: never;
     path?: never;
@@ -627,3 +838,113 @@ export type ReadMortgageScheduleResponses = {
 };
 
 export type ReadMortgageScheduleResponse = ReadMortgageScheduleResponses[keyof ReadMortgageScheduleResponses];
+
+export type ListStatementsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/mortgage/statements';
+};
+
+export type ListStatementsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type ListStatementsError = ListStatementsErrors[keyof ListStatementsErrors];
+
+export type ListStatementsResponses = {
+    /**
+     * OK
+     */
+    200: StatementList;
+};
+
+export type ListStatementsResponse = ListStatementsResponses[keyof ListStatementsResponses];
+
+export type AddStatementData = {
+    body: StatementInput;
+    path?: never;
+    query?: never;
+    url: '/mortgage/statements';
+};
+
+export type AddStatementErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type AddStatementError = AddStatementErrors[keyof AddStatementErrors];
+
+export type AddStatementResponses = {
+    /**
+     * Created
+     */
+    201: Statement;
+};
+
+export type AddStatementResponse = AddStatementResponses[keyof AddStatementResponses];
+
+export type DeleteStatementData = {
+    body?: never;
+    path: {
+        /**
+         * The ID the statement was recorded with.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/mortgage/statements/{id}';
+};
+
+export type DeleteStatementErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type DeleteStatementError = DeleteStatementErrors[keyof DeleteStatementErrors];
+
+export type DeleteStatementResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type DeleteStatementResponse = DeleteStatementResponses[keyof DeleteStatementResponses];
+
+export type EditStatementData = {
+    body: StatementInput;
+    path: {
+        /**
+         * The ID the statement was recorded with.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/mortgage/statements/{id}';
+};
+
+export type EditStatementErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type EditStatementError = EditStatementErrors[keyof EditStatementErrors];
+
+export type EditStatementResponses = {
+    /**
+     * OK
+     */
+    200: Statement;
+};
+
+export type EditStatementResponse = EditStatementResponses[keyof EditStatementResponses];

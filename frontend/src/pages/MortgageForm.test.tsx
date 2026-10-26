@@ -84,7 +84,9 @@ describe("registering the mortgage", () => {
       },
     ]);
     expect(screen.getByRole("heading", { name: "Financiamento" })).toBeInTheDocument();
-    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("table", { name: "Evolução do financiamento" }),
+    ).toBeInTheDocument();
   });
 
   it("sends text the API cannot read as typed so the API rejects it", async () => {

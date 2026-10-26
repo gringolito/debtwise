@@ -118,6 +118,12 @@ from that date on.
 _Avoid_: Snapshot (doesn't say the figure comes from the bank), balance (the computed balance is a
 different figure)
 
+**Drift** (diferença):
+How far a statement's outstanding balance is from the one the schedule computed for its date. It
+shows whether DebtWise's model of the mortgage still tracks the contract.
+_Avoid_: Error (suggests the bank is wrong), discrepancy (doesn't say which figure is the
+reference)
+
 ### Investments
 
 **Bond** (título):

@@ -53,3 +53,30 @@ INSERT INTO mortgage_fees (mortgage_id, effective_from, amount) VALUES (?, ?, ?)
 
 -- name: DeleteMortgageFees :exec
 DELETE FROM mortgage_fees WHERE mortgage_id = ?;
+
+-- name: ListMortgagePrepayments :many
+SELECT id, date, amount, effect FROM mortgage_prepayments WHERE mortgage_id = ? ORDER BY date, id;
+
+-- name: InsertMortgagePrepayment :one
+INSERT INTO mortgage_prepayments (mortgage_id, date, amount, effect) VALUES (?, ?, ?, ?) RETURNING id;
+
+-- name: UpdateMortgagePrepayment :execrows
+UPDATE mortgage_prepayments SET date = ?, amount = ?, effect = ? WHERE id = ? AND mortgage_id = ?;
+
+-- name: DeleteMortgagePrepayment :execrows
+DELETE FROM mortgage_prepayments WHERE id = ? AND mortgage_id = ?;
+
+-- name: ListMortgageStatements :many
+SELECT id, date, outstanding_balance FROM mortgage_statements WHERE mortgage_id = ? ORDER BY date;
+
+-- name: FindMortgageStatementOn :one
+SELECT id FROM mortgage_statements WHERE mortgage_id = ? AND date = ?;
+
+-- name: InsertMortgageStatement :one
+INSERT INTO mortgage_statements (mortgage_id, date, outstanding_balance) VALUES (?, ?, ?) RETURNING id;
+
+-- name: UpdateMortgageStatement :execrows
+UPDATE mortgage_statements SET date = ?, outstanding_balance = ? WHERE id = ? AND mortgage_id = ?;
+
+-- name: DeleteMortgageStatement :execrows
+DELETE FROM mortgage_statements WHERE id = ? AND mortgage_id = ?;

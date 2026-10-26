@@ -1,29 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import { cn } from "cn";
-import { useId } from "react";
 import { DeleteMortgageDialog } from "@/components/mortgage/DeleteMortgageDialog";
 import { MortgageSchedule } from "@/components/mortgage/MortgageSchedule";
+import { Prepayments } from "@/components/mortgage/Prepayments";
+import { Section } from "@/components/mortgage/Section";
+import { Statements } from "@/components/mortgage/Statements";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ContractRate, RegisteredMortgage } from "@/lib/api";
 import { amortizationSystemLabels, indexerLabels } from "@/lib/mortgageForm";
 import { useDeleteMortgage, useMortgage } from "@/lib/mortgageQueries";
 import { formatDate, formatMoney, formatRate } from "@/lib/format";
-
-type SectionProps = React.ComponentProps<typeof Card> & { heading: string };
-
-function Section({ heading, children, ...props }: SectionProps) {
-  const headingId = useId();
-  return (
-    <Card role="region" aria-labelledby={headingId} {...props}>
-      <CardHeader>
-        <CardTitle id={headingId}>{heading}</CardTitle>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
-}
 
 type TermProps = React.ComponentProps<"div"> & { name: string };
 
@@ -139,6 +126,8 @@ function MortgageDetails({ mortgage }: { mortgage: RegisteredMortgage }) {
           value: formatMoney(fee.amount),
         }))}
       />
+      <Prepayments />
+      <Statements />
       <MortgageSchedule />
     </div>
   );

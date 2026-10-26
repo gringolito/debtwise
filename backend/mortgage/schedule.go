@@ -26,88 +26,230 @@ type Installment struct {
 	Fee          decimal.Decimal
 	// Amount is everything the installment charges.
 	Amount decimal.Decimal
-	// OutstandingBalance is what is still owed after this installment.
+	// Prepaid is what the prepayments dated from this installment's due date until the next one's
+	// took off the outstanding balance.
+	Prepaid decimal.Decimal
+	// OutstandingBalance is what is still owed after this installment and the prepayments and
+	// statements dated before the next one.
 	OutstandingBalance decimal.Decimal
 }
 
 // Schedule returns the installments of valid terms in order, each priced with the rates and fee
-// in effect on its due date.
+// in effect on its due date, with events replayed between them.
 //
 // Each installment due by today first corrects the outstanding balance by the indexer's published
 // value on each contract anniversary since the previous installment, unless that value is missing.
 // Each charge and correction is rounded to centavos. The last installment amortizes whatever is
 // still owed, so the balance ends at zero. Under Price the amortization plus interest is set from
 // the balance, rate and months left on the first installment, whenever the rate changes and
-// whenever the balance is corrected.
-func (t Terms) Schedule(history History, today time.Time) iter.Seq[Installment] {
+// whenever the balance is corrected, prepaid or stated.
+//
+// Events apply in date order after the installments due on or before their date. A prepayment
+// takes off at most what is owed. Shortening the term keeps the months left to the fewest whose
+// installment, under the amortization system's rule, is no higher than before the prepayment;
+// lowering the installment keeps the months left. A statement replaces the computed balance. Once
+// nothing is owed the schedule ends, and later statements only report their drift.
+func (t Terms) Schedule(history History, events Events, today time.Time) iter.Seq[Installment] {
+	return t.replayer(history, events, today).installments()
+}
+
+// Drifts returns the drift of every statement in events, in date order, as Schedule replays them.
+func (t Terms) Drifts(history History, events Events, today time.Time) []Drift {
+	r := t.replayer(history, events, today)
+	for range r.installments() {
+	}
+
+	return r.drifts
+}
+
+// replayer replays a schedule once, keeping its state between installments.
+type replayer struct {
+	terms       Terms
+	corrections *corrections
+	today       time.Time
+	events      []event
+	balance     decimal.Decimal
+	// term is the number of the last installment.
+	term int
+	// payment is the Price installment's amortization plus interest, levelled at paymentRate.
+	payment, paymentRate decimal.Decimal
+	// relevel is set when the balance changed outside an installment, so Price levels the
+	// installment again.
+	relevel bool
+	// drifts are those of the statements applied so far.
+	drifts []Drift
+}
+
+func (t Terms) replayer(history History, events Events, today time.Time) *replayer {
+	return &replayer{
+		terms:       t,
+		corrections: newCorrections(t, history),
+		today:       today,
+		events:      events.inOrder(),
+		balance:     t.OriginalAmount.RoundCents(),
+		term:        t.TermMonths,
+	}
+}
+
+func (r *replayer) installments() iter.Seq[Installment] {
 	return func(yield func(Installment) bool) {
-		corrections := newCorrections(t, history)
-		balance := t.OriginalAmount.RoundCents()
+		r.applyBefore(0, r.terms.FirstInstallmentDate)
 
-		var payment, paymentRate decimal.Decimal
+		for number := 1; number <= r.term; number++ {
+			installment := r.charge(number)
+			installment.Prepaid = r.applyBefore(number, addMonths(r.terms.FirstInstallmentDate, number))
+			installment.OutstandingBalance = r.balance
 
-		for number := 1; number <= t.TermMonths; number++ {
-			due := addMonths(t.FirstInstallmentDate, number-1)
-			rate := inEffect(t.ContractRates, due).monthly()
-			left := t.TermMonths - number + 1
-
-			var values []IndexValue
-			if !due.After(today) {
-				values = corrections.through(due)
-			}
-
-			correction := decimal.Decimal{}.RoundCents()
-
-			for _, v := range values {
-				if v.Missing {
-					continue
-				}
-
-				corrected := balance.Mul(v.Value).Quo(decimal.FromInt(100)).RoundCents()
-				correction = correction.Add(corrected)
-				balance = balance.Add(corrected)
-			}
-
-			interest := balance.Mul(rate).RoundCents()
-
-			var amortization decimal.Decimal
-
-			switch {
-			case left == 1:
-				amortization = balance
-			case t.AmortizationSystem == SAC:
-				amortization = balance.Quo(decimal.FromInt(int64(left))).RoundCents()
-			default:
-				if number == 1 || rate.Cmp(paymentRate) != 0 || correction.Cmp(decimal.Decimal{}) != 0 {
-					payment, paymentRate = pricePayment(balance, rate, left), rate
-				}
-
-				amortization = payment.Sub(interest)
-			}
-
-			mip := balance.Mul(inEffect(t.MIPRates, due).Rate).RoundCents()
-			dfi := t.AppraisalValue.Mul(inEffect(t.DFIRates, due).Rate).RoundCents()
-			fee := inEffect(t.Fees, due).Amount.RoundCents()
-			balance = balance.Sub(amortization)
-
-			installment := Installment{
-				Number:             number,
-				DueDate:            due,
-				Correction:         correction,
-				IndexValues:        values,
-				Interest:           interest,
-				Amortization:       amortization,
-				MIP:                mip,
-				DFI:                dfi,
-				Fee:                fee,
-				Amount:             amortization.Add(interest).Add(mip).Add(dfi).Add(fee),
-				OutstandingBalance: balance,
-			}
 			if !yield(installment) {
 				return
 			}
 		}
+
+		for len(r.events) > 0 {
+			r.applyNext(r.term)
+		}
 	}
+}
+
+// charge returns installment number, corrected, priced and amortized from the balance.
+func (r *replayer) charge(number int) Installment {
+	t := r.terms
+	due := addMonths(t.FirstInstallmentDate, number-1)
+	rate := inEffect(t.ContractRates, due).monthly()
+	left := r.term - number + 1
+
+	var values []IndexValue
+	if !due.After(r.today) {
+		values = r.corrections.through(due)
+	}
+
+	correction := decimal.Decimal{}.RoundCents()
+
+	for _, v := range values {
+		if v.Missing {
+			continue
+		}
+
+		corrected := r.balance.Mul(v.Value).Quo(decimal.FromInt(100)).RoundCents()
+		correction = correction.Add(corrected)
+		r.balance = r.balance.Add(corrected)
+	}
+
+	interest := r.balance.Mul(rate).RoundCents()
+
+	var amortization decimal.Decimal
+
+	switch {
+	case left == 1:
+		amortization = r.balance
+	case t.AmortizationSystem == SAC:
+		amortization = level(SAC, r.balance, rate, left)
+	default:
+		if number == 1 || r.relevel || rate.Cmp(r.paymentRate) != 0 || correction.Cmp(decimal.Decimal{}) != 0 {
+			r.payment, r.paymentRate = pricePayment(r.balance, rate, left), rate
+		}
+
+		amortization = r.payment.Sub(interest)
+	}
+
+	r.relevel = false
+	mip := r.balance.Mul(inEffect(t.MIPRates, due).Rate).RoundCents()
+	dfi := t.AppraisalValue.Mul(inEffect(t.DFIRates, due).Rate).RoundCents()
+	fee := inEffect(t.Fees, due).Amount.RoundCents()
+	r.balance = r.balance.Sub(amortization)
+
+	return Installment{
+		Number:       number,
+		DueDate:      due,
+		Correction:   correction,
+		IndexValues:  values,
+		Interest:     interest,
+		Amortization: amortization,
+		MIP:          mip,
+		DFI:          dfi,
+		Fee:          fee,
+		Amount:       amortization.Add(interest).Add(mip).Add(dfi).Add(fee),
+	}
+}
+
+// applyBefore applies the events dated before until, after paid installments, and returns what
+// their prepayments took off the balance.
+func (r *replayer) applyBefore(paid int, until time.Time) decimal.Decimal {
+	prepaid := decimal.Decimal{}.RoundCents()
+
+	for len(r.events) > 0 && r.events[0].date.Before(until) {
+		prepaid = prepaid.Add(r.applyNext(paid))
+	}
+
+	return prepaid
+}
+
+// applyNext applies the next event after paid installments, ends the schedule there if nothing is
+// owed any more, and returns what a prepayment took off the balance.
+func (r *replayer) applyNext(paid int) decimal.Decimal {
+	e := r.events[0]
+	r.events = r.events[1:]
+
+	prepaid := decimal.Decimal{}.RoundCents()
+
+	switch {
+	case e.statement != nil:
+		r.applyStatement(*e.statement)
+	case r.balance.Cmp(decimal.Decimal{}) > 0:
+		prepaid = r.prepay(paid, *e.prepayment)
+	}
+
+	if r.balance.Cmp(decimal.Decimal{}) == 0 {
+		r.term = paid
+	}
+
+	return prepaid
+}
+
+// prepay takes p off the balance after paid installments and returns how much it took.
+func (r *replayer) prepay(paid int, p Prepayment) decimal.Decimal {
+	amount := p.Amount
+	if amount.Cmp(r.balance) > 0 {
+		amount = r.balance
+	}
+
+	left := r.term - paid
+	rate := inEffect(r.terms.ContractRates, addMonths(r.terms.FirstInstallmentDate, paid)).monthly()
+	before := level(r.terms.AmortizationSystem, r.balance, rate, left)
+	r.balance = r.balance.Sub(amount)
+	r.relevel = true
+
+	if p.Effect == ShortenTerm && r.balance.Cmp(decimal.Decimal{}) > 0 {
+		months := 1
+		for months < left && level(r.terms.AmortizationSystem, r.balance, rate, months).Cmp(before) > 0 {
+			months++
+		}
+
+		r.term = paid + months
+	}
+
+	return amount
+}
+
+// applyStatement records the statement's drift and replaces the balance with its balance, unless
+// nothing is owed any more.
+func (r *replayer) applyStatement(s Statement) {
+	r.drifts = append(r.drifts, Drift{Statement: s, ComputedBalance: r.balance, Amount: s.OutstandingBalance.Sub(r.balance)})
+
+	if r.balance.Cmp(decimal.Decimal{}) > 0 {
+		r.balance = s.OutstandingBalance
+		r.relevel = true
+	}
+}
+
+// level returns the installment's amortization under SAC, or its amortization plus interest under
+// Price, that pays balance off over months at a monthly rate.
+func level(system AmortizationSystem, balance, rate decimal.Decimal, months int) decimal.Decimal {
+	if system == SAC {
+		return balance.Quo(decimal.FromInt(int64(months))).RoundCents()
+	}
+
+	return pricePayment(balance, rate, months)
 }
 
 // pricePayment returns the level amortization plus interest that pays balance off over months at
