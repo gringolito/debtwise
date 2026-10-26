@@ -1,9 +1,11 @@
 package db_test
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/pressly/goose/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -20,7 +22,7 @@ func TestMigrateAppliesPendingMigrationsOnce(t *testing.T) {
 
 	applied, err := db.Migrate(t.Context(), conn)
 	require.NoError(t, err)
-	assert.Equal(t, []int64{1, 2, 3}, applied)
+	assert.Equal(t, []int64{1, 2, 3, 4}, applied)
 	require.NoError(t, conn.Close())
 
 	reopened, err := db.Open(t.Context(), path)
@@ -31,6 +33,35 @@ func TestMigrateAppliesPendingMigrationsOnce(t *testing.T) {
 	applied, err = db.Migrate(t.Context(), reopened)
 	require.NoError(t, err)
 	assert.Empty(t, applied)
+}
+
+// A mortgage registered before mortgages had an indexer is a fixed-rate one.
+func TestMigrationMakesExistingMortgagesFixedRate(t *testing.T) {
+	t.Parallel()
+
+	conn, err := db.Open(t.Context(), filepath.Join(t.TempDir(), "debtwise.db"))
+	require.NoError(t, err)
+
+	t.Cleanup(func() { _ = conn.Close() })
+
+	provider, err := goose.NewProvider(goose.DialectSQLite3, conn, os.DirFS("migrations"))
+	require.NoError(t, err)
+
+	_, err = provider.UpTo(t.Context(), 3)
+	require.NoError(t, err)
+
+	_, err = conn.ExecContext(t.Context(), `INSERT INTO mortgages (
+		contract_date, original_amount, term_months, first_installment_date, amortization_system, appraisal_value
+	) VALUES ('2023-12-10', '60000.00', 6, '2024-01-10', 'sac', '100000.00')`)
+	require.NoError(t, err)
+
+	applied, err := db.Migrate(t.Context(), conn)
+	require.NoError(t, err)
+	assert.Equal(t, []int64{4}, applied)
+
+	var indexer string
+	require.NoError(t, conn.QueryRowContext(t.Context(), "SELECT indexer FROM mortgages").Scan(&indexer))
+	assert.Equal(t, "none", indexer)
 }
 
 func TestMigratedFileIsADebtWiseDatabase(t *testing.T) {

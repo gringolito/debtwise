@@ -2,7 +2,7 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RegisteredMortgage } from "@/lib/api";
 import { stubMortgageApi } from "@/test/mortgageApi";
-import { registeredMortgage } from "@/test/mortgageFixtures";
+import { registeredMortgage, trMortgage } from "@/test/mortgageFixtures";
 import { renderAt } from "@/test/renderAt";
 import { problem, stubRoutes } from "@/test/stubServer";
 
@@ -54,6 +54,7 @@ describe("registering the mortgage", () => {
     fill("Prazo (meses)", "6");
     fill("Primeira prestação", "2024-01-10");
     fill("Sistema de amortização", "price");
+    fill("Indexador", "tr");
     fill("Valor de avaliação", "100.000");
     fill("Vigência da taxa de juros 1", "2023-12-10");
     fill("Taxa de juros 1 (% a.a.)", "9,5");
@@ -74,6 +75,7 @@ describe("registering the mortgage", () => {
         term_months: 6,
         first_installment_date: "2024-01-10",
         amortization_system: "price",
+        indexer: "tr",
         appraisal_value: "100000",
         contract_rates: [{ effective_from: "2023-12-10", rate: "0.095", basis: "effective" }],
         mip_rates: [{ effective_from: "2023-12-10", rate: "0.000258" }],
@@ -104,12 +106,33 @@ describe("registering the mortgage", () => {
         term_months: null,
         first_installment_date: "",
         amortization_system: "sac",
+        indexer: "none",
         appraisal_value: "",
         contract_rates: [{ effective_from: "", rate: "alta", basis: "nominal" }],
         mip_rates: [{ effective_from: "", rate: "" }],
         dfi_rates: [{ effective_from: "", rate: "" }],
         fees: [{ effective_from: "", amount: "" }],
       },
+    ]);
+  });
+});
+
+describe("the indexer choice", () => {
+  it("offers the indexers in pt-BR and starts on none for a new mortgage", async () => {
+    stubMortgageApi();
+    renderAt("/financiamento/editar");
+
+    const select = await screen.findByLabelText("Indexador");
+    expect(select).toHaveValue("none");
+    expect(
+      within(select)
+        .getAllByRole("option")
+        .map((option) => [option.getAttribute("value"), option.textContent]),
+    ).toEqual([
+      ["none", "Nenhum (prefixado)"],
+      ["tr", "TR"],
+      ["poupanca_yield", "Remuneração da poupança"],
+      ["ipca", "IPCA"],
     ]);
   });
 });
@@ -137,6 +160,7 @@ describe("the term in months", () => {
         term_months: sent,
         first_installment_date: "2024-01-10",
         amortization_system: "sac",
+        indexer: "none",
         appraisal_value: "100000.00",
         contract_rates: [{ effective_from: "2023-12-10", rate: "0.12", basis: "nominal" }],
         mip_rates: [
@@ -190,6 +214,7 @@ describe("editing the mortgage", () => {
         term_months: 6,
         first_installment_date: "2024-01-10",
         amortization_system: "sac",
+        indexer: "none",
         appraisal_value: "100000.00",
         contract_rates: [{ effective_from: "2023-12-10", rate: "0.12", basis: "nominal" }],
         mip_rates: [
@@ -200,6 +225,19 @@ describe("editing the mortgage", () => {
         fees: [{ effective_from: "2023-12-10", amount: "12.50" }],
       },
     ]);
+  });
+
+  it("prefills the saved indexer and sends the one the owner changes it to", async () => {
+    const edited: RegisteredMortgage = { ...trMortgage, indexer: "ipca" };
+    const requests = stubMortgageApi({ mortgage: trMortgage, onSave: () => edited });
+    renderAt("/financiamento/editar");
+
+    expect(await screen.findByLabelText("Indexador")).toHaveValue("tr");
+    fill("Indexador", "ipca");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await savedPage();
+    expect(putBodies(requests)).toEqual([expect.objectContaining({ indexer: "ipca" })]);
   });
 
   it("prefills the rate the owner informed when it was the effective one", async () => {
@@ -289,6 +327,7 @@ describe("rows of the lists", () => {
         term_months: 6,
         first_installment_date: "2024-01-10",
         amortization_system: "sac",
+        indexer: "none",
         appraisal_value: "100000.00",
         contract_rates: [
           { effective_from: "2023-12-10", rate: "0.12", basis: "nominal" },
@@ -495,6 +534,7 @@ describe("each location the API can reject", () => {
     ["body.term_months", "Prazo (meses)"],
     ["body.first_installment_date", "Primeira prestação"],
     ["body.amortization_system", "Sistema de amortização"],
+    ["body.indexer", "Indexador"],
     ["body.appraisal_value", "Valor de avaliação"],
     ["body.contract_rates[1].effective_from", "Vigência da taxa de juros 2"],
     ["body.contract_rates[1].rate", "Taxa de juros 2 (% a.a.)"],

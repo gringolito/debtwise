@@ -16,7 +16,7 @@ type Violation struct {
 
 // Validate returns every rule the terms break across their fields, in field order. Each value's own
 // range is the caller's to check: amounts and rates not negative, a term of 1 to 600 months, and a
-// known amortization system and rate basis. Terms that pass both build a schedule.
+// known amortization system, indexer and rate basis. Terms that pass both build a schedule.
 func (t Terms) Validate() []Violation {
 	var violations []Violation
 

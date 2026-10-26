@@ -231,3 +231,12 @@ func mustDecimal(s string) decimal.Decimal {
 
 	return d
 }
+
+func mustDate(s string) time.Time {
+	d, err := time.Parse(time.DateOnly, s)
+	if err != nil {
+		panic(err)
+	}
+
+	return d
+}

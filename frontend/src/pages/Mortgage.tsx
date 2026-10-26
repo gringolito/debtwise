@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ContractRate, RegisteredMortgage } from "@/lib/api";
-import { amortizationSystemLabels } from "@/lib/mortgageForm";
+import { amortizationSystemLabels, indexerLabels } from "@/lib/mortgageForm";
 import { useDeleteMortgage, useMortgage } from "@/lib/mortgageQueries";
 import { formatDate, formatMoney, formatRate } from "@/lib/format";
 
@@ -47,6 +47,7 @@ function ContractTerms({ mortgage }: { mortgage: RegisteredMortgage }) {
         <Term name="Sistema de amortização">
           {amortizationSystemLabels[mortgage.amortization_system]}
         </Term>
+        <Term name="Indexador">{indexerLabels[mortgage.indexer]}</Term>
         <Term name="Valor de avaliação">{formatMoney(mortgage.appraisal_value)}</Term>
       </dl>
     </Section>

@@ -30,6 +30,7 @@ type Mortgage struct {
 	FirstInstallmentDate string
 	AmortizationSystem   string
 	AppraisalValue       string
+	Indexer              string
 }
 
 type MortgageContractRate struct {

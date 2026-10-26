@@ -30,6 +30,17 @@ const (
 	Effective RateBasis = "effective"
 )
 
+// Indexer is the index a contract corrects the outstanding balance by, before interest is charged.
+type Indexer string
+
+const (
+	NoIndexer Indexer = "none"
+	TR        Indexer = "tr"
+	// PoupancaYield follows the poupança yield's legal rule, from TR and the Selic target.
+	PoupancaYield Indexer = "poupanca_yield"
+	IPCA          Indexer = "ipca"
+)
+
 // Terms are a mortgage's contract terms. Rates and fees are rows effective from a date: each
 // applies to the installments due on or after that date, until a later row takes over.
 type Terms struct {
@@ -38,6 +49,8 @@ type Terms struct {
 	TermMonths           int
 	FirstInstallmentDate time.Time
 	AmortizationSystem   AmortizationSystem
+	// Indexer corrects the outstanding balance once a month, on the contract's anniversary.
+	Indexer Indexer
 	// AppraisalValue is the property's appraisal, which DFI is charged on.
 	AppraisalValue decimal.Decimal
 	ContractRates  []ContractRate

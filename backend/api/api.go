@@ -48,7 +48,7 @@ func NewHandler(
 	return newHandler(logger, func(humaAPI huma.API) {
 		registerHealth(humaAPI, database)
 		registerIndexes(humaAPI, store, marketData)
-		registerMortgage(humaAPI, mortgages)
+		registerMortgage(humaAPI, mortgages, store)
 	})
 }
 

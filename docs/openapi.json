@@ -63,6 +63,51 @@
         ],
         "type": "object"
       },
+      "CorrectionIndex": {
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "description": "The index the value belongs to.",
+            "enum": [
+              "tr",
+              "poupanca_yield",
+              "selic_target",
+              "selic",
+              "ipca"
+            ],
+            "type": "string"
+          },
+          "period_end": {
+            "description": "The last day of the period the value covers. Equals period_start when the index is dated by month.",
+            "format": "date",
+            "type": "string"
+          },
+          "period_start": {
+            "description": "The first day of the period the value covers.",
+            "format": "date",
+            "type": "string"
+          },
+          "status": {
+            "description": "published: the balance was corrected by the published value; missing: no value is available for the period yet, so the balance was not corrected by it.",
+            "enum": [
+              "published",
+              "missing"
+            ],
+            "type": "string"
+          },
+          "value": {
+            "description": "The index value for the period, in percent, as a decimal string. Absent when status is missing.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "status",
+          "period_start",
+          "period_end"
+        ],
+        "type": "object"
+      },
       "ErrorDetail": {
         "additionalProperties": false,
         "properties": {
@@ -361,6 +406,16 @@
             "format": "date",
             "type": "string"
           },
+          "indexer": {
+            "description": "The index the contract corrects the outstanding balance by: TR, the poupança yield, IPCA, or none for a fixed-rate contract.",
+            "enum": [
+              "none",
+              "tr",
+              "poupanca_yield",
+              "ipca"
+            ],
+            "type": "string"
+          },
           "mip_rates": {
             "description": "The MIP (life and disability insurance) rate, and its changes as the borrower moves into a new age band.",
             "items": {
@@ -387,6 +442,7 @@
           "term_months",
           "first_installment_date",
           "amortization_system",
+          "indexer",
           "appraisal_value",
           "contract_rates",
           "mip_rates",
@@ -441,6 +497,16 @@
             "format": "date",
             "type": "string"
           },
+          "indexer": {
+            "description": "The index the contract corrects the outstanding balance by: TR, the poupança yield, IPCA, or none for a fixed-rate contract.",
+            "enum": [
+              "none",
+              "tr",
+              "poupanca_yield",
+              "ipca"
+            ],
+            "type": "string"
+          },
           "mip_rates": {
             "description": "The MIP (life and disability insurance) rate and its changes, in date order.",
             "items": {
@@ -464,6 +530,7 @@
           "term_months",
           "first_installment_date",
           "amortization_system",
+          "indexer",
           "appraisal_value",
           "contract_rates",
           "mip_rates",
@@ -499,6 +566,10 @@
             "description": "Total the installment charges, in reais, as a decimal string.",
             "type": "string"
           },
+          "correction": {
+            "description": "Indexer correction added to the outstanding balance before interest is charged, in reais, as a decimal string.",
+            "type": "string"
+          },
           "dfi": {
             "description": "DFI (property damage insurance) premium, in reais, as a decimal string.",
             "type": "string"
@@ -511,6 +582,13 @@
           "fee": {
             "description": "Admin fee, in reais, as a decimal string.",
             "type": "string"
+          },
+          "index_values": {
+            "description": "The index values behind the correction, oldest period first. Empty when no index value applies to the installment.",
+            "items": {
+              "$ref": "#/components/schemas/CorrectionIndex"
+            },
+            "type": "array"
           },
           "interest": {
             "description": "Interest charged, in reais, as a decimal string.",
@@ -533,6 +611,8 @@
         "required": [
           "number",
           "due_date",
+          "correction",
+          "index_values",
           "interest",
           "amortization",
           "mip",
