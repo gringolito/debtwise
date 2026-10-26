@@ -489,3 +489,18 @@ func TestRequestsStopWithTheirContext(t *testing.T) {
 	require.ErrorIs(t, namesErr, context.Canceled)
 	require.ErrorIs(t, bondErr, context.Canceled)
 }
+
+func TestBondReadsANullPriceAsZero(t *testing.T) {
+	t.Parallel()
+
+	client, _ := newClient(t, "token", response{
+		status: http.StatusOK,
+		body:   bondBody("2029-01-01T00:00", `"prefixado"`, "null"),
+	})
+
+	got, err := client.Bond(context.Background(), "Tesouro Prefixado 2029")
+
+	require.NoError(t, err)
+	assert.Equal(t, "0", got.InvestmentPrice.String())
+	assert.Equal(t, "0", got.RedemptionPrice.String())
+}

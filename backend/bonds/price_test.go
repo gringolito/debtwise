@@ -81,6 +81,14 @@ func TestUnitPriceMatchesTesouroDiretoPublishedPrices(t *testing.T) {
 	}
 }
 
+func TestUnitPriceOfAnUnknownTypePanics(t *testing.T) {
+	t.Parallel()
+
+	bond := bonds.Bond{Type: "ntn_b", Maturity: date(2035, time.May, 15)}
+
+	assert.Panics(t, func() { bond.UnitPrice(mustDecimal(t, "0.06"), date(2026, time.October, 26)) })
+}
+
 func ltn(year int) bonds.Bond {
 	return bonds.Bond{Type: bonds.LTN, Maturity: date(year, time.January, 1)}
 }

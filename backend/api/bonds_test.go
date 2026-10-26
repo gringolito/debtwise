@@ -32,6 +32,7 @@ func radarNames() []string {
 		ltn2029,
 		ntnf2027,
 		"Tesouro Renda+ Aposentadoria Extra 2050",
+		"Tesouro Prefixado 2029 (antigo)",
 		"Tesouro Selic 2031",
 		ltn2027,
 	}
@@ -159,6 +160,61 @@ func TestRefreshListsTheLTNAndNTNFBondsWithTheirPrices(t *testing.T) {
 	assert.WithinRange(t, *status.RefreshedAt, start.Truncate(time.Second), refreshed)
 }
 
+func TestABondNotOnOfferHasNoBuySide(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t, sgsWithRows(nil), quotingRadar())
+
+	rec := s.do(t, http.MethodGet, "/api/bonds")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	var catalogue struct {
+		Bonds []map[string]json.RawMessage `json:"bonds"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &catalogue))
+
+	offered := make([]bool, 0, len(catalogue.Bonds))
+	for _, b := range catalogue.Bonds {
+		_, ok := b["buy"]
+		offered = append(offered, ok)
+	}
+
+	assert.Equal(t, []bool{false, true, false, true}, offered, "buy is absent, not null, when not on offer")
+}
+
+func TestBondReadsFailOnDamagedStoredData(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		damage string
+		path   string
+	}{
+		{name: "a quote's rate", damage: "UPDATE bond_quotes SET sell_rate = 'x'", path: "/api/bonds"},
+		{
+			name:   "a quote's maturity",
+			damage: "UPDATE bond_quotes SET maturity = 'x' WHERE type = 'ltn' AND maturity = '2029-01-01'",
+			path:   "/api/bonds",
+		},
+		{name: "a quote's buy price", damage: "UPDATE bond_quotes SET buy_unit_price = 'x' WHERE buy_rate IS NOT NULL", path: "/api/bonds"},
+		{name: "the refresh time", damage: "UPDATE bond_quote_refreshes SET refreshed_at = 'x'", path: "/api/market-data/status"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			s := newServer(t, sgsWithRows(nil), quotingRadar())
+
+			_, err := s.conn.ExecContext(t.Context(), tt.damage)
+			require.NoError(t, err)
+
+			rec := s.do(t, http.MethodGet, tt.path)
+			assert.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
+		})
+	}
+}
+
 func TestRefreshReplacesTheBondsOnOffer(t *testing.T) {
 	t.Parallel()
 
@@ -282,9 +338,9 @@ func TestARefreshRadarCannotQuoteKeepsTheStoredPrices(t *testing.T) {
 
 			tt.damage(radarSource)
 
-			secondRefresh := time.Now()
-
-			s.refresh(t)
+			// An hour on, so a quote the failed refresh rewrote would show its later fetch time.
+			later := time.Now().Add(time.Hour)
+			require.Error(t, s.job.Refresh(t.Context(), later))
 
 			assert.Equal(t, wantQuotes(), withoutQuoteFetchTimes(t, s.bonds(t), start, firstRefreshDone))
 
@@ -293,7 +349,7 @@ func TestARefreshRadarCannotQuoteKeepsTheStoredPrices(t *testing.T) {
 			require.NotNil(t, status.RefreshedAt)
 			assert.WithinRange(t, *status.RefreshedAt, start.Truncate(time.Second), firstRefreshDone)
 			require.NotNil(t, status.FailedAt)
-			assert.WithinRange(t, *status.FailedAt, secondRefresh.Truncate(time.Second), time.Now())
+			assert.WithinRange(t, *status.FailedAt, later.Truncate(time.Second), later)
 		})
 	}
 }
