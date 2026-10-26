@@ -13,23 +13,6 @@ margin left to compare is the bond's rate against the contract rate.
 The rule only limits what a decision offers. Lots of any of the four bonds can be recorded, valued
 and checked for an early sale, because the owner holds them whatever the mortgage's indexer is.
 
-Matching on IPCA still leaves three gaps, and comparisons model them instead of assuming them away:
-
-- **Tax.** Income tax falls on the bond's whole nominal gain, the IPCA correction included, while
-  the avoided cost is never taxed. Higher IPCA grows both scenarios, but part of the bond's
-  correction goes to tax, so the bond's real margin over the contract rate shrinks a little as IPCA
-  rises. The advantage in reais can still grow, because whatever real margin is left is inflated
-  with everything else. Over 10 years at 15% tax against IPCA + 5%, IPCA at 3% or at 7% moves the
-  break-even rate of an NTN-B Principal by a quarter of a point, and an LTN's by four and a half
-  points.
-- **Timing.** The mortgage corrects by the IPCA of the second month before each anniversary
-  (ADR-0006). An NTN-B's value takes the previous month's IPCA on each 15th and a projection of the
-  current month between them. The two differ by about one month of IPCA at each end of a
-  comparison, and a longer horizon doesn't shrink that.
-- **Selling early.** The match holds at maturity. Before it, an NTN-B's market value moves with real
-  rates, by a lot on long maturities. The early sale check measures that risk, and the match does
-  nothing to remove it.
-
 ## Considered Options
 
 - **Only nominal bonds for every mortgage (ADR-0001):** rejected. Against an IPCA mortgage, an LTN
