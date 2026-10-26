@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
@@ -271,13 +272,90 @@ func TestPriceInstallmentIsLevelledAgainFromAStatement(t *testing.T) {
 	})
 	events := mortgage.Events{Statements: []mortgage.Statement{statement(t, "2024-03-10", "30000.00")}}
 
-	rows := replay(terms, events)
-
 	assert.Equal(t, []replayed{
+		{1, "2024-01-10", "1000.00", "7884.88", "8884.88", "0.00", "92115.12"},
+		{2, "2024-02-10", "921.15", "7963.73", "8884.88", "0.00", "84151.39"},
 		{3, "2024-03-10", "841.51", "8043.37", "8884.88", "0.00", "30000.00"},
 		{4, "2024-04-10", "300.00", "3202.21", "3502.21", "0.00", "26797.79"},
-	}, rows[2:4])
-	assert.Len(t, rows, 12)
+		{5, "2024-05-10", "267.98", "3234.23", "3502.21", "0.00", "23563.56"},
+		{6, "2024-06-10", "235.64", "3266.57", "3502.21", "0.00", "20296.99"},
+		{7, "2024-07-10", "202.97", "3299.24", "3502.21", "0.00", "16997.75"},
+		{8, "2024-08-10", "169.98", "3332.23", "3502.21", "0.00", "13665.52"},
+		{9, "2024-09-10", "136.66", "3365.55", "3502.21", "0.00", "10299.97"},
+		{10, "2024-10-10", "103.00", "3399.21", "3502.21", "0.00", "6900.76"},
+		{11, "2024-11-10", "69.01", "3433.20", "3502.21", "0.00", "3467.56"},
+		{12, "2024-12-10", "34.68", "3467.56", "3502.24", "0.00", "0.00"},
+	}, replay(terms, events))
+}
+
+// correctedRow is an installment as text, with its indexer correction and what was prepaid after it.
+type correctedRow struct {
+	Number             int
+	Correction         string
+	Interest           string
+	Amortization       string
+	Amount             string
+	Prepaid            string
+	OutstandingBalance string
+}
+
+// A prepayment or a statement on February 20 leaves 35,000.00 owed. The TR of 1% for the month to
+// March 10 corrects that balance, 350.00, and the 3rd installment charges 1% interest on the
+// corrected 35,350.00, 353.50, then amortizes it over the 4 months left, 8,837.50 a month. The
+// months without a published TR are not corrected.
+func TestIndexCorrectionAfterAnEventAppliesToTheBalanceItLeft(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		events  mortgage.Events
+		prepaid string
+	}{
+		{
+			name: "prepayment",
+			events: mortgage.Events{Prepayments: []mortgage.Prepayment{
+				prepayment(t, "2024-02-20", "5000.00", mortgage.LowerInstallment),
+			}},
+			prepaid: "5000.00",
+		},
+		{
+			name:    "statement",
+			events:  mortgage.Events{Statements: []mortgage.Statement{statement(t, "2024-02-20", "35000.00")}},
+			prepaid: "0.00",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			terms := sacTerms(t)
+			terms.Indexer = mortgage.TR
+			history := mortgage.History{indexes.TR: {published(t, "2024-02-10", "2024-03-10", "1.0000")}}
+
+			var rows []correctedRow
+			for m := range terms.Schedule(history, tt.events, date(t, "2026-10-25")) {
+				rows = append(rows, correctedRow{
+					Number:             m.Number,
+					Correction:         m.Correction.String(),
+					Interest:           m.Interest.String(),
+					Amortization:       m.Amortization.String(),
+					Amount:             m.Amount.String(),
+					Prepaid:            m.Prepaid.String(),
+					OutstandingBalance: m.OutstandingBalance.String(),
+				})
+			}
+
+			assert.Equal(t, []correctedRow{
+				{1, "0.00", "600.00", "10000.00", "10610.00", "0.00", "50000.00"},
+				{2, "0.00", "500.00", "10000.00", "10510.00", tt.prepaid, "35000.00"},
+				{3, "350.00", "353.50", "8837.50", "9201.00", "0.00", "26512.50"},
+				{4, "0.00", "265.13", "8837.50", "9112.63", "0.00", "17675.00"},
+				{5, "0.00", "176.75", "8837.50", "9024.25", "0.00", "8837.50"},
+				{6, "0.00", "88.38", "8837.50", "8935.88", "0.00", "0.00"},
+			}, rows)
+		})
+	}
 }
 
 type drift struct {
