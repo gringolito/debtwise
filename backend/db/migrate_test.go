@@ -22,7 +22,7 @@ func TestMigrateAppliesPendingMigrationsOnce(t *testing.T) {
 
 	applied, err := db.Migrate(t.Context(), conn)
 	require.NoError(t, err)
-	assert.Equal(t, []int64{1, 2, 3, 4, 5, 6}, applied)
+	assert.Equal(t, []int64{1, 2, 3, 4, 5, 6, 7}, applied)
 	require.NoError(t, conn.Close())
 
 	reopened, err := db.Open(t.Context(), path)
@@ -57,7 +57,7 @@ func TestMigrationMakesExistingMortgagesFixedRate(t *testing.T) {
 
 	applied, err := db.Migrate(t.Context(), conn)
 	require.NoError(t, err)
-	assert.Equal(t, []int64{4, 5, 6}, applied)
+	assert.Equal(t, []int64{4, 5, 6, 7}, applied)
 
 	var indexer string
 	require.NoError(t, conn.QueryRowContext(t.Context(), "SELECT indexer FROM mortgages").Scan(&indexer))

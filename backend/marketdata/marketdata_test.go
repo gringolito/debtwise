@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"maps"
 	"slices"
 	"sync"
 	"testing"
@@ -20,6 +21,7 @@ import (
 	"github.com/gringolito/debtwise/backend/decimal"
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/marketdata"
+	"github.com/gringolito/debtwise/backend/marketdata/focus"
 	"github.com/gringolito/debtwise/backend/marketdata/radar"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
 	"github.com/gringolito/debtwise/backend/marketdata/sidra"
@@ -69,8 +71,9 @@ func (f *fakeSource) MonthlyValues(ctx context.Context, _, variable int, from, t
 	return values, err
 }
 
+// sources wires the fakes, with a Focus that answers nothing. Tests of the expectations set Focus.
 func sources(indexes *fakeSource, quotes *fakeQuoteSource) marketdata.Sources {
-	return marketdata.Sources{SGS: indexes, SIDRA: indexes, Radar: quotes}
+	return marketdata.Sources{SGS: indexes, SIDRA: indexes, Radar: quotes, Focus: &fakeFocus{}}
 }
 
 func (f *fakeSource) requested() []request {
@@ -86,13 +89,117 @@ type failure struct {
 }
 
 // fakeStore holds the latest period start and the refresh times it is given, records the
-// failures it saves, or fails every call with err.
+// failures it saves, the expectations it saves and the expectation failures it saves, or fails
+// every call with err, or only the expectations refresh times with expectationTimesErr.
 type fakeStore struct {
+	mu                  sync.Mutex
+	latest              map[indexes.Index]time.Time
+	times               []indexes.RefreshTimes
+	expectationTimes    indexes.ExpectationsRefreshTimes
+	expectationTimesErr error
+	failures            []failure
+	expectations        []savedExpectations
+	expectationFailures []time.Time
+	err                 error
+}
+
+type savedExpectations struct {
+	expectations indexes.Expectations
+	at           time.Time
+}
+
+func (f *fakeStore) SaveExpectations(_ context.Context, e indexes.Expectations, at time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.err == nil {
+		f.expectations = append(f.expectations, savedExpectations{expectations: e, at: at})
+	}
+
+	return f.err
+}
+
+func (f *fakeStore) SaveExpectationsFailure(_ context.Context, at time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.expectationFailures = append(f.expectationFailures, at)
+
+	return f.err
+}
+
+func (f *fakeStore) ExpectationsRefreshTimes(context.Context) (indexes.ExpectationsRefreshTimes, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return f.expectationTimes, cmp.Or(f.err, f.expectationTimesErr)
+}
+
+func (f *fakeStore) savedExpectations() []savedExpectations {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return slices.Clone(f.expectations)
+}
+
+func (f *fakeStore) savedExpectationFailures() []time.Time {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return slices.Clone(f.expectationFailures)
+}
+
+// fakeFocus answers each survey with the rows it holds, or its error, and records the day each
+// was asked for. While block is open, a request waits until block closes or its context is done.
+type fakeFocus struct {
 	mu       sync.Mutex
-	latest   map[indexes.Index]time.Time
-	times    []indexes.RefreshTimes
-	failures []failure
-	err      error
+	meetings []focus.Meeting
+	months   []focus.Month
+	years    []focus.Year
+	errs     map[string]error // by method name
+	asked    map[string]time.Time
+	block    chan struct{}
+}
+
+func (f *fakeFocus) ask(ctx context.Context, method string, day time.Time) error {
+	f.mu.Lock()
+
+	if f.asked == nil {
+		f.asked = map[string]time.Time{}
+	}
+
+	f.asked[method] = day
+	block, err := f.block, f.errs[method]
+	f.mu.Unlock()
+
+	if block != nil {
+		select {
+		case <-block:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	return err
+}
+
+func (f *fakeFocus) Selic(ctx context.Context, day time.Time) ([]focus.Meeting, error) {
+	return f.meetings, f.ask(ctx, "Selic", day)
+}
+
+func (f *fakeFocus) MonthlyIPCA(ctx context.Context, day time.Time) ([]focus.Month, error) {
+	return f.months, f.ask(ctx, "MonthlyIPCA", day)
+}
+
+func (f *fakeFocus) AnnualIPCA(ctx context.Context, day time.Time) ([]focus.Year, error) {
+	return f.years, f.ask(ctx, "AnnualIPCA", day)
+}
+
+func (f *fakeFocus) askedFor() map[string]time.Time {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return maps.Clone(f.asked)
 }
 
 func (f *fakeStore) LatestPeriodStart(_ context.Context, index indexes.Index) (time.Time, error) {
@@ -232,8 +339,8 @@ func TestRefreshReportsFailuresItCouldNotRecord(t *testing.T) {
 
 	require.ErrorIs(t, err, storeErr)
 
-	failed := make([]string, 0, len(indexes.All())+1)
-	failed = append(failed, "bonds")
+	failed := make([]string, 0, len(indexes.All())+2)
+	failed = append(failed, "bonds", "focus expectations")
 
 	for _, index := range indexes.All() {
 		failed = append(failed, string(index))
@@ -256,6 +363,11 @@ func TestStatusFailsWhenAStoreFails(t *testing.T) {
 	}{
 		{name: "index store", indexStore: &fakeStore{err: storeErr}, quoteStore: &fakeQuoteStore{}},
 		{name: "quote store", indexStore: &fakeStore{}, quoteStore: &fakeQuoteStore{err: storeErr}},
+		{
+			name:       "expectations refresh times",
+			indexStore: &fakeStore{expectationTimesErr: storeErr},
+			quoteStore: &fakeQuoteStore{},
+		},
 	}
 
 	for _, tt := range tests {
@@ -360,7 +472,63 @@ func TestStatusTellsHowFreshEachIndexIs(t *testing.T) {
 		{Index: indexes.IPCANumber, State: marketdata.Missing},
 	}, status.Indexes)
 	assert.Equal(t, marketdata.Freshness{State: marketdata.Missing}, status.Quotes, "quotes never refreshed")
+	assert.Equal(t, marketdata.Freshness{State: marketdata.Missing}, status.Focus, "expectations never refreshed")
 	assert.True(t, status.Refreshing, "a new job has its first refresh pending")
+}
+
+func TestStatusTellsHowFreshTheFocusExpectationsAre(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, time.October, 25, 12, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name  string
+		times indexes.ExpectationsRefreshTimes
+		want  marketdata.Freshness
+	}{
+		{
+			name:  "refreshed within the stale limit",
+			times: indexes.ExpectationsRefreshTimes{RefreshedAt: now.Add(-marketdata.StaleAfter)},
+			want:  marketdata.Freshness{State: marketdata.Fresh, RefreshedAt: now.Add(-marketdata.StaleAfter)},
+		},
+		{
+			name:  "refreshed before the stale limit",
+			times: indexes.ExpectationsRefreshTimes{RefreshedAt: now.Add(-marketdata.StaleAfter - time.Second)},
+			want: marketdata.Freshness{
+				State:       marketdata.Stale,
+				RefreshedAt: now.Add(-marketdata.StaleAfter - time.Second),
+			},
+		},
+		{
+			name: "latest refresh failed",
+			times: indexes.ExpectationsRefreshTimes{
+				RefreshedAt: now.Add(-time.Hour),
+				FailedAt:    now.Add(-time.Minute),
+			},
+			want: marketdata.Freshness{
+				State:       marketdata.Failed,
+				RefreshedAt: now.Add(-time.Hour),
+				FailedAt:    now.Add(-time.Minute),
+			},
+		},
+		{
+			name: "never refreshed",
+			want: marketdata.Freshness{State: marketdata.Missing},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			job := marketdata.New(sources(&fakeSource{}, &fakeQuoteSource{}),
+				&fakeStore{expectationTimes: tt.times}, &fakeQuoteStore{})
+
+			status, err := job.Status(t.Context(), now)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, status.Focus)
+		})
+	}
 }
 
 func TestRunRefreshesAtStartEveryIntervalAndWhenTriggered(t *testing.T) {
@@ -460,7 +628,9 @@ func TestARefreshStoppedByShutdownIsNoFailure(t *testing.T) {
 		store := &fakeStore{}
 		quoteStore := &fakeQuoteStore{}
 		block := make(chan struct{})
-		job := marketdata.New(sources(&fakeSource{block: block}, &fakeQuoteSource{block: block}), store, quoteStore,
+		src := sources(&fakeSource{block: block}, &fakeQuoteSource{block: block})
+		src.Focus = &fakeFocus{block: block}
+		job := marketdata.New(src, store, quoteStore,
 			marketdata.WithLogger(slog.New(slog.NewJSONHandler(&logs, nil))))
 
 		ctx, cancel := context.WithCancel(t.Context())
@@ -477,7 +647,87 @@ func TestARefreshStoppedByShutdownIsNoFailure(t *testing.T) {
 		<-done
 
 		assert.Empty(t, store.savedFailures(), "no index failure recorded")
+		assert.Empty(t, store.savedExpectationFailures(), "no expectations failure recorded")
 		assert.Zero(t, quoteStore.savedFailures(), "no quote failure recorded")
 		assert.Empty(t, logs.String(), "nothing logged")
 	})
+}
+
+func TestRefreshStoresTheFocusExpectationsItAskedForNow(t *testing.T) {
+	t.Parallel()
+
+	november := time.Date(2026, time.November, 1, 0, 0, 0, 0, time.UTC)
+	december := time.Date(2026, time.December, 1, 0, 0, 0, 0, time.UTC)
+	focusSource := &fakeFocus{
+		meetings: []focus.Meeting{
+			{Year: 2026, Number: 8, Median: mustDecimal(t, "14.25")},
+			{Year: 2027, Number: 1, Median: mustDecimal(t, "13.5")},
+		},
+		months: []focus.Month{
+			{Month: november, Median: mustDecimal(t, "0.34")},
+			{Month: december, Median: mustDecimal(t, "0.52")},
+		},
+		years: []focus.Year{
+			{Year: 2026, Median: mustDecimal(t, "4.8")},
+			{Year: 2027, Median: mustDecimal(t, "4.1")},
+		},
+	}
+	src := sources(&fakeSource{}, &fakeQuoteSource{})
+	src.Focus = focusSource
+	store := &fakeStore{}
+	now := time.Date(2026, time.October, 25, 12, 0, 0, 0, time.UTC)
+
+	require.NoError(t, marketdata.New(src, store, &fakeQuoteStore{}).Refresh(t.Context(), now))
+
+	assert.Equal(t, []savedExpectations{{
+		at: now,
+		expectations: indexes.Expectations{
+			Selic: []indexes.MeetingMedian{
+				{Year: 2026, Number: 8, Median: mustDecimal(t, "14.25")},
+				{Year: 2027, Number: 1, Median: mustDecimal(t, "13.5")},
+			},
+			MonthlyIPCA: []indexes.MonthMedian{
+				{Month: november, Median: mustDecimal(t, "0.34")},
+				{Month: december, Median: mustDecimal(t, "0.52")},
+			},
+			AnnualIPCA: []indexes.YearMedian{
+				{Year: 2026, Median: mustDecimal(t, "4.8")},
+				{Year: 2027, Median: mustDecimal(t, "4.1")},
+			},
+		},
+	}}, store.savedExpectations())
+	assert.Empty(t, store.savedExpectationFailures())
+	assert.Equal(t, map[string]time.Time{"Selic": now, "MonthlyIPCA": now, "AnnualIPCA": now}, focusSource.askedFor())
+}
+
+func TestAFailedFocusFetchRecordsAFailureAndStoresNothing(t *testing.T) {
+	t.Parallel()
+
+	for _, method := range []string{"Selic", "MonthlyIPCA", "AnnualIPCA"} {
+		t.Run(method, func(t *testing.T) {
+			t.Parallel()
+
+			focusErr := errors.New("focus: status 502")
+			src := sources(&fakeSource{}, &fakeQuoteSource{})
+			src.Focus = &fakeFocus{errs: map[string]error{method: focusErr}}
+			store := &fakeStore{}
+			now := time.Date(2026, time.October, 25, 12, 0, 0, 0, time.UTC)
+
+			err := marketdata.New(src, store, &fakeQuoteStore{}).Refresh(t.Context(), now)
+
+			require.ErrorIs(t, err, focusErr)
+			require.ErrorContains(t, err, "marketdata: refresh focus expectations: focus: status 502")
+			assert.Empty(t, store.savedExpectations(), "the stored expectations stay")
+			assert.Equal(t, []time.Time{now}, store.savedExpectationFailures())
+		})
+	}
+}
+
+func mustDecimal(t *testing.T, s string) decimal.Decimal {
+	t.Helper()
+
+	d, err := decimal.Parse(s)
+	require.NoError(t, err)
+
+	return d
 }

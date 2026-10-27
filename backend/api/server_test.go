@@ -22,9 +22,11 @@ import (
 	"github.com/gringolito/debtwise/backend/decimal"
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/marketdata"
+	"github.com/gringolito/debtwise/backend/marketdata/focus"
 	"github.com/gringolito/debtwise/backend/marketdata/radar"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
 	"github.com/gringolito/debtwise/backend/marketdata/sidra"
+	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
 // fakeSGS stands in for SGS and SIDRA. It answers every request for a series, a SIDRA request
@@ -198,17 +200,64 @@ func openMigrated(t *testing.T) *sql.DB {
 	return conn
 }
 
+// fakeFocus answers every survey with nothing.
+type fakeFocus struct{}
+
+func (fakeFocus) Selic(context.Context, time.Time) ([]focus.Meeting, error) { return nil, nil }
+
+func (fakeFocus) MonthlyIPCA(context.Context, time.Time) ([]focus.Month, error) { return nil, nil }
+
+func (fakeFocus) AnnualIPCA(context.Context, time.Time) ([]focus.Year, error) { return nil, nil }
+
+// failingFocus fails every survey.
+type failingFocus struct{}
+
+func (failingFocus) Selic(context.Context, time.Time) ([]focus.Meeting, error) {
+	return nil, errors.New("focus is down")
+}
+
+func (failingFocus) MonthlyIPCA(context.Context, time.Time) ([]focus.Month, error) {
+	return nil, errors.New("focus is down")
+}
+
+func (failingFocus) AnnualIPCA(context.Context, time.Time) ([]focus.Year, error) {
+	return nil, errors.New("focus is down")
+}
+
+// serverOption changes how newServer builds the server.
+type serverOption func(*serverConfig)
+
+type serverConfig struct {
+	focus marketdata.ExpectationSource
+	now   func() time.Time
+}
+
+// withFocus has the refresh job read the Focus expectations from source instead of an empty survey.
+func withFocus(source marketdata.ExpectationSource) serverOption {
+	return func(c *serverConfig) { c.focus = source }
+}
+
+// onDay has the API read today as day, wherever it reads the time.
+func onDay(day time.Time) serverOption {
+	return func(c *serverConfig) { c.now = func() time.Time { return day } }
+}
+
 // newServer serves the API over a migrated database, with the market-data refresh job running
 // against indexSource, for SGS and SIDRA, and quoteSource until the test ends. It returns once the
 // job's first refresh is over.
-func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteSource) server {
+func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteSource, opts ...serverOption) server {
 	t.Helper()
+
+	config := serverConfig{focus: fakeFocus{}}
+	for _, opt := range opts {
+		opt(&config)
+	}
 
 	conn := openMigrated(t)
 	store := indexes.NewStore(conn)
 	quotes := bonds.NewStore(conn)
 	logger := slog.New(slog.DiscardHandler)
-	sources := marketdata.Sources{SGS: indexSource, SIDRA: indexSource, Radar: quoteSource}
+	sources := marketdata.Sources{SGS: indexSource, SIDRA: indexSource, Radar: quoteSource, Focus: config.focus}
 	job := marketdata.New(sources, store, quotes, marketdata.WithLogger(logger))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -230,8 +279,9 @@ func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteS
 			Database:   db.New(conn),
 			Indexes:    store,
 			MarketData: job,
+			Mortgages:  mortgage.NewStore(conn),
 			Quotes:     quotes,
-		}, api.WithLogger(logger)),
+		}, api.WithLogger(logger), api.WithClock(config.now)),
 		job:  job,
 		conn: conn,
 	}
@@ -264,6 +314,7 @@ type marketDataStatus struct {
 	Refreshing bool          `json:"refreshing"`
 	Indexes    []indexStatus `json:"indexes"`
 	Bonds      freshness     `json:"bonds"`
+	Focus      freshness     `json:"focus"`
 }
 
 func (s server) status(t *testing.T) marketDataStatus {
@@ -343,4 +394,62 @@ func mustDate(s string) time.Time {
 	}
 
 	return d
+}
+
+type projectionMethod struct {
+	Index   string   `json:"index"`
+	Method  string   `json:"method"`
+	Offered []string `json:"offered"`
+}
+
+type projectionMethods struct {
+	Methods []projectionMethod `json:"methods"`
+}
+
+func (s server) projectionMethods(t *testing.T) []projectionMethod {
+	t.Helper()
+
+	rec := s.do(t, http.MethodGet, "/api/indexes/projection-methods")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	var got projectionMethods
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+
+	return got.Methods
+}
+
+type projectedBy struct {
+	Index  string `json:"index"`
+	Method string `json:"method"`
+}
+
+type projectedValue struct {
+	PeriodStart string        `json:"period_start"`
+	PeriodEnd   string        `json:"period_end"`
+	Value       string        `json:"value"`
+	Methods     []projectedBy `json:"methods"`
+}
+
+type indexProjection struct {
+	Index  string           `json:"index"`
+	Values []projectedValue `json:"values"`
+}
+
+func (s server) projection(t *testing.T, index string) indexProjection {
+	t.Helper()
+
+	rec := s.do(t, http.MethodGet, "/api/indexes/"+index+"/projection")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	var got indexProjection
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+
+	return got
+}
+
+// chooseMethod saves the method an index is projected by and returns the response.
+func (s server) chooseMethod(t *testing.T, index, method string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	return serve(t, s.handler, http.MethodPut, "/indexes/"+index+"/projection-method", `{"method":"`+method+`"}`)
 }

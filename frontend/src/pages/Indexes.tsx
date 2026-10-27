@@ -1,6 +1,8 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { IndexCard } from "@/pages/indexes/IndexCard";
+import { ProjectionMethodsError } from "@/pages/indexes/ProjectionControls";
+import { FreshnessWarning } from "@/pages/marketdata/FreshnessWarning";
 import { useMarketData } from "@/pages/marketdata/useMarketData";
 
 export function Indexes() {
@@ -24,6 +26,14 @@ export function Indexes() {
           <AlertDescription>Não foi possível carregar os índices.</AlertDescription>
         </Alert>
       )}
+      {status.data && (
+        <FreshnessWarning
+          title="Expectativas do Focus"
+          status={status.data.focus}
+          missing="Ainda não há expectativas do Focus."
+        />
+      )}
+      {status.data && <ProjectionMethodsError />}
       {status.data?.indexes.map((index) => (
         <IndexCard key={index.index} status={index} />
       ))}

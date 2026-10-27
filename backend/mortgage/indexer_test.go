@@ -2,6 +2,7 @@ package mortgage_test
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +15,8 @@ import (
 
 // indexedRow is an installment as text with its indexer correction and the index values behind it,
 // such as "tr 0.0218 2023-12-15..2024-01-15" or "tr missing 2024-01-15..2024-02-15", joined by
-// "; ", or "" when no index value applies.
+// "; ", or "" when no index value applies. A projected value ends with its methods, such as
+// "tr 0.0635 2024-03-15..2024-04-15 (tr trailing_12)".
 type indexedRow struct {
 	Number             int
 	Correction         string
@@ -26,10 +28,34 @@ type indexedRow struct {
 	Index              string
 }
 
-func indexedSchedule(terms mortgage.Terms, history mortgage.History, today time.Time) []indexedRow {
+// publishedValues is the published history of each index, as indexes.Store's History returns it.
+type publishedValues = map[indexes.Index][]indexes.Value
+
+// outlookOf is the Outlook over published values alone: no Focus expectations, and every index
+// projected by its default method.
+func outlookOf(history publishedValues) indexes.Outlook {
+	return indexes.NewOutlook(history, indexes.Expectations{}, nil)
+}
+
+// methodsText is the suffix of an index value's row that names the methods behind a projected value,
+// such as " (tr trailing_12, selic_target trailing_12)", and is empty for a published one.
+func methodsText(methods []indexes.ProjectionMethod) string {
+	if len(methods) == 0 {
+		return ""
+	}
+
+	names := make([]string, 0, len(methods))
+	for _, m := range methods {
+		names = append(names, fmt.Sprintf("%s %s", m.Index, m.Method))
+	}
+
+	return " (" + strings.Join(names, ", ") + ")"
+}
+
+func indexedSchedule(terms mortgage.Terms, outlook indexes.Outlook, today time.Time) []indexedRow {
 	var rows []indexedRow
 
-	for m := range terms.Schedule(history, mortgage.Events{}, today) {
+	for m := range terms.Schedule(outlook, mortgage.Events{}, today) {
 		values := make([]string, 0, len(m.IndexValues))
 
 		for _, v := range m.IndexValues {
@@ -38,8 +64,8 @@ func indexedSchedule(terms mortgage.Terms, history mortgage.History, today time.
 				value = "missing"
 			}
 
-			values = append(values, fmt.Sprintf("%s %s %s..%s", v.Index, value,
-				v.PeriodStart.Format(time.DateOnly), v.PeriodEnd.Format(time.DateOnly)))
+			values = append(values, fmt.Sprintf("%s %s %s..%s%s", v.Index, value,
+				v.PeriodStart.Format(time.DateOnly), v.PeriodEnd.Format(time.DateOnly), methodsText(v.Methods)))
 		}
 
 		rows = append(rows, indexedRow{
@@ -117,7 +143,7 @@ func TestTRIndexedScheduleCorrectsTheBalanceWithPublishedTR(t *testing.T) {
 	terms := indexedSAC(t, mortgage.TR, "120000.00", 12)
 	terms.MIPRates = []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-15"), Rate: dec(t, "0.0003")}}
 
-	rows := indexedSchedule(terms, mortgage.History{indexes.TR: publishedTR2024(t)}, date(t, "2026-10-25"))
+	rows := indexedSchedule(terms, outlookOf(publishedValues{indexes.TR: publishedTR2024(t)}), date(t, "2026-10-25"))
 
 	assert.Equal(t, []indexedRow{
 		{1, "26.16", "1200.26", "10002.18", "36.01", "11238.45", "110023.98", "tr 0.0218 2023-12-15..2024-01-15"},
@@ -157,7 +183,7 @@ func TestPoupancaIndexedMonthsFollowTheSelicRule(t *testing.T) {
 		DFIRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2021-12-02"), Rate: dec(t, "0")}},
 		Fees:     []mortgage.Fee{{EffectiveFrom: date(t, "2021-12-02"), Amount: dec(t, "0")}},
 	}
-	history := mortgage.History{
+	history := outlookOf(publishedValues{
 		indexes.TR: {
 			published(t, "2021-12-02", "2022-01-02", "0.0326"),
 			published(t, "2022-01-02", "2022-02-02", "0.0868"),
@@ -169,7 +195,7 @@ func TestPoupancaIndexedMonthsFollowTheSelicRule(t *testing.T) {
 			published(t, "2022-01-02", "2022-01-02", "9.25"),
 			published(t, "2022-02-02", "2022-02-02", "9.25"),
 		},
-	}
+	})
 
 	assert.Equal(t, []indexedRow{
 		{1, "142.17", "301.42", "9947.58", "0.00", "10249.00", "20194.59", "poupanca_yield 0.4739 2021-12-02..2022-01-02"},
@@ -186,12 +212,12 @@ func TestIPCAIndexedScheduleReadsTheIPCAOfTwoMonthsBefore(t *testing.T) {
 	terms := indexedSAC(t, mortgage.IPCA, "20000.00", 2)
 	terms.ContractDate = date(t, "2024-01-10")
 	terms.FirstInstallmentDate = date(t, "2024-02-10")
-	history := mortgage.History{indexes.IPCA: {
+	history := outlookOf(publishedValues{indexes.IPCA: {
 		published(t, "2023-11-01", "2023-11-01", "0.28"),
 		published(t, "2023-12-01", "2023-12-01", "0.56"),
 		published(t, "2024-01-01", "2024-01-01", "0.42"),
 		published(t, "2024-02-01", "2024-02-01", "0.83"),
-	}}
+	}})
 
 	assert.Equal(t, []indexedRow{
 		{1, "112.00", "201.12", "10056.00", "0.00", "10257.12", "10056.00", "ipca 0.56 2023-12-01..2023-12-01"},
@@ -204,10 +230,10 @@ func TestIPCAIndexedScheduleReadsTheIPCAOfTwoMonthsBefore(t *testing.T) {
 func TestPastMonthWithoutPublishedIndexIsMarkedMissing(t *testing.T) {
 	t.Parallel()
 
-	history := mortgage.History{indexes.TR: {
+	history := outlookOf(publishedValues{indexes.TR: {
 		published(t, "2023-12-15", "2024-01-15", "0.0218"),
 		published(t, "2024-02-15", "2024-03-15", "0.0665"),
-	}}
+	}})
 
 	assert.Equal(t, []indexedRow{
 		{1, "6.54", "300.07", "10002.18", "0.00", "10302.25", "20004.36", "tr 0.0218 2023-12-15..2024-01-15"},
@@ -224,7 +250,7 @@ func TestPastMonthWithoutPublishedIndexIsMarkedMissing(t *testing.T) {
 func TestCorrectionsFollowTheContractAnniversaries(t *testing.T) {
 	t.Parallel()
 
-	history := mortgage.History{indexes.TR: append(publishedTR2024(t),
+	history := outlookOf(publishedValues{indexes.TR: append(publishedTR2024(t),
 		published(t, "2023-12-20", "2024-01-20", "0.5000"),
 		published(t, "2024-01-20", "2024-02-20", "0.5000"),
 		published(t, "2024-01-31", "2024-03-01", "0.0388"),
@@ -233,7 +259,7 @@ func TestCorrectionsFollowTheContractAnniversaries(t *testing.T) {
 		published(t, "2024-03-01", "2024-04-01", "0.0331"),
 		published(t, "2024-01-29", "2024-02-29", "0.0700"),
 		published(t, "2024-01-29", "2024-03-01", "9.9999"),
-	)}
+	)})
 
 	tests := []struct {
 		name             string
@@ -326,25 +352,25 @@ func TestMissingIndexInputsAreMarkedMissing(t *testing.T) {
 	tests := []struct {
 		name    string
 		indexer mortgage.Indexer
-		history mortgage.History
+		history publishedValues
 		want    string
 	}{
 		{
 			name:    "TR published only for a shorter period starting the same day",
 			indexer: mortgage.TR,
-			history: mortgage.History{indexes.TR: {published(t, "2023-12-15", "2024-01-14", "0.0218")}},
+			history: publishedValues{indexes.TR: {published(t, "2023-12-15", "2024-01-14", "0.0218")}},
 			want:    "tr missing 2023-12-15..2024-01-15",
 		},
 		{
 			name:    "poupança yield without the period's TR",
 			indexer: mortgage.PoupancaYield,
-			history: mortgage.History{indexes.SelicTarget: {published(t, "2023-12-15", "2023-12-15", "11.75")}},
+			history: publishedValues{indexes.SelicTarget: {published(t, "2023-12-15", "2023-12-15", "11.75")}},
 			want:    "poupanca_yield missing 2023-12-15..2024-01-15",
 		},
 		{
 			name:    "poupança yield without the Selic target on the period's first day",
 			indexer: mortgage.PoupancaYield,
-			history: mortgage.History{
+			history: publishedValues{
 				indexes.TR:          {published(t, "2023-12-15", "2024-01-15", "0.0218")},
 				indexes.SelicTarget: {published(t, "2023-12-14", "2023-12-14", "11.75")},
 			},
@@ -353,7 +379,7 @@ func TestMissingIndexInputsAreMarkedMissing(t *testing.T) {
 		{
 			name:    "IPCA of two months before the anniversary",
 			indexer: mortgage.IPCA,
-			history: mortgage.History{indexes.IPCA: {published(t, "2023-12-01", "2023-12-01", "0.56")}},
+			history: publishedValues{indexes.IPCA: {published(t, "2023-12-01", "2023-12-01", "0.56")}},
 			want:    "ipca missing 2023-11-01..2023-11-01",
 		},
 	}
@@ -364,30 +390,310 @@ func TestMissingIndexInputsAreMarkedMissing(t *testing.T) {
 
 			assert.Equal(t, []indexedRow{
 				{1, "0.00", "100.00", "10000.00", "0.00", "10100.00", "0.00", tt.want},
-			}, indexedSchedule(indexedSAC(t, tt.indexer, "10000.00", 1), tt.history, date(t, "2026-10-25")))
+			}, indexedSchedule(indexedSAC(t, tt.indexer, "10000.00", 1), outlookOf(tt.history), date(t, "2026-10-25")))
 		})
 	}
 }
 
-// On 2024-02-15 the 2nd installment falls due and is corrected, while the 3rd is not due yet, so it
-// is not corrected even though its TR is already published, and has no index value.
-func TestMonthNotDueYetIsNotCorrected(t *testing.T) {
+// On 2024-02-15 the 2nd installment falls due and is corrected, and the 3rd, not due yet, is
+// corrected too: the TR of its month, published already, is a published value, so it records no
+// projection method (ADR-0009 replaces ADR-0006's rule that only installments due by today are
+// corrected).
+func TestFutureMonthWithPublishedIndexIsCorrectedByIt(t *testing.T) {
 	t.Parallel()
 
-	history := mortgage.History{indexes.TR: publishedTR2024(t)}
+	history := outlookOf(publishedValues{indexes.TR: publishedTR2024(t)})
 
 	assert.Equal(t, []indexedRow{
 		{1, "6.54", "300.07", "10002.18", "0.00", "10302.25", "20004.36", "tr 0.0218 2023-12-15..2024-01-15"},
 		{2, "14.34", "200.19", "10009.35", "0.00", "10209.54", "10009.35", "tr 0.0717 2024-01-15..2024-02-15"},
-		{3, "0.00", "100.09", "10009.35", "0.00", "10109.44", "0.00", ""},
+		{3, "6.66", "100.16", "10016.01", "0.00", "10116.17", "0.00", "tr 0.0665 2024-02-15..2024-03-15"},
 	}, indexedSchedule(indexedSAC(t, mortgage.TR, "30000.00", 3), history, date(t, "2024-02-15")))
+}
+
+// monthlyTR is the TR of the 60 monthly periods from the 1st of a month to the 1st of the next,
+// March 2019 to February 2024, that trailing averages read: 0.0100% in the first period and 0.0010
+// more in each next one, up to 0.0690%. The latest 12 average 0.0635% and all 60 average 0.0395%.
+func monthlyTR(t *testing.T) []indexes.Value {
+	t.Helper()
+
+	first := date(t, "2019-03-01")
+	values := make([]indexes.Value, 0, 60)
+
+	for i := range 60 {
+		start, end := first.AddDate(0, i, 0), first.AddDate(0, i+1, 0)
+		values = append(values, published(t, start.Format(time.DateOnly), end.Format(time.DateOnly),
+			fmt.Sprintf("0.%04d", 100+10*i)))
+	}
+
+	return values
+}
+
+// projectedTRHistory is the TR published for the first month and the third of the schedule of
+// TestPastMonthsKeepPublishedValuesWhileFutureMonthsAreProjected, and none for the second, next to
+// the monthly periods of monthlyTR that no anniversary of the contract reads.
+func projectedTRHistory(t *testing.T) publishedValues {
+	t.Helper()
+
+	return publishedValues{indexes.TR: append(monthlyTR(t),
+		published(t, "2023-12-15", "2024-01-15", "0.0218"),
+		published(t, "2024-02-15", "2024-03-15", "0.0665"),
+	)}
+}
+
+// On 2024-03-20 the first three installments are due and the last two are not. The installments due
+// keep the published TR: the 1st and the 3rd are corrected by it, and the 2nd stays missing, though
+// the trailing 12 months average (0.0635%) could be projected for its period. The two later ones
+// are corrected by that projection, with its method. Figures worked out independently.
+func TestPastMonthsKeepPublishedValuesWhileFutureMonthsAreProjected(t *testing.T) {
+	t.Parallel()
+
+	outlook := indexes.NewOutlook(projectedTRHistory(t), indexes.Expectations{}, nil)
+
+	assert.Equal(t, []indexedRow{
+		{1, "10.90", "500.11", "10002.18", "0.00", "10502.29", "40008.72", "tr 0.0218 2023-12-15..2024-01-15"},
+		{2, "0.00", "400.09", "10002.18", "0.00", "10402.27", "30006.54", "tr missing 2024-01-15..2024-02-15"},
+		{3, "19.95", "300.26", "10008.83", "0.00", "10309.09", "20017.66", "tr 0.0665 2024-02-15..2024-03-15"},
+		{
+			4, "12.71", "200.30", "10015.19", "0.00", "10215.49", "10015.18",
+			"tr 0.0635 2024-03-15..2024-04-15 (tr trailing_12)",
+		},
+		{
+			5, "6.36", "100.22", "10021.54", "0.00", "10121.76", "0.00",
+			"tr 0.0635 2024-04-15..2024-05-15 (tr trailing_12)",
+		},
+	}, indexedSchedule(indexedSAC(t, mortgage.TR, "50000.00", 5), outlook, date(t, "2024-03-20")))
+}
+
+// An installment is due from its due date on, today included: its TR is only projected, so it stays
+// missing on 2024-02-15 and on the day after. The rows are those of
+// TestPastMonthsKeepPublishedValuesWhileFutureMonthsAreProjected, since the 3rd installment, not
+// due yet, is corrected by the TR published for it and the 4th and 5th by the projection.
+func TestInstallmentDueTodayIsCorrectedByPublishedValuesOnly(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		today string
+	}{
+		{name: "today is the due date", today: "2024-02-15"},
+		{name: "the day after the due date", today: "2024-02-16"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			outlook := indexes.NewOutlook(projectedTRHistory(t), indexes.Expectations{}, nil)
+
+			assert.Equal(t, []indexedRow{
+				{1, "10.90", "500.11", "10002.18", "0.00", "10502.29", "40008.72", "tr 0.0218 2023-12-15..2024-01-15"},
+				{2, "0.00", "400.09", "10002.18", "0.00", "10402.27", "30006.54", "tr missing 2024-01-15..2024-02-15"},
+				{3, "19.95", "300.26", "10008.83", "0.00", "10309.09", "20017.66", "tr 0.0665 2024-02-15..2024-03-15"},
+				{
+					4, "12.71", "200.30", "10015.19", "0.00", "10215.49", "10015.18",
+					"tr 0.0635 2024-03-15..2024-04-15 (tr trailing_12)",
+				},
+				{
+					5, "6.36", "100.22", "10021.54", "0.00", "10121.76", "0.00",
+					"tr 0.0635 2024-04-15..2024-05-15 (tr trailing_12)",
+				},
+			}, indexedSchedule(indexedSAC(t, mortgage.TR, "50000.00", 5), outlook, date(t, tt.today)))
+		})
+	}
+}
+
+// The method the owner chose for TR decides the future months: the trailing 12 months average
+// 0.0635% and the trailing 60 average 0.0395%, and each correction records the method behind it.
+// The installments due keep their published values under either method.
+func TestChangingTheProjectionMethodChangesTheFutureMonths(t *testing.T) {
+	t.Parallel()
+
+	due := []indexedRow{
+		{1, "10.90", "500.11", "10002.18", "0.00", "10502.29", "40008.72", "tr 0.0218 2023-12-15..2024-01-15"},
+		{2, "0.00", "400.09", "10002.18", "0.00", "10402.27", "30006.54", "tr missing 2024-01-15..2024-02-15"},
+		{3, "19.95", "300.26", "10008.83", "0.00", "10309.09", "20017.66", "tr 0.0665 2024-02-15..2024-03-15"},
+	}
+
+	tests := []struct {
+		name   string
+		method indexes.Method
+		future []indexedRow
+	}{
+		{
+			name:   "trailing 12",
+			method: indexes.Trailing12,
+			future: []indexedRow{
+				{
+					4, "12.71", "200.30", "10015.19", "0.00", "10215.49", "10015.18",
+					"tr 0.0635 2024-03-15..2024-04-15 (tr trailing_12)",
+				},
+				{
+					5, "6.36", "100.22", "10021.54", "0.00", "10121.76", "0.00",
+					"tr 0.0635 2024-04-15..2024-05-15 (tr trailing_12)",
+				},
+			},
+		},
+		{
+			name:   "trailing 60",
+			method: indexes.Trailing60,
+			future: []indexedRow{
+				{
+					4, "7.91", "200.26", "10012.79", "0.00", "10213.05", "10012.78",
+					"tr 0.0395 2024-03-15..2024-04-15 (tr trailing_60)",
+				},
+				{
+					5, "3.96", "100.17", "10016.74", "0.00", "10116.91", "0.00",
+					"tr 0.0395 2024-04-15..2024-05-15 (tr trailing_60)",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			outlook := indexes.NewOutlook(projectedTRHistory(t), indexes.Expectations{},
+				[]indexes.ProjectionMethod{{Index: indexes.TR, Method: tt.method}})
+
+			assert.Equal(t, append(slices.Clone(due), tt.future...),
+				indexedSchedule(indexedSAC(t, mortgage.TR, "50000.00", 5), outlook, date(t, "2024-03-20")))
+		})
+	}
+}
+
+// The poupança yield records the methods of the inputs it projects, and only those. On 2024-02-20
+// the 3rd installment, not due yet, reads the TR already published for its month and the Selic
+// target of 2024-02-15, which isn't published, projected by the trailing 12 months (13.0833%), so
+// it records only the Selic target's method; the 4th has neither the TR nor the Selic target
+// published and records both. The 1st and 2nd, due, are published. Figures worked out
+// independently.
+func TestFuturePoupancaMonthRecordsOnlyTheProjectedInputs(t *testing.T) {
+	t.Parallel()
+
+	selicMonths := []string{
+		"13.75", "13.75", "13.75", "13.75", "13.75", "13.75", "13.25", "12.75", "12.75", "12.25", "11.75", "11.75",
+	}
+	selic := make([]indexes.Value, 0, 2+len(selicMonths))
+
+	for i, v := range selicMonths {
+		first := date(t, "2023-02-01").AddDate(0, i, 0).Format(time.DateOnly)
+		selic = append(selic, published(t, first, first, v))
+	}
+
+	selic = append(selic,
+		published(t, "2023-12-15", "2023-12-15", "11.75"),
+		published(t, "2024-01-15", "2024-01-15", "11.75"),
+	)
+
+	history := publishedValues{
+		indexes.TR: append(monthlyTR(t),
+			published(t, "2023-12-15", "2024-01-15", "0.0218"),
+			published(t, "2024-01-15", "2024-02-15", "0.0717"),
+			published(t, "2024-02-15", "2024-03-15", "0.0665"),
+		),
+		indexes.SelicTarget: selic,
+	}
+	outlook := indexes.NewOutlook(history, indexes.Expectations{}, []indexes.ProjectionMethod{
+		{Index: indexes.TR, Method: indexes.Trailing12},
+		{Index: indexes.SelicTarget, Method: indexes.Trailing12},
+	})
+
+	assert.Equal(t, []indexedRow{
+		{1, "208.76", "402.09", "10052.19", "0.00", "10454.28", "30156.57", "poupanca_yield 0.5219 2023-12-15..2024-01-15"},
+		{2, "172.53", "303.29", "10109.70", "0.00", "10412.99", "20219.40", "poupanca_yield 0.5721 2024-01-15..2024-02-15"},
+		{
+			3, "114.60", "203.34", "10167.00", "0.00", "10370.34", "10167.00",
+			"poupanca_yield 0.5668 2024-02-15..2024-03-15 (selic_target trailing_12)",
+		},
+		{
+			4, "57.32", "102.24", "10224.32", "0.00", "10326.56", "0.00",
+			"poupanca_yield 0.5638 2024-03-15..2024-04-15 (tr trailing_12, selic_target trailing_12)",
+		},
+	}, indexedSchedule(indexedSAC(t, mortgage.PoupancaYield, "40000.00", 4), outlook, date(t, "2024-02-20")))
+}
+
+// A future installment reads the IPCA of the second month before its anniversary, as the past ones
+// do. On 2024-03-15 the 3rd installment, anniversary 2024-04-10, reads February's Focus median
+// (0.83%) and the 4th, anniversary 2024-05-10, March's (0.45%), not the months of their
+// anniversaries (April's median is 0.31%). January's median (0.99%) is left unread, as January's
+// published IPCA (0.42%) corrects the 2nd installment, which is due. Figures worked out
+// independently.
+func TestFutureIPCAMonthsReadTheProjectedIPCAOfTwoMonthsBefore(t *testing.T) {
+	t.Parallel()
+
+	terms := indexedSAC(t, mortgage.IPCA, "30000.00", 4)
+	terms.ContractDate = date(t, "2024-01-10")
+	terms.FirstInstallmentDate = date(t, "2024-02-10")
+
+	history := publishedValues{indexes.IPCA: {
+		published(t, "2023-11-01", "2023-11-01", "0.28"),
+		published(t, "2023-12-01", "2023-12-01", "0.56"),
+		published(t, "2024-01-01", "2024-01-01", "0.42"),
+	}}
+	expectations := indexes.Expectations{MonthlyIPCA: []indexes.MonthMedian{
+		{Month: date(t, "2024-01-01"), Median: dec(t, "0.99")},
+		{Month: date(t, "2024-02-01"), Median: dec(t, "0.83")},
+		{Month: date(t, "2024-03-01"), Median: dec(t, "0.45")},
+		{Month: date(t, "2024-04-01"), Median: dec(t, "0.31")},
+	}}
+
+	assert.Equal(t, []indexedRow{
+		{1, "168.00", "301.68", "7542.00", "0.00", "7843.68", "22626.00", "ipca 0.56 2023-12-01..2023-12-01"},
+		{2, "95.03", "227.21", "7573.68", "0.00", "7800.89", "15147.35", "ipca 0.42 2024-01-01..2024-01-01"},
+		{
+			3, "125.72", "152.73", "7636.54", "0.00", "7789.27", "7636.53",
+			"ipca 0.83 2024-02-01..2024-02-01 (ipca focus)",
+		},
+		{
+			4, "34.36", "76.71", "7670.89", "0.00", "7747.60", "0.00",
+			"ipca 0.45 2024-03-01..2024-03-01 (ipca focus)",
+		},
+	}, indexedSchedule(terms, indexes.NewOutlook(history, expectations, nil), date(t, "2024-03-15")))
+}
+
+// A future month with neither a published value nor a projection is reported missing, and the
+// balance is not corrected by it. The one installment falls due on 2024-01-15, after today.
+func TestFutureMonthWithoutAnEstimateIsMarkedMissing(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		indexer mortgage.Indexer
+		history publishedValues
+		want    string
+	}{
+		{
+			name:    "TR without a published period or enough months to average",
+			indexer: mortgage.TR,
+			history: publishedValues{indexes.TR: {published(t, "2023-12-15", "2024-01-14", "0.0218")}},
+			want:    "tr missing 2023-12-15..2024-01-15",
+		},
+		{
+			name:    "IPCA without a published month or Focus expectations",
+			indexer: mortgage.IPCA,
+			history: publishedValues{indexes.IPCA: {published(t, "2023-12-01", "2023-12-01", "0.56")}},
+			want:    "ipca missing 2023-11-01..2023-11-01",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, []indexedRow{
+				{1, "0.00", "100.00", "10000.00", "0.00", "10100.00", "0.00", tt.want},
+			}, indexedSchedule(indexedSAC(t, tt.indexer, "10000.00", 1), outlookOf(tt.history), date(t, "2024-01-01")))
+		})
+	}
 }
 
 // A mortgage without an indexer is never corrected, whatever indexes are published.
 func TestScheduleWithoutIndexerIsNotCorrected(t *testing.T) {
 	t.Parallel()
 
-	history := mortgage.History{indexes.TR: publishedTR2024(t)}
+	history := outlookOf(publishedValues{indexes.TR: publishedTR2024(t)})
 
 	assert.Equal(t, []indexedRow{
 		{1, "0.00", "300.00", "10000.00", "0.00", "10300.00", "20000.00", ""},

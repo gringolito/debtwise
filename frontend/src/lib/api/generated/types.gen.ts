@@ -100,6 +100,10 @@ export type CorrectionIndex = {
      */
     index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
     /**
+     * The projection methods the value comes from, one for each projected index it is derived from. Empty unless status is projected.
+     */
+    methods: Array<ProjectedBy>;
+    /**
      * The last day of the period the value covers. Equals period_start when the index is dated by month.
      */
     period_end: string;
@@ -108,9 +112,9 @@ export type CorrectionIndex = {
      */
     period_start: string;
     /**
-     * published: the balance was corrected by the published value; missing: no value is available for the period yet, so the balance was not corrected by it.
+     * published: the balance was corrected by the published value; projected: the balance was corrected by a projected value, by the methods listed in methods; missing: no value is available for the period yet, so the balance was not corrected by it.
      */
-    status: 'published' | 'missing';
+    status: 'published' | 'projected' | 'missing';
     /**
      * The index value for the period, in percent, as a decimal string. Absent when status is missing.
      */
@@ -174,6 +178,21 @@ export type Fee = {
     effective_from: string;
 };
 
+export type FocusStatus = {
+    /**
+     * When the latest refresh of the Focus expectations failed. Absent unless status is failed.
+     */
+    failed_at?: string;
+    /**
+     * When the Focus expectations were last refreshed successfully. Absent when they never were.
+     */
+    refreshed_at?: string;
+    /**
+     * fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed.
+     */
+    status: 'fresh' | 'stale' | 'failed' | 'missing';
+};
+
 export type Health = {
     /**
      * Always ok: the server is up and its database answers.
@@ -187,6 +206,14 @@ export type IndexHistory = {
      * The values of the index, oldest period first.
      */
     values: Array<IndexValue>;
+};
+
+export type IndexProjection = {
+    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
+    /**
+     * The projected values of the index, earliest period first. Empty when the index is not projected or has no published values.
+     */
+    values: Array<ProjectedValue>;
 };
 
 export type IndexStatus = {
@@ -229,6 +256,10 @@ export type MarketDataStatus = {
      * How fresh the bond prices are.
      */
     bonds: BondsStatus;
+    /**
+     * How fresh the Focus expectations are.
+     */
+    focus: FocusStatus;
     /**
      * How fresh each index is.
      */
@@ -336,6 +367,59 @@ export type PrepaymentList = {
      * Every prepayment recorded on the mortgage, in date order.
      */
     prepayments: Array<Prepayment>;
+};
+
+export type ProjectedBy = {
+    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
+    /**
+     * The method the index was projected by.
+     */
+    method: 'focus' | 'trailing_12' | 'trailing_60';
+};
+
+export type ProjectedValue = {
+    /**
+     * The methods of the projected indexes the value comes from.
+     */
+    methods: Array<ProjectedBy>;
+    /**
+     * The last day of the period the value covers. Equals period_start when the value is of one day or month.
+     */
+    period_end: string;
+    /**
+     * The first day of the period the value covers.
+     */
+    period_start: string;
+    /**
+     * The projected value, as a decimal string in the index's unit.
+     */
+    value: string;
+};
+
+export type ProjectionMethod = {
+    index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
+    /**
+     * The method the index is projected by.
+     */
+    method: 'focus' | 'trailing_12' | 'trailing_60';
+    /**
+     * The methods the index can be projected by, its default first.
+     */
+    offered: Array<'focus' | 'trailing_12' | 'trailing_60'>;
+};
+
+export type ProjectionMethodInputBody = {
+    /**
+     * The method to project the index by. It must be one the index offers.
+     */
+    method: 'focus' | 'trailing_12' | 'trailing_60';
+};
+
+export type ProjectionMethods = {
+    /**
+     * The projection method of every index that is projected.
+     */
+    methods: Array<ProjectionMethod>;
 };
 
 export type RegisteredMortgage = {
@@ -549,6 +633,31 @@ export type HealthResponses = {
 
 export type HealthResponse = HealthResponses[keyof HealthResponses];
 
+export type ProjectionMethodsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/indexes/projection-methods';
+};
+
+export type ProjectionMethodsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type ProjectionMethodsError = ProjectionMethodsErrors[keyof ProjectionMethodsErrors];
+
+export type ProjectionMethodsResponses = {
+    /**
+     * OK
+     */
+    200: ProjectionMethods;
+};
+
+export type ProjectionMethodsResponse = ProjectionMethodsResponses[keyof ProjectionMethodsResponses];
+
 export type IndexHistoryData = {
     body?: never;
     path: {
@@ -578,6 +687,66 @@ export type IndexHistoryResponses = {
 };
 
 export type IndexHistoryResponse = IndexHistoryResponses[keyof IndexHistoryResponses];
+
+export type IndexProjectionData = {
+    body?: never;
+    path: {
+        /**
+         * The index.
+         */
+        index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
+    };
+    query?: never;
+    url: '/indexes/{index}/projection';
+};
+
+export type IndexProjectionErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type IndexProjectionError = IndexProjectionErrors[keyof IndexProjectionErrors];
+
+export type IndexProjectionResponses = {
+    /**
+     * OK
+     */
+    200: IndexProjection;
+};
+
+export type IndexProjectionResponse = IndexProjectionResponses[keyof IndexProjectionResponses];
+
+export type SaveProjectionMethodData = {
+    body: ProjectionMethodInputBody;
+    path: {
+        /**
+         * The index.
+         */
+        index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
+    };
+    query?: never;
+    url: '/indexes/{index}/projection-method';
+};
+
+export type SaveProjectionMethodErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type SaveProjectionMethodError = SaveProjectionMethodErrors[keyof SaveProjectionMethodErrors];
+
+export type SaveProjectionMethodResponses = {
+    /**
+     * OK
+     */
+    200: ProjectionMethod;
+};
+
+export type SaveProjectionMethodResponse = SaveProjectionMethodResponses[keyof SaveProjectionMethodResponses];
 
 export type RefreshMarketDataData = {
     body?: never;

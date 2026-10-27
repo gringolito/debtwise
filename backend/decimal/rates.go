@@ -21,6 +21,12 @@ func (x Decimal) RoundPoupancaPercent() Decimal {
 	return x.quantize(4, apd.RoundHalfEven)
 }
 
+// RoundProjection rounds a projected percentage at 4 places, half to even, as ADR-0009 rounds each
+// value DebtWise computes for an index rather than reads from Focus.
+func (x Decimal) RoundProjection() Decimal {
+	return x.quantize(4, apd.RoundHalfEven)
+}
+
 // MonthlyToAnnual returns the effective annual rate that compounds from a monthly rate.
 func MonthlyToAnnual(monthly Decimal) Decimal {
 	return rounded(compound(&monthly.d, &twelve))

@@ -8,6 +8,7 @@ import {
   ipcaMortgage,
   ipcaSchedule,
   prepayments,
+  projectedSchedule,
   registeredMortgage,
   schedule,
   scheduleAfterSave,
@@ -411,14 +412,14 @@ describe("the schedule of an indexed mortgage", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("warns above the schedule how many past months have no published index", async () => {
+  it("warns above the schedule how many months have no index value", async () => {
     stubMortgageApi({ mortgage: trMortgage, schedule: trSchedule });
 
     renderAt("/financiamento");
 
     const alert = await screen.findByRole("alert");
     expect(text(alert)).toBe(
-      "Faltam valores publicados de TR para 1 mês passado. Esse mês não foi corrigido. Atualize os dados de mercado na página Índices.",
+      "Faltam valores de TR para 1 mês. Esse mês não foi corrigido. Atualize os dados de mercado na página Índices.",
     );
     expect(within(alert).getByRole("link", { name: "Índices" })).toHaveAttribute(
       "href",
@@ -432,12 +433,13 @@ describe("the schedule of an indexed mortgage", () => {
     ).toBeTruthy();
   });
 
-  it("counts every month without a published index", async () => {
+  it("counts every month without an index value", async () => {
     const missing = (start: string, end: string): CorrectionIndex => ({
       index: "poupanca_yield",
       status: "missing",
       period_start: start,
       period_end: end,
+      methods: [],
     });
     const [first, second, third] = trSchedule.installments;
     stubMortgageApi({
@@ -454,7 +456,7 @@ describe("the schedule of an indexed mortgage", () => {
     renderAt("/financiamento");
 
     expect(text(await screen.findByRole("alert"))).toBe(
-      "Faltam valores publicados de Remuneração da poupança para 2 meses passados. Esses meses não foram corrigidos. Atualize os dados de mercado na página Índices.",
+      "Faltam valores de Remuneração da poupança para 2 meses. Esses meses não foram corrigidos. Atualize os dados de mercado na página Índices.",
     );
   });
 
@@ -481,8 +483,36 @@ describe("the schedule of an indexed mortgage", () => {
       ],
     ]);
     expect(text(await screen.findByRole("alert"))).toBe(
-      "Faltam valores publicados de TR para 2 meses passados. Esses meses não foram corrigidos. Atualize os dados de mercado na página Índices.",
+      "Faltam valores de TR para 2 meses. Esses meses não foram corrigidos. Atualize os dados de mercado na página Índices.",
     );
+  });
+
+  it("marks a projected value and names the projection methods behind it", async () => {
+    stubMortgageApi({
+      mortgage: { ...trMortgage, indexer: "poupanca_yield" },
+      schedule: projectedSchedule,
+    });
+
+    renderAt("/financiamento");
+
+    const table = await screen.findByRole("table", { name: "Evolução do financiamento" });
+    expect(rowTexts(table).slice(1)).toEqual([
+      [
+        "3",
+        "10/03/2024",
+        "Remuneração da poupança 0,6293% Projetado 10/02/2024 a 10/03/2024 TR: Média dos últimos 12 meses; Selic meta: Mediana do Focus (BCB)",
+        "R$ 188,99",
+        "R$ 400,00",
+        "R$ 10.000,00",
+        "R$ 12,00",
+        "R$ 10,00",
+        "R$ 12,50",
+        "R$ 10.434,50",
+        "R$ 0,00",
+        "R$ 30.032,34",
+      ],
+    ]);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
 

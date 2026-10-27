@@ -9,6 +9,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
@@ -57,9 +58,9 @@ const (
 	statementsPath  = mortgagePath + "/statements"
 )
 
-func registerMortgageEvents(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
+func registerMortgageEvents(humaAPI huma.API, mortgages Mortgages, store IndexStore, now func() time.Time) {
 	registerPrepayments(humaAPI, mortgages)
-	registerStatements(humaAPI, mortgages, store)
+	registerStatements(humaAPI, mortgages, store, now)
 }
 
 func registerPrepayments(humaAPI huma.API, mortgages Mortgages) {
@@ -152,7 +153,7 @@ func registerPrepayments(humaAPI huma.API, mortgages Mortgages) {
 	})
 }
 
-func registerStatements(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
+func registerStatements(humaAPI huma.API, mortgages Mortgages, store IndexStore, now func() time.Time) {
 	register(humaAPI, huma.Operation{
 		OperationID: "list-statements",
 		Method:      http.MethodGet,
@@ -161,13 +162,13 @@ func registerStatements(humaAPI huma.API, mortgages Mortgages, store IndexStore)
 		Description: "Returns the statements recorded on the mortgage, each compared with the outstanding balance the schedule computed for its date.",
 		Tags:        []string{mortgageTag},
 	}, func(ctx context.Context, _ *struct{}) (*struct{ Body statementList }, error) {
-		terms, history, events, err := replayInputs(ctx, mortgages, store)
+		terms, outlook, events, err := replayInputs(ctx, mortgages, store)
 		if err != nil {
 			return nil, err
 		}
 
 		out := &struct{ Body statementList }{Body: statementList{Statements: make([]statementDrift, 0, len(events.Statements))}}
-		for _, d := range terms.Drifts(history, events, time.Now()) {
+		for _, d := range terms.Drifts(outlook, events, now()) {
 			out.Body.Statements = append(out.Body.Statements, statementDrift{
 				ID:                 d.Statement.ID,
 				Date:               d.Statement.Date.Format(time.DateOnly),
@@ -249,26 +250,25 @@ func registerStatements(humaAPI huma.API, mortgages Mortgages, store IndexStore)
 }
 
 // replayInputs reads what replaying the registered mortgage's schedule needs: its terms, the
-// history of the indexes its indexer reads, and its events.
-func replayInputs(ctx context.Context, mortgages Mortgages, store IndexStore) (mortgage.Terms, mortgage.History, mortgage.Events, error) {
+// outlook over the history of the indexes its indexer reads, the Focus expectations and the
+// projection methods, and its events.
+func replayInputs(ctx context.Context, mortgages Mortgages, store IndexStore) (mortgage.Terms, indexes.Outlook, mortgage.Events, error) {
 	terms, err := mortgages.Find(ctx)
 	if err != nil {
-		return mortgage.Terms{}, nil, mortgage.Events{}, mortgageFailure(err)
+		return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, mortgageFailure(err)
 	}
 
-	history := mortgage.History{}
-	for _, index := range terms.Indexer.Indexes() {
-		if history[index], err = store.History(ctx, index); err != nil {
-			return mortgage.Terms{}, nil, mortgage.Events{}, err
-		}
+	outlook, err := outlookOf(ctx, store, terms.Indexer.Indexes()...)
+	if err != nil {
+		return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, err
 	}
 
 	events, err := mortgages.Events(ctx)
 	if err != nil {
-		return mortgage.Terms{}, nil, mortgage.Events{}, mortgageFailure(err)
+		return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, mortgageFailure(err)
 	}
 
-	return terms, history, events, nil
+	return terms, outlook, events, nil
 }
 
 // readPrepayment reads a prepayment from a body whose date and amount the schema has already

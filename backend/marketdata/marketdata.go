@@ -41,6 +41,7 @@ type Sources struct {
 	SGS   IndexSource
 	SIDRA NumberSource
 	Radar QuoteSource
+	Focus ExpectationSource
 }
 
 // IndexStore is the subset of *indexes.Store the job reads and writes.
@@ -49,6 +50,9 @@ type IndexStore interface {
 	SaveRefresh(ctx context.Context, index indexes.Index, values []indexes.Value, at time.Time) error
 	SaveFailure(ctx context.Context, index indexes.Index, values []indexes.Value, at time.Time) error
 	RefreshTimes(ctx context.Context) ([]indexes.RefreshTimes, error)
+	SaveExpectations(ctx context.Context, e indexes.Expectations, at time.Time) error
+	SaveExpectationsFailure(ctx context.Context, at time.Time) error
+	ExpectationsRefreshTimes(ctx context.Context) (indexes.ExpectationsRefreshTimes, error)
 }
 
 // feed is an index and how to fetch its values for the periods from `from` through `to`. When the
@@ -219,15 +223,15 @@ func (j *Job) finish() {
 	j.running = false
 }
 
-// Refresh fetches every index and the bond quotes from their sources and stores what it fetched at
-// now. An index whose fetch fails keeps its values, gains those fetched before the failure, and has
-// the failure recorded; failed quotes keep the stored ones and have the failure recorded. The
-// others are stored anyway.
+// Refresh fetches every index, the bond quotes and the Focus expectations from their sources and
+// stores what it fetched at now. An index whose fetch fails keeps its values, gains those fetched
+// before the failure, and has the failure recorded; failed quotes and failed expectations keep the
+// stored ones and have the failure recorded. The others are stored anyway.
 func (j *Job) Refresh(ctx context.Context, now time.Time) error {
 	all := j.feeds()
-	errs := make([]error, len(all), len(all)+1)
+	errs := make([]error, len(all), len(all)+2)
 
-	var quotesErr error
+	var quotesErr, expectationsErr error
 
 	var wg sync.WaitGroup
 	for i, f := range all {
@@ -235,10 +239,11 @@ func (j *Job) Refresh(ctx context.Context, now time.Time) error {
 	}
 
 	wg.Go(func() { quotesErr = j.refreshQuotes(ctx, now) })
+	wg.Go(func() { expectationsErr = j.refreshExpectations(ctx, now) })
 
 	wg.Wait()
 
-	return errors.Join(append(errs, quotesErr)...)
+	return errors.Join(append(errs, quotesErr, expectationsErr)...)
 }
 
 func (j *Job) refresh(ctx context.Context, f feed, now time.Time) error {
@@ -285,7 +290,8 @@ func (j *Job) fetch(ctx context.Context, f feed, now time.Time) ([]indexes.Value
 	return values, err
 }
 
-// State is how fresh an index's stored values, or the stored bond quotes, are.
+// State is how fresh an index's stored values, the stored bond quotes, or the stored Focus
+// expectations are.
 type State string
 
 const (
@@ -318,16 +324,17 @@ type IndexStatus struct {
 	Freshness
 }
 
-// Status is whether a refresh is pending or running, and how fresh every index and the bond quotes
-// are.
+// Status is whether a refresh is pending or running, and how fresh every index, the bond quotes and
+// the Focus expectations are.
 type Status struct {
 	Refreshing bool
 	Indexes    []IndexStatus
 	Quotes     Freshness
+	Focus      Freshness
 }
 
-// Status reports how fresh every index, in the order of indexes.All, and the bond quotes are at
-// now.
+// Status reports how fresh every index, in the order of indexes.All, the bond quotes and the Focus
+// expectations are at now.
 func (j *Job) Status(ctx context.Context, now time.Time) (Status, error) {
 	times, err := j.indexStore.RefreshTimes(ctx)
 	if err != nil {
@@ -335,6 +342,11 @@ func (j *Job) Status(ctx context.Context, now time.Time) (Status, error) {
 	}
 
 	quoteTimes, err := j.quoteStore.RefreshTimes(ctx)
+	if err != nil {
+		return Status{}, fmt.Errorf("marketdata: status: %w", err)
+	}
+
+	focusTimes, err := j.indexStore.ExpectationsRefreshTimes(ctx)
 	if err != nil {
 		return Status{}, fmt.Errorf("marketdata: status: %w", err)
 	}
@@ -349,6 +361,7 @@ func (j *Job) Status(ctx context.Context, now time.Time) (Status, error) {
 		Refreshing: j.refreshing(),
 		Indexes:    make([]IndexStatus, 0, len(all)),
 		Quotes:     freshness(quoteTimes.RefreshedAt, quoteTimes.FailedAt, now),
+		Focus:      freshness(focusTimes.RefreshedAt, focusTimes.FailedAt, now),
 	}
 
 	for _, index := range all {

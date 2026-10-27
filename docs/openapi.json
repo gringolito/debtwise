@@ -181,6 +181,13 @@
             ],
             "type": "string"
           },
+          "methods": {
+            "description": "The projection methods the value comes from, one for each projected index it is derived from. Empty unless status is projected.",
+            "items": {
+              "$ref": "#/components/schemas/ProjectedBy"
+            },
+            "type": "array"
+          },
           "period_end": {
             "description": "The last day of the period the value covers. Equals period_start when the index is dated by month.",
             "format": "date",
@@ -192,9 +199,10 @@
             "type": "string"
           },
           "status": {
-            "description": "published: the balance was corrected by the published value; missing: no value is available for the period yet, so the balance was not corrected by it.",
+            "description": "published: the balance was corrected by the published value; projected: the balance was corrected by a projected value, by the methods listed in methods; missing: no value is available for the period yet, so the balance was not corrected by it.",
             "enum": [
               "published",
+              "projected",
               "missing"
             ],
             "type": "string"
@@ -208,7 +216,8 @@
           "index",
           "status",
           "period_start",
-          "period_end"
+          "period_end",
+          "methods"
         ],
         "type": "object"
       },
@@ -308,6 +317,35 @@
         ],
         "type": "object"
       },
+      "FocusStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "failed_at": {
+            "description": "When the latest refresh of the Focus expectations failed. Absent unless status is failed.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "refreshed_at": {
+            "description": "When the Focus expectations were last refreshed successfully. Absent when they never were.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "description": "fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed.",
+            "enum": [
+              "fresh",
+              "stale",
+              "failed",
+              "missing"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
       "Health": {
         "additionalProperties": false,
         "properties": {
@@ -342,6 +380,34 @@
             "description": "The values of the index, oldest period first.",
             "items": {
               "$ref": "#/components/schemas/IndexValue"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "index",
+          "values"
+        ],
+        "type": "object"
+      },
+      "IndexProjection": {
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "enum": [
+              "tr",
+              "poupanca_yield",
+              "selic_target",
+              "selic",
+              "ipca",
+              "ipca_number"
+            ],
+            "type": "string"
+          },
+          "values": {
+            "description": "The projected values of the index, earliest period first. Empty when the index is not projected or has no published values.",
+            "items": {
+              "$ref": "#/components/schemas/ProjectedValue"
             },
             "type": "array"
           }
@@ -431,6 +497,10 @@
             "$ref": "#/components/schemas/BondsStatus",
             "description": "How fresh the bond prices are."
           },
+          "focus": {
+            "$ref": "#/components/schemas/FocusStatus",
+            "description": "How fresh the Focus expectations are."
+          },
           "indexes": {
             "description": "How fresh each index is.",
             "items": {
@@ -446,7 +516,8 @@
         "required": [
           "refreshing",
           "indexes",
-          "bonds"
+          "bonds",
+          "focus"
         ],
         "type": "object"
       },
@@ -638,6 +709,146 @@
         },
         "required": [
           "prepayments"
+        ],
+        "type": "object"
+      },
+      "ProjectedBy": {
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "enum": [
+              "tr",
+              "poupanca_yield",
+              "selic_target",
+              "selic",
+              "ipca",
+              "ipca_number"
+            ],
+            "type": "string"
+          },
+          "method": {
+            "description": "The method the index was projected by.",
+            "enum": [
+              "focus",
+              "trailing_12",
+              "trailing_60"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "method"
+        ],
+        "type": "object"
+      },
+      "ProjectedValue": {
+        "additionalProperties": false,
+        "properties": {
+          "methods": {
+            "description": "The methods of the projected indexes the value comes from.",
+            "items": {
+              "$ref": "#/components/schemas/ProjectedBy"
+            },
+            "type": "array"
+          },
+          "period_end": {
+            "description": "The last day of the period the value covers. Equals period_start when the value is of one day or month.",
+            "format": "date",
+            "type": "string"
+          },
+          "period_start": {
+            "description": "The first day of the period the value covers.",
+            "format": "date",
+            "type": "string"
+          },
+          "value": {
+            "description": "The projected value, as a decimal string in the index's unit.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "period_start",
+          "period_end",
+          "value",
+          "methods"
+        ],
+        "type": "object"
+      },
+      "ProjectionMethod": {
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "enum": [
+              "tr",
+              "poupanca_yield",
+              "selic_target",
+              "selic",
+              "ipca",
+              "ipca_number"
+            ],
+            "type": "string"
+          },
+          "method": {
+            "description": "The method the index is projected by.",
+            "enum": [
+              "focus",
+              "trailing_12",
+              "trailing_60"
+            ],
+            "type": "string"
+          },
+          "offered": {
+            "description": "The methods the index can be projected by, its default first.",
+            "items": {
+              "enum": [
+                "focus",
+                "trailing_12",
+                "trailing_60"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "index",
+          "method",
+          "offered"
+        ],
+        "type": "object"
+      },
+      "ProjectionMethodInputBody": {
+        "additionalProperties": false,
+        "properties": {
+          "method": {
+            "description": "The method to project the index by. It must be one the index offers.",
+            "enum": [
+              "focus",
+              "trailing_12",
+              "trailing_60"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "method"
+        ],
+        "type": "object"
+      },
+      "ProjectionMethods": {
+        "additionalProperties": false,
+        "properties": {
+          "methods": {
+            "description": "The projection method of every index that is projected.",
+            "items": {
+              "$ref": "#/components/schemas/ProjectionMethod"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "methods"
         ],
         "type": "object"
       },
@@ -986,6 +1197,38 @@
         ]
       }
     },
+    "/indexes/projection-methods": {
+      "get": {
+        "description": "Lists, for every index that is projected, the method it is projected by and the methods it offers.",
+        "operationId": "projection-methods",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectionMethods"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the projection methods",
+        "tags": [
+          "Indexes"
+        ]
+      }
+    },
     "/indexes/{index}/history": {
       "get": {
         "description": "Lists the published values of an index, as of its latest refresh.",
@@ -1038,9 +1281,123 @@
         ]
       }
     },
+    "/indexes/{index}/projection": {
+      "get": {
+        "description": "Lists the values the index's projection method gives for the months after its published values, with the methods each value comes from.",
+        "operationId": "index-projection",
+        "parameters": [
+          {
+            "description": "The index.",
+            "in": "path",
+            "name": "index",
+            "required": true,
+            "schema": {
+              "description": "The index.",
+              "enum": [
+                "tr",
+                "poupanca_yield",
+                "selic_target",
+                "selic",
+                "ipca",
+                "ipca_number"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndexProjection"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Project an index",
+        "tags": [
+          "Indexes"
+        ]
+      }
+    },
+    "/indexes/{index}/projection-method": {
+      "put": {
+        "description": "Sets the method the index is projected by. Fails when the index doesn't offer the method, as an index that is not projected offers none.",
+        "operationId": "save-projection-method",
+        "parameters": [
+          {
+            "description": "The index.",
+            "in": "path",
+            "name": "index",
+            "required": true,
+            "schema": {
+              "description": "The index.",
+              "enum": [
+                "tr",
+                "poupanca_yield",
+                "selic_target",
+                "selic",
+                "ipca",
+                "ipca_number"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectionMethodInputBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectionMethod"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Choose how an index is projected",
+        "tags": [
+          "Indexes"
+        ]
+      }
+    },
     "/market-data/refresh": {
       "post": {
-        "description": "Starts refreshing every index and the bond prices from their sources and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.",
+        "description": "Starts refreshing every index, the bond prices and the Focus expectations from their sources and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.",
         "operationId": "refresh-market-data",
         "responses": {
           "202": {
@@ -1072,7 +1429,7 @@
     },
     "/market-data/status": {
       "get": {
-        "description": "Reports, for each index and for the bond prices, when they were last refreshed from their source and whether that data is stale or its latest refresh failed.",
+        "description": "Reports, for each index, for the bond prices and for the Focus expectations, when they were last refreshed from their source and whether that data is stale or its latest refresh failed.",
         "operationId": "market-data-status",
         "responses": {
           "200": {

@@ -11,9 +11,15 @@ import (
 	"github.com/gringolito/debtwise/backend/marketdata"
 )
 
+// indexesTag groups the operations on indexes.
+const indexesTag = "Indexes"
+
 // IndexStore is the subset of *indexes.Store the API reads.
 type IndexStore interface {
 	History(ctx context.Context, index indexes.Index) ([]indexes.Value, error)
+	ProjectionMethods(ctx context.Context) ([]indexes.ProjectionMethod, error)
+	SaveProjectionMethod(ctx context.Context, m indexes.ProjectionMethod) error
+	Expectations(ctx context.Context) (indexes.Expectations, error)
 }
 
 // MarketData is the subset of *marketdata.Job the API uses.
@@ -29,8 +35,8 @@ func (indexCode) Schema(huma.Registry) *huma.Schema {
 	return enumSchema(indexes.All())
 }
 
-// stateCode is how fresh an index or the bond quotes are, documented with every state the API
-// answers.
+// stateCode is how fresh an index, the bond quotes or the Focus expectations are, documented with
+// every state the API answers.
 type stateCode string
 
 func (stateCode) Schema(huma.Registry) *huma.Schema {
@@ -68,6 +74,12 @@ type bondsStatus struct {
 	FailedAt    *time.Time `json:"failed_at,omitempty" doc:"When the latest refresh of the bond prices failed. Absent unless status is failed."`
 }
 
+type focusStatus struct {
+	Status      stateCode  `json:"status" doc:"fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed."`
+	RefreshedAt *time.Time `json:"refreshed_at,omitempty" doc:"When the Focus expectations were last refreshed successfully. Absent when they never were."`
+	FailedAt    *time.Time `json:"failed_at,omitempty" doc:"When the latest refresh of the Focus expectations failed. Absent unless status is failed."`
+}
+
 type indexStatus struct {
 	Index       indexCode  `json:"index"`
 	Status      stateCode  `json:"status" doc:"fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed."`
@@ -79,20 +91,21 @@ type marketDataStatus struct {
 	Refreshing bool          `json:"refreshing" doc:"Whether a refresh is in progress."`
 	Indexes    []indexStatus `json:"indexes" nullable:"false" doc:"How fresh each index is."`
 	Bonds      bondsStatus   `json:"bonds" doc:"How fresh the bond prices are."`
+	Focus      focusStatus   `json:"focus" doc:"How fresh the Focus expectations are."`
 }
 
 type marketDataStatusOutput struct {
 	Body marketDataStatus
 }
 
-func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData) {
+func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData, now func() time.Time) {
 	register(humaAPI, huma.Operation{
 		OperationID: "index-history",
 		Method:      http.MethodGet,
 		Path:        "/indexes/{index}/history",
 		Summary:     "List the history of an index",
 		Description: "Lists the published values of an index, as of its latest refresh.",
-		Tags:        []string{"Indexes"},
+		Tags:        []string{indexesTag},
 	}, func(ctx context.Context, input *struct {
 		Index indexCode `path:"index" doc:"The index."`
 	},
@@ -123,10 +136,10 @@ func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData) 
 		Method:      http.MethodGet,
 		Path:        "/market-data/status",
 		Summary:     "Report how fresh the market data is",
-		Description: "Reports, for each index and for the bond prices, when they were last refreshed from their source and whether that data is stale or its latest refresh failed.",
+		Description: "Reports, for each index, for the bond prices and for the Focus expectations, when they were last refreshed from their source and whether that data is stale or its latest refresh failed.",
 		Tags:        []string{"Market data"},
 	}, func(ctx context.Context, _ *struct{}) (*marketDataStatusOutput, error) {
-		return statusOutput(ctx, marketData)
+		return statusOutput(ctx, marketData, now())
 	})
 
 	register(humaAPI, huma.Operation{
@@ -134,18 +147,18 @@ func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData) 
 		Method:        http.MethodPost,
 		Path:          "/market-data/refresh",
 		Summary:       "Refresh the market data",
-		Description:   "Starts refreshing every index and the bond prices from their sources and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.",
+		Description:   "Starts refreshing every index, the bond prices and the Focus expectations from their sources and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.",
 		Tags:          []string{"Market data"},
 		DefaultStatus: http.StatusAccepted,
 	}, func(ctx context.Context, _ *struct{}) (*marketDataStatusOutput, error) {
 		marketData.Trigger()
 
-		return statusOutput(ctx, marketData)
+		return statusOutput(ctx, marketData, now())
 	})
 }
 
-func statusOutput(ctx context.Context, marketData MarketData) (*marketDataStatusOutput, error) {
-	status, err := marketData.Status(ctx, time.Now())
+func statusOutput(ctx context.Context, marketData MarketData, now time.Time) (*marketDataStatusOutput, error) {
+	status, err := marketData.Status(ctx, now)
 	if err != nil {
 		return nil, err
 	}
@@ -157,6 +170,11 @@ func statusOutput(ctx context.Context, marketData MarketData) (*marketDataStatus
 		Status:      stateCode(status.Quotes.State),
 		RefreshedAt: timeOrNil(status.Quotes.RefreshedAt),
 		FailedAt:    timeOrNil(status.Quotes.FailedAt),
+	}
+	out.Body.Focus = focusStatus{
+		Status:      stateCode(status.Focus.State),
+		RefreshedAt: timeOrNil(status.Focus.RefreshedAt),
+		FailedAt:    timeOrNil(status.Focus.FailedAt),
 	}
 
 	for _, s := range status.Indexes {

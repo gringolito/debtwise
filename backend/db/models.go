@@ -24,6 +24,31 @@ type BondQuoteRefresh struct {
 	FailedAt    sql.NullString
 }
 
+type FocusIpcaAnnual struct {
+	Year      int64
+	Median    string
+	FetchedAt string
+}
+
+type FocusIpcaMonthly struct {
+	Month     string
+	Median    string
+	FetchedAt string
+}
+
+type FocusRefresh struct {
+	ID          int64
+	RefreshedAt sql.NullString
+	FailedAt    sql.NullString
+}
+
+type FocusSelic struct {
+	Year      int64
+	Meeting   int64
+	Median    string
+	FetchedAt string
+}
+
 type IndexRefresh struct {
 	Series      string
 	RefreshedAt sql.NullString
@@ -87,4 +112,9 @@ type MortgageStatement struct {
 	MortgageID         int64
 	Date               string
 	OutstandingBalance string
+}
+
+type ProjectionMethod struct {
+	Series string
+	Method string
 }

@@ -98,11 +98,12 @@ type scheduledInstallment struct {
 }
 
 type correctionIndex struct {
-	Index       indexCode `json:"index" doc:"The index the value belongs to."`
-	Status      string    `json:"status" enum:"published,missing" doc:"published: the balance was corrected by the published value; missing: no value is available for the period yet, so the balance was not corrected by it."`
-	Value       string    `json:"value,omitempty" doc:"The index value for the period, in percent, as a decimal string. Absent when status is missing."`
-	PeriodStart string    `json:"period_start" format:"date" doc:"The first day of the period the value covers."`
-	PeriodEnd   string    `json:"period_end" format:"date" doc:"The last day of the period the value covers. Equals period_start when the index is dated by month."`
+	Index       indexCode     `json:"index" doc:"The index the value belongs to."`
+	Status      string        `json:"status" enum:"published,projected,missing" doc:"published: the balance was corrected by the published value; projected: the balance was corrected by a projected value, by the methods listed in methods; missing: no value is available for the period yet, so the balance was not corrected by it."`
+	Value       string        `json:"value,omitempty" doc:"The index value for the period, in percent, as a decimal string. Absent when status is missing."`
+	PeriodStart string        `json:"period_start" format:"date" doc:"The first day of the period the value covers."`
+	PeriodEnd   string        `json:"period_end" format:"date" doc:"The last day of the period the value covers. Equals period_start when the index is dated by month."`
+	Methods     []projectedBy `json:"methods" nullable:"false" doc:"The projection methods the value comes from, one for each projected index it is derived from. Empty unless status is projected."`
 }
 
 type mortgageOutput struct {
@@ -118,7 +119,7 @@ const (
 	mortgageTag  = "Mortgage"
 )
 
-func registerMortgage(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
+func registerMortgage(humaAPI huma.API, mortgages Mortgages, store IndexStore, now func() time.Time) {
 	register(humaAPI, huma.Operation{
 		OperationID: "read-mortgage",
 		Method:      http.MethodGet,
@@ -184,13 +185,13 @@ func registerMortgage(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
 		Description: "Returns the registered mortgage's installments month by month, with its prepayments and statements replayed, to check against bank statements.",
 		Tags:        []string{mortgageTag},
 	}, func(ctx context.Context, _ *struct{}) (*scheduleOutput, error) {
-		terms, history, events, err := replayInputs(ctx, mortgages, store)
+		terms, outlook, events, err := replayInputs(ctx, mortgages, store)
 		if err != nil {
 			return nil, err
 		}
 
 		out := &scheduleOutput{Body: schedule{Installments: make([]scheduledInstallment, 0, terms.TermMonths)}}
-		for m := range terms.Schedule(history, events, time.Now()) {
+		for m := range terms.Schedule(outlook, events, now()) {
 			out.Body.Installments = append(out.Body.Installments, scheduledInstallment{
 				Number:             m.Number,
 				DueDate:            m.DueDate.Format(time.DateOnly),
@@ -210,7 +211,7 @@ func registerMortgage(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
 		return out, nil
 	})
 
-	registerMortgageEvents(humaAPI, mortgages, store)
+	registerMortgageEvents(humaAPI, mortgages, store, now)
 }
 
 func mortgageFailure(err error) error {
@@ -233,12 +234,15 @@ func newCorrectionIndexes(values []mortgage.IndexValue) []correctionIndex {
 		index := correctionIndex{
 			Index:       indexCode(v.Index),
 			Status:      "published",
+			Methods:     projectedByOf(v.Methods),
 			Value:       v.Value.String(),
 			PeriodStart: v.PeriodStart.Format(time.DateOnly),
 			PeriodEnd:   v.PeriodEnd.Format(time.DateOnly),
 		}
 		if v.Missing {
 			index.Status, index.Value = "missing", ""
+		} else if len(v.Methods) > 0 {
+			index.Status = "projected"
 		}
 
 		out = append(out, index)

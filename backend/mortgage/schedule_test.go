@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gringolito/debtwise/backend/decimal"
+	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
@@ -26,7 +27,7 @@ type row struct {
 
 func schedule(terms mortgage.Terms) []row {
 	var rows []row
-	for m := range terms.Schedule(nil, mortgage.Events{}, time.Time{}) {
+	for m := range terms.Schedule(indexes.Outlook{}, mortgage.Events{}, time.Time{}) {
 		rows = append(rows, row{
 			Number:             m.Number,
 			DueDate:            m.DueDate.Format(time.DateOnly),
@@ -364,7 +365,7 @@ func TestScheduleStopsWhenTheCallerDoes(t *testing.T) {
 
 	var numbers []int
 
-	for installment := range sacTerms(t).Schedule(nil, mortgage.Events{}, time.Time{}) {
+	for installment := range sacTerms(t).Schedule(indexes.Outlook{}, mortgage.Events{}, time.Time{}) {
 		numbers = append(numbers, installment.Number)
 		if installment.Number == 2 {
 			break

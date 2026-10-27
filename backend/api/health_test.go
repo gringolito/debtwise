@@ -142,11 +142,14 @@ func TestOpenAPIContractIsServed(t *testing.T) {
 	assert.Equal(t, map[string]map[string]struct {
 		OperationID string `json:"operationId"`
 	}{
-		"/bonds":                   {get: {OperationID: "list-bonds"}},
-		"/health":                  {get: {OperationID: "health"}},
-		"/indexes/{index}/history": {get: {OperationID: "index-history"}},
-		"/market-data/status":      {get: {OperationID: "market-data-status"}},
-		"/market-data/refresh":     {"post": {OperationID: "refresh-market-data"}},
+		"/bonds":                             {get: {OperationID: "list-bonds"}},
+		"/health":                            {get: {OperationID: "health"}},
+		"/indexes/{index}/history":           {get: {OperationID: "index-history"}},
+		"/indexes/projection-methods":        {get: {OperationID: "projection-methods"}},
+		"/indexes/{index}/projection":        {get: {OperationID: "index-projection"}},
+		"/indexes/{index}/projection-method": {"put": {OperationID: "save-projection-method"}},
+		"/market-data/status":                {get: {OperationID: "market-data-status"}},
+		"/market-data/refresh":               {"post": {OperationID: "refresh-market-data"}},
 		"/mortgage": {
 			get:      {OperationID: "read-mortgage"},
 			"put":    {OperationID: "save-mortgage"},

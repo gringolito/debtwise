@@ -222,6 +222,12 @@ A published Brazilian economic series that a mortgage or a comparison depends on
 the index one mortgage contract uses.
 _Avoid_: Rate (one value, where an index is a series over time)
 
+**Projection** (projeção):
+An index's expected values past its published ones, from the method the owner chose for that index.
+Each projected value names its method, so a result built on it can't pass for a fact.
+_Avoid_: Forecast (suggests DebtWise predicts on its own), assumption (a value the owner types in,
+which DebtWise never takes), scenario (a set of alternative paths, which DebtWise doesn't model)
+
 **Business Day** (dia útil):
 A day on which bond interest accrues under the Brazilian market calendar. Bond prices and holding
 periods count business days, while the mortgage counts months.
