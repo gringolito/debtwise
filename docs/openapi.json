@@ -181,6 +181,13 @@
             ],
             "type": "string"
           },
+          "methods": {
+            "description": "The projection methods the value comes from, one for each projected index it is derived from. Empty unless status is projected.",
+            "items": {
+              "$ref": "#/components/schemas/ProjectedBy"
+            },
+            "type": "array"
+          },
           "period_end": {
             "description": "The last day of the period the value covers. Equals period_start when the index is dated by month.",
             "format": "date",
@@ -192,9 +199,10 @@
             "type": "string"
           },
           "status": {
-            "description": "published: the balance was corrected by the published value; missing: no value is available for the period yet, so the balance was not corrected by it.",
+            "description": "published: the balance was corrected by the published value; projected: the installment is due after today and was corrected by a value projected past the published ones, by the methods listed in methods; missing: no value is available for the period yet, so the balance was not corrected by it.",
             "enum": [
               "published",
+              "projected",
               "missing"
             ],
             "type": "string"
@@ -208,7 +216,8 @@
           "index",
           "status",
           "period_start",
-          "period_end"
+          "period_end",
+          "methods"
         ],
         "type": "object"
       },

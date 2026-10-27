@@ -100,6 +100,10 @@ export type CorrectionIndex = {
      */
     index: 'tr' | 'poupanca_yield' | 'selic_target' | 'selic' | 'ipca' | 'ipca_number';
     /**
+     * The projection methods the value comes from, one for each projected index it is derived from. Empty unless status is projected.
+     */
+    methods: Array<ProjectedBy>;
+    /**
      * The last day of the period the value covers. Equals period_start when the index is dated by month.
      */
     period_end: string;
@@ -108,9 +112,9 @@ export type CorrectionIndex = {
      */
     period_start: string;
     /**
-     * published: the balance was corrected by the published value; missing: no value is available for the period yet, so the balance was not corrected by it.
+     * published: the balance was corrected by the published value; projected: the installment is due after today and was corrected by a value projected past the published ones, by the methods listed in methods; missing: no value is available for the period yet, so the balance was not corrected by it.
      */
-    status: 'published' | 'missing';
+    status: 'published' | 'projected' | 'missing';
     /**
      * The index value for the period, in percent, as a decimal string. Absent when status is missing.
      */

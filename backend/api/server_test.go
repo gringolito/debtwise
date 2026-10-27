@@ -26,6 +26,7 @@ import (
 	"github.com/gringolito/debtwise/backend/marketdata/radar"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
 	"github.com/gringolito/debtwise/backend/marketdata/sidra"
+	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
 // fakeSGS stands in for SGS and SIDRA. It answers every request for a series, a SIDRA request
@@ -208,17 +209,40 @@ func (fakeFocus) MonthlyIPCA(context.Context, time.Time) ([]focus.Month, error) 
 
 func (fakeFocus) AnnualIPCA(context.Context, time.Time) ([]focus.Year, error) { return nil, nil }
 
+// serverOption changes how newServer builds the server.
+type serverOption func(*serverConfig)
+
+type serverConfig struct {
+	focus marketdata.ExpectationSource
+	now   func() time.Time
+}
+
+// withFocus has the refresh job read the Focus expectations from source instead of an empty survey.
+func withFocus(source marketdata.ExpectationSource) serverOption {
+	return func(c *serverConfig) { c.focus = source }
+}
+
+// onDay has the API read today as day, wherever it reads the time.
+func onDay(day time.Time) serverOption {
+	return func(c *serverConfig) { c.now = func() time.Time { return day } }
+}
+
 // newServer serves the API over a migrated database, with the market-data refresh job running
 // against indexSource, for SGS and SIDRA, and quoteSource until the test ends. It returns once the
 // job's first refresh is over.
-func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteSource) server {
+func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteSource, opts ...serverOption) server {
 	t.Helper()
+
+	config := serverConfig{focus: fakeFocus{}}
+	for _, opt := range opts {
+		opt(&config)
+	}
 
 	conn := openMigrated(t)
 	store := indexes.NewStore(conn)
 	quotes := bonds.NewStore(conn)
 	logger := slog.New(slog.DiscardHandler)
-	sources := marketdata.Sources{SGS: indexSource, SIDRA: indexSource, Radar: quoteSource, Focus: fakeFocus{}}
+	sources := marketdata.Sources{SGS: indexSource, SIDRA: indexSource, Radar: quoteSource, Focus: config.focus}
 	job := marketdata.New(sources, store, quotes, marketdata.WithLogger(logger))
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -240,8 +264,9 @@ func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteS
 			Database:   db.New(conn),
 			Indexes:    store,
 			MarketData: job,
+			Mortgages:  mortgage.NewStore(conn),
 			Quotes:     quotes,
-		}, api.WithLogger(logger)),
+		}, api.WithLogger(logger), api.WithClock(config.now)),
 		job:  job,
 		conn: conn,
 	}

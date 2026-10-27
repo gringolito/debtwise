@@ -193,31 +193,32 @@ func TestIndexedMortgageScheduleIsCorrectedByPublishedValues(t *testing.T) {
 	assert.JSONEq(t, `{"installments": [
 		{"number": 1, "due_date": "2024-01-10", "correction": "32.34",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0539",
-		                   "period_start": "2023-12-10", "period_end": "2024-01-10"}],
+		                   "period_start": "2023-12-10", "period_end": "2024-01-10", "methods": []}],
 		 "interest": "600.32", "amortization": "10005.39", "mip": "18.01", "dfi": "10.00", "fee": "12.50",
 		 "amount": "10646.22", "prepaid": "0.00", "outstanding_balance": "50026.95"},
 		{"number": 2, "due_date": "2024-02-10", "correction": "62.53",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.1250",
-		                   "period_start": "2024-01-10", "period_end": "2024-02-10"}],
+		                   "period_start": "2024-01-10", "period_end": "2024-02-10", "methods": []}],
 		 "interest": "500.89", "amortization": "10017.90", "mip": "15.03", "dfi": "10.00", "fee": "12.50",
 		 "amount": "10556.32", "prepaid": "0.00", "outstanding_balance": "40071.58"},
 		{"number": 3, "due_date": "2024-03-10", "correction": "0.00",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0000",
-		                   "period_start": "2024-02-10", "period_end": "2024-03-10"}],
+		                   "period_start": "2024-02-10", "period_end": "2024-03-10", "methods": []}],
 		 "interest": "400.72", "amortization": "10017.90", "mip": "12.02", "dfi": "10.00", "fee": "12.50",
 		 "amount": "10453.14", "prepaid": "0.00", "outstanding_balance": "30053.68"},
 		{"number": 4, "due_date": "2024-04-10", "correction": "0.00",
-		 "index_values": [{"index": "tr", "status": "missing", "period_start": "2024-03-10", "period_end": "2024-04-10"}],
+		 "index_values": [{"index": "tr", "status": "missing", "period_start": "2024-03-10", "period_end": "2024-04-10",
+		                   "methods": []}],
 		 "interest": "300.54", "amortization": "10017.89", "mip": "15.03", "dfi": "10.00", "fee": "12.50",
 		 "amount": "10355.96", "prepaid": "0.00", "outstanding_balance": "20035.79"},
 		{"number": 5, "due_date": "2024-05-10", "correction": "16.75",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0836",
-		                   "period_start": "2024-04-10", "period_end": "2024-05-10"}],
+		                   "period_start": "2024-04-10", "period_end": "2024-05-10", "methods": []}],
 		 "interest": "200.53", "amortization": "10026.27", "mip": "10.03", "dfi": "10.00", "fee": "12.50",
 		 "amount": "10259.33", "prepaid": "0.00", "outstanding_balance": "10026.27"},
 		{"number": 6, "due_date": "2024-06-10", "correction": "4.89",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0488",
-		                   "period_start": "2024-05-10", "period_end": "2024-06-10"}],
+		                   "period_start": "2024-05-10", "period_end": "2024-06-10", "methods": []}],
 		 "interest": "100.31", "amortization": "10031.16", "mip": "5.02", "dfi": "10.00", "fee": "12.50",
 		 "amount": "10158.99", "prepaid": "0.00", "outstanding_balance": "0.00"}
 	]}`, rec.Body.String())
@@ -243,7 +244,7 @@ func TestScheduleReadsTheIndexesItsIndexerDerivesFrom(t *testing.T) {
 			},
 			want: `{"number": 1, "due_date": "2024-01-10", "correction": "332.52",
 				"index_values": [{"index": "poupanca_yield", "status": "published", "value": "0.5542",
-				                  "period_start": "2023-12-10", "period_end": "2024-01-10"}],
+				                  "period_start": "2023-12-10", "period_end": "2024-01-10", "methods": []}],
 				"interest": "603.33", "amortization": "60332.52", "mip": "18.10", "dfi": "10.00", "fee": "12.50",
 				"amount": "60976.45", "prepaid": "0.00", "outstanding_balance": "0.00"}`,
 		},
@@ -255,7 +256,7 @@ func TestScheduleReadsTheIndexesItsIndexerDerivesFrom(t *testing.T) {
 			},
 			want: `{"number": 1, "due_date": "2024-01-10", "correction": "168.00",
 				"index_values": [{"index": "ipca", "status": "published", "value": "0.28",
-				                  "period_start": "2023-11-01", "period_end": "2023-11-01"}],
+				                  "period_start": "2023-11-01", "period_end": "2023-11-01", "methods": []}],
 				"interest": "601.68", "amortization": "60168.00", "mip": "18.05", "dfi": "10.00", "fee": "12.50",
 				"amount": "60810.23", "prepaid": "0.00", "outstanding_balance": "0.00"}`,
 		},
@@ -303,6 +304,34 @@ func TestIndexedScheduleFailsWithoutTheIndexHistory(t *testing.T) {
 	rec := serve(t, handler, http.MethodGet, "/mortgage/schedule", "")
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
+}
+
+// Replaying a mortgage reads the Focus expectations and the projection methods, whatever its
+// indexer, so failing to read either fails the schedule and the statements' drifts.
+func TestReplayFailsWithoutTheExpectationsOrTheProjectionMethods(t *testing.T) {
+	t.Parallel()
+
+	tables := []string{"focus_selic", "focus_ipca_monthly", "focus_ipca_annual", "projection_methods"}
+	paths := []string{"/mortgage/schedule", "/mortgage/statements"}
+
+	for _, table := range tables {
+		for _, path := range paths {
+			t.Run(table+" "+path, func(t *testing.T) {
+				t.Parallel()
+
+				conn := migratedDatabase(t)
+				handler := apiOver(conn)
+				require.Equal(t, http.StatusOK, serve(t, handler, http.MethodPut, "/mortgage", sacMortgage).Code)
+
+				_, err := conn.ExecContext(t.Context(), "DROP TABLE "+table)
+				require.NoError(t, err)
+
+				rec := serve(t, handler, http.MethodGet, path, "")
+
+				assert.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
+			})
+		}
+	}
 }
 
 // Editing replaces the terms whole, rate and fee rows included.

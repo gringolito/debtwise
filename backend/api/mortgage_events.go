@@ -58,9 +58,9 @@ const (
 	statementsPath  = mortgagePath + "/statements"
 )
 
-func registerMortgageEvents(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
+func registerMortgageEvents(humaAPI huma.API, mortgages Mortgages, store IndexStore, now func() time.Time) {
 	registerPrepayments(humaAPI, mortgages)
-	registerStatements(humaAPI, mortgages, store)
+	registerStatements(humaAPI, mortgages, store, now)
 }
 
 func registerPrepayments(humaAPI huma.API, mortgages Mortgages) {
@@ -153,7 +153,7 @@ func registerPrepayments(humaAPI huma.API, mortgages Mortgages) {
 	})
 }
 
-func registerStatements(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
+func registerStatements(humaAPI huma.API, mortgages Mortgages, store IndexStore, now func() time.Time) {
 	register(humaAPI, huma.Operation{
 		OperationID: "list-statements",
 		Method:      http.MethodGet,
@@ -168,7 +168,7 @@ func registerStatements(humaAPI huma.API, mortgages Mortgages, store IndexStore)
 		}
 
 		out := &struct{ Body statementList }{Body: statementList{Statements: make([]statementDrift, 0, len(events.Statements))}}
-		for _, d := range terms.Drifts(outlook, events, time.Now()) {
+		for _, d := range terms.Drifts(outlook, events, now()) {
 			out.Body.Statements = append(out.Body.Statements, statementDrift{
 				ID:                 d.Statement.ID,
 				Date:               d.Statement.Date.Format(time.DateOnly),
@@ -250,7 +250,8 @@ func registerStatements(humaAPI huma.API, mortgages Mortgages, store IndexStore)
 }
 
 // replayInputs reads what replaying the registered mortgage's schedule needs: its terms, the
-// outlook over the history of the indexes its indexer reads, and its events.
+// outlook over the history of the indexes its indexer reads, the Focus expectations and the
+// projection methods, and its events.
 func replayInputs(ctx context.Context, mortgages Mortgages, store IndexStore) (mortgage.Terms, indexes.Outlook, mortgage.Events, error) {
 	terms, err := mortgages.Find(ctx)
 	if err != nil {
@@ -264,12 +265,22 @@ func replayInputs(ctx context.Context, mortgages Mortgages, store IndexStore) (m
 		}
 	}
 
+	expectations, err := store.Expectations(ctx)
+	if err != nil {
+		return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, err
+	}
+
+	methods, err := store.ProjectionMethods(ctx)
+	if err != nil {
+		return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, err
+	}
+
 	events, err := mortgages.Events(ctx)
 	if err != nil {
 		return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, mortgageFailure(err)
 	}
 
-	return terms, indexes.NewOutlook(history, indexes.Expectations{}, nil), events, nil
+	return terms, indexes.NewOutlook(history, expectations, methods), events, nil
 }
 
 // readPrepayment reads a prepayment from a body whose date and amount the schema has already

@@ -98,7 +98,7 @@ type marketDataStatusOutput struct {
 	Body marketDataStatus
 }
 
-func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData) {
+func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData, now func() time.Time) {
 	register(humaAPI, huma.Operation{
 		OperationID: "index-history",
 		Method:      http.MethodGet,
@@ -139,7 +139,7 @@ func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData) 
 		Description: "Reports, for each index and for the bond prices, when they were last refreshed from their source and whether that data is stale or its latest refresh failed.",
 		Tags:        []string{"Market data"},
 	}, func(ctx context.Context, _ *struct{}) (*marketDataStatusOutput, error) {
-		return statusOutput(ctx, marketData)
+		return statusOutput(ctx, marketData, now())
 	})
 
 	register(humaAPI, huma.Operation{
@@ -153,12 +153,12 @@ func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData) 
 	}, func(ctx context.Context, _ *struct{}) (*marketDataStatusOutput, error) {
 		marketData.Trigger()
 
-		return statusOutput(ctx, marketData)
+		return statusOutput(ctx, marketData, now())
 	})
 }
 
-func statusOutput(ctx context.Context, marketData MarketData) (*marketDataStatusOutput, error) {
-	status, err := marketData.Status(ctx, time.Now())
+func statusOutput(ctx context.Context, marketData MarketData, now time.Time) (*marketDataStatusOutput, error) {
+	status, err := marketData.Status(ctx, now)
 	if err != nil {
 		return nil, err
 	}

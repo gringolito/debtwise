@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
@@ -20,11 +21,18 @@ type Option func(*options)
 
 type options struct {
 	logger *slog.Logger
+	now    func() time.Time
 }
 
 // WithLogger sets the logger failed requests are logged to. Nil uses slog.Default().
 func WithLogger(l *slog.Logger) Option {
 	return func(o *options) { o.logger = l }
+}
+
+// WithClock sets the clock the API reads today from: the day installments start being projected
+// after, and the time the market data's freshness is judged at. Nil uses time.Now.
+func WithClock(now func() time.Time) Option {
+	return func(o *options) { o.now = now }
 }
 
 // Services are what the API's operations read and write. A caller sets only those its requests
@@ -53,12 +61,17 @@ func NewHandler(services Services, opts ...Option) http.Handler {
 		logger = slog.Default()
 	}
 
+	now := o.now
+	if now == nil {
+		now = time.Now
+	}
+
 	return newHandler(logger, func(humaAPI huma.API) {
 		registerHealth(humaAPI, services.Database)
-		registerIndexes(humaAPI, services.Indexes, services.MarketData)
+		registerIndexes(humaAPI, services.Indexes, services.MarketData, now)
 		registerProjections(humaAPI, services.Indexes)
 		registerBonds(humaAPI, services.Quotes)
-		registerMortgage(humaAPI, services.Mortgages, services.Indexes)
+		registerMortgage(humaAPI, services.Mortgages, services.Indexes, now)
 	})
 }
 
