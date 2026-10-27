@@ -1,7 +1,6 @@
 # Index projections
 
-Past an index's published values, DebtWise projects it by the method the owner chose for it. It
-never takes a value the owner types in.
+Past an index's published values, DebtWise projects it by the method the owner chose for it.
 
 - **TR:** the average of its latest 12 monthly values (the default) or of its latest 60.
 - **Selic target:** the Focus median expectations (the default), or the average of its latest 12 or
