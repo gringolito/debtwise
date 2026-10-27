@@ -11,14 +11,17 @@ import {
   editStatement,
   health,
   indexHistory,
+  indexProjection,
   listBonds,
   listPrepayments,
   listStatements,
   marketDataStatus,
+  projectionMethods,
   readMortgage,
   readMortgageSchedule,
   refreshMarketData,
   saveMortgage,
+  saveProjectionMethod as putProjectionMethod,
 } from "./generated/sdk.gen";
 import type {
   BondCatalogue,
@@ -30,6 +33,7 @@ import type {
   ErrorModel,
   Health,
   IndexHistory,
+  IndexProjection,
   IndexStatus,
   IndexValue,
   MarketDataStatus,
@@ -37,6 +41,9 @@ import type {
   Prepayment,
   PrepaymentInput,
   PrepaymentList,
+  ProjectedValue,
+  ProjectionMethod,
+  ProjectionMethods,
   RegisteredMortgage,
   Schedule,
   ScheduledInstallment,
@@ -55,6 +62,7 @@ export type {
   CorrectionIndex,
   Health,
   IndexHistory,
+  IndexProjection,
   IndexStatus,
   IndexValue,
   MarketDataStatus,
@@ -62,6 +70,9 @@ export type {
   Prepayment,
   PrepaymentInput,
   PrepaymentList,
+  ProjectedValue,
+  ProjectionMethod,
+  ProjectionMethods,
   RegisteredMortgage,
   Schedule,
   ScheduledInstallment,
@@ -71,6 +82,7 @@ export type {
   StatementList,
 };
 export type IndexName = IndexHistory["index"];
+export type ProjectionMethodName = ProjectionMethod["method"];
 
 // An absolute base, so `new Request()` also resolves it under Node's fetch in tests. The SPA
 // shares the API's origin.
@@ -107,6 +119,38 @@ export function indexHistoryKey(index: IndexName) {
 
 export async function fetchIndexHistory(index: IndexName): Promise<IndexHistory> {
   const { data } = await indexHistory({ path: { index }, throwOnError: true });
+  return data;
+}
+
+/** indexProjectionsKey prefixes the query key of every index's projection, to invalidate them all. */
+export const indexProjectionsKey = ["index-projection"] as const;
+
+export function indexProjectionKey(index: IndexName) {
+  return [...indexProjectionsKey, index] as const;
+}
+
+export async function fetchIndexProjection(index: IndexName): Promise<IndexProjection> {
+  const { data } = await indexProjection({ path: { index }, throwOnError: true });
+  return data;
+}
+
+/** projectionMethodsKey is the query key of the projection method of every projected index. */
+export const projectionMethodsKey = ["projection-methods"] as const;
+
+export async function fetchProjectionMethods(): Promise<ProjectionMethods> {
+  const { data } = await projectionMethods({ throwOnError: true });
+  return data;
+}
+
+export async function saveProjectionMethod(
+  index: IndexName,
+  method: ProjectionMethodName,
+): Promise<ProjectionMethod> {
+  const { data, error, response } = await putProjectionMethod({
+    path: { index },
+    body: { method },
+  });
+  if (!data) throw failure(error, response);
   return data;
 }
 

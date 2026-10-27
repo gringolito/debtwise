@@ -4,6 +4,7 @@ import {
   bondsKey,
   fetchMarketDataStatus,
   indexHistoriesKey,
+  indexProjectionsKey,
   startMarketDataRefresh,
 } from "@/lib/api";
 
@@ -12,8 +13,8 @@ const POLL_MS = 2000;
 
 /**
  * useMarketData returns the status of the market data and a way to refresh it. While a refresh
- * runs it polls the status, and when the refresh ends it reloads the index histories and the bond
- * catalogue.
+ * runs it polls the status, and when the refresh ends it reloads the index histories and
+ * projections and the bond catalogue.
  */
 export function useMarketData() {
   const queryClient = useQueryClient();
@@ -33,6 +34,7 @@ export function useMarketData() {
     if (wasRefreshing.current && !refreshing) {
       void queryClient.invalidateQueries({ queryKey: indexHistoriesKey });
       void queryClient.invalidateQueries({ queryKey: bondsKey });
+      void queryClient.invalidateQueries({ queryKey: indexProjectionsKey });
     }
     wasRefreshing.current = refreshing;
   }, [refreshing, queryClient]);

@@ -16,6 +16,7 @@ const FRESH_STATUS: MarketDataStatus = {
     { index: "ipca", status: "fresh", refreshed_at: "2026-10-25T18:23:43Z" },
   ],
   bonds: { status: "fresh", refreshed_at: "2026-10-25T18:24:00Z" },
+  focus: { status: "fresh", refreshed_at: "2026-10-25T18:24:30Z" },
 };
 
 // LTN, NTN-F, NTN-B Principal, then NTN-B, each by maturity; the 2027 LTN is not on offer, so it
