@@ -64,6 +64,35 @@ func TestRateConversions(t *testing.T) {
 	}
 }
 
+func TestRoundProjectionRoundsAt4PlacesHalfToEven(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		value string
+		want  string
+	}{
+		{name: "a tie rounds down to an even digit", value: "0.12345", want: "0.1234"},
+		{name: "a tie rounds up to an even digit", value: "0.12355", want: "0.1236"},
+		{name: "above a tie rounds up", value: "0.123451", want: "0.1235"},
+		{name: "below a tie rounds down", value: "0.123449", want: "0.1234"},
+		{name: "a negative tie rounds to even", value: "-0.12345", want: "-0.1234"},
+		{name: "a negative tie rounds up to even", value: "-0.12355", want: "-0.1236"},
+		{name: "a long average", value: "0.1630166666666666666666666667", want: "0.1630"},
+		{name: "pads to 4 places", value: "0.1", want: "0.1000"},
+		{name: "zero", value: "0", want: "0.0000"},
+		{name: "keeps the integer part", value: "13.125", want: "13.1250"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, parse(t, tt.value).RoundProjection().String())
+		})
+	}
+}
+
 // Converted to effective and back, a nominal rate keeps 30 decimal places, far more than the few a
 // contract prints.
 func TestNominalToEffectiveAndBackReturnsTheRate(t *testing.T) {
