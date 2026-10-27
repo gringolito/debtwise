@@ -214,6 +214,7 @@ func TestStatusWarnsWhenTheLastRefreshIsStale(t *testing.T) {
 	}
 
 	assert.Equal(t, "stale", status.Bonds.Status, "bonds")
+	assert.Equal(t, "stale", status.Focus.Status, "focus")
 }
 
 func TestHistoryOfAnUnknownIndexIsRefused(t *testing.T) {
@@ -234,18 +235,22 @@ func TestMarketDataOperationsFailWhenTheDatabaseDoesNotAnswer(t *testing.T) {
 	tests := []struct {
 		method string
 		path   string
+		body   string
 	}{
-		{method: http.MethodGet, path: "/api/indexes/tr/history"},
-		{method: http.MethodGet, path: "/api/bonds"},
-		{method: http.MethodGet, path: "/api/market-data/status"},
-		{method: http.MethodPost, path: "/api/market-data/refresh"},
+		{method: http.MethodGet, path: "/indexes/tr/history"},
+		{method: http.MethodGet, path: "/indexes/projection-methods"},
+		{method: http.MethodPut, path: "/indexes/tr/projection-method", body: `{"method":"trailing_60"}`},
+		{method: http.MethodGet, path: "/indexes/tr/projection"},
+		{method: http.MethodGet, path: "/bonds"},
+		{method: http.MethodGet, path: "/market-data/status"},
+		{method: http.MethodPost, path: "/market-data/refresh"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
 			t.Parallel()
 
-			rec := s.do(t, tt.method, tt.path)
+			rec := serve(t, s.handler, tt.method, tt.path, tt.body)
 			assert.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
 		})
 	}

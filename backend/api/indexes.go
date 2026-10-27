@@ -11,9 +11,15 @@ import (
 	"github.com/gringolito/debtwise/backend/marketdata"
 )
 
+// indexesTag groups the operations on indexes.
+const indexesTag = "Indexes"
+
 // IndexStore is the subset of *indexes.Store the API reads.
 type IndexStore interface {
 	History(ctx context.Context, index indexes.Index) ([]indexes.Value, error)
+	ProjectionMethods(ctx context.Context) ([]indexes.ProjectionMethod, error)
+	SaveProjectionMethod(ctx context.Context, m indexes.ProjectionMethod) error
+	Expectations(ctx context.Context) (indexes.Expectations, error)
 }
 
 // MarketData is the subset of *marketdata.Job the API uses.
@@ -68,6 +74,12 @@ type bondsStatus struct {
 	FailedAt    *time.Time `json:"failed_at,omitempty" doc:"When the latest refresh of the bond prices failed. Absent unless status is failed."`
 }
 
+type focusStatus struct {
+	Status      stateCode  `json:"status" doc:"fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed."`
+	RefreshedAt *time.Time `json:"refreshed_at,omitempty" doc:"When the Focus expectations were last refreshed successfully. Absent when they never were."`
+	FailedAt    *time.Time `json:"failed_at,omitempty" doc:"When the latest refresh of the Focus expectations failed. Absent unless status is failed."`
+}
+
 type indexStatus struct {
 	Index       indexCode  `json:"index"`
 	Status      stateCode  `json:"status" doc:"fresh: refreshed recently; stale: not refreshed recently; failed: the latest refresh failed; missing: never refreshed."`
@@ -79,6 +91,7 @@ type marketDataStatus struct {
 	Refreshing bool          `json:"refreshing" doc:"Whether a refresh is in progress."`
 	Indexes    []indexStatus `json:"indexes" nullable:"false" doc:"How fresh each index is."`
 	Bonds      bondsStatus   `json:"bonds" doc:"How fresh the bond prices are."`
+	Focus      focusStatus   `json:"focus" doc:"How fresh the Focus expectations are."`
 }
 
 type marketDataStatusOutput struct {
@@ -92,7 +105,7 @@ func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData) 
 		Path:        "/indexes/{index}/history",
 		Summary:     "List the history of an index",
 		Description: "Lists the published values of an index, as of its latest refresh.",
-		Tags:        []string{"Indexes"},
+		Tags:        []string{indexesTag},
 	}, func(ctx context.Context, input *struct {
 		Index indexCode `path:"index" doc:"The index."`
 	},
@@ -157,6 +170,11 @@ func statusOutput(ctx context.Context, marketData MarketData) (*marketDataStatus
 		Status:      stateCode(status.Quotes.State),
 		RefreshedAt: timeOrNil(status.Quotes.RefreshedAt),
 		FailedAt:    timeOrNil(status.Quotes.FailedAt),
+	}
+	out.Body.Focus = focusStatus{
+		Status:      stateCode(status.Focus.State),
+		RefreshedAt: timeOrNil(status.Focus.RefreshedAt),
+		FailedAt:    timeOrNil(status.Focus.FailedAt),
 	}
 
 	for _, s := range status.Indexes {

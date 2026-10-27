@@ -274,6 +274,7 @@ type marketDataStatus struct {
 	Refreshing bool          `json:"refreshing"`
 	Indexes    []indexStatus `json:"indexes"`
 	Bonds      freshness     `json:"bonds"`
+	Focus      freshness     `json:"focus"`
 }
 
 func (s server) status(t *testing.T) marketDataStatus {
@@ -353,4 +354,62 @@ func mustDate(s string) time.Time {
 	}
 
 	return d
+}
+
+type projectionMethod struct {
+	Index   string   `json:"index"`
+	Method  string   `json:"method"`
+	Offered []string `json:"offered"`
+}
+
+type projectionMethods struct {
+	Methods []projectionMethod `json:"methods"`
+}
+
+func (s server) projectionMethods(t *testing.T) []projectionMethod {
+	t.Helper()
+
+	rec := s.do(t, http.MethodGet, "/api/indexes/projection-methods")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	var got projectionMethods
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+
+	return got.Methods
+}
+
+type projectedBy struct {
+	Index  string `json:"index"`
+	Method string `json:"method"`
+}
+
+type projectedValue struct {
+	PeriodStart string        `json:"period_start"`
+	PeriodEnd   string        `json:"period_end"`
+	Value       string        `json:"value"`
+	Methods     []projectedBy `json:"methods"`
+}
+
+type indexProjection struct {
+	Index  string           `json:"index"`
+	Values []projectedValue `json:"values"`
+}
+
+func (s server) projection(t *testing.T, index string) indexProjection {
+	t.Helper()
+
+	rec := s.do(t, http.MethodGet, "/api/indexes/"+index+"/projection")
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	var got indexProjection
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+
+	return got
+}
+
+// chooseMethod saves the method an index is projected by and returns the response.
+func (s server) chooseMethod(t *testing.T, index, method string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	return serve(t, s.handler, http.MethodPut, "/indexes/"+index+"/projection-method", `{"method":"`+method+`"}`)
 }

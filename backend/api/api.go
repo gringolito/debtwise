@@ -56,6 +56,7 @@ func NewHandler(services Services, opts ...Option) http.Handler {
 	return newHandler(logger, func(humaAPI huma.API) {
 		registerHealth(humaAPI, services.Database)
 		registerIndexes(humaAPI, services.Indexes, services.MarketData)
+		registerProjections(humaAPI, services.Indexes)
 		registerBonds(humaAPI, services.Quotes)
 		registerMortgage(humaAPI, services.Mortgages, services.Indexes)
 	})
