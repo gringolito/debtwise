@@ -1,3 +1,7 @@
+---
+status: amended by ADR-0009
+---
+
 # Indexer corrections on contract anniversaries
 
 An indexed mortgage's outstanding balance is corrected once a month, on the contract's
