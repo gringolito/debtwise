@@ -14,6 +14,7 @@ import type { CorrectionIndex } from "@/lib/api";
 import { useMortgageSchedule } from "@/lib/mortgageQueries";
 import { formatDate, formatMoney, formatMonth, formatPercent, formatPeriod } from "@/lib/format";
 import { indexNames } from "@/lib/indexNames";
+import { projectionMethodLabels } from "@/lib/projectionMethods";
 
 const columns = [
   "Nº",
@@ -36,6 +37,12 @@ function indexPeriod({ index, period_start, period_end }: CorrectionIndex): stri
   return index === "ipca" ? formatMonth(period_start) : formatPeriod(period_start, period_end);
 }
 
+function methodsText({ methods }: CorrectionIndex): string {
+  return methods
+    .map(({ index, method }) => `${indexNames[index]}: ${projectionMethodLabels[method]}`)
+    .join("; ");
+}
+
 function IndexCell({ indexValues }: { indexValues: CorrectionIndex[] }) {
   if (indexValues.length === 0) return <>—</>;
   return (
@@ -48,7 +55,11 @@ function IndexCell({ indexValues }: { indexValues: CorrectionIndex[] }) {
           ) : (
             <span>{index.value && formatPercent(index.value)}</span>
           )}{" "}
+          {index.status === "projected" && <Badge variant="secondary">Projetado</Badge>}{" "}
           <span className="block text-xs text-muted-foreground">{indexPeriod(index)}</span>{" "}
+          {index.status === "projected" && (
+            <span className="block text-xs text-muted-foreground">{methodsText(index)}</span>
+          )}
         </div>
       ))}
     </>
@@ -59,13 +70,13 @@ function MissingIndexWarning({ missing }: { missing: CorrectionIndex[] }) {
   if (missing.length === 0) return null;
   const months =
     missing.length === 1
-      ? "1 mês passado. Esse mês não foi corrigido."
-      : `${missing.length} meses passados. Esses meses não foram corrigidos.`;
+      ? "1 mês. Esse mês não foi corrigido."
+      : `${missing.length} meses. Esses meses não foram corrigidos.`;
   return (
     <Alert variant="warning">
       <AlertDescription>
-        Faltam valores publicados de {indexNames[missing[0].index]} para {months} Atualize os dados
-        de mercado na página{" "}
+        Faltam valores de {indexNames[missing[0].index]} para {months} Atualize os dados de mercado
+        na página{" "}
         <Link to="/indices" className="underline">
           Índices
         </Link>

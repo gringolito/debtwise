@@ -153,6 +153,7 @@ export const trSchedule: Schedule = {
           value: "0.0539",
           period_start: "2023-12-10",
           period_end: "2024-01-10",
+          methods: [],
         },
       ],
       interest: "603.23",
@@ -174,6 +175,7 @@ export const trSchedule: Schedule = {
           status: "missing",
           period_start: "2024-01-10",
           period_end: "2024-02-10",
+          methods: [],
         },
       ],
       interest: "500.00",
@@ -218,6 +220,7 @@ export const ipcaSchedule: Schedule = {
           value: "0.56",
           period_start: "2023-12-01",
           period_end: "2023-12-01",
+          methods: [],
         },
       ],
       interest: "603.23",
@@ -246,12 +249,14 @@ export const deferredSchedule: Schedule = {
           status: "missing",
           period_start: "2023-12-10",
           period_end: "2024-01-10",
+          methods: [],
         },
         {
           index: "tr",
           status: "missing",
           period_start: "2024-01-10",
           period_end: "2024-02-10",
+          methods: [],
         },
         {
           index: "tr",
@@ -259,6 +264,7 @@ export const deferredSchedule: Schedule = {
           value: "0.2166",
           period_start: "2024-02-10",
           period_end: "2024-03-10",
+          methods: [],
         },
       ],
       interest: "603.23",
@@ -269,6 +275,30 @@ export const deferredSchedule: Schedule = {
       amount: "10643.73",
       prepaid: "0.00",
       outstanding_balance: "50108.30",
+    },
+  ],
+};
+
+// A poupança-indexed installment due after today: its yield derives from a projected TR and a
+// projected Selic target, so it names both methods.
+export const projectedSchedule: Schedule = {
+  installments: [
+    {
+      ...trSchedule.installments[2],
+      correction: "188.99",
+      index_values: [
+        {
+          index: "poupanca_yield",
+          status: "projected",
+          value: "0.6293",
+          period_start: "2024-02-10",
+          period_end: "2024-03-10",
+          methods: [
+            { index: "tr", method: "trailing_12" },
+            { index: "selic_target", method: "focus" },
+          ],
+        },
+      ],
     },
   ],
 };
