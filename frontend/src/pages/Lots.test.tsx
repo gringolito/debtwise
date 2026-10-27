@@ -15,7 +15,7 @@ function amount(gross: string, iof: string, tax: string, fee: string, net: strin
 
 const ltnValues: LotValues = {
   on: "2026-10-27",
-  accrual: amount("2400.10", "0.00", "38.42", "3.90", "2357.78"),
+  accrual: amount("2400.10", "12.34", "38.42", "3.90", "2345.44"),
   market: amount("2395.00", "0.00", "37.40", "3.89", "2353.71"),
   maturity: amount("2500.00", "0.00", "48.36", "4.97", "2446.67"),
   coupons: [],
@@ -48,7 +48,7 @@ const ntnb: LotValued = {
       projected_by: [{ index: "ipca", method: "focus" }],
     },
     coupons: [
-      { date: "2026-05-15", paid: true, ...amount("130.12", "0.00", "29.11", "1.75", "99.26") },
+      { date: "2026-05-15", paid: true, ...amount("130.12", "0.56", "29.11", "1.75", "98.70") },
       {
         date: "2026-11-15",
         paid: false,
@@ -124,7 +124,7 @@ describe("the lots", () => {
       rowTexts(within(ltnSection).getByRole("table", { name: `Valores de ${ltnName}` })),
     ).toEqual([
       amountsHeader,
-      ["Na curva", "R$ 2.400,10", "R$ 0,00", "R$ 38,42", "R$ 3,90", "R$ 2.357,78", "—"],
+      ["Na curva", "R$ 2.400,10", "R$ 12,34", "R$ 38,42", "R$ 3,90", "R$ 2.345,44", "—"],
       ["A mercado", "R$ 2.395,00", "R$ 0,00", "R$ 37,40", "R$ 3,89", "R$ 2.353,71", "—"],
       ["No vencimento", "R$ 2.500,00", "R$ 0,00", "R$ 48,36", "R$ 4,97", "R$ 2.446,67", "—"],
     ]);
@@ -151,7 +151,7 @@ describe("the lots", () => {
       rowTexts(within(ntnbSection).getByRole("table", { name: `Cupons de ${ntnbName}` })),
     ).toEqual([
       ["Data", "Situação", "Bruto", "IOF", "IR", "Taxa de custódia", "Líquido", "Projeção"],
-      ["15/05/2026", "Pago", "R$ 130,12", "R$ 0,00", "R$ 29,11", "R$ 1,75", "R$ 99,26", "—"],
+      ["15/05/2026", "Pago", "R$ 130,12", "R$ 0,56", "R$ 29,11", "R$ 1,75", "R$ 98,70", "—"],
       [
         "15/11/2026",
         "A pagar",

@@ -408,6 +408,32 @@ func TestLotValueNewRowsChangeOnlyEventsFromTheirDateOn(t *testing.T) {
 			wantAfter:    amountView{Gross: "9000.00", IOF: "0.00", IncomeTax: "223.99", CustodyFee: "4.49", Net: "8771.52"},
 			wantAfterNew: amountView{Gross: "9000.00", IOF: "0.00", IncomeTax: "223.97", CustodyFee: "4.56", Net: "8771.47"},
 		},
+		{
+			name:  "income tax of 25% from 2026-10-01 leaves the bracket from 181 days as it was",
+			taxes: withoutCustody,
+			add: func(t *testing.T, taxes *bonds.Taxes) {
+				taxes.IncomeTax = append(taxes.IncomeTax,
+					bonds.IncomeTaxRate{EffectiveFrom: date(2026, time.October, 1), MinDays: 0, Rate: mustDecimal(t, "0.25")})
+			},
+			before:       sale{purchase: date(2026, time.March, 2), on: date(2026, time.September, 30)},
+			after:        sale{purchase: date(2026, time.March, 2), on: date(2026, time.October, 26)},
+			wantBefore:   amountView{Gross: "9000.00", IOF: "0.00", IncomeTax: "200.00", CustodyFee: "0.00", Net: "8800.00"},
+			wantAfter:    amountView{Gross: "9000.00", IOF: "0.00", IncomeTax: "200.00", CustodyFee: "0.00", Net: "8800.00"},
+			wantAfterNew: amountView{Gross: "9000.00", IOF: "0.00", IncomeTax: "200.00", CustodyFee: "0.00", Net: "8800.00"},
+		},
+		{
+			name:  "IOF of 40% at 15 days from 2026-10-01, replacing the decree's 50%",
+			taxes: withoutCustody,
+			add: func(t *testing.T, taxes *bonds.Taxes) {
+				taxes.IOF = append(taxes.IOF,
+					bonds.IOFRate{EffectiveFrom: date(2026, time.October, 1), Days: 15, Rate: mustDecimal(t, "0.40")})
+			},
+			before:       sale{purchase: date(2026, time.September, 1), on: date(2026, time.September, 16)},
+			after:        sale{purchase: date(2026, time.September, 20), on: date(2026, time.October, 5)},
+			wantBefore:   amountView{Gross: "9000.00", IOF: "500.00", IncomeTax: "112.50", CustodyFee: "0.00", Net: "8387.50"},
+			wantAfter:    amountView{Gross: "9000.00", IOF: "500.00", IncomeTax: "112.50", CustodyFee: "0.00", Net: "8387.50"},
+			wantAfterNew: amountView{Gross: "9000.00", IOF: "400.00", IncomeTax: "135.00", CustodyFee: "0.00", Net: "8465.00"},
+		},
 	}
 
 	for _, tt := range tests {
