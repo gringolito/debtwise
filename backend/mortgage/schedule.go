@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gringolito/debtwise/backend/decimal"
+	"github.com/gringolito/debtwise/backend/indexes"
 )
 
 // Installment is one scheduled monthly payment and what it charges, in reais rounded to centavos.
@@ -15,8 +16,8 @@ type Installment struct {
 	// Correction is what the indexer added to the outstanding balance before this installment.
 	Correction decimal.Decimal
 	// IndexValues are the index values Correction applied, one for each contract anniversary since
-	// the previous installment. There are none without an indexer, and for an installment not due
-	// yet, which is not corrected.
+	// the previous installment, each marked missing, published or projected by its Methods. There
+	// are none without an indexer.
 	IndexValues []IndexValue
 	// Interest is charged on the outstanding balance before this installment, once corrected.
 	Interest     decimal.Decimal
@@ -37,8 +38,11 @@ type Installment struct {
 // Schedule returns the installments of valid terms in order, each priced with the rates and fee
 // in effect on its due date, with events replayed between them.
 //
-// Each installment due by today first corrects the outstanding balance by the indexer's published
-// value on each contract anniversary since the previous installment, unless that value is missing.
+// Each installment first corrects the outstanding balance by the indexer's value on each contract
+// anniversary since the previous installment, unless that value is missing. An installment due by
+// today is corrected by published values only, so a month whose value is only projected is
+// missing. An installment due after today is corrected by the Outlook's estimate, published or
+// projected, and a month with no estimate is missing (ADR-0009).
 // Each charge and correction is rounded to centavos. The last installment amortizes whatever is
 // still owed, so the balance ends at zero. Under Price the amortization plus interest is set from
 // the balance, rate and months left on the first installment, whenever the rate changes and
@@ -49,13 +53,13 @@ type Installment struct {
 // installment, under the amortization system's rule, is no higher than before the prepayment;
 // lowering the installment keeps the months left. A statement replaces the computed balance. Once
 // nothing is owed the schedule ends, and later statements only report their drift.
-func (t Terms) Schedule(history History, events Events, today time.Time) iter.Seq[Installment] {
-	return t.replayer(history, events, today).installments()
+func (t Terms) Schedule(outlook indexes.Outlook, events Events, today time.Time) iter.Seq[Installment] {
+	return t.replayer(outlook, events, today).installments()
 }
 
 // Drifts returns the drift of every statement in events, in date order, as Schedule replays them.
-func (t Terms) Drifts(history History, events Events, today time.Time) []Drift {
-	r := t.replayer(history, events, today)
+func (t Terms) Drifts(outlook indexes.Outlook, events Events, today time.Time) []Drift {
+	r := t.replayer(outlook, events, today)
 	for range r.installments() {
 	}
 
@@ -80,10 +84,10 @@ type replayer struct {
 	drifts []Drift
 }
 
-func (t Terms) replayer(history History, events Events, today time.Time) *replayer {
+func (t Terms) replayer(outlook indexes.Outlook, events Events, today time.Time) *replayer {
 	return &replayer{
 		terms:       t,
-		corrections: newCorrections(t, history),
+		corrections: newCorrections(t, outlook),
 		today:       today,
 		events:      events.inOrder(),
 		balance:     t.OriginalAmount.RoundCents(),
@@ -118,10 +122,7 @@ func (r *replayer) charge(number int) Installment {
 	rate := inEffect(t.ContractRates, due).monthly()
 	left := r.term - number + 1
 
-	var values []IndexValue
-	if !due.After(r.today) {
-		values = r.corrections.through(due)
-	}
+	values := r.corrections.through(due, !due.After(r.today))
 
 	correction := decimal.Decimal{}.RoundCents()
 

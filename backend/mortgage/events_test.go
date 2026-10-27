@@ -23,7 +23,7 @@ type replayed struct {
 
 func replay(terms mortgage.Terms, events mortgage.Events) []replayed {
 	var rows []replayed
-	for m := range terms.Schedule(nil, events, time.Time{}) {
+	for m := range terms.Schedule(indexes.Outlook{}, events, time.Time{}) {
 		rows = append(rows, replayed{
 			Number:             m.Number,
 			DueDate:            m.DueDate.Format(time.DateOnly),
@@ -331,10 +331,12 @@ func TestIndexCorrectionAfterAnEventAppliesToTheBalanceItLeft(t *testing.T) {
 
 			terms := sacTerms(t)
 			terms.Indexer = mortgage.TR
-			history := mortgage.History{indexes.TR: {published(t, "2024-02-10", "2024-03-10", "1.0000")}}
+			outlook := indexes.NewOutlook(map[indexes.Index][]indexes.Value{
+				indexes.TR: {published(t, "2024-02-10", "2024-03-10", "1.0000")},
+			}, indexes.Expectations{}, nil)
 
 			var rows []correctedRow
-			for m := range terms.Schedule(history, tt.events, date(t, "2026-10-25")) {
+			for m := range terms.Schedule(outlook, tt.events, date(t, "2026-10-25")) {
 				rows = append(rows, correctedRow{
 					Number:             m.Number,
 					Correction:         m.Correction.String(),
@@ -366,7 +368,7 @@ type drift struct {
 }
 
 func drifts(terms mortgage.Terms, events mortgage.Events) []drift {
-	all := terms.Drifts(nil, events, time.Time{})
+	all := terms.Drifts(indexes.Outlook{}, events, time.Time{})
 
 	out := make([]drift, 0, len(all))
 	for _, d := range all {

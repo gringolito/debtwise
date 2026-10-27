@@ -184,13 +184,13 @@ func registerMortgage(humaAPI huma.API, mortgages Mortgages, store IndexStore) {
 		Description: "Returns the registered mortgage's installments month by month, with its prepayments and statements replayed, to check against bank statements.",
 		Tags:        []string{mortgageTag},
 	}, func(ctx context.Context, _ *struct{}) (*scheduleOutput, error) {
-		terms, history, events, err := replayInputs(ctx, mortgages, store)
+		terms, outlook, events, err := replayInputs(ctx, mortgages, store)
 		if err != nil {
 			return nil, err
 		}
 
 		out := &scheduleOutput{Body: schedule{Installments: make([]scheduledInstallment, 0, terms.TermMonths)}}
-		for m := range terms.Schedule(history, events, time.Now()) {
+		for m := range terms.Schedule(outlook, events, time.Now()) {
 			out.Body.Installments = append(out.Body.Installments, scheduledInstallment{
 				Number:             m.Number,
 				DueDate:            m.DueDate.Format(time.DateOnly),
