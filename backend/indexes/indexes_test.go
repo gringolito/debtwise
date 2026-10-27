@@ -69,6 +69,30 @@ func operations() map[string]func(context.Context, *indexes.Store) error {
 
 			return err
 		},
+		"projection methods": func(ctx context.Context, s *indexes.Store) error {
+			_, err := s.ProjectionMethods(ctx)
+
+			return err
+		},
+		"save projection method": func(ctx context.Context, s *indexes.Store) error {
+			return s.SaveProjectionMethod(ctx, indexes.ProjectionMethod{Index: indexes.TR, Method: indexes.Trailing60})
+		},
+		"save expectations": func(ctx context.Context, s *indexes.Store) error {
+			return s.SaveExpectations(ctx, indexes.Expectations{}, time.Now())
+		},
+		"save expectations failure": func(ctx context.Context, s *indexes.Store) error {
+			return s.SaveExpectationsFailure(ctx, time.Now())
+		},
+		"expectations": func(ctx context.Context, s *indexes.Store) error {
+			_, err := s.Expectations(ctx)
+
+			return err
+		},
+		"expectations refresh times": func(ctx context.Context, s *indexes.Store) error {
+			_, err := s.ExpectationsRefreshTimes(ctx)
+
+			return err
+		},
 	}
 }
 
@@ -127,6 +151,36 @@ func TestStoreFailsOnStoredDataItCannotRead(t *testing.T) {
 			name:      "a refresh time that is not a time",
 			insert:    `INSERT INTO index_refreshes VALUES ('tr', 'yesterday', NULL)`,
 			operation: "refresh times",
+		},
+		{
+			name:      "a projection method the index is not offered",
+			insert:    `INSERT INTO projection_methods VALUES ('tr', 'focus')`,
+			operation: "projection methods",
+		},
+		{
+			name:      "a Selic expectation that is not a decimal",
+			insert:    `INSERT INTO focus_selic VALUES (2027, 1, 'high', '2026-10-01T00:00:00Z')`,
+			operation: "expectations",
+		},
+		{
+			name:      "a monthly IPCA expectation that is not a decimal",
+			insert:    `INSERT INTO focus_ipca_monthly VALUES ('2027-01-01', 'high', '2026-10-01T00:00:00Z')`,
+			operation: "expectations",
+		},
+		{
+			name:      "a monthly IPCA expectation month that is not a date",
+			insert:    `INSERT INTO focus_ipca_monthly VALUES ('01/2027', '0.4', '2026-10-01T00:00:00Z')`,
+			operation: "expectations",
+		},
+		{
+			name:      "an annual IPCA expectation that is not a decimal",
+			insert:    `INSERT INTO focus_ipca_annual VALUES (2027, 'high', '2026-10-01T00:00:00Z')`,
+			operation: "expectations",
+		},
+		{
+			name:      "an expectations refresh time that is not a time",
+			insert:    `INSERT INTO focus_refreshes VALUES (1, 'yesterday', NULL)`,
+			operation: "expectations refresh times",
 		},
 	}
 
