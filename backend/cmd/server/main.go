@@ -64,14 +64,14 @@ func run(logger *slog.Logger, level *slog.LevelVar) error {
 	logger.InfoContext(ctx, "database ready", "path", cfg.DBPath, "applied_migrations", applied)
 
 	store := indexes.NewStore(conn)
-	quotes := bonds.NewStore(conn)
+	bondStore := bonds.NewStore(conn)
 	sources := marketdata.Sources{
 		SGS:   sgs.New(),
 		SIDRA: sidra.New(),
 		Radar: radar.New(cfg.RadarToken),
 		Focus: focus.New(),
 	}
-	job := marketdata.New(sources, store, quotes, marketdata.WithLogger(logger))
+	job := marketdata.New(sources, store, bondStore, marketdata.WithLogger(logger))
 
 	jobCtx, stopJob := context.WithCancel(ctx)
 	jobDone := make(chan struct{})
@@ -93,9 +93,10 @@ func run(logger *slog.Logger, level *slog.LevelVar) error {
 		Handler: api.NewHandler(api.Services{
 			Database:   db.New(conn),
 			Indexes:    store,
+			Lots:       bondStore,
 			MarketData: job,
 			Mortgages:  mortgage.NewStore(conn),
-			Quotes:     quotes,
+			Quotes:     bondStore,
 		}, api.WithLogger(logger)),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,

@@ -2,17 +2,21 @@
 // Never hand-edit it.
 import { client } from "./generated/client.gen";
 import {
+  addLot,
   addPrepayment,
   addStatement,
+  deleteLot,
   deleteMortgage,
   deletePrepayment,
   deleteStatement,
+  editLot,
   editPrepayment,
   editStatement,
   health,
   indexHistory,
   indexProjection,
   listBonds,
+  listLots,
   listPrepayments,
   listStatements,
   marketDataStatus,
@@ -36,11 +40,19 @@ import type {
   IndexProjection,
   IndexStatus,
   IndexValue,
+  Lot,
+  LotAmount,
+  LotCoupon,
+  LotInput,
+  LotList,
+  LotValued,
+  LotValues,
   MarketDataStatus,
   MortgageTerms,
   Prepayment,
   PrepaymentInput,
   PrepaymentList,
+  ProjectedBy,
   ProjectedValue,
   ProjectionMethod,
   ProjectionMethods,
@@ -65,11 +77,19 @@ export type {
   IndexProjection,
   IndexStatus,
   IndexValue,
+  Lot,
+  LotAmount,
+  LotCoupon,
+  LotInput,
+  LotList,
+  LotValued,
+  LotValues,
   MarketDataStatus,
   MortgageTerms,
   Prepayment,
   PrepaymentInput,
   PrepaymentList,
+  ProjectedBy,
   ProjectedValue,
   ProjectionMethod,
   ProjectionMethods,
@@ -240,5 +260,28 @@ export async function putStatement(id: number, body: StatementInput): Promise<St
 
 export async function removeStatement(id: number): Promise<void> {
   const { error, response } = await deleteStatement({ path: { id } });
+  if (!response?.ok) throw failure(error, response);
+}
+
+export async function fetchLots(): Promise<LotList> {
+  const { data, error, response } = await listLots();
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+export async function postLot(body: LotInput): Promise<Lot> {
+  const { data, error, response } = await addLot({ body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+export async function putLot(id: number, body: LotInput): Promise<Lot> {
+  const { data, error, response } = await editLot({ path: { id }, body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+export async function removeLot(id: number): Promise<void> {
+  const { error, response } = await deleteLot({ path: { id } });
   if (!response?.ok) throw failure(error, response);
 }

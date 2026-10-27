@@ -10,6 +10,7 @@ import {
 import { Bonds } from "@/pages/Bonds";
 import { Home } from "@/pages/Home";
 import { Indexes } from "@/pages/Indexes";
+import { Lots } from "@/pages/Lots";
 import { Mortgage } from "@/pages/Mortgage";
 import { MortgageForm } from "@/pages/MortgageForm";
 
@@ -27,6 +28,9 @@ const rootRoute = createRootRoute({
           </Link>
           <Link to="/titulos" className="text-muted-foreground [&.active]:text-foreground">
             Títulos
+          </Link>
+          <Link to="/lotes" className="text-muted-foreground [&.active]:text-foreground">
+            Lotes
           </Link>
           <Link to="/financiamento" className="text-muted-foreground [&.active]:text-foreground">
             Financiamento
@@ -54,6 +58,12 @@ const bondsRoute = createRoute({
   component: Bonds,
 });
 
+const lotsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lotes",
+  component: Lots,
+});
+
 const mortgageRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/financiamento",
@@ -70,6 +80,7 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   indexesRoute,
   bondsRoute,
+  lotsRoute,
   mortgageRoute,
   mortgageFormRoute,
 ]);
