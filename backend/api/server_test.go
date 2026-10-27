@@ -209,6 +209,21 @@ func (fakeFocus) MonthlyIPCA(context.Context, time.Time) ([]focus.Month, error) 
 
 func (fakeFocus) AnnualIPCA(context.Context, time.Time) ([]focus.Year, error) { return nil, nil }
 
+// failingFocus fails every survey.
+type failingFocus struct{}
+
+func (failingFocus) Selic(context.Context, time.Time) ([]focus.Meeting, error) {
+	return nil, errors.New("focus is down")
+}
+
+func (failingFocus) MonthlyIPCA(context.Context, time.Time) ([]focus.Month, error) {
+	return nil, errors.New("focus is down")
+}
+
+func (failingFocus) AnnualIPCA(context.Context, time.Time) ([]focus.Year, error) {
+	return nil, errors.New("focus is down")
+}
+
 // serverOption changes how newServer builds the server.
 type serverOption func(*serverConfig)
 

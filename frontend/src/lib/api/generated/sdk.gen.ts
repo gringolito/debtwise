@@ -70,14 +70,14 @@ export const saveProjectionMethod = <ThrowOnError extends boolean = false>(optio
 /**
  * Refresh the market data
  *
- * Starts refreshing every index and the bond prices from their sources and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.
+ * Starts refreshing every index, the bond prices and the Focus expectations from their sources and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.
  */
 export const refreshMarketData = <ThrowOnError extends boolean = false>(options?: Options<RefreshMarketDataData, ThrowOnError>) => (options?.client ?? client).post<RefreshMarketDataResponses, RefreshMarketDataErrors, ThrowOnError>({ url: '/market-data/refresh', ...options });
 
 /**
  * Report how fresh the market data is
  *
- * Reports, for each index and for the bond prices, when they were last refreshed from their source and whether that data is stale or its latest refresh failed.
+ * Reports, for each index, for the bond prices and for the Focus expectations, when they were last refreshed from their source and whether that data is stale or its latest refresh failed.
  */
 export const marketDataStatus = <ThrowOnError extends boolean = false>(options?: Options<MarketDataStatusData, ThrowOnError>) => (options?.client ?? client).get<MarketDataStatusResponses, MarketDataStatusErrors, ThrowOnError>({ url: '/market-data/status', ...options });
 

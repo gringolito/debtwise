@@ -290,7 +290,8 @@ func (j *Job) fetch(ctx context.Context, f feed, now time.Time) ([]indexes.Value
 	return values, err
 }
 
-// State is how fresh an index's stored values, or the stored bond quotes, are.
+// State is how fresh an index's stored values, the stored bond quotes, or the stored Focus
+// expectations are.
 type State string
 
 const (
@@ -332,8 +333,8 @@ type Status struct {
 	Focus      Freshness
 }
 
-// Status reports how fresh every index, in the order of indexes.All, and the bond quotes are at
-// now.
+// Status reports how fresh every index, in the order of indexes.All, the bond quotes and the Focus
+// expectations are at now.
 func (j *Job) Status(ctx context.Context, now time.Time) (Status, error) {
 	times, err := j.indexStore.RefreshTimes(ctx)
 	if err != nil {

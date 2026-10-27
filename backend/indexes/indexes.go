@@ -1,5 +1,7 @@
 // Package indexes keeps the published history of the indexes DebtWise depends on, and when each
-// was last refreshed from its source.
+// was last refreshed from its source. It also projects the indexes past their published values and
+// keeps the Focus expectations and the projection method of each index those projections use
+// (ADR-0009).
 package indexes
 
 import (

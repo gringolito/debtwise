@@ -99,7 +99,7 @@ type scheduledInstallment struct {
 
 type correctionIndex struct {
 	Index       indexCode     `json:"index" doc:"The index the value belongs to."`
-	Status      string        `json:"status" enum:"published,projected,missing" doc:"published: the balance was corrected by the published value; projected: the installment is due after today and was corrected by a value projected past the published ones, by the methods listed in methods; missing: no value is available for the period yet, so the balance was not corrected by it."`
+	Status      string        `json:"status" enum:"published,projected,missing" doc:"published: the balance was corrected by the published value; projected: the balance was corrected by a projected value, by the methods listed in methods; missing: no value is available for the period yet, so the balance was not corrected by it."`
 	Value       string        `json:"value,omitempty" doc:"The index value for the period, in percent, as a decimal string. Absent when status is missing."`
 	PeriodStart string        `json:"period_start" format:"date" doc:"The first day of the period the value covers."`
 	PeriodEnd   string        `json:"period_end" format:"date" doc:"The last day of the period the value covers. Equals period_start when the index is dated by month."`

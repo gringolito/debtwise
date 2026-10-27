@@ -212,6 +212,34 @@ func TestAFailureKeepsTheExpectationsAndALaterSuccessClearsIt(t *testing.T) {
 	assert.Equal(t, indexes.ExpectationsRefreshTimes{RefreshedAt: recoveredAt}, times)
 }
 
+// A save that fails while storing its expectations, here on the same meeting twice, replaces
+// nothing and records no refresh.
+func TestAFailedSaveKeepsTheStoredExpectationsAndTheirRefreshTime(t *testing.T) {
+	t.Parallel()
+
+	store := indexes.NewStore(openDatabase(t, true))
+	savedAt := time.Date(2026, time.October, 26, 9, 0, 0, 0, time.UTC)
+
+	require.NoError(t, store.SaveExpectations(t.Context(), sampleExpectations(t), savedAt))
+
+	duplicate := indexes.Expectations{
+		Selic: []indexes.MeetingMedian{
+			{Year: 2028, Number: 1, Median: percent(t, "12.00")},
+			{Year: 2028, Number: 1, Median: percent(t, "11.00")},
+		},
+		AnnualIPCA: []indexes.YearMedian{{Year: 2028, Median: percent(t, "3.50")}},
+	}
+	require.Error(t, store.SaveExpectations(t.Context(), duplicate, savedAt.Add(time.Hour)))
+
+	stored, err := store.Expectations(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, sampleExpectations(t), stored)
+
+	times, err := store.ExpectationsRefreshTimes(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, indexes.ExpectationsRefreshTimes{RefreshedAt: savedAt}, times)
+}
+
 func TestAFailureBeforeAnySuccessRecordsOnlyTheFailure(t *testing.T) {
 	t.Parallel()
 

@@ -118,6 +118,13 @@ func NewOutlook(history map[Index][]Value, expectations Expectations, methods []
 		switch index {
 		case SelicTarget:
 			o.selicSteps = focusSelicSteps(expectations.Selic)
+
+			// A survey older than the published targets can't override them.
+			if latest, ok := o.latest[SelicTarget]; ok {
+				o.selicSteps = slices.DeleteFunc(o.selicSteps, func(s selicStep) bool {
+					return !s.effective.After(latest)
+				})
+			}
 		case IPCA:
 			o.setFocusIPCA(expectations)
 		default:
@@ -138,12 +145,18 @@ func (o Outlook) TR(start, end time.Time) (Estimate, bool) {
 }
 
 // SelicTarget returns the Selic target in percent a year in force on a day: the published value
-// of that day, else the one its method projects.
+// of that day, else the one its method projects. Nothing is projected for a day inside the
+// published range, up to the latest published day.
 func (o Outlook) SelicTarget(at time.Time) (Estimate, bool) {
 	at = day(at)
 
 	if v, ok := o.selic[at]; ok {
 		return Estimate{Value: v}, true
+	}
+
+	latest, published := o.latest[SelicTarget]
+	if published && !at.After(latest) {
+		return Estimate{}, false
 	}
 
 	if estimate, ok := o.trailingEstimate(SelicTarget); ok {
@@ -163,8 +176,7 @@ func (o Outlook) SelicTarget(at time.Time) (Estimate, bool) {
 	}
 
 	// Before the first meeting takes effect, the target of the latest published day holds.
-	latest, ok := o.latest[SelicTarget]
-	if !ok {
+	if !published {
 		return Estimate{}, false
 	}
 
@@ -278,7 +290,7 @@ func (o Outlook) method(index Index) Method {
 		return m
 	}
 
-	return Methods(index)[0]
+	return DefaultMethod(index)
 }
 
 // projectedBy returns the methods a value projected for index records.

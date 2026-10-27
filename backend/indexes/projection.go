@@ -41,6 +41,17 @@ func Methods(index Index) []Method {
 	}
 }
 
+// DefaultMethod returns the method index is projected by until the owner chooses another. It is
+// meant for the indexes of Projected.
+func DefaultMethod(index Index) Method {
+	return Methods(index)[0]
+}
+
+// AllMethods returns every method an index can be projected by.
+func AllMethods() []Method {
+	return []Method{Focus, Trailing12, Trailing60}
+}
+
 // ProjectionMethod is the method one index is projected by.
 type ProjectionMethod struct {
 	Index  Index

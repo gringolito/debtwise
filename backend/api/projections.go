@@ -18,7 +18,7 @@ const projectionMonths = 60
 type methodCode string
 
 func (methodCode) Schema(huma.Registry) *huma.Schema {
-	return enumSchema([]indexes.Method{indexes.Focus, indexes.Trailing12, indexes.Trailing60})
+	return enumSchema(indexes.AllMethods())
 }
 
 type projectionMethod struct {
@@ -130,7 +130,7 @@ func registerProjections(humaAPI huma.API, store IndexStore) {
 		Index indexCode `path:"index" doc:"The index."`
 	},
 	) (*indexProjectionOutput, error) {
-		outlook, err := outlookOf(ctx, store)
+		outlook, err := outlookOf(ctx, store, indexes.TR, indexes.PoupancaYield, indexes.SelicTarget, indexes.IPCA)
 		if err != nil {
 			return nil, err
 		}
@@ -175,11 +175,12 @@ func projectedByOf(methods []indexes.ProjectionMethod) []projectedBy {
 	return out
 }
 
-// outlookOf reads what the projections of every index are made of and returns their Outlook.
-func outlookOf(ctx context.Context, store IndexStore) (indexes.Outlook, error) {
-	history := make(map[indexes.Index][]indexes.Value)
+// outlookOf reads the published history of the given indexes, the Focus expectations and the
+// projection methods, and returns their Outlook.
+func outlookOf(ctx context.Context, store IndexStore, published ...indexes.Index) (indexes.Outlook, error) {
+	history := make(map[indexes.Index][]indexes.Value, len(published))
 
-	for _, index := range indexes.All() {
+	for _, index := range published {
 		values, err := store.History(ctx, index)
 		if err != nil {
 			return indexes.Outlook{}, err

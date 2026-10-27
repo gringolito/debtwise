@@ -36,7 +36,7 @@ func (s *Store) ProjectionMethods(ctx context.Context) ([]ProjectionMethod, erro
 	for _, index := range Projected() {
 		method, ok := saved[index]
 		if !ok {
-			method = Methods(index)[0]
+			method = DefaultMethod(index)
 		}
 
 		methods = append(methods, ProjectionMethod{Index: index, Method: method})

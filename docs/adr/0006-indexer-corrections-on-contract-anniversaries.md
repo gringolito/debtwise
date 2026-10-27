@@ -24,8 +24,9 @@ Each correction reads a published value:
 - **IPCA:** the IPCA of the second calendar month before the anniversary (SGS 433), a fixed
   two-month lag.
 
-Only installments due by today are corrected. When a value a past month needs isn't stored, the
-month is left uncorrected and reported as missing, never corrected by zero.
+Only installments due by today are corrected. ADR-0009 corrects later installments by projected
+values. When a value a past month needs isn't stored, the month is left uncorrected and reported as
+missing, never corrected by zero.
 
 ## Considered Options
 

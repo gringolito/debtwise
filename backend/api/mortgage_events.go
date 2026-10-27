@@ -258,19 +258,7 @@ func replayInputs(ctx context.Context, mortgages Mortgages, store IndexStore) (m
 		return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, mortgageFailure(err)
 	}
 
-	history := map[indexes.Index][]indexes.Value{}
-	for _, index := range terms.Indexer.Indexes() {
-		if history[index], err = store.History(ctx, index); err != nil {
-			return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, err
-		}
-	}
-
-	expectations, err := store.Expectations(ctx)
-	if err != nil {
-		return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, err
-	}
-
-	methods, err := store.ProjectionMethods(ctx)
+	outlook, err := outlookOf(ctx, store, terms.Indexer.Indexes()...)
 	if err != nil {
 		return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, err
 	}
@@ -280,7 +268,7 @@ func replayInputs(ctx context.Context, mortgages Mortgages, store IndexStore) (m
 		return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, mortgageFailure(err)
 	}
 
-	return terms, indexes.NewOutlook(history, expectations, methods), events, nil
+	return terms, outlook, events, nil
 }
 
 // readPrepayment reads a prepayment from a body whose date and amount the schema has already

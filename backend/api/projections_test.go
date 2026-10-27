@@ -160,6 +160,85 @@ func TestTRIsProjectedByTheAverageOfItsLatestMonths(t *testing.T) {
 	assert.Equal(t, wantTRPath("0.0120", "trailing_60"), got.Values)
 }
 
+// projectedOn lists projected values of one day or month each, in order, projected by methods.
+func projectedOn(methods []projectedBy, dayAndValue ...string) []projectedValue {
+	values := make([]projectedValue, 0, len(dayAndValue)/2)
+
+	for rest := dayAndValue; len(rest) >= 2; rest = rest[2:] {
+		values = append(values, projectedValue{
+			PeriodStart: rest[0], PeriodEnd: rest[0], Value: rest[1], Methods: methods,
+		})
+	}
+
+	return values
+}
+
+// The Selic target is published through 2017-07-26, so its path starts on 2017-08-01. The Focus
+// survey of 2017-06-30 puts R5/2017's 9.50 in force from 2017-07-27, R6's 8.75 from 2017-09-08, R7's
+// and R8's 8.50 from 2017-10-26 and 2017-12-07, R1/2018's 8.25 from 2018-02-08 (the Copom decided on
+// the 7th) and the same 8.25 for every meeting after it.
+func TestSelicTargetProjectionFollowsTheRecordedFocusMedians(t *testing.T) {
+	t.Parallel()
+
+	s := newServerOn2017June30(t)
+
+	got := s.projection(t, "selic_target")
+	assert.Equal(t, "selic_target", got.Index)
+	require.Len(t, got.Values, 60)
+
+	assert.Equal(t, projectedOn([]projectedBy{by("selic_target", "focus")},
+		"2017-08-01", "9.5000",
+		"2017-09-01", "9.5000",
+		"2017-10-01", "8.7500",
+		"2017-11-01", "8.5000",
+		"2017-12-01", "8.5000",
+		"2018-01-01", "8.5000",
+		"2018-02-01", "8.5000",
+		"2018-03-01", "8.2500",
+	), got.Values[:8])
+	assert.Equal(t, projectedOn([]projectedBy{by("selic_target", "focus")}, "2022-07-01", "8.2500"), got.Values[59:])
+}
+
+// The IPCA is published through 2017-05, so its path starts in 2017-06 with the monthly Focus medians
+// of the survey of 2017-06-30 up to 2018-11. The month after has none, so it takes the annual median
+// of 2018, 4.25%, as a monthly rate: 1.0425^(1/12) - 1 = 0.3474%. The year 2019 does the same, and
+// 2022 holds 2021's median of 4.00%, 0.3274% a month.
+func TestIPCAProjectionFollowsTheRecordedFocusMedians(t *testing.T) {
+	t.Parallel()
+
+	s := newServerOn2017June30(t)
+
+	got := s.projection(t, "ipca")
+	assert.Equal(t, "ipca", got.Index)
+	require.Len(t, got.Values, 60)
+
+	focus := []projectedBy{by("ipca", "focus")}
+
+	assert.Equal(t, projectedOn(focus,
+		"2017-06-01", "-0.1500",
+		"2017-07-01", "0.1800",
+		"2017-08-01", "0.2500",
+		"2017-09-01", "0.3300",
+		"2017-10-01", "0.4000",
+		"2017-11-01", "0.4400",
+		"2017-12-01", "0.5200",
+		"2018-01-01", "0.5300",
+		"2018-02-01", "0.4800",
+		"2018-03-01", "0.3700",
+		"2018-04-01", "0.4000",
+		"2018-05-01", "0.3100",
+		"2018-06-01", "0.2000",
+		"2018-07-01", "0.1900",
+		"2018-08-01", "0.2000",
+		"2018-09-01", "0.2800",
+		"2018-10-01", "0.3700",
+		"2018-11-01", "0.4000",
+		"2018-12-01", "0.3474",
+		"2019-01-01", "0.3474",
+	), got.Values[:20])
+	assert.Equal(t, projectedOn(focus, "2022-01-01", "0.3274"), got.Values[55:56])
+}
+
 func TestIndexWithoutProjectionHasNoValues(t *testing.T) {
 	t.Parallel()
 
@@ -193,4 +272,22 @@ func TestStatusReportsHowFreshTheFocusExpectationsAre(t *testing.T) {
 
 	require.NoError(t, s.job.Refresh(t.Context(), time.Now().Add(-49*time.Hour)))
 	assert.Equal(t, "stale", s.status(t).Focus.Status)
+}
+
+// A Focus source that fails leaves the expectations never refreshed and the failure reported for
+// them alone: the bond quotes of the same refresh are fresh.
+func TestFailedFocusRefreshIsReportedWhileTheBondsStayFresh(t *testing.T) {
+	t.Parallel()
+
+	start := time.Now()
+	s := newServer(t, sgsWithRows(nil), quotingRadar(), withFocus(failingFocus{}))
+
+	status := s.status(t)
+	assert.Equal(t, "failed", status.Focus.Status)
+	assert.Nil(t, status.Focus.RefreshedAt)
+	require.NotNil(t, status.Focus.FailedAt)
+	assert.WithinRange(t, *status.Focus.FailedAt, start.Truncate(time.Second), time.Now())
+
+	assert.Equal(t, "fresh", status.Bonds.Status)
+	assert.Nil(t, status.Bonds.FailedAt)
 }

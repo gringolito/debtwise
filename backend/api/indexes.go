@@ -35,8 +35,8 @@ func (indexCode) Schema(huma.Registry) *huma.Schema {
 	return enumSchema(indexes.All())
 }
 
-// stateCode is how fresh an index or the bond quotes are, documented with every state the API
-// answers.
+// stateCode is how fresh an index, the bond quotes or the Focus expectations are, documented with
+// every state the API answers.
 type stateCode string
 
 func (stateCode) Schema(huma.Registry) *huma.Schema {
@@ -136,7 +136,7 @@ func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData, 
 		Method:      http.MethodGet,
 		Path:        "/market-data/status",
 		Summary:     "Report how fresh the market data is",
-		Description: "Reports, for each index and for the bond prices, when they were last refreshed from their source and whether that data is stale or its latest refresh failed.",
+		Description: "Reports, for each index, for the bond prices and for the Focus expectations, when they were last refreshed from their source and whether that data is stale or its latest refresh failed.",
 		Tags:        []string{"Market data"},
 	}, func(ctx context.Context, _ *struct{}) (*marketDataStatusOutput, error) {
 		return statusOutput(ctx, marketData, now())
@@ -147,7 +147,7 @@ func registerIndexes(humaAPI huma.API, store IndexStore, marketData MarketData, 
 		Method:        http.MethodPost,
 		Path:          "/market-data/refresh",
 		Summary:       "Refresh the market data",
-		Description:   "Starts refreshing every index and the bond prices from their sources and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.",
+		Description:   "Starts refreshing every index, the bond prices and the Focus expectations from their sources and answers at once with the market-data status. Poll the status until refreshing is false to see the outcome.",
 		Tags:          []string{"Market data"},
 		DefaultStatus: http.StatusAccepted,
 	}, func(ctx context.Context, _ *struct{}) (*marketDataStatusOutput, error) {

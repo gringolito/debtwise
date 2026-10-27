@@ -519,6 +519,80 @@ func TestOutlookFocusSelicTargetWithoutAnAnchorOrMeetings(t *testing.T) {
 	}
 }
 
+// Nothing is projected inside the published range. The latest published target is of 2017-10-26:
+// a day up to it without a row has no value, and the Focus medians taking effect on or before it
+// (09-08 and 10-26) are stale, so the target of 10-26 holds until the next one, on 12-07.
+func TestOutlookFocusSelicTargetIgnoresTheRangeAlreadyPublished(t *testing.T) {
+	t.Parallel()
+
+	published := map[indexes.Index][]indexes.Value{
+		indexes.SelicTarget: {
+			{PeriodStart: utcDate(t, "2017-09-01"), PeriodEnd: utcDate(t, "2017-09-01"), Value: percent(t, "10.25")},
+			{PeriodStart: utcDate(t, "2017-10-26"), PeriodEnd: utcDate(t, "2017-10-26"), Value: percent(t, "8.25")},
+		},
+	}
+	medians := []indexes.MeetingMedian{
+		{Year: 2017, Number: 6, Median: percent(t, "8.00")},
+		{Year: 2017, Number: 7, Median: percent(t, "7.50")},
+		{Year: 2017, Number: 8, Median: percent(t, "7.25")},
+	}
+	focus := only(indexes.SelicTarget, indexes.Focus)
+
+	tests := []struct {
+		name   string
+		day    string
+		want   estimateView
+		wantOK bool
+	}{
+		{name: "a published day", day: "2017-10-26", want: estimateView{Value: "8.25"}, wantOK: true},
+		{name: "a day inside the range without a row", day: "2017-09-15"},
+		{name: "the day a stale median took effect", day: "2017-09-08"},
+		{name: "the day after the latest published", day: "2017-10-27", want: estimateView{Value: "8.25", Methods: focus}, wantOK: true},
+		{name: "the day before the first fresh median", day: "2017-12-06", want: estimateView{Value: "8.25", Methods: focus}, wantOK: true},
+		{name: "the first fresh median", day: "2017-12-07", want: estimateView{Value: "7.25", Methods: focus}, wantOK: true},
+	}
+
+	outlook := indexes.NewOutlook(published, indexes.Expectations{Selic: medians}, focus)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, ok := outlook.SelicTarget(utcDate(t, tt.day))
+			require.Equal(t, tt.wantOK, ok)
+
+			if ok {
+				assert.Equal(t, tt.want, viewOf(got))
+			}
+		})
+	}
+}
+
+// The twelve months of 2018 have the targets 5.00 + 0.25 i, averaging 6.375. The average projects
+// the days after the latest published one, 2018-12-01, and not those inside the published range.
+func TestOutlookTrailingSelicTargetIgnoresTheRangeAlreadyPublished(t *testing.T) {
+	t.Parallel()
+
+	history := monthlyValues(t, "2018-01-01", true,
+		"5.00", "5.25", "5.50", "5.75", "6.00", "6.25", "6.50", "6.75", "7.00", "7.25", "7.50", "7.75")
+	outlook := indexes.NewOutlook(
+		map[indexes.Index][]indexes.Value{indexes.SelicTarget: history},
+		indexes.Expectations{},
+		only(indexes.SelicTarget, indexes.Trailing12),
+	)
+
+	got, ok := outlook.SelicTarget(utcDate(t, "2018-12-01"))
+	require.True(t, ok)
+	assert.Equal(t, estimateView{Value: "7.75"}, viewOf(got))
+
+	_, ok = outlook.SelicTarget(utcDate(t, "2018-03-15"))
+	assert.False(t, ok)
+
+	got, ok = outlook.SelicTarget(utcDate(t, "2018-12-02"))
+	require.True(t, ok)
+	assert.Equal(t, estimateView{Value: "6.3750", Methods: only(indexes.SelicTarget, indexes.Trailing12)}, viewOf(got))
+}
+
 // A year's median of 4.20% a year is 0.3434% a month, 3.80% is 0.3113% and 3.50% is 0.2871%, by
 // (1 + a)^(1/12) - 1 rounded at 4 places half to even.
 func TestOutlookFocusIPCA(t *testing.T) {

@@ -112,7 +112,7 @@ export type CorrectionIndex = {
      */
     period_start: string;
     /**
-     * published: the balance was corrected by the published value; projected: the installment is due after today and was corrected by a value projected past the published ones, by the methods listed in methods; missing: no value is available for the period yet, so the balance was not corrected by it.
+     * published: the balance was corrected by the published value; projected: the balance was corrected by a projected value, by the methods listed in methods; missing: no value is available for the period yet, so the balance was not corrected by it.
      */
     status: 'published' | 'projected' | 'missing';
     /**

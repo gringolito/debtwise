@@ -750,7 +750,7 @@ describe("projection method", () => {
     await waitFor(() => expect(select).toHaveDisplayValue("Média dos últimos 60 meses"));
     expect(
       within(screen.getByRole("region", { name: "Remuneração da poupança" })).getByText(
-        "A projeção deriva da TR projetada pela Média dos últimos 60 meses e da Selic meta projetada pela Mediana do Focus (BCB), segundo a regra da poupança.",
+        "A projeção deriva da TR projetada pela média dos últimos 60 meses e da Selic meta projetada pela mediana do Focus (BCB), segundo a regra da poupança.",
       ),
     ).toBeInTheDocument();
   });
@@ -793,7 +793,7 @@ describe("projection method", () => {
     const card = within(await screen.findByRole("region", { name: "Remuneração da poupança" }));
     expect(
       await card.findByText(
-        "A projeção deriva da TR projetada pela Média dos últimos 12 meses e da Selic meta projetada pela Mediana do Focus (BCB), segundo a regra da poupança.",
+        "A projeção deriva da TR projetada pela média dos últimos 12 meses e da Selic meta projetada pela mediana do Focus (BCB), segundo a regra da poupança.",
       ),
     ).toBeInTheDocument();
     expect(card.queryByRole("combobox")).not.toBeInTheDocument();

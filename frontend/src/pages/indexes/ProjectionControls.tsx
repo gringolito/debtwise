@@ -3,6 +3,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import type { IndexName, ProjectionMethod } from "@/lib/api";
+import { indexNames } from "@/lib/indexNames";
 import { projectionMethodLabels } from "@/lib/projectionMethods";
 import { useProjectionMethods, useSaveProjectionMethod } from "@/pages/indexes/projectionQueries";
 
@@ -39,6 +40,12 @@ function MethodSelect({ projection }: { projection: ProjectionMethod }) {
   );
 }
 
+// The labels start a sentence; mid-sentence only the first letter changes, as "Focus" is a name.
+function midSentence(method: ProjectionMethod["method"]): string {
+  const label = projectionMethodLabels[method];
+  return label.charAt(0).toLowerCase() + label.slice(1);
+}
+
 function PoupancaDerivation({ methods }: { methods: ProjectionMethod[] }) {
   const tr = methods.find((m) => m.index === "tr");
   const selic = methods.find((m) => m.index === "selic_target");
@@ -46,8 +53,9 @@ function PoupancaDerivation({ methods }: { methods: ProjectionMethod[] }) {
 
   return (
     <p className="text-muted-foreground">
-      A projeção deriva da TR projetada pela {projectionMethodLabels[tr.method]} e da Selic meta
-      projetada pela {projectionMethodLabels[selic.method]}, segundo a regra da poupança.
+      A projeção deriva da {indexNames.tr} projetada pela {midSentence(tr.method)} e da{" "}
+      {indexNames.selic_target} projetada pela {midSentence(selic.method)}, segundo a regra da
+      poupança.
     </p>
   );
 }

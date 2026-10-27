@@ -465,6 +465,44 @@ func TestPastMonthsKeepPublishedValuesWhileFutureMonthsAreProjected(t *testing.T
 	}, indexedSchedule(indexedSAC(t, mortgage.TR, "50000.00", 5), outlook, date(t, "2024-03-20")))
 }
 
+// An installment is due from its due date on, today included: its TR is only projected, so it stays
+// missing on 2024-02-15 and on the day after. The rows are those of
+// TestPastMonthsKeepPublishedValuesWhileFutureMonthsAreProjected, since the 3rd installment, not
+// due yet, is corrected by the TR published for it and the 4th and 5th by the projection.
+func TestInstallmentDueTodayIsCorrectedByPublishedValuesOnly(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		today string
+	}{
+		{name: "today is the due date", today: "2024-02-15"},
+		{name: "the day after the due date", today: "2024-02-16"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			outlook := indexes.NewOutlook(projectedTRHistory(t), indexes.Expectations{}, nil)
+
+			assert.Equal(t, []indexedRow{
+				{1, "10.90", "500.11", "10002.18", "0.00", "10502.29", "40008.72", "tr 0.0218 2023-12-15..2024-01-15"},
+				{2, "0.00", "400.09", "10002.18", "0.00", "10402.27", "30006.54", "tr missing 2024-01-15..2024-02-15"},
+				{3, "19.95", "300.26", "10008.83", "0.00", "10309.09", "20017.66", "tr 0.0665 2024-02-15..2024-03-15"},
+				{
+					4, "12.71", "200.30", "10015.19", "0.00", "10215.49", "10015.18",
+					"tr 0.0635 2024-03-15..2024-04-15 (tr trailing_12)",
+				},
+				{
+					5, "6.36", "100.22", "10021.54", "0.00", "10121.76", "0.00",
+					"tr 0.0635 2024-04-15..2024-05-15 (tr trailing_12)",
+				},
+			}, indexedSchedule(indexedSAC(t, mortgage.TR, "50000.00", 5), outlook, date(t, tt.today)))
+		})
+	}
+}
+
 // The method the owner chose for TR decides the future months: the trailing 12 months average
 // 0.0635% and the trailing 60 average 0.0395%, and each correction records the method behind it.
 // The installments due keep their published values under either method.
