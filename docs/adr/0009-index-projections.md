@@ -26,7 +26,8 @@ days:
   After the last one, its median holds. The meeting dates come from a Copom calendar kept as data,
   built from BCB's history of the target and the calendars BCB publishes a year ahead. A meeting in
   a year whose calendar isn't listed yet is taken on the date of the same meeting in the latest year
-  listed.
+  listed. SGS publishes the target for every calendar day up to the next meeting, so nothing is
+  projected on or before the latest published day, and a median taking effect by then is ignored.
 - **IPCA:** a month's median from `ExpectativaMercadoMensais` while Focus has one, then each year's
   median from `ExpectativasMercadoAnuais` spread evenly over its months, `(1 + a)^(1/12) − 1`, then
   the last annual median held.
