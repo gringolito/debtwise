@@ -19,6 +19,7 @@ import (
 	"github.com/gringolito/debtwise/backend/db"
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/marketdata"
+	"github.com/gringolito/debtwise/backend/marketdata/focus"
 	"github.com/gringolito/debtwise/backend/marketdata/radar"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
 	"github.com/gringolito/debtwise/backend/marketdata/sidra"
@@ -64,7 +65,12 @@ func run(logger *slog.Logger, level *slog.LevelVar) error {
 
 	store := indexes.NewStore(conn)
 	quotes := bonds.NewStore(conn)
-	sources := marketdata.Sources{SGS: sgs.New(), SIDRA: sidra.New(), Radar: radar.New(cfg.RadarToken)}
+	sources := marketdata.Sources{
+		SGS:   sgs.New(),
+		SIDRA: sidra.New(),
+		Radar: radar.New(cfg.RadarToken),
+		Focus: focus.New(),
+	}
 	job := marketdata.New(sources, store, quotes, marketdata.WithLogger(logger))
 
 	jobCtx, stopJob := context.WithCancel(ctx)

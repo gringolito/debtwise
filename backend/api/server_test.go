@@ -22,6 +22,7 @@ import (
 	"github.com/gringolito/debtwise/backend/decimal"
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/marketdata"
+	"github.com/gringolito/debtwise/backend/marketdata/focus"
 	"github.com/gringolito/debtwise/backend/marketdata/radar"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
 	"github.com/gringolito/debtwise/backend/marketdata/sidra"
@@ -198,6 +199,15 @@ func openMigrated(t *testing.T) *sql.DB {
 	return conn
 }
 
+// fakeFocus answers every survey with nothing.
+type fakeFocus struct{}
+
+func (fakeFocus) Selic(context.Context, time.Time) ([]focus.Meeting, error) { return nil, nil }
+
+func (fakeFocus) MonthlyIPCA(context.Context, time.Time) ([]focus.Month, error) { return nil, nil }
+
+func (fakeFocus) AnnualIPCA(context.Context, time.Time) ([]focus.Year, error) { return nil, nil }
+
 // newServer serves the API over a migrated database, with the market-data refresh job running
 // against indexSource, for SGS and SIDRA, and quoteSource until the test ends. It returns once the
 // job's first refresh is over.
@@ -208,7 +218,7 @@ func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteS
 	store := indexes.NewStore(conn)
 	quotes := bonds.NewStore(conn)
 	logger := slog.New(slog.DiscardHandler)
-	sources := marketdata.Sources{SGS: indexSource, SIDRA: indexSource, Radar: quoteSource}
+	sources := marketdata.Sources{SGS: indexSource, SIDRA: indexSource, Radar: quoteSource, Focus: fakeFocus{}}
 	job := marketdata.New(sources, store, quotes, marketdata.WithLogger(logger))
 
 	ctx, cancel := context.WithCancel(context.Background())
