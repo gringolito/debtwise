@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, ListBondsData, ListBondsErrors, ListBondsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses } from './types.gen';
+import type { AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -56,7 +56,7 @@ export const marketDataStatus = <ThrowOnError extends boolean = false>(options?:
 /**
  * Delete the mortgage
  *
- * Deletes the registered mortgage with all its terms.
+ * Deletes the registered mortgage with all its terms, prepayments and statements.
  */
 export const deleteMortgage = <ThrowOnError extends boolean = false>(options?: Options<DeleteMortgageData, ThrowOnError>) => (options?.client ?? client).delete<DeleteMortgageResponses, DeleteMortgageErrors, ThrowOnError>({ url: '/mortgage', ...options });
 
@@ -82,8 +82,92 @@ export const saveMortgage = <ThrowOnError extends boolean = false>(options: Opti
 });
 
 /**
+ * List the prepayments
+ *
+ * Returns the prepayments recorded on the mortgage.
+ */
+export const listPrepayments = <ThrowOnError extends boolean = false>(options?: Options<ListPrepaymentsData, ThrowOnError>) => (options?.client ?? client).get<ListPrepaymentsResponses, ListPrepaymentsErrors, ThrowOnError>({ url: '/mortgage/prepayments', ...options });
+
+/**
+ * Record a prepayment
+ *
+ * Records a prepayment made on the mortgage, which the schedule then replays.
+ */
+export const addPrepayment = <ThrowOnError extends boolean = false>(options: Options<AddPrepaymentData, ThrowOnError>) => (options.client ?? client).post<AddPrepaymentResponses, AddPrepaymentErrors, ThrowOnError>({
+    url: '/mortgage/prepayments',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete a prepayment
+ *
+ * Deletes a recorded prepayment, so the schedule no longer replays it.
+ */
+export const deletePrepayment = <ThrowOnError extends boolean = false>(options: Options<DeletePrepaymentData, ThrowOnError>) => (options.client ?? client).delete<DeletePrepaymentResponses, DeletePrepaymentErrors, ThrowOnError>({ url: '/mortgage/prepayments/{id}', ...options });
+
+/**
+ * Edit a prepayment
+ *
+ * Replaces a recorded prepayment.
+ */
+export const editPrepayment = <ThrowOnError extends boolean = false>(options: Options<EditPrepaymentData, ThrowOnError>) => (options.client ?? client).put<EditPrepaymentResponses, EditPrepaymentErrors, ThrowOnError>({
+    url: '/mortgage/prepayments/{id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * Read the mortgage schedule
  *
- * Returns the registered mortgage's installments month by month, to check against bank statements.
+ * Returns the registered mortgage's installments month by month, with its prepayments and statements replayed, to check against bank statements.
  */
 export const readMortgageSchedule = <ThrowOnError extends boolean = false>(options?: Options<ReadMortgageScheduleData, ThrowOnError>) => (options?.client ?? client).get<ReadMortgageScheduleResponses, ReadMortgageScheduleErrors, ThrowOnError>({ url: '/mortgage/schedule', ...options });
+
+/**
+ * List the statements
+ *
+ * Returns the statements recorded on the mortgage, each compared with the outstanding balance the schedule computed for its date.
+ */
+export const listStatements = <ThrowOnError extends boolean = false>(options?: Options<ListStatementsData, ThrowOnError>) => (options?.client ?? client).get<ListStatementsResponses, ListStatementsErrors, ThrowOnError>({ url: '/mortgage/statements', ...options });
+
+/**
+ * Record a statement
+ *
+ * Records the outstanding balance the bank reported on a date, which the schedule then continues from.
+ */
+export const addStatement = <ThrowOnError extends boolean = false>(options: Options<AddStatementData, ThrowOnError>) => (options.client ?? client).post<AddStatementResponses, AddStatementErrors, ThrowOnError>({
+    url: '/mortgage/statements',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete a statement
+ *
+ * Deletes a recorded statement, so the schedule no longer continues from it.
+ */
+export const deleteStatement = <ThrowOnError extends boolean = false>(options: Options<DeleteStatementData, ThrowOnError>) => (options.client ?? client).delete<DeleteStatementResponses, DeleteStatementErrors, ThrowOnError>({ url: '/mortgage/statements/{id}', ...options });
+
+/**
+ * Edit a statement
+ *
+ * Replaces a recorded statement.
+ */
+export const editStatement = <ThrowOnError extends boolean = false>(options: Options<EditStatementData, ThrowOnError>) => (options.client ?? client).put<EditStatementResponses, EditStatementErrors, ThrowOnError>({
+    url: '/mortgage/statements/{id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});

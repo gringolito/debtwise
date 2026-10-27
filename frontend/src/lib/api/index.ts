@@ -2,10 +2,18 @@
 // Never hand-edit it.
 import { client } from "./generated/client.gen";
 import {
+  addPrepayment,
+  addStatement,
   deleteMortgage,
+  deletePrepayment,
+  deleteStatement,
+  editPrepayment,
+  editStatement,
   health,
   indexHistory,
   listBonds,
+  listPrepayments,
+  listStatements,
   marketDataStatus,
   readMortgage,
   readMortgageSchedule,
@@ -26,9 +34,16 @@ import type {
   IndexValue,
   MarketDataStatus,
   MortgageTerms,
+  Prepayment,
+  PrepaymentInput,
+  PrepaymentList,
   RegisteredMortgage,
   Schedule,
   ScheduledInstallment,
+  Statement,
+  StatementDrift,
+  StatementInput,
+  StatementList,
 } from "./generated/types.gen";
 
 export type {
@@ -44,9 +59,16 @@ export type {
   IndexValue,
   MarketDataStatus,
   MortgageTerms,
+  Prepayment,
+  PrepaymentInput,
+  PrepaymentList,
   RegisteredMortgage,
   Schedule,
   ScheduledInstallment,
+  Statement,
+  StatementDrift,
+  StatementInput,
+  StatementList,
 };
 export type IndexName = IndexHistory["index"];
 
@@ -128,5 +150,51 @@ export async function putMortgage(terms: MortgageTerms): Promise<RegisteredMortg
 
 export async function removeMortgage(): Promise<void> {
   const { error, response } = await deleteMortgage();
+  if (!response?.ok) throw failure(error, response);
+}
+
+export async function fetchPrepayments(): Promise<PrepaymentList> {
+  const { data, error, response } = await listPrepayments();
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+export async function postPrepayment(body: PrepaymentInput): Promise<Prepayment> {
+  const { data, error, response } = await addPrepayment({ body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+export async function putPrepayment(id: number, body: PrepaymentInput): Promise<Prepayment> {
+  const { data, error, response } = await editPrepayment({ path: { id }, body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+export async function removePrepayment(id: number): Promise<void> {
+  const { error, response } = await deletePrepayment({ path: { id } });
+  if (!response?.ok) throw failure(error, response);
+}
+
+export async function fetchStatements(): Promise<StatementList> {
+  const { data, error, response } = await listStatements();
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+export async function postStatement(body: StatementInput): Promise<Statement> {
+  const { data, error, response } = await addStatement({ body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+export async function putStatement(id: number, body: StatementInput): Promise<Statement> {
+  const { data, error, response } = await editStatement({ path: { id }, body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+export async function removeStatement(id: number): Promise<void> {
+  const { error, response } = await deleteStatement({ path: { id } });
   if (!response?.ok) throw failure(error, response);
 }

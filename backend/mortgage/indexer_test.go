@@ -29,7 +29,7 @@ type indexedRow struct {
 func indexedSchedule(terms mortgage.Terms, history mortgage.History, today time.Time) []indexedRow {
 	var rows []indexedRow
 
-	for m := range terms.Schedule(history, today) {
+	for m := range terms.Schedule(history, mortgage.Events{}, today) {
 		values := make([]string, 0, len(m.IndexValues))
 
 		for _, v := range m.IndexValues {

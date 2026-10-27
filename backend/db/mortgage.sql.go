@@ -45,6 +45,40 @@ func (q *Queries) DeleteMortgageMIPRates(ctx context.Context, mortgageID int64) 
 	return err
 }
 
+const deleteMortgagePrepayment = `-- name: DeleteMortgagePrepayment :execrows
+DELETE FROM mortgage_prepayments WHERE id = ? AND mortgage_id = ?
+`
+
+type DeleteMortgagePrepaymentParams struct {
+	ID         int64
+	MortgageID int64
+}
+
+func (q *Queries) DeleteMortgagePrepayment(ctx context.Context, arg DeleteMortgagePrepaymentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteMortgagePrepayment, arg.ID, arg.MortgageID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteMortgageStatement = `-- name: DeleteMortgageStatement :execrows
+DELETE FROM mortgage_statements WHERE id = ? AND mortgage_id = ?
+`
+
+type DeleteMortgageStatementParams struct {
+	ID         int64
+	MortgageID int64
+}
+
+func (q *Queries) DeleteMortgageStatement(ctx context.Context, arg DeleteMortgageStatementParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteMortgageStatement, arg.ID, arg.MortgageID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteMortgages = `-- name: DeleteMortgages :execrows
 DELETE FROM mortgages
 `
@@ -75,6 +109,22 @@ func (q *Queries) FindMortgage(ctx context.Context) (Mortgage, error) {
 		&i.Indexer,
 	)
 	return i, err
+}
+
+const findMortgageStatementOn = `-- name: FindMortgageStatementOn :one
+SELECT id FROM mortgage_statements WHERE mortgage_id = ? AND date = ?
+`
+
+type FindMortgageStatementOnParams struct {
+	MortgageID int64
+	Date       string
+}
+
+func (q *Queries) FindMortgageStatementOn(ctx context.Context, arg FindMortgageStatementOnParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, findMortgageStatementOn, arg.MortgageID, arg.Date)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const insertMortgage = `-- name: InsertMortgage :one
@@ -174,6 +224,46 @@ type InsertMortgageMIPRateParams struct {
 func (q *Queries) InsertMortgageMIPRate(ctx context.Context, arg InsertMortgageMIPRateParams) error {
 	_, err := q.db.ExecContext(ctx, insertMortgageMIPRate, arg.MortgageID, arg.EffectiveFrom, arg.Rate)
 	return err
+}
+
+const insertMortgagePrepayment = `-- name: InsertMortgagePrepayment :one
+INSERT INTO mortgage_prepayments (mortgage_id, date, amount, effect) VALUES (?, ?, ?, ?) RETURNING id
+`
+
+type InsertMortgagePrepaymentParams struct {
+	MortgageID int64
+	Date       string
+	Amount     string
+	Effect     string
+}
+
+func (q *Queries) InsertMortgagePrepayment(ctx context.Context, arg InsertMortgagePrepaymentParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertMortgagePrepayment,
+		arg.MortgageID,
+		arg.Date,
+		arg.Amount,
+		arg.Effect,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertMortgageStatement = `-- name: InsertMortgageStatement :one
+INSERT INTO mortgage_statements (mortgage_id, date, outstanding_balance) VALUES (?, ?, ?) RETURNING id
+`
+
+type InsertMortgageStatementParams struct {
+	MortgageID         int64
+	Date               string
+	OutstandingBalance string
+}
+
+func (q *Queries) InsertMortgageStatement(ctx context.Context, arg InsertMortgageStatementParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, insertMortgageStatement, arg.MortgageID, arg.Date, arg.OutstandingBalance)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const listMortgageContractRates = `-- name: ListMortgageContractRates :many
@@ -306,6 +396,78 @@ func (q *Queries) ListMortgageMIPRates(ctx context.Context, mortgageID int64) ([
 	return items, nil
 }
 
+const listMortgagePrepayments = `-- name: ListMortgagePrepayments :many
+SELECT id, date, amount, effect FROM mortgage_prepayments WHERE mortgage_id = ? ORDER BY date, id
+`
+
+type ListMortgagePrepaymentsRow struct {
+	ID     int64
+	Date   string
+	Amount string
+	Effect string
+}
+
+func (q *Queries) ListMortgagePrepayments(ctx context.Context, mortgageID int64) ([]ListMortgagePrepaymentsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMortgagePrepayments, mortgageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMortgagePrepaymentsRow
+	for rows.Next() {
+		var i ListMortgagePrepaymentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Date,
+			&i.Amount,
+			&i.Effect,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMortgageStatements = `-- name: ListMortgageStatements :many
+SELECT id, date, outstanding_balance FROM mortgage_statements WHERE mortgage_id = ? ORDER BY date
+`
+
+type ListMortgageStatementsRow struct {
+	ID                 int64
+	Date               string
+	OutstandingBalance string
+}
+
+func (q *Queries) ListMortgageStatements(ctx context.Context, mortgageID int64) ([]ListMortgageStatementsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listMortgageStatements, mortgageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMortgageStatementsRow
+	for rows.Next() {
+		var i ListMortgageStatementsRow
+		if err := rows.Scan(&i.ID, &i.Date, &i.OutstandingBalance); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateMortgage = `-- name: UpdateMortgage :exec
 UPDATE mortgages
 SET contract_date = ?, original_amount = ?, term_months = ?, first_installment_date = ?,
@@ -336,4 +498,54 @@ func (q *Queries) UpdateMortgage(ctx context.Context, arg UpdateMortgageParams) 
 		arg.ID,
 	)
 	return err
+}
+
+const updateMortgagePrepayment = `-- name: UpdateMortgagePrepayment :execrows
+UPDATE mortgage_prepayments SET date = ?, amount = ?, effect = ? WHERE id = ? AND mortgage_id = ?
+`
+
+type UpdateMortgagePrepaymentParams struct {
+	Date       string
+	Amount     string
+	Effect     string
+	ID         int64
+	MortgageID int64
+}
+
+func (q *Queries) UpdateMortgagePrepayment(ctx context.Context, arg UpdateMortgagePrepaymentParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateMortgagePrepayment,
+		arg.Date,
+		arg.Amount,
+		arg.Effect,
+		arg.ID,
+		arg.MortgageID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const updateMortgageStatement = `-- name: UpdateMortgageStatement :execrows
+UPDATE mortgage_statements SET date = ?, outstanding_balance = ? WHERE id = ? AND mortgage_id = ?
+`
+
+type UpdateMortgageStatementParams struct {
+	Date               string
+	OutstandingBalance string
+	ID                 int64
+	MortgageID         int64
+}
+
+func (q *Queries) UpdateMortgageStatement(ctx context.Context, arg UpdateMortgageStatementParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateMortgageStatement,
+		arg.Date,
+		arg.OutstandingBalance,
+		arg.ID,
+		arg.MortgageID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

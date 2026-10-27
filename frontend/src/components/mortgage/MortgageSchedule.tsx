@@ -26,6 +26,7 @@ const columns = [
   "DFI",
   "Taxa adm.",
   "Prestação",
+  "Amortização extraordinária",
   "Saldo devedor",
 ];
 
@@ -109,6 +110,7 @@ function ScheduleTable() {
               <TableCell>{formatMoney(installment.dfi)}</TableCell>
               <TableCell>{formatMoney(installment.fee)}</TableCell>
               <TableCell>{formatMoney(installment.amount)}</TableCell>
+              <TableCell>{formatMoney(installment.prepaid)}</TableCell>
               <TableCell>{formatMoney(installment.outstanding_balance)}</TableCell>
             </TableRow>
           ))}

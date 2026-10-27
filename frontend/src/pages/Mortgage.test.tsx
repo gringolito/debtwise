@@ -1,14 +1,17 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CorrectionIndex } from "@/lib/api";
+import { rowTexts, text } from "@/test/dom";
 import { stubMortgageApi } from "@/test/mortgageApi";
 import {
   deferredSchedule,
   ipcaMortgage,
   ipcaSchedule,
+  prepayments,
   registeredMortgage,
   schedule,
   scheduleAfterSave,
+  statements,
   trMortgage,
   trSchedule,
 } from "@/test/mortgageFixtures";
@@ -74,16 +77,6 @@ describe("mortgage page without a mortgage", () => {
     expect(screen.queryByText("Nenhum financiamento cadastrado.")).not.toBeInTheDocument();
   });
 });
-
-function text(element: Element): string {
-  return (element.textContent ?? "").replace(/\s+/g, " ").trim();
-}
-
-function rowTexts(table: HTMLElement): string[][] {
-  return within(table)
-    .getAllByRole("row")
-    .map((row) => Array.from(row.querySelectorAll("th, td")).map(text));
-}
 
 describe("mortgage page with a mortgage", () => {
   it("shows the contract terms in pt-BR", async () => {
@@ -172,7 +165,7 @@ describe("mortgage page with a mortgage", () => {
 
     renderAt("/financiamento");
 
-    const table = await screen.findByRole("table");
+    const table = await screen.findByRole("table", { name: "Evolução do financiamento" });
     expect(screen.getByText("Evolução do financiamento")).toBeInTheDocument();
     expect(rowTexts(table)).toEqual([
       [
@@ -186,6 +179,7 @@ describe("mortgage page with a mortgage", () => {
         "DFI",
         "Taxa adm.",
         "Prestação",
+        "Amortização extraordinária",
         "Saldo devedor",
       ],
       [
@@ -199,6 +193,7 @@ describe("mortgage page with a mortgage", () => {
         "R$ 10,00",
         "R$ 12,50",
         "R$ 10.640,50",
+        "R$ 0,00",
         "R$ 50.000,00",
       ],
       [
@@ -212,6 +207,7 @@ describe("mortgage page with a mortgage", () => {
         "R$ 10,00",
         "R$ 12,50",
         "R$ 10.537,50",
+        "R$ 0,00",
         "R$ 40.000,00",
       ],
       [
@@ -225,6 +221,7 @@ describe("mortgage page with a mortgage", () => {
         "R$ 10,00",
         "R$ 12,50",
         "R$ 10.434,50",
+        "R$ 0,00",
         "R$ 30.000,00",
       ],
       [
@@ -238,6 +235,7 @@ describe("mortgage page with a mortgage", () => {
         "R$ 10,00",
         "R$ 12,50",
         "R$ 10.337,50",
+        "R$ 0,00",
         "R$ 20.000,00",
       ],
       [
@@ -251,6 +249,7 @@ describe("mortgage page with a mortgage", () => {
         "R$ 10,00",
         "R$ 12,50",
         "R$ 10.232,50",
+        "R$ 0,00",
         "R$ 10.000,00",
       ],
       [
@@ -264,6 +263,7 @@ describe("mortgage page with a mortgage", () => {
         "R$ 10,00",
         "R$ 12,50",
         "R$ 10.127,50",
+        "R$ 0,00",
         "R$ 0,00",
       ],
     ]);
@@ -286,7 +286,7 @@ describe("mortgage page with a mortgage", () => {
 
     renderAt("/financiamento");
 
-    await screen.findByRole("table");
+    await screen.findByRole("table", { name: "Evolução do financiamento" });
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -329,6 +329,7 @@ describe("the schedule of an indexed mortgage", () => {
     "DFI",
     "Taxa adm.",
     "Prestação",
+    "Amortização extraordinária",
     "Saldo devedor",
   ];
 
@@ -337,7 +338,7 @@ describe("the schedule of an indexed mortgage", () => {
 
     renderAt("/financiamento");
 
-    const table = await screen.findByRole("table");
+    const table = await screen.findByRole("table", { name: "Evolução do financiamento" });
     expect(rowTexts(table)).toEqual([
       header,
       [
@@ -351,6 +352,7 @@ describe("the schedule of an indexed mortgage", () => {
         "R$ 10,00",
         "R$ 12,50",
         "R$ 10.643,73",
+        "R$ 0,00",
         "R$ 50.032,34",
       ],
       [
@@ -364,6 +366,7 @@ describe("the schedule of an indexed mortgage", () => {
         "R$ 10,00",
         "R$ 12,50",
         "R$ 10.537,50",
+        "R$ 0,00",
         "R$ 40.032,34",
       ],
       [
@@ -377,6 +380,7 @@ describe("the schedule of an indexed mortgage", () => {
         "R$ 10,00",
         "R$ 12,50",
         "R$ 10.434,50",
+        "R$ 0,00",
         "R$ 30.032,34",
       ],
     ]);
@@ -387,7 +391,7 @@ describe("the schedule of an indexed mortgage", () => {
 
     renderAt("/financiamento");
 
-    const table = await screen.findByRole("table");
+    const table = await screen.findByRole("table", { name: "Evolução do financiamento" });
     expect(rowTexts(table).slice(1)).toEqual([
       [
         "1",
@@ -400,6 +404,7 @@ describe("the schedule of an indexed mortgage", () => {
         "R$ 10,00",
         "R$ 12,50",
         "R$ 10.643,73",
+        "R$ 0,00",
         "R$ 50.336,00",
       ],
     ]);
@@ -421,7 +426,9 @@ describe("the schedule of an indexed mortgage", () => {
     );
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(
-      alert.compareDocumentPosition(screen.getByRole("table")) & Node.DOCUMENT_POSITION_FOLLOWING,
+      alert.compareDocumentPosition(
+        screen.getByRole("table", { name: "Evolução do financiamento" }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -456,7 +463,7 @@ describe("the schedule of an indexed mortgage", () => {
 
     renderAt("/financiamento");
 
-    const table = await screen.findByRole("table");
+    const table = await screen.findByRole("table", { name: "Evolução do financiamento" });
     expect(rowTexts(table).slice(1)).toEqual([
       [
         "1",
@@ -469,6 +476,7 @@ describe("the schedule of an indexed mortgage", () => {
         "R$ 10,00",
         "R$ 12,50",
         "R$ 10.643,73",
+        "R$ 0,00",
         "R$ 50.108,30",
       ],
     ]);
@@ -570,5 +578,35 @@ describe("a schedule that changed on the server", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
 
     await expectOnlyNewSchedule();
+  });
+});
+
+describe("prepayments and statements of a mortgage deleted and registered again", () => {
+  it("never shows the rows recorded on the old mortgage", async () => {
+    stubMortgageApi({
+      mortgage: registeredMortgage,
+      prepayments,
+      statements,
+      onSave: () => registeredMortgage,
+    });
+    renderAt("/financiamento");
+    expect(await screen.findByText("R$ 12.500,50")).toBeInTheDocument();
+    expect(await screen.findByText("R$ 41.000,00")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Cadastrar financiamento" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
+
+    await screen.findByRole("region", { name: "Condições do contrato" });
+    expect(screen.queryByText("R$ 12.500,50")).not.toBeInTheDocument();
+    expect(screen.queryByText("R$ 41.000,00")).not.toBeInTheDocument();
+    expect(
+      await screen.findByText("Nenhuma amortização extraordinária registrada."),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Nenhum extrato registrado.")).toBeInTheDocument();
+    expect(screen.queryByText("R$ 12.500,50")).not.toBeInTheDocument();
+    expect(screen.queryByText("R$ 41.000,00")).not.toBeInTheDocument();
   });
 });

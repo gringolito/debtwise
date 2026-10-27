@@ -562,6 +562,85 @@
         ],
         "type": "object"
       },
+      "Prepayment": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "Amount prepaid, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "date": {
+            "description": "Date the prepayment was made.",
+            "format": "date",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "description": "The prepayment's ID.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "amount",
+          "effect"
+        ],
+        "type": "object"
+      },
+      "PrepaymentInput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "Amount prepaid, in reais, as a decimal string.",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
+            "type": "string"
+          },
+          "date": {
+            "description": "Date the prepayment was made.",
+            "format": "date",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "amount",
+          "effect"
+        ],
+        "type": "object"
+      },
+      "PrepaymentList": {
+        "additionalProperties": false,
+        "properties": {
+          "prepayments": {
+            "description": "Every prepayment recorded on the mortgage, in date order.",
+            "items": {
+              "$ref": "#/components/schemas/Prepayment"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "prepayments"
+        ],
+        "type": "object"
+      },
       "RegisteredMortgage": {
         "additionalProperties": false,
         "properties": {
@@ -715,7 +794,11 @@
             "type": "integer"
           },
           "outstanding_balance": {
-            "description": "Outstanding balance after the installment, in reais, as a decimal string.",
+            "description": "Outstanding balance after the installment and the prepayments and statements up to the next one, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "prepaid": {
+            "description": "Total of the prepayments made from this installment's due date until the next one's, in reais, as a decimal string.",
             "type": "string"
           }
         },
@@ -730,7 +813,104 @@
           "dfi",
           "fee",
           "amount",
+          "prepaid",
           "outstanding_balance"
+        ],
+        "type": "object"
+      },
+      "Statement": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "description": "Date of the outstanding balance the bank reported.",
+            "format": "date",
+            "type": "string"
+          },
+          "id": {
+            "description": "The statement's ID.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "outstanding_balance": {
+            "description": "Outstanding balance the bank reported, in reais, as a decimal string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "outstanding_balance"
+        ],
+        "type": "object"
+      },
+      "StatementDrift": {
+        "additionalProperties": false,
+        "properties": {
+          "computed_balance": {
+            "description": "Outstanding balance the schedule shows on the same date, after the installments due by then, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "date": {
+            "description": "Date of the outstanding balance the bank reported.",
+            "format": "date",
+            "type": "string"
+          },
+          "drift": {
+            "description": "The reported balance minus the computed one, in reais, as a decimal string. Positive when the bank says more is owed.",
+            "type": "string"
+          },
+          "id": {
+            "description": "The statement's ID.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "outstanding_balance": {
+            "description": "Outstanding balance the bank reported, in reais, as a decimal string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "outstanding_balance",
+          "computed_balance",
+          "drift"
+        ],
+        "type": "object"
+      },
+      "StatementInput": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "description": "Date of the outstanding balance the bank reported. One statement per date.",
+            "format": "date",
+            "type": "string"
+          },
+          "outstanding_balance": {
+            "description": "Outstanding balance the bank reported, in reais, as a decimal string.",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "outstanding_balance"
+        ],
+        "type": "object"
+      },
+      "StatementList": {
+        "additionalProperties": false,
+        "properties": {
+          "statements": {
+            "description": "Every statement recorded on the mortgage, in date order, each with its drift from the schedule. Only this list carries the drift.",
+            "items": {
+              "$ref": "#/components/schemas/StatementDrift"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "statements"
         ],
         "type": "object"
       }
@@ -924,7 +1104,7 @@
     },
     "/mortgage": {
       "delete": {
-        "description": "Deletes the registered mortgage with all its terms.",
+        "description": "Deletes the registered mortgage with all its terms, prepayments and statements.",
         "operationId": "delete-mortgage",
         "responses": {
           "204": {
@@ -1017,9 +1197,172 @@
         ]
       }
     },
+    "/mortgage/prepayments": {
+      "get": {
+        "description": "Returns the prepayments recorded on the mortgage.",
+        "operationId": "list-prepayments",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrepaymentList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the prepayments",
+        "tags": [
+          "Mortgage"
+        ]
+      },
+      "post": {
+        "description": "Records a prepayment made on the mortgage, which the schedule then replays.",
+        "operationId": "add-prepayment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepaymentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Prepayment"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Record a prepayment",
+        "tags": [
+          "Mortgage"
+        ]
+      }
+    },
+    "/mortgage/prepayments/{id}": {
+      "delete": {
+        "description": "Deletes a recorded prepayment, so the schedule no longer replays it.",
+        "operationId": "delete-prepayment",
+        "parameters": [
+          {
+            "description": "The ID the prepayment was recorded with.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The ID the prepayment was recorded with.",
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Delete a prepayment",
+        "tags": [
+          "Mortgage"
+        ]
+      },
+      "put": {
+        "description": "Replaces a recorded prepayment.",
+        "operationId": "edit-prepayment",
+        "parameters": [
+          {
+            "description": "The ID the prepayment was recorded with.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The ID the prepayment was recorded with.",
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepaymentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Prepayment"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Edit a prepayment",
+        "tags": [
+          "Mortgage"
+        ]
+      }
+    },
     "/mortgage/schedule": {
       "get": {
-        "description": "Returns the registered mortgage's installments month by month, to check against bank statements.",
+        "description": "Returns the registered mortgage's installments month by month, with its prepayments and statements replayed, to check against bank statements.",
         "operationId": "read-mortgage-schedule",
         "responses": {
           "200": {
@@ -1044,6 +1387,169 @@
           }
         },
         "summary": "Read the mortgage schedule",
+        "tags": [
+          "Mortgage"
+        ]
+      }
+    },
+    "/mortgage/statements": {
+      "get": {
+        "description": "Returns the statements recorded on the mortgage, each compared with the outstanding balance the schedule computed for its date.",
+        "operationId": "list-statements",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the statements",
+        "tags": [
+          "Mortgage"
+        ]
+      },
+      "post": {
+        "description": "Records the outstanding balance the bank reported on a date, which the schedule then continues from.",
+        "operationId": "add-statement",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatementInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Statement"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Record a statement",
+        "tags": [
+          "Mortgage"
+        ]
+      }
+    },
+    "/mortgage/statements/{id}": {
+      "delete": {
+        "description": "Deletes a recorded statement, so the schedule no longer continues from it.",
+        "operationId": "delete-statement",
+        "parameters": [
+          {
+            "description": "The ID the statement was recorded with.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The ID the statement was recorded with.",
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Delete a statement",
+        "tags": [
+          "Mortgage"
+        ]
+      },
+      "put": {
+        "description": "Replaces a recorded statement.",
+        "operationId": "edit-statement",
+        "parameters": [
+          {
+            "description": "The ID the statement was recorded with.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The ID the statement was recorded with.",
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatementInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Statement"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Edit a statement",
         "tags": [
           "Mortgage"
         ]

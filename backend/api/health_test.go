@@ -153,5 +153,21 @@ func TestOpenAPIContractIsServed(t *testing.T) {
 			"delete": {OperationID: "delete-mortgage"},
 		},
 		"/mortgage/schedule": {get: {OperationID: "read-mortgage-schedule"}},
+		"/mortgage/prepayments": {
+			get:    {OperationID: "list-prepayments"},
+			"post": {OperationID: "add-prepayment"},
+		},
+		"/mortgage/prepayments/{id}": {
+			"put":    {OperationID: "edit-prepayment"},
+			"delete": {OperationID: "delete-prepayment"},
+		},
+		"/mortgage/statements": {
+			get:    {OperationID: "list-statements"},
+			"post": {OperationID: "add-statement"},
+		},
+		"/mortgage/statements/{id}": {
+			"put":    {OperationID: "edit-statement"},
+			"delete": {OperationID: "delete-statement"},
+		},
 	}, contract.Paths)
 }
