@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses } from './types.gen';
+import type { AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -33,11 +33,39 @@ export const listBonds = <ThrowOnError extends boolean = false>(options?: Option
 export const health = <ThrowOnError extends boolean = false>(options?: Options<HealthData, ThrowOnError>) => (options?.client ?? client).get<HealthResponses, HealthErrors, ThrowOnError>({ url: '/health', ...options });
 
 /**
+ * List the projection methods
+ *
+ * Lists, for every index that is projected, the method it is projected by and the methods it offers.
+ */
+export const projectionMethods = <ThrowOnError extends boolean = false>(options?: Options<ProjectionMethodsData, ThrowOnError>) => (options?.client ?? client).get<ProjectionMethodsResponses, ProjectionMethodsErrors, ThrowOnError>({ url: '/indexes/projection-methods', ...options });
+
+/**
  * List the history of an index
  *
  * Lists the published values of an index, as of its latest refresh.
  */
 export const indexHistory = <ThrowOnError extends boolean = false>(options: Options<IndexHistoryData, ThrowOnError>) => (options.client ?? client).get<IndexHistoryResponses, IndexHistoryErrors, ThrowOnError>({ url: '/indexes/{index}/history', ...options });
+
+/**
+ * Project an index
+ *
+ * Lists the values the index's projection method gives for the months after its published values, with the methods each value comes from.
+ */
+export const indexProjection = <ThrowOnError extends boolean = false>(options: Options<IndexProjectionData, ThrowOnError>) => (options.client ?? client).get<IndexProjectionResponses, IndexProjectionErrors, ThrowOnError>({ url: '/indexes/{index}/projection', ...options });
+
+/**
+ * Choose how an index is projected
+ *
+ * Sets the method the index is projected by. Fails when the index doesn't offer the method, as an index that is not projected offers none.
+ */
+export const saveProjectionMethod = <ThrowOnError extends boolean = false>(options: Options<SaveProjectionMethodData, ThrowOnError>) => (options.client ?? client).put<SaveProjectionMethodResponses, SaveProjectionMethodErrors, ThrowOnError>({
+    url: '/indexes/{index}/projection-method',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Refresh the market data
