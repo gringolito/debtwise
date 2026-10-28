@@ -36,6 +36,7 @@ export function DecisionForm({ onSubmit, pending, errors, failure }: DecisionFor
       <TextField
         label="Data"
         type="date"
+        hint="Hoje, se vazia."
         value={values.date}
         onChange={(date) => setValues({ ...values, date })}
         invalid={errors.has("date")}

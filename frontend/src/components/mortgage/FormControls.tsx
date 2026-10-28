@@ -1,7 +1,7 @@
 import { cn } from "cn";
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
@@ -18,6 +18,8 @@ interface TextFieldProps {
   invalid: boolean;
   /** What the owner reads next to an invalid input; a generic one when the cause is unknown. */
   message?: string;
+  /** What the owner reads under the input while it is valid, such as what leaving it empty means. */
+  hint?: string;
   type?: "text" | "date" | "number";
   inputMode?: "decimal" | "numeric";
 }
@@ -29,11 +31,14 @@ export function TextField({
   onChange,
   invalid,
   message = "Valor inválido.",
+  hint,
   type = "text",
   inputMode,
 }: TextFieldProps) {
   const id = useId();
   const messageId = `${id}-message`;
+  const hintId = `${id}-hint`;
+  const hintShown = !invalid && hint !== undefined;
   return (
     <Field>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
@@ -43,11 +48,12 @@ export function TextField({
         inputMode={inputMode}
         aria-label={accessibleName}
         aria-invalid={invalid || undefined}
-        aria-describedby={invalid ? messageId : undefined}
+        aria-describedby={invalid ? messageId : hintShown ? hintId : undefined}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
       {invalid && <Message id={messageId}>{message}</Message>}
+      {hintShown && <FieldDescription id={hintId}>{hint}</FieldDescription>}
     </Field>
   );
 }

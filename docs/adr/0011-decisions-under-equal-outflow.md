@@ -7,10 +7,11 @@ date to the horizon, the compared bond's maturity:
 - **Prepay:** the amount is prepaid on the decision's date.
 - **Invest:** the amount buys the bond, and what is left of it is prepaid on the decision's date.
 
-Each prepayment follows that day's installment, as ADR-0008 orders them, and has the effect the
-owner chose. After every installment due after the decision's date, a scenario pays what the status
-quo's installment of that month is: its own installment, and the difference prepaid right after
-it, before the events of that day. What nothing is owed for any more, a prepayment larger than the
+Each of these prepayments has the effect the owner chose. They never happened, so a recorded
+prepayment or statement can't account for them: each applies after the recorded events of its date,
+and after that day's installment as ADR-0008 orders a prepayment. After every installment due after
+the decision's date, a scenario pays what the status quo's installment of that month is: its own
+installment, and the difference prepaid on its due date. What nothing is owed for any more, a prepayment larger than the
 balance or a month after the mortgage is paid off, is held as cash at zero return until the horizon.
 A month in which a scenario's installment is above the status quo's holds the difference as negative
 cash, so both scenarios still pay the same out of pocket.

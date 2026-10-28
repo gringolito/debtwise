@@ -9,13 +9,8 @@ export interface DecisionFormValues {
   effect: PrepaymentEffect;
 }
 
-/** blankDecision starts a decision on the browser's local date, not the UTC one. */
-export function blankDecision(): DecisionFormValues {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return { amount: "", date: `${now.getFullYear()}-${month}-${day}`, effect: "shorten_term" };
-}
+/** blankDecision leaves the date empty: the API reads that as its own today. */
+export const blankDecision: DecisionFormValues = { amount: "", date: "", effect: "shorten_term" };
 
 /** decisionInput builds the request body. Text the API cannot read goes through for it to reject. */
 export function decisionInput(values: DecisionFormValues): DecisionInput {

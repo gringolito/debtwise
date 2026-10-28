@@ -72,18 +72,18 @@ function VerdictCard({ verdict }: { verdict: Verdict }) {
 }
 
 export function VerdictList({ decision }: { decision: Decision }) {
-  if (decision.verdicts.length === 0) {
-    return (
-      <p className="text-muted-foreground">
-        Nenhum título à venda acompanha o indexador do financiamento.
-      </p>
-    );
-  }
   return (
     <>
-      {decision.verdicts.map((verdict) => (
-        <VerdictCard key={`${verdict.type}-${verdict.maturity}`} verdict={verdict} />
-      ))}
+      <p className="text-muted-foreground">Comparação em {formatDate(decision.date)}</p>
+      {decision.verdicts.length === 0 ? (
+        <p className="text-muted-foreground">
+          Nenhum título à venda acompanha o indexador do financiamento.
+        </p>
+      ) : (
+        decision.verdicts.map((verdict) => (
+          <VerdictCard key={`${verdict.type}-${verdict.maturity}`} verdict={verdict} />
+        ))
+      )}
     </>
   );
 }

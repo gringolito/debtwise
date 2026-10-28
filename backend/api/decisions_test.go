@@ -231,6 +231,27 @@ func TestAnNTNBPrincipalVerdictWithoutTheIPCAItFollowsIsUnavailable(t *testing.T
 	}, got)
 }
 
+// 7.71 buys less than a hundredth of the LTN on offer, at 772.001684 a bond, so its verdict has the
+// price and no scenarios.
+func TestAnAmountBelowAHundredthOfTheBondHasNoScenarios(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
+	do(t, s.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
+
+	got := s.decide(t, `{"amount": "7.71", "effect": "shorten_term"}`)
+	status := s.status(t)
+
+	assert.Equal(t, decisionResult{
+		Amount: "7.71", Date: "2026-10-28", Effect: "shorten_term",
+		Verdicts: []decisionVerdict{{
+			Type: "ltn", Maturity: "2029-01-01", Rate: "0.1276", Unavailable: "amount_too_small",
+			UnitPrice: "772.001684", Quantity: "0.00", ProjectedBy: []projectedBy{},
+			MarketData: verdictMarketData{Bonds: status.Bonds, Focus: status.Focus, Indexes: []indexStatus{}},
+		}},
+	}, got)
+}
+
 func TestADecisionFailsWithoutAMortgageOrWithAnInvalidRequest(t *testing.T) {
 	t.Parallel()
 

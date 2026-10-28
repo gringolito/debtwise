@@ -16,7 +16,7 @@ type Plan struct {
 	Amount decimal.Decimal
 	Effect PrepaymentEffect
 	// TopUp is given each installment due after Start once it is charged, and returns what to
-	// prepay right after it. Nil, or a result that isn't positive, prepays nothing.
+	// prepay on its due date. Nil, or a result that isn't positive, prepays nothing.
 	TopUp func(Installment) decimal.Decimal
 	Until time.Time
 }
@@ -43,9 +43,8 @@ type Planned struct {
 }
 
 // Plan replays the schedule of valid terms as Schedule does, with the plan's prepayments added to
-// the events (ADR-0011). The prepayment on Start applies with the recorded events of its date,
-// after their prepayments and before their statements. A top-up applies right after the
-// installment it follows, before the events dated on its due date.
+// the events (ADR-0011). They never happened, so a recorded event can't account for them: each
+// applies after the recorded events of its date, a top-up after the installment it follows too.
 func (t Terms) Plan(outlook indexes.Outlook, events Events, today time.Time, plan Plan) Planned {
 	r := t.replayer(outlook, events, today)
 	if plan.Amount.Cmp(decimal.Decimal{}) > 0 {
@@ -68,8 +67,9 @@ func (t Terms) Plan(outlook indexes.Outlook, events Events, today time.Time, pla
 		}
 
 		installment := r.charge(number)
+		sameDay := p.apply(number, due.AddDate(0, 0, 1))
 		topUp := p.topUp(number, installment)
-		installment.Prepaid = topUp.Add(p.apply(number, addMonths(t.FirstInstallmentDate, number)))
+		installment.Prepaid = sameDay.Add(topUp).Add(p.apply(number, addMonths(t.FirstInstallmentDate, number)))
 		installment.OutstandingBalance = r.balance
 		p.planned.Installments = append(p.planned.Installments, PlannedInstallment{Installment: installment, TopUp: topUp})
 		paid = number
@@ -131,12 +131,9 @@ func (p *planner) topUp(number int, installment Installment) decimal.Decimal {
 	return took
 }
 
-// schedule adds e to the events still to apply, after those of earlier dates and the prepayments
-// of its date, and before the statements of its date.
+// schedule adds e to the events still to apply, after every event dated on or before its date.
 func (r *replayer) schedule(e event) {
-	i := slices.IndexFunc(r.events, func(other event) bool {
-		return other.date.After(e.date) || other.date.Equal(e.date) && other.statement != nil
-	})
+	i := slices.IndexFunc(r.events, func(other event) bool { return other.date.After(e.date) })
 	if i < 0 {
 		i = len(r.events)
 	}

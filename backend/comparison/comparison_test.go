@@ -2,6 +2,7 @@ package comparison_test
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -94,46 +95,109 @@ func interestFreeTerms(t *testing.T) mortgage.Terms {
 	}
 }
 
-// Prepaying 5,000.00 of the 12,000.00 owed on 2025-01-10 keeps the 1,000.00 installment and ends
-// the mortgage after 7 more of them, on 2025-08-10, while it would have run to 2026-01-10. Under
-// equal outflow the 1,000.00 the owner would still have paid each month from 2025-09-10 to
-// 2026-01-10 has nowhere to go, so it is held at zero return: 5,000.00 on the horizon, an LTN
-// maturing on 2027-01-01, and nothing owed.
+// Prepaying 5,000.00 of the 12,000.00 owed on 2025-01-10 ends the mortgage on 2025-08-10, while it
+// would have run to 2026-01-10. Shortening the term keeps the 1,000.00 installment; lowering it
+// spreads the 7,000.00 left over the 12 months left, and equal outflow prepays the rest of each
+// 1,000.00, so it ends on the same date. Either way, the 1,000.00 the owner would still have paid
+// each month from 2025-09-10 to 2026-01-10 has nowhere to go, so it is held at zero return:
+// 5,000.00 on the horizon, an LTN maturing on 2027-01-01, and nothing owed.
 func TestFreedCashIsHeldAtZeroReturnOnceTheMortgageIsPaidOff(t *testing.T) {
 	t.Parallel()
 
-	ltn := bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")}
-	decided := date(t, "2025-01-10")
-
-	verdicts, err := comparison.Decide(
-		comparison.Mortgage{Terms: interestFreeTerms(t)},
-		comparison.Market{Quotes: []bonds.Quote{{Bond: ltn, Buy: &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")}}}},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm},
-		decided,
-	)
-	require.NoError(t, err)
-	require.Len(t, verdicts, 1)
-
-	prepay := verdicts[0].Prepay
-	assert.Equal(t, []flow{
-		{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "7000.00"},
-		{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "6000.00"},
-		{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "5000.00"},
-		{"2025-04-10", "1000.00", "0.00", "0.00", "0.00", "", "4000.00"},
-		{"2025-05-10", "1000.00", "0.00", "0.00", "0.00", "", "3000.00"},
-		{"2025-06-10", "1000.00", "0.00", "0.00", "0.00", "", "2000.00"},
-		{"2025-07-10", "1000.00", "0.00", "0.00", "0.00", "", "1000.00"},
-		{"2025-08-10", "1000.00", "0.00", "0.00", "0.00", "", "0.00"},
+	held := []flow{
 		{"2025-09-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
 		{"2025-10-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
 		{"2025-11-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
 		{"2025-12-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
 		{"2026-01-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
 		{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
-	}, flows(prepay))
-	assert.Equal(t, "5000.00", prepay.Cash.String())
-	assert.Equal(t, "0.00", prepay.OutstandingBalance.String())
-	assert.Equal(t, "5000.00", prepay.NetWorth.String())
+	}
+
+	tests := []struct {
+		effect mortgage.PrepaymentEffect
+		paying []flow
+	}{
+		{
+			effect: mortgage.ShortenTerm,
+			paying: []flow{
+				{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "7000.00"},
+				{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "6000.00"},
+				{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "5000.00"},
+				{"2025-04-10", "1000.00", "0.00", "0.00", "0.00", "", "4000.00"},
+				{"2025-05-10", "1000.00", "0.00", "0.00", "0.00", "", "3000.00"},
+				{"2025-06-10", "1000.00", "0.00", "0.00", "0.00", "", "2000.00"},
+				{"2025-07-10", "1000.00", "0.00", "0.00", "0.00", "", "1000.00"},
+				{"2025-08-10", "1000.00", "0.00", "0.00", "0.00", "", "0.00"},
+			},
+		},
+		{
+			effect: mortgage.LowerInstallment,
+			paying: []flow{
+				{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "7000.00"},
+				{"2025-02-10", "583.33", "0.00", "416.67", "0.00", "", "6000.00"},
+				{"2025-03-10", "545.45", "0.00", "454.55", "0.00", "", "5000.00"},
+				{"2025-04-10", "500.00", "0.00", "500.00", "0.00", "", "4000.00"},
+				{"2025-05-10", "444.44", "0.00", "555.56", "0.00", "", "3000.00"},
+				{"2025-06-10", "375.00", "0.00", "625.00", "0.00", "", "2000.00"},
+				{"2025-07-10", "285.71", "0.00", "714.29", "0.00", "", "1000.00"},
+				{"2025-08-10", "166.67", "0.00", "833.33", "0.00", "", "0.00"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.effect), func(t *testing.T) {
+			t.Parallel()
+
+			ltn := bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")}
+			decided := date(t, "2025-01-10")
+
+			verdicts, err := comparison.Decide(
+				comparison.Mortgage{Terms: interestFreeTerms(t)},
+				comparison.Market{Quotes: []bonds.Quote{{Bond: ltn, Buy: &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")}}}},
+				comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: tt.effect},
+				decided,
+			)
+			require.NoError(t, err)
+			require.Len(t, verdicts, 1)
+
+			prepay := verdicts[0].Prepay
+			assert.Equal(t, append(slices.Clone(tt.paying), held...), flows(prepay))
+			assert.Equal(t, "5000.00", prepay.Cash.String())
+			assert.Equal(t, "0.00", prepay.OutstandingBalance.String())
+			assert.Equal(t, "5000.00", prepay.NetWorth.String())
+		})
+	}
+}
+
+// A statement the bank issued on the decision's date reports the balance without the decision's
+// prepayment, which never happened, so the prepayment applies after it: the 11,500.00 the bank
+// reports on 2025-01-10, less the 5,000.00, leaves 6,500.00. At no interest, prepaying avoids
+// nothing.
+func TestADecisionPrepaysAfterTheStatementsOfItsDate(t *testing.T) {
+	t.Parallel()
+
+	decided := date(t, "2025-01-10")
+	events := mortgage.Events{
+		Prepayments: []mortgage.Prepayment{{Date: date(t, "2024-06-10"), Amount: dec(t, "2000.00"), Effect: mortgage.ShortenTerm}},
+		Statements:  []mortgage.Statement{{Date: decided, OutstandingBalance: dec(t, "11500.00")}},
+	}
+
+	verdicts, err := comparison.Decide(
+		comparison.Mortgage{Terms: interestFreeTerms(t), Events: events},
+		comparison.Market{Quotes: []bonds.Quote{{
+			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
+			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
+		}}},
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm},
+		decided,
+	)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	v := verdicts[0]
+	assert.Equal(t, flow{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "6500.00"}, flows(v.Prepay)[0])
+	assert.Equal(t, "0.00", v.AvoidedCost.String())
 }
 
 // trMortgage borrows 300,000.00 on 2020-01-01 over 360 months under SAC, at 10.06% a year
@@ -253,8 +317,10 @@ func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 		quote(bonds.LTN, "2025-01-01", buy),
 		quote(bonds.LTN, "2028-01-01", buy),
 		quote(bonds.LTN, "2029-01-01", nil),
+		quote(bonds.LTN, "2030-01-01", buy),
 		quote(bonds.NTNF, "2031-01-01", buy),
 		quote(bonds.NTNBPrincipal, "2029-05-15", buy),
+		quote(bonds.NTNBPrincipal, "2033-05-15", buy),
 		quote(bonds.NTNBPrincipal, "2035-05-15", nil),
 		quote(bonds.NTNB, "2033-05-15", buy),
 	}}
@@ -263,10 +329,10 @@ func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 		indexer mortgage.Indexer
 		want    []string
 	}{
-		{mortgage.NoIndexer, []string{"ltn 2028-01-01"}},
-		{mortgage.TR, []string{"ltn 2028-01-01"}},
-		{mortgage.PoupancaYield, []string{"ltn 2028-01-01"}},
-		{mortgage.IPCA, []string{"ntn_b_principal 2029-05-15 missing_ipca"}},
+		{mortgage.NoIndexer, []string{"ltn 2028-01-01", "ltn 2030-01-01"}},
+		{mortgage.TR, []string{"ltn 2028-01-01", "ltn 2030-01-01"}},
+		{mortgage.PoupancaYield, []string{"ltn 2028-01-01", "ltn 2030-01-01"}},
+		{mortgage.IPCA, []string{"ntn_b_principal 2029-05-15 missing_ipca", "ntn_b_principal 2033-05-15 missing_ipca"}},
 	}
 
 	for _, tt := range tests {
@@ -479,4 +545,63 @@ func TestAnNTNBPrincipalVerdictFollowsTheIPCAPathInBothScenarios(t *testing.T) {
 			assert.Equal(t, []indexes.Index{indexes.IPCA, indexes.IPCANumber}, v.Indexes)
 		})
 	}
+}
+
+// An amount that buys less than a hundredth of the bond has no scenarios, but its price still names
+// the projected IPCA its VNA was grown by: settled on 2025-12-03, a month after today, the VNA
+// grows pro rata from 2025-11-15 by the projected IPCA of November.
+func TestAnAmountTooSmallForAHundredthOfTheBondHasNoScenarios(t *testing.T) {
+	t.Parallel()
+
+	m, outlook := ipcaMortgage(t, "0.20")
+	decided := date(t, "2025-12-03")
+	market := comparison.Market{
+		Quotes: []bonds.Quote{{
+			Bond: bonds.Bond{Type: bonds.NTNBPrincipal, Maturity: date(t, "2026-08-15")},
+			Buy:  &bonds.Price{Rate: dec(t, "0.075"), UnitPrice: dec(t, "4000.00")},
+		}},
+		Taxes: lotTaxes(t),
+		IPCA: bonds.IPCA{
+			Numbers: bonds.IPCANumbers{date(t, "2000-06-01"): dec(t, "1614.62"), date(t, "2025-09-01"): dec(t, "7300.00")},
+			Outlook: outlook,
+		},
+	}
+
+	verdicts, err := comparison.Decide(m, market,
+		comparison.Decision{Amount: dec(t, "42.79"), Date: decided, Effect: mortgage.ShortenTerm}, date(t, "2025-11-03"))
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	v := verdicts[0]
+	assert.Equal(t, comparison.AmountTooSmall, v.Unavailable)
+	assert.Equal(t, "4313.493690", v.UnitPrice.String())
+	assert.Equal(t, "0.00", v.Quantity.String())
+	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.IPCA, Method: indexes.Trailing12}}, v.ProjectedBy)
+	assert.Empty(t, v.Prepay.CashFlows)
+	assert.Empty(t, v.Invest.CashFlows)
+}
+
+// A decision dated after today starts from a balance corrected by the projected TR of the months
+// before it, though no installment falls due between it and the horizon, so the verdict names the
+// TR's method. Today is 2025-01-08; the installments of 2025-01-10 and 2025-02-10 are corrected by
+// the projected TR, and the LTN matures on 2025-03-01, before the next one.
+func TestAVerdictNamesTheProjectionsTheBalancesBeforeTheDecisionRead(t *testing.T) {
+	t.Parallel()
+
+	m := trMortgage(t)
+	m.Terms = interestFreeTerms(t)
+	m.Terms.Indexer = mortgage.TR
+
+	verdicts, err := comparison.Decide(m,
+		comparison.Market{Quotes: []bonds.Quote{{
+			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2025-03-01")},
+			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")},
+		}}},
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, "2025-02-15"), Effect: mortgage.ShortenTerm},
+		date(t, "2025-01-08"),
+	)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}}, verdicts[0].ProjectedBy)
 }

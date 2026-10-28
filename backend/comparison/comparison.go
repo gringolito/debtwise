@@ -159,6 +159,7 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 
 	v.UnitPrice = price
 	v.Quantity = c.decision.Amount.Quo(price).TruncateQuantity()
+	v.ProjectedBy = projectedBy(priceBy, nil, nil)
 
 	if v.Quantity.Cmp(smallestFraction) < 0 {
 		v.Unavailable = AmountTooSmall
@@ -180,7 +181,7 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 	v.Invest = c.scenario(statusQuo, c.decision.Amount.Sub(cost), cost, &valuation.Maturity)
 	v.Advantage = v.Invest.NetWorth.Sub(v.Prepay.NetWorth)
 	v.AvoidedCost = statusQuo.Balance.Sub(v.Prepay.OutstandingBalance).Add(v.Prepay.Cash).Sub(c.decision.Amount)
-	v.ProjectedBy = projectedBy(priceBy, valuation.Maturity.ProjectedBy, v.Invest, v.Prepay)
+	v.ProjectedBy = projectedBy(priceBy, valuation.Maturity.ProjectedBy, statusQuo.Installments)
 
 	return v, nil
 }
@@ -310,9 +311,9 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested decimal
 }
 
 // projectedBy returns the projection methods of the bond's price and Maturity Value and of the
-// index values that corrected the scenarios' installments, each index once, in the order of
-// indexes.All.
-func projectedBy(price, maturity []indexes.ProjectionMethod, scenarios ...Scenario) []indexes.ProjectionMethod {
+// index values that corrected the installments up to the horizon, each index once, in the order of
+// indexes.All. The status quo's installments are those every scenario's balance is built on.
+func projectedBy(price, maturity []indexes.ProjectionMethod, installments []mortgage.PlannedInstallment) []indexes.ProjectionMethod {
 	byIndex := make(map[indexes.Index]indexes.ProjectionMethod)
 
 	note := func(methods []indexes.ProjectionMethod) {
@@ -324,15 +325,9 @@ func projectedBy(price, maturity []indexes.ProjectionMethod, scenarios ...Scenar
 	note(price)
 	note(maturity)
 
-	for _, s := range scenarios {
-		for _, f := range s.CashFlows {
-			if f.Installment == nil {
-				continue
-			}
-
-			for _, v := range f.Installment.IndexValues {
-				note(v.Methods)
-			}
+	for _, i := range installments {
+		for _, v := range i.IndexValues {
+			note(v.Methods)
 		}
 	}
 

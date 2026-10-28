@@ -6,7 +6,6 @@ import { renderAt } from "@/test/renderAt";
 import { problem, stubRoutes } from "@/test/stubServer";
 
 afterEach(() => {
-  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -62,26 +61,22 @@ const decisionForm = () => screen.findByRole("form", { name: "Simular decisão" 
 const verdictRegion = (name: string) => screen.findByRole("region", { name });
 
 describe("the decision form", () => {
-  it("sends the amount, today and the effect, and lists the bond of each verdict", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date(2026, 9, 27, 23, 30));
+  it("sends the amount and the effect, leaves the date to the server, and lists each verdict", async () => {
     const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
     renderAt("/decisao");
 
     const form = await decisionForm();
-    expect(within(form).getByLabelText("Data")).toHaveValue("2026-10-27");
+    expect(within(form).getByLabelText("Data")).toHaveValue("");
+    expect(within(form).getByLabelText("Data")).toHaveAccessibleDescription("Hoje, se vazia.");
     expect(within(form).getByLabelText("Efeito")).toHaveValue("shorten_term");
     fill(form, "Valor", "10.000,00");
     fireEvent.click(within(form).getByRole("button", { name: "Comparar" }));
 
     const verdict = await verdictRegion("Tesouro Prefixado 2029");
     expect(requests.map((r) => [r.method, new URL(r.url).pathname, r.body])).toEqual([
-      [
-        "POST",
-        "/api/decisions",
-        { amount: "10000.00", date: "2026-10-27", effect: "shorten_term" },
-      ],
+      ["POST", "/api/decisions", { amount: "10000.00", effect: "shorten_term" }],
     ]);
+    expect(screen.getByText("Comparação em 27/10/2026")).toBeInTheDocument();
     expect(
       within(verdict).getByText(
         "Vencimento (horizonte) 01/01/2029 · Taxa 12,76% · Preço R$ 771,26 · Quantidade 12,96",
@@ -512,19 +507,7 @@ describe("a decision the server rejects", () => {
     expect(requests.map((r) => r.body)).toEqual([
       { amount: "2500.50", date: "2026-12-01", effect: "lower_installment" },
     ]);
-  });
-
-  it("leaves the date out when the owner clears it, for the server to use today", async () => {
-    const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
-    renderAt("/decisao");
-
-    const form = await decisionForm();
-    fill(form, "Valor", "10.000,00");
-    fill(form, "Data", "");
-    fireEvent.click(within(form).getByRole("button", { name: "Comparar" }));
-
-    await verdictRegion("Tesouro Prefixado 2029");
-    expect(requests.map((r) => r.body)).toEqual([{ amount: "10000.00", effect: "shorten_term" }]);
+    expect(screen.getByText("Comparação em 01/12/2026")).toBeInTheDocument();
   });
 
   it("shows the reason next to each field the server rejects", async () => {
