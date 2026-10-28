@@ -200,6 +200,34 @@ func TestADecisionPrepaysAfterTheStatementsOfItsDate(t *testing.T) {
 	assert.Equal(t, "0.00", v.AvoidedCost.String())
 }
 
+// A top-up follows the recorded events of its due date too: the statement of 2025-03-10 sets the
+// balance to 5,000.00 after that day's 545.45 installment, and only then is the 454.55 it leaves of
+// the status quo's 1,000.00 prepaid, leaving 4,545.45.
+func TestATopUpPrepaysAfterTheStatementsOfItsDueDate(t *testing.T) {
+	t.Parallel()
+
+	decided := date(t, "2025-01-10")
+	events := mortgage.Events{Statements: []mortgage.Statement{{Date: date(t, "2025-03-10"), OutstandingBalance: dec(t, "5000.00")}}}
+
+	verdicts, err := comparison.Decide(
+		comparison.Mortgage{Terms: interestFreeTerms(t), Events: events},
+		comparison.Market{Quotes: []bonds.Quote{{
+			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
+			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
+		}}},
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.LowerInstallment},
+		decided,
+	)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	assert.Equal(t, []flow{
+		{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "7000.00"},
+		{"2025-02-10", "583.33", "0.00", "416.67", "0.00", "", "6000.00"},
+		{"2025-03-10", "545.45", "0.00", "454.55", "0.00", "", "4545.45"},
+	}, flows(verdicts[0].Prepay)[:3])
+}
+
 // trMortgage borrows 300,000.00 on 2020-01-01 over 360 months under SAC, at 10.06% a year
 // effective plus TR, with no insurance or fee, due on the 1st from 2020-02-01. TR is published as
 // 0.1488% for every month of 2024, the 1.8% a year the spreadsheet assumes, and projected by its
