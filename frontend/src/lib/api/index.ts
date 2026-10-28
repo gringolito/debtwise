@@ -5,6 +5,7 @@ import {
   addLot,
   addPrepayment,
   addStatement,
+  decide as requestDecision,
   deleteLot,
   deleteMortgage,
   deletePrepayment,
@@ -32,8 +33,12 @@ import type {
   BondPrice,
   BondQuote,
   BondsStatus,
+  CashFlow,
+  CashFlowInstallment,
   ContractRate,
   CorrectionIndex,
+  Decision,
+  DecisionInput,
   ErrorModel,
   Health,
   IndexHistory,
@@ -57,12 +62,15 @@ import type {
   ProjectionMethod,
   ProjectionMethods,
   RegisteredMortgage,
+  Scenario,
   Schedule,
   ScheduledInstallment,
   Statement,
   StatementDrift,
   StatementInput,
   StatementList,
+  Verdict,
+  VerdictMarketData,
 } from "./generated/types.gen";
 
 export type {
@@ -70,8 +78,12 @@ export type {
   BondPrice,
   BondQuote,
   BondsStatus,
+  CashFlow,
+  CashFlowInstallment,
   ContractRate,
   CorrectionIndex,
+  Decision,
+  DecisionInput,
   Health,
   IndexHistory,
   IndexProjection,
@@ -94,12 +106,15 @@ export type {
   ProjectionMethod,
   ProjectionMethods,
   RegisteredMortgage,
+  Scenario,
   Schedule,
   ScheduledInstallment,
   Statement,
   StatementDrift,
   StatementInput,
   StatementList,
+  Verdict,
+  VerdictMarketData,
 };
 export type IndexName = IndexHistory["index"];
 export type ProjectionMethodName = ProjectionMethod["method"];
@@ -284,4 +299,10 @@ export async function putLot(id: number, body: LotInput): Promise<Lot> {
 export async function removeLot(id: number): Promise<void> {
   const { error, response } = await deleteLot({ path: { id } });
   if (!response?.ok) throw failure(error, response);
+}
+
+export async function decide(body: DecisionInput): Promise<Decision> {
+  const { data, error, response } = await requestDecision({ body });
+  if (!data) throw failure(error, response);
+  return data;
 }

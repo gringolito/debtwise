@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddLotData, AddLotErrors, AddLotResponses, AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, DeleteLotData, DeleteLotErrors, DeleteLotResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditLotData, EditLotErrors, EditLotResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListLotsData, ListLotsErrors, ListLotsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
+import type { AddLotData, AddLotErrors, AddLotResponses, AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, DecideData, DecideErrors, DecideResponses, DeleteLotData, DeleteLotErrors, DeleteLotResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditLotData, EditLotErrors, EditLotResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListLotsData, ListLotsErrors, ListLotsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -24,6 +24,20 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  * Lists the Tesouro Direto bonds DebtWise compares with their buy and sell rates and prices, as of the latest refresh of the market data.
  */
 export const listBonds = <ThrowOnError extends boolean = false>(options?: Options<ListBondsData, ThrowOnError>) => (options?.client ?? client).get<ListBondsResponses, ListBondsErrors, ThrowOnError>({ url: '/bonds', ...options });
+
+/**
+ * Compare prepaying an amount with buying a bond
+ *
+ * Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.
+ */
+export const decide = <ThrowOnError extends boolean = false>(options: Options<DecideData, ThrowOnError>) => (options.client ?? client).post<DecideResponses, DecideErrors, ThrowOnError>({
+    url: '/decisions',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Check server health

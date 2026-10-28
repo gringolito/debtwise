@@ -37,7 +37,7 @@ function indexPeriod({ index, period_start, period_end }: CorrectionIndex): stri
   return index === "ipca" ? formatMonth(period_start) : formatPeriod(period_start, period_end);
 }
 
-function IndexCell({ indexValues }: { indexValues: CorrectionIndex[] }) {
+export function IndexCell({ indexValues }: { indexValues: CorrectionIndex[] }) {
   if (indexValues.length === 0) return <>—</>;
   return (
     <>

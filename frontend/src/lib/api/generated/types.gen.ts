@@ -60,6 +60,76 @@ export type BondsStatus = {
     status: 'fresh' | 'stale' | 'failed' | 'missing';
 };
 
+export type CashFlow = {
+    /**
+     * The date of the flows.
+     */
+    date: string;
+    /**
+     * The cash set aside that day because nothing is owed to prepay with it, in reais, as a decimal string. Negative when the scenario's installment is above the status quo's.
+     */
+    held: string;
+    /**
+     * The installment due that day. Absent when none is.
+     */
+    installment?: CashFlowInstallment;
+    /**
+     * What the bond cost, in reais, as a decimal string.
+     */
+    invested: string;
+    /**
+     * What is owed once the day's flows are done, in reais, as a decimal string.
+     */
+    outstanding_balance: string;
+    /**
+     * What the scenario's prepayment that day took off the outstanding balance, in reais, as a decimal string.
+     */
+    prepaid: string;
+    /**
+     * The bond's Maturity Value paid that day. Only on the horizon of the invest scenario.
+     */
+    redeemed?: LotAmount;
+};
+
+export type CashFlowInstallment = {
+    /**
+     * Outstanding balance paid off, in reais, as a decimal string.
+     */
+    amortization: string;
+    /**
+     * Total the installment charges, in reais, as a decimal string.
+     */
+    amount: string;
+    /**
+     * Indexer correction added to the outstanding balance before interest is charged, in reais, as a decimal string.
+     */
+    correction: string;
+    /**
+     * DFI (property damage insurance) premium, in reais, as a decimal string.
+     */
+    dfi: string;
+    /**
+     * Admin fee, in reais, as a decimal string.
+     */
+    fee: string;
+    /**
+     * The index values behind the correction, oldest period first.
+     */
+    index_values: Array<CorrectionIndex>;
+    /**
+     * Interest charged, in reais, as a decimal string.
+     */
+    interest: string;
+    /**
+     * MIP (life and disability insurance) premium, in reais, as a decimal string.
+     */
+    mip: string;
+    /**
+     * Installment number, counting from 1.
+     */
+    number: number;
+};
+
 export type ContractRate = {
     /**
      * The basis the rate was entered on; the other one is derived from it.
@@ -119,6 +189,40 @@ export type CorrectionIndex = {
      * The index value for the period, in percent, as a decimal string. Absent when status is missing.
      */
     value?: string;
+};
+
+export type Decision = {
+    /**
+     * The amount prepaid or invested, in reais, as a decimal string.
+     */
+    amount: string;
+    /**
+     * The date the amount is prepaid or invested on.
+     */
+    date: string;
+    /**
+     * What each prepayment changes.
+     */
+    effect: 'shorten_term' | 'lower_installment';
+    /**
+     * A verdict for every bond on offer that follows the mortgage's indexer, pays no coupon and matures after the date, in the order of the bond catalogue.
+     */
+    verdicts: Array<Verdict>;
+};
+
+export type DecisionInput = {
+    /**
+     * The amount to prepay or invest, in reais, as a decimal string.
+     */
+    amount: string;
+    /**
+     * The date the amount is prepaid or invested on. Today when absent; it must not be before today.
+     */
+    date?: string;
+    /**
+     * What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.
+     */
+    effect: 'shorten_term' | 'lower_installment';
 };
 
 export type ErrorDetail = {
@@ -658,6 +762,29 @@ export type RegisteredMortgage = {
     term_months: number;
 };
 
+export type Scenario = {
+    /**
+     * The bond's Maturity Value, gross and net of IOF, income tax and the custody fee. Only in the invest scenario.
+     */
+    bond?: LotAmount;
+    /**
+     * The cash held at zero return on the horizon, in reais, as a decimal string.
+     */
+    cash: string;
+    /**
+     * The scenario's cash flows from the date to the horizon, by date.
+     */
+    cash_flows: Array<CashFlow>;
+    /**
+     * The bond's net Maturity Value and the cash held, less the outstanding balance, on the horizon, in reais, as a decimal string.
+     */
+    net_worth: string;
+    /**
+     * What is still owed on the horizon, in reais, as a decimal string.
+     */
+    outstanding_balance: string;
+};
+
 export type Schedule = {
     /**
      * Every installment of the mortgage, in due date order.
@@ -772,6 +899,72 @@ export type StatementList = {
     statements: Array<StatementDrift>;
 };
 
+export type Verdict = {
+    /**
+     * The invest scenario's net worth on the horizon less the prepay scenario's, in reais, as a decimal string. Positive favours investing. Absent when the verdict is unavailable.
+     */
+    advantage?: string;
+    /**
+     * What prepaying the amount saves by the horizon beyond the amount itself, in reais, as a decimal string. Absent when the verdict is unavailable.
+     */
+    avoided_cost?: string;
+    /**
+     * Investing the amount in the bond. Absent when the verdict is unavailable.
+     */
+    invest?: Scenario;
+    /**
+     * How fresh the market data the verdict reads is.
+     */
+    market_data: VerdictMarketData;
+    /**
+     * The date the bond matures: the horizon both scenarios are valued on.
+     */
+    maturity: string;
+    /**
+     * Prepaying the amount. Absent when the verdict is unavailable.
+     */
+    prepay?: Scenario;
+    /**
+     * The projection method of each index a projected value of the verdict comes from. Empty when it reads published values only.
+     */
+    projected_by: Array<ProjectedBy>;
+    /**
+     * How many bonds the amount buys, in hundredths of a bond, as a decimal string. Absent when the verdict is unavailable for missing_ipca.
+     */
+    quantity?: string;
+    /**
+     * The buy rate of the bond's quote, as a decimal fraction. For ntn_b_principal it is the real rate over IPCA.
+     */
+    rate: string;
+    /**
+     * The type of the bond compared.
+     */
+    type: 'ltn' | 'ntn_f' | 'ntn_b_principal' | 'ntn_b';
+    /**
+     * Why the verdict has no scenarios. missing_ipca: the IPCA the bond's VNA follows is not available yet; amount_too_small: the amount buys less than a hundredth of the bond. Absent when it has them.
+     */
+    unavailable?: 'missing_ipca' | 'amount_too_small';
+    /**
+     * The price of one bond at the rate for settlement on the date, in reais, as a decimal string. Absent when the verdict is unavailable for missing_ipca.
+     */
+    unit_price?: string;
+};
+
+export type VerdictMarketData = {
+    /**
+     * How fresh the bond prices are.
+     */
+    bonds: BondsStatus;
+    /**
+     * How fresh the Focus expectations are.
+     */
+    focus: FocusStatus;
+    /**
+     * How fresh each index the verdict reads is.
+     */
+    indexes: Array<IndexStatus>;
+};
+
 export type ListBondsData = {
     body?: never;
     path?: never;
@@ -796,6 +989,31 @@ export type ListBondsResponses = {
 };
 
 export type ListBondsResponse = ListBondsResponses[keyof ListBondsResponses];
+
+export type DecideData = {
+    body: DecisionInput;
+    path?: never;
+    query?: never;
+    url: '/decisions';
+};
+
+export type DecideErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type DecideError = DecideErrors[keyof DecideErrors];
+
+export type DecideResponses = {
+    /**
+     * OK
+     */
+    200: Decision;
+};
+
+export type DecideResponse = DecideResponses[keyof DecideResponses];
 
 export type HealthData = {
     body?: never;
