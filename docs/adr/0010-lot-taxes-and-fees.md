@@ -72,6 +72,10 @@ or one rule, so correcting it later is a new row or a change to one function.
 - **Taxing the whole coupon:** rejected. Only the yield is income: a lot bought between coupons
   pays the seller for the interest accrued so far, and the next coupon returns it as principal.
   The yield is measured at the contracted rate, the Accrual Value, so it needs no market price.
+- **Splitting the purchase price across the flows by their present value:** rejected. Each coupon
+  would carry its own share of the price, so early coupons would be taxed on little and most of
+  the tax would fall at maturity. The owner's Tesouro Direto statements tax each coupon on the
+  interest the invested capital earned since the purchase or the previous coupon, as above.
 - **IOF on a coupon paid within 30 days of the purchase:** rejected. IOF falls on redemptions,
   and a coupon is a periodic payment, not a redemption.
 - **The IR bracket of a coupon counted from the previous coupon:** rejected. A coupon's days are
