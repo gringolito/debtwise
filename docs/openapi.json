@@ -490,6 +490,314 @@
         ],
         "type": "object"
       },
+      "Lot": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The lot's ID.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "maturity": {
+            "description": "The date the bond matures.",
+            "format": "date",
+            "type": "string"
+          },
+          "purchase_date": {
+            "description": "The date the purchase settled.",
+            "format": "date",
+            "type": "string"
+          },
+          "quantity": {
+            "description": "How many bonds the lot bought, as a decimal string.",
+            "type": "string"
+          },
+          "rate": {
+            "description": "The yearly rate the lot was bought at, as a decimal fraction: 0.1276 is 12.76% a year. For ntn_b_principal and ntn_b it is the real rate over IPCA.",
+            "type": "string"
+          },
+          "type": {
+            "description": "The type of bond the lot bought.",
+            "enum": [
+              "ltn",
+              "ntn_f",
+              "ntn_b_principal",
+              "ntn_b"
+            ],
+            "type": "string"
+          },
+          "unit_price": {
+            "description": "The price paid for one bond, in reais, as a decimal string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "maturity",
+          "purchase_date",
+          "rate",
+          "unit_price",
+          "quantity"
+        ],
+        "type": "object"
+      },
+      "LotAmount": {
+        "additionalProperties": false,
+        "properties": {
+          "custody_fee": {
+            "description": "The custody fee taken from the gross amount, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "gross": {
+            "description": "The amount before IOF, income tax and the custody fee, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "income_tax": {
+            "description": "The income tax taken from the gross amount, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "iof": {
+            "description": "The IOF taken from the gross amount, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "net": {
+            "description": "The amount left after IOF, income tax and the custody fee, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "projected_by": {
+            "description": "The projection methods of the projected IPCA values the amount depends on. Empty when it depends on published values only.",
+            "items": {
+              "$ref": "#/components/schemas/ProjectedBy"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "gross",
+          "iof",
+          "income_tax",
+          "custody_fee",
+          "net",
+          "projected_by"
+        ],
+        "type": "object"
+      },
+      "LotCoupon": {
+        "additionalProperties": false,
+        "properties": {
+          "custody_fee": {
+            "description": "The custody fee taken from the coupon, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "date": {
+            "description": "The date the coupon is paid.",
+            "format": "date",
+            "type": "string"
+          },
+          "gross": {
+            "description": "The coupon before IOF, income tax and the custody fee, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "income_tax": {
+            "description": "The income tax taken from the coupon, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "iof": {
+            "description": "The IOF taken from the coupon, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "net": {
+            "description": "The coupon left after IOF, income tax and the custody fee, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "paid": {
+            "description": "Whether the coupon has been paid by the date the lot is valued on.",
+            "type": "boolean"
+          },
+          "projected_by": {
+            "description": "The projection methods of the projected IPCA values the coupon depends on. Empty when it depends on published values only.",
+            "items": {
+              "$ref": "#/components/schemas/ProjectedBy"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "date",
+          "paid",
+          "gross",
+          "iof",
+          "income_tax",
+          "custody_fee",
+          "net",
+          "projected_by"
+        ],
+        "type": "object"
+      },
+      "LotInput": {
+        "additionalProperties": false,
+        "properties": {
+          "maturity": {
+            "description": "The date the bond matures.",
+            "format": "date",
+            "type": "string"
+          },
+          "purchase_date": {
+            "description": "The date the purchase settled.",
+            "format": "date",
+            "type": "string"
+          },
+          "quantity": {
+            "description": "How many bonds the lot bought, as a decimal string. It can be fractional.",
+            "pattern": "^(0|[1-9][0-9]{0,8})(\\.[0-9]{1,2})?$",
+            "type": "string"
+          },
+          "rate": {
+            "description": "The yearly rate the lot was bought at, as a decimal fraction: 0.1276 is 12.76% a year. For ntn_b_principal and ntn_b it is the real rate over IPCA.",
+            "pattern": "^0(\\.[0-9]{1,12})?$",
+            "type": "string"
+          },
+          "type": {
+            "description": "The type of bond the lot bought.",
+            "enum": [
+              "ltn",
+              "ntn_f",
+              "ntn_b_principal",
+              "ntn_b"
+            ],
+            "type": "string"
+          },
+          "unit_price": {
+            "description": "The price paid for one bond, in reais, as a decimal string.",
+            "pattern": "^(0|[1-9][0-9]{0,8})(\\.[0-9]{1,6})?$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "maturity",
+          "purchase_date",
+          "rate",
+          "unit_price",
+          "quantity"
+        ],
+        "type": "object"
+      },
+      "LotList": {
+        "additionalProperties": false,
+        "properties": {
+          "lots": {
+            "description": "Every lot recorded, by purchase date, each valued on today.",
+            "items": {
+              "$ref": "#/components/schemas/LotValued"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "lots"
+        ],
+        "type": "object"
+      },
+      "LotValued": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The lot's ID.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "maturity": {
+            "description": "The date the bond matures.",
+            "format": "date",
+            "type": "string"
+          },
+          "purchase_date": {
+            "description": "The date the purchase settled.",
+            "format": "date",
+            "type": "string"
+          },
+          "quantity": {
+            "description": "How many bonds the lot bought, as a decimal string.",
+            "type": "string"
+          },
+          "rate": {
+            "description": "The yearly rate the lot was bought at, as a decimal fraction: 0.1276 is 12.76% a year. For ntn_b_principal and ntn_b it is the real rate over IPCA.",
+            "type": "string"
+          },
+          "type": {
+            "description": "The type of bond the lot bought.",
+            "enum": [
+              "ltn",
+              "ntn_f",
+              "ntn_b_principal",
+              "ntn_b"
+            ],
+            "type": "string"
+          },
+          "unit_price": {
+            "description": "The price paid for one bond, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "values": {
+            "$ref": "#/components/schemas/LotValues",
+            "description": "The lot's values. Absent when values_unavailable says why they cannot be computed."
+          },
+          "values_unavailable": {
+            "description": "Why the lot has no values. missing_ipca: the IPCA the lot's values follow is not available yet. Absent when the lot has values.",
+            "enum": [
+              "missing_ipca"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "maturity",
+          "purchase_date",
+          "rate",
+          "unit_price",
+          "quantity"
+        ],
+        "type": "object"
+      },
+      "LotValues": {
+        "additionalProperties": false,
+        "properties": {
+          "accrual": {
+            "$ref": "#/components/schemas/LotAmount",
+            "description": "The lot's Accrual Value on that date. Absent from the bond's maturity on."
+          },
+          "coupons": {
+            "description": "The coupons the lot is paid before the bond matures, past and future, in date order. Empty for ltn and ntn_b_principal.",
+            "items": {
+              "$ref": "#/components/schemas/LotCoupon"
+            },
+            "type": "array"
+          },
+          "market": {
+            "$ref": "#/components/schemas/LotAmount",
+            "description": "The lot's Market Value on that date, at the sell side of the bond's quote. Absent when the bond has no quote, and from its maturity on."
+          },
+          "maturity": {
+            "$ref": "#/components/schemas/LotAmount",
+            "description": "The lot's Maturity Value: everything the lot pays on the bond's maturity date, its last coupon included."
+          },
+          "on": {
+            "description": "The date the lot is valued on.",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "on",
+          "maturity",
+          "coupons"
+        ],
+        "type": "object"
+      },
       "MarketDataStatus": {
         "additionalProperties": false,
         "properties": {
@@ -1392,6 +1700,169 @@
         "summary": "Choose how an index is projected",
         "tags": [
           "Indexes"
+        ]
+      }
+    },
+    "/lots": {
+      "get": {
+        "description": "Lists the lots recorded, each with its Accrual, Market and Maturity Values and its coupons, gross and net of IOF, income tax and the custody fee, valued on today.",
+        "operationId": "list-lots",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "List the lots with their values",
+        "tags": [
+          "Lots"
+        ]
+      },
+      "post": {
+        "description": "Records a purchase of a bond.",
+        "operationId": "add-lot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lot"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Record a lot",
+        "tags": [
+          "Lots"
+        ]
+      }
+    },
+    "/lots/{id}": {
+      "delete": {
+        "description": "Deletes a recorded lot.",
+        "operationId": "delete-lot",
+        "parameters": [
+          {
+            "description": "The ID the lot was recorded with.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The ID the lot was recorded with.",
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Delete a lot",
+        "tags": [
+          "Lots"
+        ]
+      },
+      "put": {
+        "description": "Replaces a recorded lot.",
+        "operationId": "edit-lot",
+        "parameters": [
+          {
+            "description": "The ID the lot was recorded with.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The ID the lot was recorded with.",
+              "format": "int64",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lot"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Edit a lot",
+        "tags": [
+          "Lots"
         ]
       }
     },

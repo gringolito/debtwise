@@ -24,6 +24,11 @@ type BondQuoteRefresh struct {
 	FailedAt    sql.NullString
 }
 
+type CustodyFeeRate struct {
+	EffectiveFrom string
+	Rate          string
+}
+
 type FocusIpcaAnnual struct {
 	Year      int64
 	Median    string
@@ -49,6 +54,12 @@ type FocusSelic struct {
 	FetchedAt string
 }
 
+type IncomeTaxRate struct {
+	EffectiveFrom string
+	MinDays       int64
+	Rate          string
+}
+
 type IndexRefresh struct {
 	Series      string
 	RefreshedAt sql.NullString
@@ -61,6 +72,22 @@ type IndexValue struct {
 	PeriodEnd   string
 	Value       string
 	FetchedAt   string
+}
+
+type IofRate struct {
+	EffectiveFrom string
+	Days          int64
+	Rate          string
+}
+
+type Lot struct {
+	ID           int64
+	BondType     string
+	Maturity     string
+	PurchaseDate string
+	Rate         string
+	UnitPrice    string
+	Quantity     string
 }
 
 type Mortgage struct {

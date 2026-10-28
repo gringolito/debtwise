@@ -40,6 +40,7 @@ func WithClock(now func() time.Time) Option {
 type Services struct {
 	Database   Database
 	Indexes    IndexStore
+	Lots       Lots
 	MarketData MarketData
 	Mortgages  Mortgages
 	Quotes     Quotes
@@ -71,6 +72,7 @@ func NewHandler(services Services, opts ...Option) http.Handler {
 		registerIndexes(humaAPI, services.Indexes, services.MarketData, now)
 		registerProjections(humaAPI, services.Indexes)
 		registerBonds(humaAPI, services.Quotes)
+		registerLots(humaAPI, services.Lots, services.Quotes, services.Indexes, now)
 		registerMortgage(humaAPI, services.Mortgages, services.Indexes, now)
 	})
 }

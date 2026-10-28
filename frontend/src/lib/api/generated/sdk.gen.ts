@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
+import type { AddLotData, AddLotErrors, AddLotResponses, AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, DeleteLotData, DeleteLotErrors, DeleteLotResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditLotData, EditLotErrors, EditLotResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListLotsData, ListLotsErrors, ListLotsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -60,6 +60,48 @@ export const indexProjection = <ThrowOnError extends boolean = false>(options: O
  */
 export const saveProjectionMethod = <ThrowOnError extends boolean = false>(options: Options<SaveProjectionMethodData, ThrowOnError>) => (options.client ?? client).put<SaveProjectionMethodResponses, SaveProjectionMethodErrors, ThrowOnError>({
     url: '/indexes/{index}/projection-method',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * List the lots with their values
+ *
+ * Lists the lots recorded, each with its Accrual, Market and Maturity Values and its coupons, gross and net of IOF, income tax and the custody fee, valued on today.
+ */
+export const listLots = <ThrowOnError extends boolean = false>(options?: Options<ListLotsData, ThrowOnError>) => (options?.client ?? client).get<ListLotsResponses, ListLotsErrors, ThrowOnError>({ url: '/lots', ...options });
+
+/**
+ * Record a lot
+ *
+ * Records a purchase of a bond.
+ */
+export const addLot = <ThrowOnError extends boolean = false>(options: Options<AddLotData, ThrowOnError>) => (options.client ?? client).post<AddLotResponses, AddLotErrors, ThrowOnError>({
+    url: '/lots',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete a lot
+ *
+ * Deletes a recorded lot.
+ */
+export const deleteLot = <ThrowOnError extends boolean = false>(options: Options<DeleteLotData, ThrowOnError>) => (options.client ?? client).delete<DeleteLotResponses, DeleteLotErrors, ThrowOnError>({ url: '/lots/{id}', ...options });
+
+/**
+ * Edit a lot
+ *
+ * Replaces a recorded lot.
+ */
+export const editLot = <ThrowOnError extends boolean = false>(options: Options<EditLotData, ThrowOnError>) => (options.client ?? client).put<EditLotResponses, EditLotErrors, ThrowOnError>({
+    url: '/lots/{id}',
     ...options,
     headers: {
         'Content-Type': 'application/json',

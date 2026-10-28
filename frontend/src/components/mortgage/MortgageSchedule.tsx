@@ -14,7 +14,7 @@ import type { CorrectionIndex } from "@/lib/api";
 import { useMortgageSchedule } from "@/lib/mortgageQueries";
 import { formatDate, formatMoney, formatMonth, formatPercent, formatPeriod } from "@/lib/format";
 import { indexNames } from "@/lib/indexNames";
-import { projectionMethodLabels } from "@/lib/projectionMethods";
+import { projectedByText } from "@/lib/projectionMethods";
 
 const columns = [
   "Nº",
@@ -37,12 +37,6 @@ function indexPeriod({ index, period_start, period_end }: CorrectionIndex): stri
   return index === "ipca" ? formatMonth(period_start) : formatPeriod(period_start, period_end);
 }
 
-function methodsText({ methods }: CorrectionIndex): string {
-  return methods
-    .map(({ index, method }) => `${indexNames[index]}: ${projectionMethodLabels[method]}`)
-    .join("; ");
-}
-
 function IndexCell({ indexValues }: { indexValues: CorrectionIndex[] }) {
   if (indexValues.length === 0) return <>—</>;
   return (
@@ -58,7 +52,9 @@ function IndexCell({ indexValues }: { indexValues: CorrectionIndex[] }) {
           {index.status === "projected" && <Badge variant="secondary">Projetado</Badge>}{" "}
           <span className="block text-xs text-muted-foreground">{indexPeriod(index)}</span>{" "}
           {index.status === "projected" && (
-            <span className="block text-xs text-muted-foreground">{methodsText(index)}</span>
+            <span className="block text-xs text-muted-foreground">
+              {projectedByText(index.methods)}
+            </span>
           )}
         </div>
       ))}

@@ -251,6 +251,195 @@ export type IndexValue = {
     value: string;
 };
 
+export type Lot = {
+    /**
+     * The lot's ID.
+     */
+    id: number;
+    /**
+     * The date the bond matures.
+     */
+    maturity: string;
+    /**
+     * The date the purchase settled.
+     */
+    purchase_date: string;
+    /**
+     * How many bonds the lot bought, as a decimal string.
+     */
+    quantity: string;
+    /**
+     * The yearly rate the lot was bought at, as a decimal fraction: 0.1276 is 12.76% a year. For ntn_b_principal and ntn_b it is the real rate over IPCA.
+     */
+    rate: string;
+    /**
+     * The type of bond the lot bought.
+     */
+    type: 'ltn' | 'ntn_f' | 'ntn_b_principal' | 'ntn_b';
+    /**
+     * The price paid for one bond, in reais, as a decimal string.
+     */
+    unit_price: string;
+};
+
+export type LotAmount = {
+    /**
+     * The custody fee taken from the gross amount, in reais, as a decimal string.
+     */
+    custody_fee: string;
+    /**
+     * The amount before IOF, income tax and the custody fee, in reais, as a decimal string.
+     */
+    gross: string;
+    /**
+     * The income tax taken from the gross amount, in reais, as a decimal string.
+     */
+    income_tax: string;
+    /**
+     * The IOF taken from the gross amount, in reais, as a decimal string.
+     */
+    iof: string;
+    /**
+     * The amount left after IOF, income tax and the custody fee, in reais, as a decimal string.
+     */
+    net: string;
+    /**
+     * The projection methods of the projected IPCA values the amount depends on. Empty when it depends on published values only.
+     */
+    projected_by: Array<ProjectedBy>;
+};
+
+export type LotCoupon = {
+    /**
+     * The custody fee taken from the coupon, in reais, as a decimal string.
+     */
+    custody_fee: string;
+    /**
+     * The date the coupon is paid.
+     */
+    date: string;
+    /**
+     * The coupon before IOF, income tax and the custody fee, in reais, as a decimal string.
+     */
+    gross: string;
+    /**
+     * The income tax taken from the coupon, in reais, as a decimal string.
+     */
+    income_tax: string;
+    /**
+     * The IOF taken from the coupon, in reais, as a decimal string.
+     */
+    iof: string;
+    /**
+     * The coupon left after IOF, income tax and the custody fee, in reais, as a decimal string.
+     */
+    net: string;
+    /**
+     * Whether the coupon has been paid by the date the lot is valued on.
+     */
+    paid: boolean;
+    /**
+     * The projection methods of the projected IPCA values the coupon depends on. Empty when it depends on published values only.
+     */
+    projected_by: Array<ProjectedBy>;
+};
+
+export type LotInput = {
+    /**
+     * The date the bond matures.
+     */
+    maturity: string;
+    /**
+     * The date the purchase settled.
+     */
+    purchase_date: string;
+    /**
+     * How many bonds the lot bought, as a decimal string. It can be fractional.
+     */
+    quantity: string;
+    /**
+     * The yearly rate the lot was bought at, as a decimal fraction: 0.1276 is 12.76% a year. For ntn_b_principal and ntn_b it is the real rate over IPCA.
+     */
+    rate: string;
+    /**
+     * The type of bond the lot bought.
+     */
+    type: 'ltn' | 'ntn_f' | 'ntn_b_principal' | 'ntn_b';
+    /**
+     * The price paid for one bond, in reais, as a decimal string.
+     */
+    unit_price: string;
+};
+
+export type LotList = {
+    /**
+     * Every lot recorded, by purchase date, each valued on today.
+     */
+    lots: Array<LotValued>;
+};
+
+export type LotValued = {
+    /**
+     * The lot's ID.
+     */
+    id: number;
+    /**
+     * The date the bond matures.
+     */
+    maturity: string;
+    /**
+     * The date the purchase settled.
+     */
+    purchase_date: string;
+    /**
+     * How many bonds the lot bought, as a decimal string.
+     */
+    quantity: string;
+    /**
+     * The yearly rate the lot was bought at, as a decimal fraction: 0.1276 is 12.76% a year. For ntn_b_principal and ntn_b it is the real rate over IPCA.
+     */
+    rate: string;
+    /**
+     * The type of bond the lot bought.
+     */
+    type: 'ltn' | 'ntn_f' | 'ntn_b_principal' | 'ntn_b';
+    /**
+     * The price paid for one bond, in reais, as a decimal string.
+     */
+    unit_price: string;
+    /**
+     * The lot's values. Absent when values_unavailable says why they cannot be computed.
+     */
+    values?: LotValues;
+    /**
+     * Why the lot has no values. missing_ipca: the IPCA the lot's values follow is not available yet. Absent when the lot has values.
+     */
+    values_unavailable?: 'missing_ipca';
+};
+
+export type LotValues = {
+    /**
+     * The lot's Accrual Value on that date. Absent from the bond's maturity on.
+     */
+    accrual?: LotAmount;
+    /**
+     * The coupons the lot is paid before the bond matures, past and future, in date order. Empty for ltn and ntn_b_principal.
+     */
+    coupons: Array<LotCoupon>;
+    /**
+     * The lot's Market Value on that date, at the sell side of the bond's quote. Absent when the bond has no quote, and from its maturity on.
+     */
+    market?: LotAmount;
+    /**
+     * The lot's Maturity Value: everything the lot pays on the bond's maturity date, its last coupon included.
+     */
+    maturity: LotAmount;
+    /**
+     * The date the lot is valued on.
+     */
+    on: string;
+};
+
 export type MarketDataStatus = {
     /**
      * How fresh the bond prices are.
@@ -747,6 +936,116 @@ export type SaveProjectionMethodResponses = {
 };
 
 export type SaveProjectionMethodResponse = SaveProjectionMethodResponses[keyof SaveProjectionMethodResponses];
+
+export type ListLotsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/lots';
+};
+
+export type ListLotsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type ListLotsError = ListLotsErrors[keyof ListLotsErrors];
+
+export type ListLotsResponses = {
+    /**
+     * OK
+     */
+    200: LotList;
+};
+
+export type ListLotsResponse = ListLotsResponses[keyof ListLotsResponses];
+
+export type AddLotData = {
+    body: LotInput;
+    path?: never;
+    query?: never;
+    url: '/lots';
+};
+
+export type AddLotErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type AddLotError = AddLotErrors[keyof AddLotErrors];
+
+export type AddLotResponses = {
+    /**
+     * Created
+     */
+    201: Lot;
+};
+
+export type AddLotResponse = AddLotResponses[keyof AddLotResponses];
+
+export type DeleteLotData = {
+    body?: never;
+    path: {
+        /**
+         * The ID the lot was recorded with.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/lots/{id}';
+};
+
+export type DeleteLotErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type DeleteLotError = DeleteLotErrors[keyof DeleteLotErrors];
+
+export type DeleteLotResponses = {
+    /**
+     * No Content
+     */
+    204: void;
+};
+
+export type DeleteLotResponse = DeleteLotResponses[keyof DeleteLotResponses];
+
+export type EditLotData = {
+    body: LotInput;
+    path: {
+        /**
+         * The ID the lot was recorded with.
+         */
+        id: number;
+    };
+    query?: never;
+    url: '/lots/{id}';
+};
+
+export type EditLotErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type EditLotError = EditLotErrors[keyof EditLotErrors];
+
+export type EditLotResponses = {
+    /**
+     * OK
+     */
+    200: Lot;
+};
+
+export type EditLotResponse = EditLotResponses[keyof EditLotResponses];
 
 export type RefreshMarketDataData = {
     body?: never;
