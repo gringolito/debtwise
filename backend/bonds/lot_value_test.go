@@ -477,16 +477,22 @@ func viewCoupons(coupons []bonds.CouponPayment) []couponView {
 // Its figures are worked out with Python's decimal module and a separate implementation of
 // Tesouro's methodology, which gives its published examples:
 //
-//   - Each coupon is 48.80885 × 3.25 = 158.6287625, R$ 158.63, and is all gain. Its custody fee
-//     is accrued at 0.20% over 365 on the lot's accrual value that day, the PU at 12.00% for
-//     settlement on the coupon date (which no longer holds the coupon) plus the coupon, for the
-//     days since the previous coupon, or since the purchase for the first. The 1st coupon, 2025-07-01,
-//     120 days after the purchase: base 3,119.24 + 158.63 = 3,277.87 for 120 days is 2.16 of fee,
-//     and the 22.5% of the 156.47 left is 35.21.
+//   - Each coupon is 48.80885 × 3.25 = 158.6287625, R$ 158.63. Only its yield is taxed: the lot's
+//     accrual value that day (the PU at 12.00% for settlement on the coupon date, which no longer
+//     holds the coupon) plus the coupon, less the lot's cost basis, up to the whole coupon. The
+//     part of a coupon that isn't yield returns principal and lowers the basis. The custody fee is
+//     accrued at 0.20% over 365 on that accrual value plus the coupon, for the days since the
+//     previous coupon, or since the purchase for the first. The 1st coupon, 2025-07-01, 120 days
+//     after the purchase: 3,119.24 + 158.63 less the 3,202.29 cost is 75.58 of yield, the rest
+//     returns the interest the purchase price had accrued, and the basis falls to 3,119.24. The
+//     fee on 3,277.87 for 120 days is 2.16, and the 22.5% of the 73.42 left is 16.52. Each later
+//     coupon is all yield over the basis of 3,119.24.
 //   - Accrual and Market: the PU is 1,010.722279 at 12.00% and 1,000.812273 at the sell rate, 13.00%,
-//     and the fee accrues from the last coupon, 2026-07-01, 117 days before.
-//   - Maturity: (1,000 + 48.80885) × 3.25 is R$ 3,408.63, its fee accrues from the last coupon
-//     before it, 2027-07-01, and it comes 1,034 days after the purchase, a bracket of 15%.
+//     the gain is over the basis of 3,119.24, and the fee accrues from the last coupon, 2026-07-01,
+//     117 days before.
+//   - Maturity: (1,000 + 48.80885) × 3.25 is R$ 3,408.63 over the same basis, its fee accrues from
+//     the last coupon before it, 2027-07-01, and it comes 1,034 days after the purchase, a bracket
+//     of 15%.
 func TestLotValueOfAnNTNFListsItsPastAndFutureCouponsNetOfIncomeTaxAndCustodyFee(t *testing.T) {
 	t.Parallel()
 
@@ -503,16 +509,16 @@ func TestLotValueOfAnNTNFListsItsPastAndFutureCouponsNetOfIncomeTaxAndCustodyFee
 	require.NoError(t, err)
 
 	assert.Equal(t,
-		amountView{Gross: "3284.85", IOF: "0.00", IncomeTax: "14.08", CustodyFee: "2.11", Net: "3268.66"},
+		amountView{Gross: "3284.85", IOF: "0.00", IncomeTax: "28.61", CustodyFee: "2.11", Net: "3254.13"},
 		viewAmountOf(t, valuation.Accrual))
 	assert.Equal(t,
-		amountView{Gross: "3252.64", IOF: "0.00", IncomeTax: "8.45", CustodyFee: "2.09", Net: "3242.10"},
+		amountView{Gross: "3252.64", IOF: "0.00", IncomeTax: "22.98", CustodyFee: "2.09", Net: "3227.57"},
 		viewAmountOf(t, valuation.Market))
 	assert.Equal(t,
-		amountView{Gross: "3408.63", IOF: "0.00", IncomeTax: "30.44", CustodyFee: "3.44", Net: "3374.75"},
+		amountView{Gross: "3408.63", IOF: "0.00", IncomeTax: "42.89", CustodyFee: "3.44", Net: "3362.30"},
 		viewAmount(valuation.Maturity))
 	assert.Equal(t, []couponView{
-		{Date: "2025-07-01", Amount: amountView{Gross: "158.63", IOF: "0.00", IncomeTax: "35.21", CustodyFee: "2.16", Net: "121.26"}},
+		{Date: "2025-07-01", Amount: amountView{Gross: "158.63", IOF: "0.00", IncomeTax: "16.52", CustodyFee: "2.16", Net: "139.95"}},
 		{Date: "2026-01-01", Amount: amountView{Gross: "158.63", IOF: "0.00", IncomeTax: "31.06", CustodyFee: "3.33", Net: "124.24"}},
 		{Date: "2026-07-01", Amount: amountView{Gross: "158.63", IOF: "0.00", IncomeTax: "27.18", CustodyFee: "3.30", Net: "128.15"}},
 		{Date: "2027-01-01", Amount: amountView{Gross: "158.63", IOF: "0.00", IncomeTax: "27.17", CustodyFee: "3.38", Net: "128.08"}},
@@ -521,8 +527,8 @@ func TestLotValueOfAnNTNFListsItsPastAndFutureCouponsNetOfIncomeTaxAndCustodyFee
 }
 
 // On a coupon date the Accrual Value no longer holds that coupon and the custody fee has been
-// deducted with it, so no day of fee accrues. The lot above is at a loss that day, 3,167.34 over the
-// 3,202.29 it cost, so it pays no income tax.
+// deducted with it, so no day of fee accrues. The lot above is worth 3,167.34 that day, a gain of
+// 48.10 over its basis of 3,119.24 after the first coupon returned principal: 17.5% of it is 8.42.
 func TestLotValueOfAnNTNFOnACouponDateAccruesNoCustodyFee(t *testing.T) {
 	t.Parallel()
 
@@ -538,9 +544,32 @@ func TestLotValueOfAnNTNFOnACouponDateAccruesNoCustodyFee(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t,
-		amountView{Gross: "3167.34", IOF: "0.00", IncomeTax: "0.00", CustodyFee: "0.00", Net: "3167.34"},
+		amountView{Gross: "3167.34", IOF: "0.00", IncomeTax: "8.42", CustodyFee: "0.00", Net: "3158.92"},
 		viewAmountOf(t, valuation.Accrual))
 	assert.Len(t, valuation.Coupons, 5)
+}
+
+// A coupon pays no IOF, even within 30 days of the purchase. The NTN-F lot above bought on
+// 2025-06-16 at its PU at 12.00% that day, R$ 1,004.048996 (R$ 3,263.16 in all), is paid its first
+// coupon 15 days later. Its yield is only 3,119.24 + 158.63 − 3,263.16 = 14.71, the interest of
+// those 15 days. The fee on 3,277.87 for 15 days is 0.27, and 22.5% of the 14.44 left is 3.25.
+func TestLotValueOfACouponPaysNoIOFAndTaxesOnlyItsYield(t *testing.T) {
+	t.Parallel()
+
+	lot := bonds.Lot{
+		Bond:         bonds.Bond{Type: bonds.NTNF, Maturity: date(2028, time.January, 1)},
+		PurchaseDate: date(2025, time.June, 16),
+		Rate:         mustDecimal(t, "0.1200"),
+		UnitPrice:    mustDecimal(t, "1004.048996"),
+		Quantity:     mustDecimal(t, "3.25"),
+	}
+
+	valuation, err := lot.Value(date(2025, time.July, 1), seededTaxes(t), bonds.IPCA{}, nil)
+	require.NoError(t, err)
+
+	assert.Equal(t,
+		couponView{Date: "2025-07-01", Amount: amountView{Gross: "158.63", IOF: "0.00", IncomeTax: "3.25", CustodyFee: "0.27", Net: "155.11"}},
+		viewCoupons(valuation.Coupons)[0])
 }
 
 // A lot is paid the coupons after its purchase and before its bond's maturity: the one paid on the

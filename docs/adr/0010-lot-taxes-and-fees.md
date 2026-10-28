@@ -38,12 +38,16 @@ projected the lot has no values, which is reported as a missing IPCA, never valu
 **Taxes and fee.** All three are data with an effective date; a row applies to events, and to days
 of fee, on or after its date.
 
-- **Gain:** a sale's or maturity's gross value less the lot's cost. A coupon's gain is the whole
-  coupon, whatever the bond's price was, taxed at the regressive bracket of the days since the
-  purchase like any other event. A loss is no gain, pays no IOF or IR, and isn't carried over.
-- **IOF:** the rate of the table row for exactly the days held, times the gain. The rows are the
-  regressive table of Decreto 6.306/2007 for days 1 to 29. A day with no row pays none, which is
-  every day from the 30th on.
+- **Gain:** only what the lot earned is taxed, never principal coming back. A lot's cost basis
+  starts at its cost. A coupon's gain is its yield: the lot's Accrual Value on the coupon date,
+  which no longer holds the coupon, plus the coupon, less the basis, from none to the whole coupon.
+  The rest of the coupon returns principal, such as the interest the purchase price paid the seller
+  for, and the basis falls by it. A sale's or maturity's gain is its gross value less the basis
+  then. A loss is no gain, pays no IOF or IR, and isn't carried over.
+- **IOF:** the rate of the table row for exactly the days held, times the gain of a sale or the
+  maturity. The rows are the regressive table of Decreto 6.306/2007 for days 1 to 29. A day with
+  no row pays none, which is every day from the 30th on. A coupon pays no IOF, however soon after
+  the purchase it comes.
 - **Custody fee:** the yearly rate over 365 for each calendar day after the lot's last deduction up
   to and including the event's date, times the base, rounded once for the whole span. The rate of a
   day is that of the latest row on or before it, and zero before the first row. The last deduction is
@@ -65,13 +69,14 @@ Changing a rate adds a row with its date, and only events and fee days from that
 The issue could not confirm several of these facts. The choices follow its notes, and each is data
 or one rule, so correcting it later is a new row or a change to one function.
 
-- **Taxing only the yield portion of a coupon bought at a premium or a discount:** rejected. It
-  needs the price paid split between principal and interest, which no source confirms. The whole
-  coupon is the gain, as the issue says to use unless a primary source says otherwise, and the same
-  for an NTN-B coupon.
-- **The IR bracket of a coupon counted from the previous coupon:** rejected. The issue counts a
-  coupon's days from the purchase, so the first coupons pay the highest rate and later ones the
-  lower rates of the same lot.
+- **Taxing the whole coupon:** rejected. Only the yield is income: a lot bought between coupons
+  pays the seller for the interest accrued so far, and the next coupon returns it as principal.
+  The yield is measured at the contracted rate, the Accrual Value, so it needs no market price.
+- **IOF on a coupon paid within 30 days of the purchase:** rejected. IOF falls on redemptions,
+  and a coupon is a periodic payment, not a redemption.
+- **The IR bracket of a coupon counted from the previous coupon:** rejected. A coupon's days are
+  counted from the purchase, so the first coupons pay the highest rate and later ones the lower
+  rates of the same lot.
 - **The custody fee on the Market Value of every event:** rejected. A coupon and the maturity have
   no market value, since no quote exists for a date that hasn't come, and the Accrual Value stands
   in whenever there is no sell price. A sale's base is the value being valued, the Market Value
@@ -87,10 +92,8 @@ or one rule, so correcting it later is a new row or a change to one function.
 - **Moving a coupon that falls on a weekend or a holiday to the next business day:** rejected. The
   PU of a bond counts its flows on nominal dates, and an NTN-B's VNA is taken on the nominal 15th,
   so the coupon's amount and its days held stay consistent with the price.
-- **Taking the cost of the coupons already paid off the gain of a later sale or maturity:**
-  rejected. It needs the price split between coupons and principal that the first option lacked.
-  Each coupon's whole amount is taxable when it is paid, and a sale or maturity is taxed over the
-  cost.
+- **Taxing a sale or the maturity over the lot's original cost:** rejected. Once a coupon has
+  returned principal, the original cost counts that principal twice and understates the gain.
 - **Estimating an NTN-B's VNA from SGS 433 alone:** rejected, as ADR-0007 says. The monthly
   variations are rounded to two places and drift from the VNA by a few cents, so published numbers
   are used where IBGE has them and only the months after are grown by IPCA.

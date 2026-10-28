@@ -13,12 +13,13 @@ var daysInYear = decimal.FromInt(365)
 
 // event is a payment or a sale of a lot on a date: its gross value, the gain the IOF and the income
 // tax are charged on, and what the custody fee is charged on, accrued since feeFrom, the day of the
-// lot's last deduction. projectedBy names the projection methods of the IPCA the gross value
-// depends on.
+// lot's last deduction. A coupon pays no IOF. projectedBy names the projection methods of the IPCA
+// the gross value depends on.
 type event struct {
 	date        time.Time
 	gross       decimal.Decimal
 	gain        decimal.Decimal
+	noIOF       bool
 	feeBase     decimal.Decimal
 	feeFrom     time.Time
 	projectedBy []indexes.ProjectionMethod
@@ -50,16 +51,33 @@ func (l Lot) Value(on time.Time, taxes Taxes, ipca IPCA, sell *Price) (Valuation
 	return valuation, nil
 }
 
-// valuer values one lot against the tax tables.
+// valuer values one lot against the tax tables. bases holds the lot's cost basis after each of its
+// coupons, with the projection methods it depends on, once value has read them.
 type valuer struct {
 	lot     Lot
 	taxes   Taxes
 	coupons []time.Time
+	bases   []priced
 	vnas    *vnaSource
 }
 
-func (v valuer) value(on time.Time, sell *Price) (Valuation, error) {
+func (v *valuer) value(on time.Time, sell *Price) (Valuation, error) {
 	valuation := Valuation{On: on}
+	basis := priced{gross: v.lot.cost()}
+
+	for _, date := range v.coupons {
+		coupon, err := v.coupon(date, basis)
+		if err != nil {
+			return Valuation{}, err
+		}
+
+		if principal := coupon.gross.Sub(coupon.gain); principal.Cmp(decimal.Decimal{}) > 0 {
+			basis = priced{gross: basis.gross.Sub(principal), projectedBy: coupon.projectedBy}
+		}
+
+		v.bases = append(v.bases, basis)
+		valuation.Coupons = append(valuation.Coupons, CouponPayment{Date: date, Amount: v.settle(coupon)})
+	}
 
 	if on.Before(v.lot.Bond.Maturity) {
 		accrual, err := v.accrual(on)
@@ -83,15 +101,6 @@ func (v valuer) value(on time.Time, sell *Price) (Valuation, error) {
 	}
 
 	valuation.Maturity = v.settle(v.sale(v.lot.Bond.Maturity, maturity))
-
-	for i, date := range v.coupons {
-		coupon, err := v.coupon(i, date)
-		if err != nil {
-			return Valuation{}, err
-		}
-
-		valuation.Coupons = append(valuation.Coupons, CouponPayment{Date: date, Amount: v.settle(coupon)})
-	}
 
 	return valuation, nil
 }
@@ -160,9 +169,11 @@ func (v valuer) maturity() (priced, error) {
 	return priced{gross: vna.value.Mul(factor).Mul(quantity).RoundCents(), projectedBy: vna.projectedBy}, nil
 }
 
-// coupon is the payment of the lot's ith coupon, on date. Its custody fee accrues on the lot's
-// accrual value that day, which no longer holds the coupon, plus the coupon.
-func (v valuer) coupon(i int, date time.Time) (event, error) {
+// coupon is the payment of the lot's coupon on date, when the lot's cost basis is basis. Only its
+// yield is taxed: the lot's accrual value that day, which no longer holds the coupon, plus the
+// coupon, less the basis, from none to the whole coupon. The rest of it returns principal. Its
+// custody fee accrues on that accrual value plus the coupon.
+func (v valuer) coupon(date time.Time, basis priced) (event, error) {
 	coupon, err := v.couponGross(date)
 	if err != nil {
 		return event{}, err
@@ -173,18 +184,21 @@ func (v valuer) coupon(i int, date time.Time) (event, error) {
 		return event{}, err
 	}
 
-	feeFrom := v.lot.PurchaseDate
-	if i > 0 {
-		feeFrom = v.coupons[i-1]
+	held := accrual.gross.Add(coupon.gross)
+	yield := positive(held.Sub(basis.gross))
+
+	if yield.Cmp(coupon.gross) > 0 {
+		yield = coupon.gross
 	}
 
 	return event{
 		date:        date,
 		gross:       coupon.gross,
-		gain:        coupon.gross,
-		feeBase:     accrual.gross.Add(coupon.gross),
-		feeFrom:     feeFrom,
-		projectedBy: union(coupon.projectedBy, accrual.projectedBy),
+		gain:        yield,
+		noIOF:       true,
+		feeBase:     held,
+		feeFrom:     v.lastDeduction(date.AddDate(0, 0, -1)),
+		projectedBy: union(union(coupon.projectedBy, accrual.projectedBy), basis.projectedBy),
 	}, nil
 }
 
@@ -209,13 +223,15 @@ func (v valuer) couponGross(date time.Time) (priced, error) {
 
 // sale is the event of the lot being sold on date, or paying at maturity, for the gross value.
 func (v valuer) sale(date time.Time, p priced) event {
+	basis := v.basis(date)
+
 	return event{
 		date:        date,
 		gross:       p.gross,
-		gain:        p.gross.Sub(v.lot.cost()),
+		gain:        p.gross.Sub(basis.gross),
 		feeBase:     p.gross,
 		feeFrom:     v.lastDeduction(date),
-		projectedBy: p.projectedBy,
+		projectedBy: union(p.projectedBy, basis.projectedBy),
 	}
 }
 
@@ -235,6 +251,22 @@ func (v valuer) lastDeduction(date time.Time) time.Time {
 	return last
 }
 
+// basis is the lot's cost basis on date: its cost, less the principal the coupons paid by then
+// returned.
+func (v valuer) basis(date time.Time) priced {
+	basis := priced{gross: v.lot.cost()}
+
+	for i, coupon := range v.coupons {
+		if coupon.After(date) {
+			break
+		}
+
+		basis = v.bases[i]
+	}
+
+	return basis
+}
+
 // cost is what the lot cost, in reais.
 func (l Lot) cost() decimal.Decimal {
 	return l.UnitPrice.Mul(l.Quantity).RoundCents()
@@ -244,7 +276,11 @@ func (l Lot) cost() decimal.Decimal {
 func (v valuer) settle(e event) Amount {
 	daysHeld := int(calendarDays(v.lot.PurchaseDate, e.date))
 
-	iof := v.taxes.iofRate(e.date, daysHeld).Mul(positive(e.gain)).RoundCents()
+	iof := decimal.Decimal{}.RoundCents()
+	if !e.noIOF {
+		iof = v.taxes.iofRate(e.date, daysHeld).Mul(positive(e.gain)).RoundCents()
+	}
+
 	fee := v.taxes.custodyFee(e.feeBase, e.feeFrom, e.date)
 	tax := v.taxes.incomeTaxRate(e.date, daysHeld).Mul(positive(e.gain.Sub(iof).Sub(fee))).RoundCents()
 

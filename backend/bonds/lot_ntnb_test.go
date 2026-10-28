@@ -405,3 +405,34 @@ func TestLotValueOfAnNTNBRoundsItsMaturityValueOnceAfterTheQuantity(t *testing.T
 		ProjectedBy: ipcaProjectedBy(indexes.Trailing12),
 	}, viewAmount(valuation.Maturity))
 }
+
+// The NTN-B above bought on 2012-11-01 at its PU at 5.30% that day, R$ 2,303.968278 (R$ 3,455.95
+// for one and a half), pays for most of the coupon of 2012-11-15. That coupon's VNA, 2,225.249842,
+// is grown by projected IPCA: its yield is 3,372.93 + 98.68 − 3,455.95 = 15.66, after 14 days 22.5%
+// of what the fee of 0.40 leaves, 3.43, and the other 83.02 return principal, so the basis falls to
+// 3,372.93. Sold on 2012-11-20 at R$ 2,260.00, 19 days after the purchase, the lot gains 17.07 over
+// that basis and pays 36% of it as IOF, 6.15, a fee of 0.14, and 22.5% of the 10.78 left, 2.43.
+// The sell price is a fact, but the gain depends on the projected basis, so it is marked projected.
+func TestLotValueOfAnNTNBMarksASaleProjectedWhenItsBasisIs(t *testing.T) {
+	t.Parallel()
+
+	lot := bonds.Lot{
+		Bond:         bonds.Bond{Type: bonds.NTNB, Maturity: date(2014, time.May, 15)},
+		PurchaseDate: date(2012, time.November, 1),
+		Rate:         mustDecimal(t, "0.0530"),
+		UnitPrice:    mustDecimal(t, "2303.968278"),
+		Quantity:     mustDecimal(t, "1.5"),
+	}
+	sell := &bonds.Price{Rate: mustDecimal(t, "0.0500"), UnitPrice: mustDecimal(t, "2260.00")}
+	projected := ipcaProjectedBy(indexes.Trailing12)
+
+	valuation, err := lot.Value(date(2012, time.November, 20), ntnbTaxes(t), ipcaOf(t, indexes.Trailing12, indexes.Expectations{}), sell)
+	require.NoError(t, err)
+
+	assert.Equal(t,
+		couponView{Date: "2012-11-15", Amount: amountView{Gross: "98.68", IOF: "0.00", IncomeTax: "3.43", CustodyFee: "0.40", Net: "94.85", ProjectedBy: projected}},
+		viewCoupons(valuation.Coupons)[0])
+	assert.Equal(t,
+		amountView{Gross: "3390.00", IOF: "6.15", IncomeTax: "2.43", CustodyFee: "0.14", Net: "3381.28", ProjectedBy: projected},
+		viewAmountOf(t, valuation.Market))
+}
