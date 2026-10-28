@@ -278,6 +278,7 @@ func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteS
 		handler: api.NewHandler(api.Services{
 			Database:   db.New(conn),
 			Indexes:    store,
+			Lots:       quotes,
 			MarketData: job,
 			Mortgages:  mortgage.NewStore(conn),
 			Quotes:     quotes,

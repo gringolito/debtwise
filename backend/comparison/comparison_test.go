@@ -1,0 +1,482 @@
+package comparison_test
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/gringolito/debtwise/backend/bonds"
+	"github.com/gringolito/debtwise/backend/comparison"
+	"github.com/gringolito/debtwise/backend/decimal"
+	"github.com/gringolito/debtwise/backend/indexes"
+	"github.com/gringolito/debtwise/backend/mortgage"
+)
+
+// flow is a scenario's cash flow on one date as text, an empty string where it has none.
+type flow struct {
+	Date               string
+	Installment        string
+	Invested           string
+	Prepaid            string
+	Held               string
+	Redeemed           string
+	OutstandingBalance string
+}
+
+func flows(s comparison.Scenario) []flow {
+	out := make([]flow, 0, len(s.CashFlows))
+
+	for _, f := range s.CashFlows {
+		row := flow{
+			Date:               f.Date.Format(time.DateOnly),
+			Invested:           f.Invested.String(),
+			Prepaid:            f.Prepaid.String(),
+			Held:               f.Held.String(),
+			OutstandingBalance: f.OutstandingBalance.String(),
+		}
+
+		if f.Installment != nil {
+			row.Installment = f.Installment.Amount.String()
+		}
+
+		if f.Redeemed != nil {
+			row.Redeemed = f.Redeemed.Net.String()
+		}
+
+		out = append(out, row)
+	}
+
+	return out
+}
+
+func date(t *testing.T, s string) time.Time {
+	t.Helper()
+
+	d, err := time.Parse(time.DateOnly, s)
+	require.NoError(t, err)
+
+	return d
+}
+
+func dec(t *testing.T, s string) decimal.Decimal {
+	t.Helper()
+
+	d, err := decimal.Parse(s)
+	require.NoError(t, err)
+
+	return d
+}
+
+// interestFreeTerms borrow 24,000.00 over 24 months at no interest and with no indexer, insurance
+// or fee, due on the 10th from 2024-02-10: every installment amortizes 1,000.00, and after the
+// one of 2025-01-10, 12,000.00 is owed over the 12 months left.
+func interestFreeTerms(t *testing.T) mortgage.Terms {
+	t.Helper()
+
+	from := date(t, "2024-01-10")
+
+	return mortgage.Terms{
+		ContractDate:         from,
+		OriginalAmount:       dec(t, "24000.00"),
+		TermMonths:           24,
+		FirstInstallmentDate: date(t, "2024-02-10"),
+		AmortizationSystem:   mortgage.SAC,
+		Indexer:              mortgage.NoIndexer,
+		AppraisalValue:       dec(t, "100000.00"),
+		ContractRates:        []mortgage.ContractRate{{EffectiveFrom: from, Rate: dec(t, "0"), Basis: mortgage.Effective}},
+		MIPRates:             []mortgage.MonthlyRate{{EffectiveFrom: from, Rate: dec(t, "0")}},
+		DFIRates:             []mortgage.MonthlyRate{{EffectiveFrom: from, Rate: dec(t, "0")}},
+		Fees:                 []mortgage.Fee{{EffectiveFrom: from, Amount: dec(t, "0")}},
+	}
+}
+
+// Prepaying 5,000.00 of the 12,000.00 owed on 2025-01-10 keeps the 1,000.00 installment and ends
+// the mortgage after 7 more of them, on 2025-08-10, while it would have run to 2026-01-10. Under
+// equal outflow the 1,000.00 the owner would still have paid each month from 2025-09-10 to
+// 2026-01-10 has nowhere to go, so it is held at zero return: 5,000.00 on the horizon, an LTN
+// maturing on 2027-01-01, and nothing owed.
+func TestFreedCashIsHeldAtZeroReturnOnceTheMortgageIsPaidOff(t *testing.T) {
+	t.Parallel()
+
+	ltn := bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")}
+	decided := date(t, "2025-01-10")
+
+	verdicts, err := comparison.Decide(
+		comparison.Mortgage{Terms: interestFreeTerms(t)},
+		comparison.Market{Quotes: []bonds.Quote{{Bond: ltn, Buy: &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")}}}},
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm},
+		decided,
+	)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	prepay := verdicts[0].Prepay
+	assert.Equal(t, []flow{
+		{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "7000.00"},
+		{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "6000.00"},
+		{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "5000.00"},
+		{"2025-04-10", "1000.00", "0.00", "0.00", "0.00", "", "4000.00"},
+		{"2025-05-10", "1000.00", "0.00", "0.00", "0.00", "", "3000.00"},
+		{"2025-06-10", "1000.00", "0.00", "0.00", "0.00", "", "2000.00"},
+		{"2025-07-10", "1000.00", "0.00", "0.00", "0.00", "", "1000.00"},
+		{"2025-08-10", "1000.00", "0.00", "0.00", "0.00", "", "0.00"},
+		{"2025-09-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2025-10-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2025-11-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2025-12-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2026-01-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
+	}, flows(prepay))
+	assert.Equal(t, "5000.00", prepay.Cash.String())
+	assert.Equal(t, "0.00", prepay.OutstandingBalance.String())
+	assert.Equal(t, "5000.00", prepay.NetWorth.String())
+}
+
+// trMortgage borrows 300,000.00 on 2020-01-01 over 360 months under SAC, at 10.06% a year
+// effective plus TR, with no insurance or fee, due on the 1st from 2020-02-01. TR is published as
+// 0.1488% for every month of 2024, the 1.8% a year the spreadsheet assumes, and projected by its
+// trailing 12-month average, the same 0.1488%, from 2025 on.
+func trMortgage(t *testing.T) comparison.Mortgage {
+	t.Helper()
+
+	from := date(t, "2020-01-01")
+	terms := mortgage.Terms{
+		ContractDate:         from,
+		OriginalAmount:       dec(t, "300000.00"),
+		TermMonths:           360,
+		FirstInstallmentDate: date(t, "2020-02-01"),
+		AmortizationSystem:   mortgage.SAC,
+		Indexer:              mortgage.TR,
+		AppraisalValue:       dec(t, "400000.00"),
+		ContractRates:        []mortgage.ContractRate{{EffectiveFrom: from, Rate: dec(t, "0.1006"), Basis: mortgage.Effective}},
+		MIPRates:             []mortgage.MonthlyRate{{EffectiveFrom: from, Rate: dec(t, "0")}},
+		DFIRates:             []mortgage.MonthlyRate{{EffectiveFrom: from, Rate: dec(t, "0")}},
+		Fees:                 []mortgage.Fee{{EffectiveFrom: from, Amount: dec(t, "0")}},
+	}
+
+	var tr []indexes.Value
+
+	for month := date(t, "2024-01-01"); month.Year() == 2024; month = month.AddDate(0, 1, 0) {
+		tr = append(tr, indexes.Value{PeriodStart: month, PeriodEnd: month.AddDate(0, 1, 0), Value: dec(t, "0.1488")})
+	}
+
+	outlook := indexes.NewOutlook(map[indexes.Index][]indexes.Value{indexes.TR: tr}, indexes.Expectations{}, nil)
+
+	return comparison.Mortgage{Terms: terms, Outlook: outlook}
+}
+
+// The spreadsheet's first lot spent 30,034.32 on 2025-01-08 on 69 LTN maturing on 2031-01-01, and
+// counted 26,260 as the cost prepaying it would have avoided by then: the contract rate compounded
+// on it, corrected by TR, but not the TR correction of the prepaid amount itself. Prepaying it
+// avoids both, (((1 + 10.06%)(1 + 1.8%))^(2,184/365) − 1) × 30,034.32, about 29,268 in the
+// spreadsheet's calendar days. The schedule counts the 72 months whose installments fall due by
+// the horizon, so it lands a little above.
+func TestAvoidedCostOfTheSpreadsheetsFirstLotIncludesTheCorrectionOfThePrepaidAmount(t *testing.T) {
+	t.Parallel()
+
+	decided := date(t, "2025-01-08")
+	ltn := bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2031-01-01")}
+
+	verdicts, err := comparison.Decide(
+		trMortgage(t),
+		comparison.Market{Quotes: []bonds.Quote{{Bond: ltn, Buy: &bonds.Price{Rate: dec(t, "0.1504"), UnitPrice: dec(t, "435.28")}}}},
+		comparison.Decision{Amount: dec(t, "30034.32"), Date: decided, Effect: mortgage.ShortenTerm},
+		decided,
+	)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	assertNear(t, "29268", verdicts[0].AvoidedCost, "150")
+}
+
+// assertNear asserts got is within tolerance of want.
+func assertNear(t *testing.T, want string, got decimal.Decimal, tolerance string) {
+	t.Helper()
+
+	off := got.Sub(dec(t, want))
+	if off.Cmp(decimal.Decimal{}) < 0 {
+		off = decimal.Decimal{}.Sub(off)
+	}
+
+	assert.LessOrEqual(t, off.Cmp(dec(t, tolerance)), 0, "%s is more than %s away from %s", got, tolerance, want)
+}
+
+// Under equal outflow, whatever a prepayment frees of an installment is prepaid the same month, so
+// shortening the term and lowering the installment leave about the same balance on the horizon:
+// only the centavos each installment rounds differ.
+func TestShorteningTheTermAndLoweringTheInstallmentGiveNearlyTheSameAdvantage(t *testing.T) {
+	t.Parallel()
+
+	for _, system := range []mortgage.AmortizationSystem{mortgage.SAC, mortgage.Price} {
+		t.Run(string(system), func(t *testing.T) {
+			t.Parallel()
+
+			m := trMortgage(t)
+			m.Terms.AmortizationSystem = system
+			decided := date(t, "2025-01-08")
+			market := comparison.Market{Quotes: []bonds.Quote{{
+				Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2031-01-01")},
+				Buy:  &bonds.Price{Rate: dec(t, "0.1504"), UnitPrice: dec(t, "435.28")},
+			}}}
+
+			advantage := func(effect mortgage.PrepaymentEffect) decimal.Decimal {
+				verdicts, err := comparison.Decide(m, market, comparison.Decision{Amount: dec(t, "30034.32"), Date: decided, Effect: effect}, decided)
+				require.NoError(t, err)
+				require.Len(t, verdicts, 1)
+
+				return verdicts[0].Advantage
+			}
+
+			shortened, lowered := advantage(mortgage.ShortenTerm), advantage(mortgage.LowerInstallment)
+			t.Log(shortened, lowered)
+			assertNear(t, shortened.String(), lowered, "5.00")
+		})
+	}
+}
+
+// A decision offers the bonds that follow the mortgage's indexer (ADR-0007) and pay no coupon: an
+// NTN-B Principal against an IPCA mortgage, an LTN against any other. Only bonds on offer, maturing
+// after the decision's date, are compared. Without IPCA index numbers, the NTN-B Principal's VNA
+// is unknown, so its verdict says so.
+func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
+	t.Parallel()
+
+	buy := &bonds.Price{Rate: dec(t, "0.07"), UnitPrice: dec(t, "500.00")}
+	quote := func(bondType bonds.Type, maturity string, buy *bonds.Price) bonds.Quote {
+		return bonds.Quote{Bond: bonds.Bond{Type: bondType, Maturity: date(t, maturity)}, Buy: buy}
+	}
+	market := comparison.Market{Quotes: []bonds.Quote{
+		quote(bonds.LTN, "2025-01-01", buy),
+		quote(bonds.LTN, "2028-01-01", buy),
+		quote(bonds.LTN, "2029-01-01", nil),
+		quote(bonds.NTNF, "2031-01-01", buy),
+		quote(bonds.NTNBPrincipal, "2029-05-15", buy),
+		quote(bonds.NTNBPrincipal, "2035-05-15", nil),
+		quote(bonds.NTNB, "2033-05-15", buy),
+	}}
+
+	tests := []struct {
+		indexer mortgage.Indexer
+		want    []string
+	}{
+		{mortgage.NoIndexer, []string{"ltn 2028-01-01"}},
+		{mortgage.TR, []string{"ltn 2028-01-01"}},
+		{mortgage.PoupancaYield, []string{"ltn 2028-01-01"}},
+		{mortgage.IPCA, []string{"ntn_b_principal 2029-05-15 missing_ipca"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.indexer), func(t *testing.T) {
+			t.Parallel()
+
+			terms := interestFreeTerms(t)
+			terms.Indexer = tt.indexer
+			decided := date(t, "2025-01-10")
+
+			verdicts, err := comparison.Decide(comparison.Mortgage{Terms: terms}, market,
+				comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm}, decided)
+			require.NoError(t, err)
+
+			got := make([]string, 0, len(verdicts))
+			for _, v := range verdicts {
+				got = append(got, strings.TrimSpace(fmt.Sprintf("%s %s %s", v.Bond.Type, v.Bond.Maturity.Format(time.DateOnly), v.Unavailable)))
+			}
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// amountView is a bond amount as text.
+type amountView struct {
+	Gross, IOF, IncomeTax, CustodyFee, Net string
+}
+
+func amountOf(a *bonds.Amount) amountView {
+	if a == nil {
+		return amountView{}
+	}
+
+	return amountView{a.Gross.String(), a.IOF.String(), a.IncomeTax.String(), a.CustodyFee.String(), a.Net.String()}
+}
+
+// ipcaMortgage borrows 50,000.00 on 2025-01-03 over 24 months under SAC, at 6% a year effective
+// plus IPCA, with no insurance or fee, due on the 3rd from 2025-02-03. Each anniversary corrects
+// the balance by the IPCA of the second month before it. IPCA is published at ipca% for every month
+// from 2024-11 to 2025-10, and projected by its trailing 12-month average, the same, after.
+func ipcaMortgage(t *testing.T, ipca string) (comparison.Mortgage, indexes.Outlook) {
+	t.Helper()
+
+	from := date(t, "2025-01-03")
+	terms := mortgage.Terms{
+		ContractDate:         from,
+		OriginalAmount:       dec(t, "50000.00"),
+		TermMonths:           24,
+		FirstInstallmentDate: date(t, "2025-02-03"),
+		AmortizationSystem:   mortgage.SAC,
+		Indexer:              mortgage.IPCA,
+		AppraisalValue:       dec(t, "100000.00"),
+		ContractRates:        []mortgage.ContractRate{{EffectiveFrom: from, Rate: dec(t, "0.06"), Basis: mortgage.Effective}},
+		MIPRates:             []mortgage.MonthlyRate{{EffectiveFrom: from, Rate: dec(t, "0")}},
+		DFIRates:             []mortgage.MonthlyRate{{EffectiveFrom: from, Rate: dec(t, "0")}},
+		Fees:                 []mortgage.Fee{{EffectiveFrom: from, Amount: dec(t, "0")}},
+	}
+
+	var history []indexes.Value
+
+	for month := date(t, "2024-11-01"); !month.After(date(t, "2025-10-01")); month = month.AddDate(0, 1, 0) {
+		history = append(history, indexes.Value{PeriodStart: month, PeriodEnd: month, Value: dec(t, ipca)})
+	}
+
+	outlook := indexes.NewOutlook(map[indexes.Index][]indexes.Value{indexes.IPCA: history}, indexes.Expectations{},
+		[]indexes.ProjectionMethod{{Index: indexes.IPCA, Method: indexes.Trailing12}})
+
+	return comparison.Mortgage{Terms: terms, Outlook: outlook}, outlook
+}
+
+// lotTaxes are the income tax brackets of Lei 11.033/2004 and a custody fee of 0.20% a year.
+func lotTaxes(t *testing.T) bonds.Taxes {
+	t.Helper()
+
+	from := date(t, "2005-01-01")
+
+	return bonds.Taxes{
+		IncomeTax: []bonds.IncomeTaxRate{
+			{EffectiveFrom: from, MinDays: 0, Rate: dec(t, "0.225")},
+			{EffectiveFrom: from, MinDays: 181, Rate: dec(t, "0.20")},
+			{EffectiveFrom: from, MinDays: 361, Rate: dec(t, "0.175")},
+			{EffectiveFrom: from, MinDays: 721, Rate: dec(t, "0.15")},
+		},
+		CustodyFee: []bonds.CustodyFeeRate{{EffectiveFrom: from, Rate: dec(t, "0.0020")}},
+	}
+}
+
+// Against an IPCA mortgage, 10,000.00 on 2025-11-03 either prepays it or buys an NTN-B Principal
+// maturing on 2026-08-15 at 7.5% a year over IPCA. The expected figures come from a separate
+// implementation in Python's decimal module of the schedule, Tesouro's VNA and quotation over
+// ANBIMA's holiday list, and the taxes. The two IPCA lags differ: the mortgage corrects each month
+// by the IPCA of the second month before its anniversary, while the VNA moves on each 15th by the
+// index number of the month before, from 7,300.00 for 2025-09 against 1,614.62 for June 2000, and
+// pro rata in between. Income tax falls on the IPCA correction of the bond too, so a higher IPCA
+// raises both the avoided cost and the tax, and the advantage doesn't stay put.
+func TestAnNTNBPrincipalVerdictFollowsTheIPCAPathInBothScenarios(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name, ipca, unitPrice, quantity string
+		maturity                        amountView
+		advantage, avoided              string
+		prepay, invest                  []flow
+	}{
+		{
+			name:      "low IPCA path, 0.20% a month",
+			ipca:      "0.20",
+			unitPrice: "4279.129184",
+			quantity:  "2.33",
+			maturity:  amountView{Gross: "10746.96", IOF: "0.00", IncomeTax: "151.96", CustodyFee: "16.78", Net: "10578.22"},
+			advantage: "-26.51",
+			avoided:   "636.26",
+			prepay: []flow{
+				{"2025-11-03", "", "0.00", "10000.00", "0.00", "", "19755.26"},
+				{"2025-12-03", "2075.83", "0.00", "198.92", "0.00", "", "17616.37"},
+				{"2026-01-03", "2047.21", "0.00", "221.71", "0.00", "", "15468.60"},
+				{"2026-02-03", "2012.88", "0.00", "250.16", "0.00", "", "13311.94"},
+				{"2026-03-03", "1970.44", "0.00", "286.70", "0.00", "", "11146.35"},
+				{"2026-04-03", "1915.80", "0.00", "335.40", "0.00", "", "8971.80"},
+				{"2026-05-03", "1841.71", "0.00", "403.53", "0.00", "", "6788.26"},
+				{"2026-06-03", "1733.57", "0.00", "505.67", "0.00", "", "4595.71"},
+				{"2026-07-03", "1557.38", "0.00", "675.82", "0.00", "", "2394.11"},
+				{"2026-08-03", "1211.13", "0.00", "1016.01", "0.00", "", "183.44"},
+				{"2026-08-15", "", "0.00", "0.00", "0.00", "", "183.44"},
+			},
+			invest: []flow{
+				{"2025-11-03", "", "9970.37", "29.63", "0.00", "", "29725.63"},
+				{"2025-12-03", "2272.49", "0.00", "2.26", "0.00", "", "27655.31"},
+				{"2026-01-03", "2266.47", "0.00", "2.45", "0.00", "", "25576.58"},
+				{"2026-02-03", "2260.38", "0.00", "2.66", "0.00", "", "23489.43"},
+				{"2026-03-03", "2254.23", "0.00", "2.91", "0.00", "", "21393.83"},
+				{"2026-04-03", "2248.00", "0.00", "3.20", "0.00", "", "19289.76"},
+				{"2026-05-03", "2241.67", "0.00", "3.57", "0.00", "", "17177.18"},
+				{"2026-06-03", "2235.22", "0.00", "4.02", "0.00", "", "15056.07"},
+				{"2026-07-03", "2228.60", "0.00", "4.60", "0.00", "", "12926.41"},
+				{"2026-08-03", "2221.76", "0.00", "5.38", "0.00", "", "10788.17"},
+				{"2026-08-15", "", "0.00", "0.00", "0.00", "10578.22", "10788.17"},
+			},
+		},
+		{
+			name:      "high IPCA path, 0.80% a month",
+			ipca:      "0.80",
+			unitPrice: "4294.815776",
+			quantity:  "2.32",
+			maturity:  amountView{Gross: "11359.15", IOF: "0.00", IncomeTax: "275.49", CustodyFee: "17.74", Net: "11065.92"},
+			advantage: "-117.05",
+			avoided:   "1223.40",
+			prepay: []flow{
+				{"2025-11-03", "", "0.00", "10000.00", "0.00", "", "21585.83"},
+				{"2025-12-03", "2281.76", "0.00", "147.40", "0.00", "", "19435.27"},
+				{"2026-01-03", "2272.11", "0.00", "165.32", "0.00", "", "17248.68"},
+				{"2026-02-03", "2257.96", "0.00", "187.72", "0.00", "", "15025.62"},
+				{"2026-03-03", "2237.41", "0.00", "216.50", "0.00", "", "12765.63"},
+				{"2026-04-03", "2207.26", "0.00", "254.85", "0.00", "", "10468.28"},
+				{"2026-05-03", "2161.77", "0.00", "308.52", "0.00", "", "8133.10"},
+				{"2026-06-03", "2089.44", "0.00", "389.00", "0.00", "", "5759.62"},
+				{"2026-07-03", "1963.49", "0.00", "523.07", "0.00", "", "3347.40"},
+				{"2026-08-03", "1703.51", "0.00", "791.15", "0.00", "", "895.94"},
+				{"2026-08-15", "", "0.00", "0.00", "0.00", "", "895.94"},
+			},
+			invest: []flow{
+				{"2025-11-03", "", "9963.97", "36.03", "0.00", "", "31549.80"},
+				{"2025-12-03", "2426.39", "0.00", "2.77", "0.00", "", "29527.84"},
+				{"2026-01-03", "2434.42", "0.00", "3.01", "0.00", "", "27471.51"},
+				{"2026-02-03", "2442.40", "0.00", "3.28", "0.00", "", "25380.39"},
+				{"2026-03-03", "2450.30", "0.00", "3.61", "0.00", "", "23254.05"},
+				{"2026-04-03", "2458.11", "0.00", "4.00", "0.00", "", "21092.07"},
+				{"2026-05-03", "2465.80", "0.00", "4.49", "0.00", "", "18894.01"},
+				{"2026-06-03", "2473.35", "0.00", "5.09", "0.00", "", "16659.42"},
+				{"2026-07-03", "2480.70", "0.00", "5.86", "0.00", "", "14387.88"},
+				{"2026-08-03", "2487.75", "0.00", "6.91", "0.00", "", "12078.91"},
+				{"2026-08-15", "", "0.00", "0.00", "0.00", "11065.92", "12078.91"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m, outlook := ipcaMortgage(t, tt.ipca)
+			decided := date(t, "2025-11-03")
+			market := comparison.Market{
+				Quotes: []bonds.Quote{{
+					Bond: bonds.Bond{Type: bonds.NTNBPrincipal, Maturity: date(t, "2026-08-15")},
+					Buy:  &bonds.Price{Rate: dec(t, "0.075"), UnitPrice: dec(t, "4000.00")},
+				}},
+				Taxes: lotTaxes(t),
+				IPCA: bonds.IPCA{
+					Numbers: bonds.IPCANumbers{date(t, "2000-06-01"): dec(t, "1614.62"), date(t, "2025-09-01"): dec(t, "7300.00")},
+					Outlook: outlook,
+				},
+			}
+
+			verdicts, err := comparison.Decide(m, market,
+				comparison.Decision{Amount: dec(t, "10000.00"), Date: decided, Effect: mortgage.ShortenTerm}, decided)
+			require.NoError(t, err)
+			require.Len(t, verdicts, 1)
+
+			v := verdicts[0]
+			assert.Equal(t, tt.unitPrice, v.UnitPrice.String())
+			assert.Equal(t, tt.quantity, v.Quantity.String())
+			assert.Equal(t, tt.maturity, amountOf(v.Invest.Bond))
+			assert.Equal(t, tt.advantage, v.Advantage.String())
+			assert.Equal(t, tt.avoided, v.AvoidedCost.String())
+			assert.Equal(t, tt.prepay, flows(v.Prepay))
+			assert.Equal(t, tt.invest, flows(v.Invest))
+			assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.IPCA, Method: indexes.Trailing12}}, v.ProjectedBy)
+			assert.Equal(t, []indexes.Index{indexes.IPCA, indexes.IPCANumber}, v.Indexes)
+		})
+	}
+}

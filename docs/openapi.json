@@ -104,6 +104,105 @@
         ],
         "type": "object"
       },
+      "CashFlow": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "description": "The date of the flows.",
+            "format": "date",
+            "type": "string"
+          },
+          "held": {
+            "description": "The cash set aside that day because nothing is owed to prepay with it, in reais, as a decimal string. Negative when the scenario's installment is above the status quo's.",
+            "type": "string"
+          },
+          "installment": {
+            "$ref": "#/components/schemas/CashFlowInstallment",
+            "description": "The installment due that day. Absent when none is."
+          },
+          "invested": {
+            "description": "What the bond cost, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "outstanding_balance": {
+            "description": "What is owed once the day's flows are done, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "prepaid": {
+            "description": "What the scenario's prepayment that day took off the outstanding balance, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "redeemed": {
+            "$ref": "#/components/schemas/LotAmount",
+            "description": "The bond's Maturity Value paid that day. Only on the horizon of the invest scenario."
+          }
+        },
+        "required": [
+          "date",
+          "invested",
+          "prepaid",
+          "held",
+          "outstanding_balance"
+        ],
+        "type": "object"
+      },
+      "CashFlowInstallment": {
+        "additionalProperties": false,
+        "properties": {
+          "amortization": {
+            "description": "Outstanding balance paid off, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "amount": {
+            "description": "Total the installment charges, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "correction": {
+            "description": "Indexer correction added to the outstanding balance before interest is charged, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "dfi": {
+            "description": "DFI (property damage insurance) premium, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "fee": {
+            "description": "Admin fee, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "index_values": {
+            "description": "The index values behind the correction, oldest period first.",
+            "items": {
+              "$ref": "#/components/schemas/CorrectionIndex"
+            },
+            "type": "array"
+          },
+          "interest": {
+            "description": "Interest charged, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "mip": {
+            "description": "MIP (life and disability insurance) premium, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "number": {
+            "description": "Installment number, counting from 1.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "number",
+          "correction",
+          "index_values",
+          "interest",
+          "amortization",
+          "mip",
+          "dfi",
+          "fee",
+          "amount"
+        ],
+        "type": "object"
+      },
       "ContractRate": {
         "additionalProperties": false,
         "properties": {
@@ -218,6 +317,70 @@
           "period_start",
           "period_end",
           "methods"
+        ],
+        "type": "object"
+      },
+      "Decision": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "The amount prepaid or invested, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "date": {
+            "description": "The date the amount is prepaid or invested on.",
+            "format": "date",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What each prepayment changes.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          },
+          "verdicts": {
+            "description": "A verdict for every bond on offer that follows the mortgage's indexer, pays no coupon and matures after the date, in the order of the bond catalogue.",
+            "items": {
+              "$ref": "#/components/schemas/Verdict"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "amount",
+          "date",
+          "effect",
+          "verdicts"
+        ],
+        "type": "object"
+      },
+      "DecisionInput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "The amount to prepay or invest, in reais, as a decimal string.",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
+            "type": "string"
+          },
+          "date": {
+            "description": "The date the amount is prepaid or invested on. Today when absent; it must not be before today.",
+            "format": "date",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "effect"
         ],
         "type": "object"
       },
@@ -1248,6 +1411,41 @@
         ],
         "type": "object"
       },
+      "Scenario": {
+        "additionalProperties": false,
+        "properties": {
+          "bond": {
+            "$ref": "#/components/schemas/LotAmount",
+            "description": "The bond's Maturity Value, gross and net of IOF, income tax and the custody fee. Only in the invest scenario."
+          },
+          "cash": {
+            "description": "The cash held at zero return on the horizon, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "cash_flows": {
+            "description": "The scenario's cash flows from the date to the horizon, by date.",
+            "items": {
+              "$ref": "#/components/schemas/CashFlow"
+            },
+            "type": "array"
+          },
+          "net_worth": {
+            "description": "The bond's net Maturity Value and the cash held, less the outstanding balance, on the horizon, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "outstanding_balance": {
+            "description": "What is still owed on the horizon, in reais, as a decimal string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "net_worth",
+          "cash",
+          "outstanding_balance",
+          "cash_flows"
+        ],
+        "type": "object"
+      },
       "Schedule": {
         "additionalProperties": false,
         "properties": {
@@ -1432,6 +1630,107 @@
           "statements"
         ],
         "type": "object"
+      },
+      "Verdict": {
+        "additionalProperties": false,
+        "properties": {
+          "advantage": {
+            "description": "The invest scenario's net worth on the horizon less the prepay scenario's, in reais, as a decimal string. Positive favours investing. Absent when the verdict is unavailable.",
+            "type": "string"
+          },
+          "avoided_cost": {
+            "description": "What prepaying the amount saves by the horizon beyond the amount itself, in reais, as a decimal string. Absent when the verdict is unavailable.",
+            "type": "string"
+          },
+          "invest": {
+            "$ref": "#/components/schemas/Scenario",
+            "description": "Investing the amount in the bond. Absent when the verdict is unavailable."
+          },
+          "market_data": {
+            "$ref": "#/components/schemas/VerdictMarketData",
+            "description": "How fresh the market data the verdict reads is."
+          },
+          "maturity": {
+            "description": "The date the bond matures: the horizon both scenarios are valued on.",
+            "format": "date",
+            "type": "string"
+          },
+          "prepay": {
+            "$ref": "#/components/schemas/Scenario",
+            "description": "Prepaying the amount. Absent when the verdict is unavailable."
+          },
+          "projected_by": {
+            "description": "The projection method of each index a projected value of the verdict comes from. Empty when it reads published values only.",
+            "items": {
+              "$ref": "#/components/schemas/ProjectedBy"
+            },
+            "type": "array"
+          },
+          "quantity": {
+            "description": "How many bonds the amount buys, in hundredths of a bond, as a decimal string. Absent when the verdict is unavailable for missing_ipca.",
+            "type": "string"
+          },
+          "rate": {
+            "description": "The buy rate of the bond's quote, as a decimal fraction. For ntn_b_principal it is the real rate over IPCA.",
+            "type": "string"
+          },
+          "type": {
+            "description": "The type of the bond compared.",
+            "enum": [
+              "ltn",
+              "ntn_f",
+              "ntn_b_principal",
+              "ntn_b"
+            ],
+            "type": "string"
+          },
+          "unavailable": {
+            "description": "Why the verdict has no scenarios. missing_ipca: the IPCA the bond's VNA follows is not available yet; amount_too_small: the amount buys less than a hundredth of the bond. Absent when it has them.",
+            "enum": [
+              "missing_ipca",
+              "amount_too_small"
+            ],
+            "type": "string"
+          },
+          "unit_price": {
+            "description": "The price of one bond at the rate for settlement on the date, in reais, as a decimal string. Absent when the verdict is unavailable for missing_ipca.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "maturity",
+          "rate",
+          "projected_by",
+          "market_data"
+        ],
+        "type": "object"
+      },
+      "VerdictMarketData": {
+        "additionalProperties": false,
+        "properties": {
+          "bonds": {
+            "$ref": "#/components/schemas/BondsStatus",
+            "description": "How fresh the bond prices are."
+          },
+          "focus": {
+            "$ref": "#/components/schemas/FocusStatus",
+            "description": "How fresh the Focus expectations are."
+          },
+          "indexes": {
+            "description": "How fresh each index the verdict reads is.",
+            "items": {
+              "$ref": "#/components/schemas/IndexStatus"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "bonds",
+          "focus",
+          "indexes"
+        ],
+        "type": "object"
       }
     }
   },
@@ -1470,6 +1769,48 @@
         "summary": "List the bonds with their prices",
         "tags": [
           "Bonds"
+        ]
+      }
+    },
+    "/decisions": {
+      "post": {
+        "description": "Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.",
+        "operationId": "decide",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Decision"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Compare prepaying an amount with buying a bond",
+        "tags": [
+          "Decisions"
         ]
       }
     },

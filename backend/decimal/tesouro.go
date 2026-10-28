@@ -16,6 +16,12 @@ func (x Decimal) TruncateUnitPrice() Decimal {
 	return x.quantize(6, apd.RoundDown)
 }
 
+// TruncateQuantity truncates a quantity of bonds at 2 places, the hundredth of a bond Tesouro
+// Direto sells.
+func (x Decimal) TruncateQuantity() Decimal {
+	return x.quantize(2, apd.RoundDown)
+}
+
 // RoundCoupon rounds an NTN-F coupon at 5 places, half up.
 func (x Decimal) RoundCoupon() Decimal {
 	return x.quantize(5, apd.RoundHalfUp)

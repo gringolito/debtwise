@@ -143,6 +143,7 @@ func TestOpenAPIContractIsServed(t *testing.T) {
 		OperationID string `json:"operationId"`
 	}{
 		"/bonds":                             {get: {OperationID: "list-bonds"}},
+		"/decisions":                         {"post": {OperationID: "decide"}},
 		"/health":                            {get: {OperationID: "health"}},
 		"/indexes/{index}/history":           {get: {OperationID: "index-history"}},
 		"/indexes/projection-methods":        {get: {OperationID: "projection-methods"}},
