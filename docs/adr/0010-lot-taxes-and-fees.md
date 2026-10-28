@@ -39,8 +39,8 @@ projected the lot has no values, which is reported as a missing IPCA, never valu
 of fee, on or after its date.
 
 - **Gain:** a sale's or maturity's gross value less the lot's cost. A coupon's gain is the whole
-  coupon, so every coupon is taxed in full, whatever the bond's price was. A loss is no gain, pays no
-  IOF or IR, and isn't carried over.
+  coupon, whatever the bond's price was, taxed at the regressive bracket of the days since the
+  purchase like any other event. A loss is no gain, pays no IOF or IR, and isn't carried over.
 - **IOF:** the rate of the table row for exactly the days held, times the gain. The rows are the
   regressive table of Decreto 6.306/2007 for days 1 to 29. A day with no row pays none, which is
   every day from the 30th on.
@@ -89,7 +89,8 @@ or one rule, so correcting it later is a new row or a change to one function.
   so the coupon's amount and its days held stay consistent with the price.
 - **Taking the cost of the coupons already paid off the gain of a later sale or maturity:**
   rejected. It needs the price split between coupons and principal that the first option lacked.
-  Each coupon is taxed in full when it is paid, and a sale or maturity is taxed over the cost.
+  Each coupon's whole amount is taxable when it is paid, and a sale or maturity is taxed over the
+  cost.
 - **Estimating an NTN-B's VNA from SGS 433 alone:** rejected, as ADR-0007 says. The monthly
   variations are rounded to two places and drift from the VNA by a few cents, so published numbers
   are used where IBGE has them and only the months after are grown by IPCA.
