@@ -93,7 +93,7 @@ type CashFlow struct {
 	Invested decimal.Decimal
 	// Prepaid is what the scenario's own prepayment that day took off the outstanding balance.
 	Prepaid decimal.Decimal
-	// Held is the cash set aside that day, because nothing is owed to prepay with it.
+	// Held is the cash set aside that day, including any uninvested remainder.
 	Held decimal.Decimal
 	// Redeemed is the bond's Maturity Value, on the horizon.
 	Redeemed *bonds.Amount
@@ -104,7 +104,13 @@ type CashFlow struct {
 var (
 	zero = decimal.Decimal{}.RoundCents()
 	// smallestFraction is the smallest quantity of a bond Tesouro Direto sells.
-	smallestFraction = decimal.FromInt(1).Quo(decimal.FromInt(100))
+	smallestFraction = func() decimal.Decimal {
+		fraction, err := decimal.Parse("0.01")
+		if err != nil {
+			panic(err)
+		}
+		return fraction
+	}()
 )
 
 // Decide returns a verdict for every bond on offer that follows the mortgage's indexer (ADR-0007)
@@ -177,8 +183,8 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 	cost := price.Mul(v.Quantity).RoundCents()
 	statusQuo := c.plan(zero, nil)
 
-	v.Prepay = c.scenario(statusQuo, c.decision.Amount, zero, nil)
-	v.Invest = c.scenario(statusQuo, c.decision.Amount.Sub(cost), cost, &valuation.Maturity)
+	v.Prepay = c.scenario(statusQuo, c.decision.Amount, zero, zero, nil)
+	v.Invest = c.scenario(statusQuo, zero, cost, c.decision.Amount.Sub(cost), &valuation.Maturity)
 	v.Advantage = v.Invest.NetWorth.Sub(v.Prepay.NetWorth)
 	v.AvoidedCost = statusQuo.Balance.Sub(v.Prepay.OutstandingBalance).Add(v.Prepay.Cash).Sub(c.decision.Amount)
 	v.ProjectedBy = projectedBy(priceBy, valuation.Maturity.ProjectedBy, statusQuo.Installments)
@@ -230,10 +236,10 @@ func (c comparer) plan(prepaid decimal.Decimal, topUp func(mortgage.Installment)
 	})
 }
 
-// scenario follows the decision's amount spent as invested on the bond, paid back as redeemed on
-// the horizon, and the rest prepaid on the decision's date. Each month it pays what the status quo
-// would, prepaying what its own installment leaves of it, and holding what nothing is owed for.
-func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested decimal.Decimal, redeemed *bonds.Amount) Scenario {
+// scenario follows the decision's amount prepaid, invested in the bond, or held as cash on the
+// decision's date. Each month it pays what the status quo would, prepaying what its own installment
+// leaves of it, and holding what nothing is owed for. The bond is redeemed on the horizon.
+func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash decimal.Decimal, redeemed *bonds.Amount) Scenario {
 	outflow := make(map[int]decimal.Decimal)
 
 	for _, i := range statusQuo.Installments {
@@ -250,7 +256,7 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested decimal
 	})
 
 	s := Scenario{Bond: redeemed}
-	held := prepaid.Sub(planned.Initial)
+	held := cash.Add(prepaid.Sub(planned.Initial))
 	s.CashFlows = append(s.CashFlows, CashFlow{
 		Date:               c.decision.Date,
 		Invested:           invested,

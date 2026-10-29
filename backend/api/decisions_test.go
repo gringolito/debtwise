@@ -114,13 +114,12 @@ func (s server) decide(t *testing.T, body string) decisionResult {
 // On 2026-10-28, 5,000.00 either prepays the interest-free mortgage or buys LTN maturing on
 // 2029-01-01, the only bond on offer that follows a mortgage without an indexer. At its buy rate of
 // 12.76%, over the 543 business days ANBIMA's calendar counts to its maturity, an LTN costs
-// 772.001684, so 5,000.00 buys 6.47 of them for 4,994.85 and the 5.15 left is prepaid. Held 796 days,
+// 772.001684, so 5,000.00 buys 6.47 of them for 4,994.85 and the 5.15 left is held. Held 796 days,
 // they pay 6,470.00, less 28.22 of custody fee at 0.20% a year and 217.04 of income tax at 15% on
 // the gain: 6,224.74. The figures are worked out in Python's decimal module.
 //
 // Prepaying shortens the mortgage by 5 months, so the 5,000.00 it would have paid from 2027-09-10
-// to 2028-01-10 is held. Investing prepays the 5.15 left, which lowers each SAC installment by a
-// few centavos that equal outflow prepays too, so the last installment is 5.15 short of 1,000.00.
+// to 2028-01-10 is held. Investing leaves the mortgage unchanged and holds 5.15 from the start.
 // With no interest, prepaying avoids nothing, and the advantage is the bond's net gain.
 func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	t.Parallel()
@@ -180,22 +179,22 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	assert.Equal(t, decisionScenario{
 		NetWorth: "6229.89", Cash: "5.15", OutstandingBalance: "0.00", Bond: maturity,
 		CashFlows: []decisionFlow{
-			{Date: "2026-10-28", Invested: "4994.85", Prepaid: "5.15", Held: "0.00", OutstandingBalance: "14994.85"},
-			installmentFlow("2026-11-10", 10, "999.66", "0.34", "0.00", "13994.85"),
-			installmentFlow("2026-12-10", 11, "999.63", "0.37", "0.00", "12994.85"),
-			installmentFlow("2027-01-10", 12, "999.60", "0.40", "0.00", "11994.85"),
-			installmentFlow("2027-02-10", 13, "999.57", "0.43", "0.00", "10994.85"),
-			installmentFlow("2027-03-10", 14, "999.53", "0.47", "0.00", "9994.85"),
-			installmentFlow("2027-04-10", 15, "999.49", "0.51", "0.00", "8994.85"),
-			installmentFlow("2027-05-10", 16, "999.43", "0.57", "0.00", "7994.85"),
-			installmentFlow("2027-06-10", 17, "999.36", "0.64", "0.00", "6994.85"),
-			installmentFlow("2027-07-10", 18, "999.26", "0.74", "0.00", "5994.85"),
-			installmentFlow("2027-08-10", 19, "999.14", "0.86", "0.00", "4994.85"),
-			installmentFlow("2027-09-10", 20, "998.97", "1.03", "0.00", "3994.85"),
-			installmentFlow("2027-10-10", 21, "998.71", "1.29", "0.00", "2994.85"),
-			installmentFlow("2027-11-10", 22, "998.28", "1.72", "0.00", "1994.85"),
-			installmentFlow("2027-12-10", 23, "997.43", "2.57", "0.00", "994.85"),
-			installmentFlow("2028-01-10", 24, "994.85", "0.00", "5.15", "0.00"),
+			{Date: "2026-10-28", Invested: "4994.85", Prepaid: "0.00", Held: "5.15", OutstandingBalance: "15000.00"},
+			installmentFlow("2026-11-10", 10, "1000.00", "0.00", "0.00", "14000.00"),
+			installmentFlow("2026-12-10", 11, "1000.00", "0.00", "0.00", "13000.00"),
+			installmentFlow("2027-01-10", 12, "1000.00", "0.00", "0.00", "12000.00"),
+			installmentFlow("2027-02-10", 13, "1000.00", "0.00", "0.00", "11000.00"),
+			installmentFlow("2027-03-10", 14, "1000.00", "0.00", "0.00", "10000.00"),
+			installmentFlow("2027-04-10", 15, "1000.00", "0.00", "0.00", "9000.00"),
+			installmentFlow("2027-05-10", 16, "1000.00", "0.00", "0.00", "8000.00"),
+			installmentFlow("2027-06-10", 17, "1000.00", "0.00", "0.00", "7000.00"),
+			installmentFlow("2027-07-10", 18, "1000.00", "0.00", "0.00", "6000.00"),
+			installmentFlow("2027-08-10", 19, "1000.00", "0.00", "0.00", "5000.00"),
+			installmentFlow("2027-09-10", 20, "1000.00", "0.00", "0.00", "4000.00"),
+			installmentFlow("2027-10-10", 21, "1000.00", "0.00", "0.00", "3000.00"),
+			installmentFlow("2027-11-10", 22, "1000.00", "0.00", "0.00", "2000.00"),
+			installmentFlow("2027-12-10", 23, "1000.00", "0.00", "0.00", "1000.00"),
+			installmentFlow("2028-01-10", 24, "1000.00", "0.00", "0.00", "0.00"),
 			{Date: "2029-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "0.00"},
 		},
 	}, *v.Invest)

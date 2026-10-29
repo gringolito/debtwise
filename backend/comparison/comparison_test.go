@@ -261,6 +261,49 @@ func trMortgage(t *testing.T) comparison.Mortgage {
 	return comparison.Mortgage{Terms: terms, Outlook: outlook}
 }
 
+// Investing holds the indivisible bond remainder rather than prepaying it, even when the mortgage
+// accrues interest. Its schedule and horizon balance must therefore match the status quo.
+func TestInvestingHoldsRemainderWithoutChangingMortgage(t *testing.T) {
+	t.Parallel()
+
+	m := trMortgage(t)
+	decided := date(t, "2025-01-08")
+	maturity := date(t, "2031-01-01")
+	market := comparison.Market{Quotes: []bonds.Quote{{
+		Bond: bonds.Bond{Type: bonds.LTN, Maturity: maturity},
+		Buy:  &bonds.Price{Rate: dec(t, "0.1504")},
+	}}}
+	status := m.Terms.Plan(m.Outlook, m.Events, decided, mortgage.Plan{Start: decided, Until: maturity})
+
+	for _, effect := range []mortgage.PrepaymentEffect{mortgage.ShortenTerm, mortgage.LowerInstallment} {
+		t.Run(string(effect), func(t *testing.T) {
+			t.Parallel()
+			amount := dec(t, "30034.32")
+			verdicts, err := comparison.Decide(m, market, comparison.Decision{Amount: amount, Date: decided, Effect: effect}, decided)
+			require.NoError(t, err)
+			require.Len(t, verdicts, 1)
+			v := verdicts[0]
+			require.Empty(t, v.Unavailable)
+			remainder := amount.Sub(v.UnitPrice.Mul(v.Quantity).RoundCents())
+			require.Positive(t, remainder.Cmp(decimal.Decimal{}))
+			require.NotEmpty(t, v.Invest.CashFlows)
+			first := v.Invest.CashFlows[0]
+			assert.Equal(t, "0.00", first.Prepaid.String())
+			assert.Equal(t, remainder.String(), first.Held.String())
+			assert.Equal(t, status.AtStart.String(), first.OutstandingBalance.String())
+			assert.Equal(t, remainder.String(), v.Invest.Cash.String())
+			assert.Equal(t, status.Balance.String(), v.Invest.OutstandingBalance.String())
+			require.NotNil(t, v.Invest.Bond)
+			assert.Equal(t, v.Invest.Bond.Net.Add(remainder).Sub(status.Balance).String(), v.Invest.NetWorth.String())
+			assert.Equal(t, v.Invest.NetWorth.Sub(v.Prepay.NetWorth).String(), v.Advantage.String())
+			for _, f := range v.Invest.CashFlows[1:] {
+				assert.Equal(t, "0.00", f.Prepaid.String())
+				assert.Equal(t, "0.00", f.Held.String())
+			}
+		})
+	}
+}
+
 // The spreadsheet's first lot spent 30,034.32 on 2025-01-08 on 69 LTN maturing on 2031-01-01, and
 // counted 26,260 as the cost prepaying it would have avoided by then: the contract rate compounded
 // on it, corrected by TR, but not the TR correction of the prepaid amount itself. Prepaying it
@@ -463,8 +506,8 @@ func TestAnNTNBPrincipalVerdictFollowsTheIPCAPathInBothScenarios(t *testing.T) {
 	tests := []struct {
 		name, ipca, unitPrice, quantity string
 		maturity                        amountView
-		advantage, avoided              string
-		prepay, invest                  []flow
+		avoided                         string
+		prepay                          []flow
 	}{
 		{
 			name:      "low IPCA path, 0.20% a month",
@@ -472,7 +515,6 @@ func TestAnNTNBPrincipalVerdictFollowsTheIPCAPathInBothScenarios(t *testing.T) {
 			unitPrice: "4279.129184",
 			quantity:  "2.33",
 			maturity:  amountView{Gross: "10746.96", IOF: "0.00", IncomeTax: "151.96", CustodyFee: "16.78", Net: "10578.22"},
-			advantage: "-26.51",
 			avoided:   "636.26",
 			prepay: []flow{
 				{"2025-11-03", "", "0.00", "10000.00", "0.00", "", "19755.26"},
@@ -487,19 +529,6 @@ func TestAnNTNBPrincipalVerdictFollowsTheIPCAPathInBothScenarios(t *testing.T) {
 				{"2026-08-03", "1211.13", "0.00", "1016.01", "0.00", "", "183.44"},
 				{"2026-08-15", "", "0.00", "0.00", "0.00", "", "183.44"},
 			},
-			invest: []flow{
-				{"2025-11-03", "", "9970.37", "29.63", "0.00", "", "29725.63"},
-				{"2025-12-03", "2272.49", "0.00", "2.26", "0.00", "", "27655.31"},
-				{"2026-01-03", "2266.47", "0.00", "2.45", "0.00", "", "25576.58"},
-				{"2026-02-03", "2260.38", "0.00", "2.66", "0.00", "", "23489.43"},
-				{"2026-03-03", "2254.23", "0.00", "2.91", "0.00", "", "21393.83"},
-				{"2026-04-03", "2248.00", "0.00", "3.20", "0.00", "", "19289.76"},
-				{"2026-05-03", "2241.67", "0.00", "3.57", "0.00", "", "17177.18"},
-				{"2026-06-03", "2235.22", "0.00", "4.02", "0.00", "", "15056.07"},
-				{"2026-07-03", "2228.60", "0.00", "4.60", "0.00", "", "12926.41"},
-				{"2026-08-03", "2221.76", "0.00", "5.38", "0.00", "", "10788.17"},
-				{"2026-08-15", "", "0.00", "0.00", "0.00", "10578.22", "10788.17"},
-			},
 		},
 		{
 			name:      "high IPCA path, 0.80% a month",
@@ -507,7 +536,6 @@ func TestAnNTNBPrincipalVerdictFollowsTheIPCAPathInBothScenarios(t *testing.T) {
 			unitPrice: "4294.815776",
 			quantity:  "2.32",
 			maturity:  amountView{Gross: "11359.15", IOF: "0.00", IncomeTax: "275.49", CustodyFee: "17.74", Net: "11065.92"},
-			advantage: "-117.05",
 			avoided:   "1223.40",
 			prepay: []flow{
 				{"2025-11-03", "", "0.00", "10000.00", "0.00", "", "21585.83"},
@@ -521,19 +549,6 @@ func TestAnNTNBPrincipalVerdictFollowsTheIPCAPathInBothScenarios(t *testing.T) {
 				{"2026-07-03", "1963.49", "0.00", "523.07", "0.00", "", "3347.40"},
 				{"2026-08-03", "1703.51", "0.00", "791.15", "0.00", "", "895.94"},
 				{"2026-08-15", "", "0.00", "0.00", "0.00", "", "895.94"},
-			},
-			invest: []flow{
-				{"2025-11-03", "", "9963.97", "36.03", "0.00", "", "31549.80"},
-				{"2025-12-03", "2426.39", "0.00", "2.77", "0.00", "", "29527.84"},
-				{"2026-01-03", "2434.42", "0.00", "3.01", "0.00", "", "27471.51"},
-				{"2026-02-03", "2442.40", "0.00", "3.28", "0.00", "", "25380.39"},
-				{"2026-03-03", "2450.30", "0.00", "3.61", "0.00", "", "23254.05"},
-				{"2026-04-03", "2458.11", "0.00", "4.00", "0.00", "", "21092.07"},
-				{"2026-05-03", "2465.80", "0.00", "4.49", "0.00", "", "18894.01"},
-				{"2026-06-03", "2473.35", "0.00", "5.09", "0.00", "", "16659.42"},
-				{"2026-07-03", "2480.70", "0.00", "5.86", "0.00", "", "14387.88"},
-				{"2026-08-03", "2487.75", "0.00", "6.91", "0.00", "", "12078.91"},
-				{"2026-08-15", "", "0.00", "0.00", "0.00", "11065.92", "12078.91"},
 			},
 		},
 	}
@@ -565,10 +580,31 @@ func TestAnNTNBPrincipalVerdictFollowsTheIPCAPathInBothScenarios(t *testing.T) {
 			assert.Equal(t, tt.unitPrice, v.UnitPrice.String())
 			assert.Equal(t, tt.quantity, v.Quantity.String())
 			assert.Equal(t, tt.maturity, amountOf(v.Invest.Bond))
-			assert.Equal(t, tt.advantage, v.Advantage.String())
+			status := m.Terms.Plan(m.Outlook, m.Events, decided, mortgage.Plan{Start: decided, Until: market.Quotes[0].Bond.Maturity})
+			cost := v.UnitPrice.Mul(v.Quantity).RoundCents()
+			remainder := dec(t, "10000.00").Sub(cost)
+			expectedWorth := v.Invest.Bond.Net.Add(remainder).Sub(status.Balance)
+			assert.Equal(t, expectedWorth.String(), v.Invest.NetWorth.String())
+			assert.Equal(t, expectedWorth.Sub(v.Prepay.NetWorth).String(), v.Advantage.String())
 			assert.Equal(t, tt.avoided, v.AvoidedCost.String())
 			assert.Equal(t, tt.prepay, flows(v.Prepay))
-			assert.Equal(t, tt.invest, flows(v.Invest))
+			require.Equal(t, flow{Date: "2025-11-03", Invested: cost.String(), Prepaid: "0.00", Held: remainder.String(), OutstandingBalance: status.AtStart.String()}, flows(v.Invest)[0])
+			for _, installment := range status.Installments {
+				if !installment.DueDate.After(decided) {
+					continue
+				}
+				found := false
+				for _, f := range v.Invest.CashFlows {
+					if f.Date.Equal(installment.DueDate) {
+						require.NotNil(t, f.Installment)
+						assert.Equal(t, installment.Amount.String(), f.Installment.Amount.String())
+						assert.Equal(t, installment.OutstandingBalance.String(), f.OutstandingBalance.String())
+						assert.Equal(t, "0.00", f.Prepaid.String())
+						found = true
+					}
+				}
+				assert.True(t, found, "missing installment %s", installment.DueDate)
+			}
 			assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.IPCA, Method: indexes.Trailing12}}, v.ProjectedBy)
 			assert.Equal(t, []indexes.Index{indexes.IPCA, indexes.IPCANumber}, v.Indexes)
 		})

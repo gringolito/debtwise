@@ -5,14 +5,15 @@ date to the horizon, the compared bond's maturity:
 
 - **Status quo:** nothing is prepaid. Its installments set the outflow of every later month.
 - **Prepay:** the amount is prepaid on the decision's date.
-- **Invest:** the amount buys the bond, and what is left of it is prepaid on the decision's date.
+- **Invest:** the amount buys the bond, and the remainder is held as cash at zero return.
 
-Each of these prepayments has the effect the owner chose. They never happened, so a recorded
-prepayment or statement can't account for them: each applies after the recorded events of its date,
-and after that day's installment as ADR-0008 orders a prepayment. After every installment due after
-the decision's date, a scenario pays what the status quo's installment of that month is: its own
-installment, and the difference prepaid on its due date. What nothing is owed for any more, a prepayment larger than the
-balance or a month after the mortgage is paid off, is held as cash at zero return until the horizon.
+The prepay scenario's initial prepayment and later top-ups have the effect the owner chose. They never
+happened, so a recorded prepayment or statement can't account for them: each applies after the
+recorded events of its date, and after that day's installment as ADR-0008 orders a prepayment. After
+every installment due after the decision's date, a scenario pays what the status quo's installment
+of that month is: its own installment, and the difference prepaid on its due date. What nothing is
+owed for any more, a prepayment larger than the balance or a month after the mortgage is paid off,
+is held as cash at zero return until the horizon.
 A month in which a scenario's installment is above the status quo's holds the difference as negative
 cash, so both scenarios still pay the same out of pocket.
 
@@ -42,4 +43,4 @@ mortgage's corrections in either scenario, and the VNA of the purchase and of th
   month's interest on the balance an event leaves, so the balance an owner could pay off on a date is
   the one the schedule shows, and statements' drift uses the same balance.
 - **Fractional bonds to the cent of the amount:** rejected. Tesouro Direto sells hundredths of a
-  bond, and what is left over is cash that frees up on the decision's date.
+  bond, and what is left over is held as cash until the horizon, not prepaid.
