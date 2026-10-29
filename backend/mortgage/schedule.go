@@ -2,6 +2,7 @@ package mortgage
 
 import (
 	"iter"
+	"sort"
 	"time"
 
 	"github.com/gringolito/debtwise/backend/decimal"
@@ -82,9 +83,26 @@ type replayer struct {
 	relevel bool
 	// drifts are those of the statements applied so far.
 	drifts []Drift
+	// initial is what planned prepayments took off the balance.
+	initial decimal.Decimal
+	// rates are the contract rates as monthly rates, converted once.
+	rates []chargedRate
 }
 
+// chargedRate is a contract rate as the monthly rate charged from a date.
+type chargedRate struct {
+	from time.Time
+	rate decimal.Decimal
+}
+
+func (m chargedRate) effectiveFrom() time.Time { return m.from }
+
 func (t Terms) replayer(outlook indexes.Outlook, events Events, today time.Time) *replayer {
+	rates := make([]chargedRate, 0, len(t.ContractRates))
+	for _, r := range t.ContractRates {
+		rates = append(rates, chargedRate{from: r.EffectiveFrom, rate: r.monthly()})
+	}
+
 	return &replayer{
 		terms:       t,
 		corrections: newCorrections(t, outlook),
@@ -92,6 +110,7 @@ func (t Terms) replayer(outlook indexes.Outlook, events Events, today time.Time)
 		events:      events.inOrder(),
 		balance:     t.OriginalAmount.RoundCents(),
 		term:        t.TermMonths,
+		rates:       rates,
 	}
 }
 
@@ -119,7 +138,7 @@ func (r *replayer) installments() iter.Seq[Installment] {
 func (r *replayer) charge(number int) Installment {
 	t := r.terms
 	due := addMonths(t.FirstInstallmentDate, number-1)
-	rate := inEffect(t.ContractRates, due).monthly()
+	rate := inEffect(r.rates, due).rate
 	left := r.term - number + 1
 
 	values := r.corrections.through(due, !due.After(r.today))
@@ -198,6 +217,9 @@ func (r *replayer) applyNext(paid int) decimal.Decimal {
 		r.applyStatement(*e.statement)
 	case r.balance.Cmp(decimal.Decimal{}) > 0:
 		prepaid = r.prepay(paid, *e.prepayment)
+		if e.planned {
+			r.initial = r.initial.Add(prepaid)
+		}
 	}
 
 	if r.balance.Cmp(decimal.Decimal{}) == 0 {
@@ -215,16 +237,17 @@ func (r *replayer) prepay(paid int, p Prepayment) decimal.Decimal {
 	}
 
 	left := r.term - paid
-	rate := inEffect(r.terms.ContractRates, addMonths(r.terms.FirstInstallmentDate, paid)).monthly()
+	rate := inEffect(r.rates, addMonths(r.terms.FirstInstallmentDate, paid)).rate
 	before := level(r.terms.AmortizationSystem, r.balance, rate, left)
 	r.balance = r.balance.Sub(amount)
 	r.relevel = true
 
 	if p.Effect == ShortenTerm && r.balance.Cmp(decimal.Decimal{}) > 0 {
-		months := 1
-		for months < left && level(r.terms.AmortizationSystem, r.balance, rate, months).Cmp(before) > 0 {
-			months++
-		}
+		// The installment only falls as the months grow, so the fewest months it fits in can be
+		// searched for.
+		months := 1 + sort.Search(left-1, func(i int) bool {
+			return level(r.terms.AmortizationSystem, r.balance, rate, i+1).Cmp(before) <= 0
+		})
 
 		r.term = paid + months
 	}

@@ -21,7 +21,7 @@ function ProjectionCell({ methods }: { methods: ProjectedBy[] }) {
   );
 }
 
-function AmountRow({ name, amount }: { name: string; amount: LotAmount }) {
+export function AmountRow({ name, amount }: { name: string; amount: LotAmount }) {
   return (
     <TableRow>
       <TableHead scope="row">{name}</TableHead>
@@ -35,21 +35,28 @@ function AmountRow({ name, amount }: { name: string; amount: LotAmount }) {
   );
 }
 
+/** AmountsHeader is the head row of a table of AmountRow rows. */
+export function AmountsHeader() {
+  return (
+    <TableHeader>
+      <TableRow>
+        <TableHead>Valor</TableHead>
+        <TableHead>Bruto</TableHead>
+        <TableHead>IOF</TableHead>
+        <TableHead>IR</TableHead>
+        <TableHead>Taxa de custódia</TableHead>
+        <TableHead>Líquido</TableHead>
+        <TableHead>Projeção</TableHead>
+      </TableRow>
+    </TableHeader>
+  );
+}
+
 /** LotAmountsTable shows the Accrual, Market and Maturity Values of a lot, taxes and fees apart. */
 export function LotAmountsTable({ label, values }: { label: string; values: LotValues }) {
   return (
     <Table aria-label={`Valores de ${label}`}>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Valor</TableHead>
-          <TableHead>Bruto</TableHead>
-          <TableHead>IOF</TableHead>
-          <TableHead>IR</TableHead>
-          <TableHead>Taxa de custódia</TableHead>
-          <TableHead>Líquido</TableHead>
-          <TableHead>Projeção</TableHead>
-        </TableRow>
-      </TableHeader>
+      <AmountsHeader />
       <TableBody>
         {values.accrual && <AmountRow name="Na curva" amount={values.accrual} />}
         {values.market ? (

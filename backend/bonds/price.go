@@ -6,6 +6,7 @@ import (
 
 	"github.com/gringolito/debtwise/backend/calendar"
 	"github.com/gringolito/debtwise/backend/decimal"
+	"github.com/gringolito/debtwise/backend/indexes"
 )
 
 var (
@@ -72,6 +73,23 @@ func (b Bond) Quotation(rate decimal.Decimal, settlement time.Time) decimal.Deci
 // isn't an NTN-B.
 func (b Bond) IPCAUnitPrice(rate decimal.Decimal, settlement time.Time, projectedVNA decimal.Decimal) decimal.Decimal {
 	return projectedVNA.Mul(b.Quotation(rate, settlement)).Quo(hundred).TruncateUnitPrice()
+}
+
+// PriceOn is the price (PU) of one bond bought or sold at rate for settlement on the date of
+// settlement: UnitPrice for an LTN or NTN-F, and for an NTN-B Principal or NTN-B its IPCAUnitPrice
+// with the VNA projected to that date from ipca, which also returns the projection methods of the
+// IPCA it depends on. A VNA neither published nor projected returns ErrMissingIPCANumber.
+func (b Bond) PriceOn(rate decimal.Decimal, settlement time.Time, ipca IPCA) (decimal.Decimal, []indexes.ProjectionMethod, error) {
+	if b.Type != NTNBPrincipal && b.Type != NTNB {
+		return b.UnitPrice(rate, settlement), nil, nil
+	}
+
+	vna, err := newVNASource(ipca).on(settlement)
+	if err != nil {
+		return decimal.Decimal{}, nil, err
+	}
+
+	return b.IPCAUnitPrice(rate, settlement, vna.value), vna.projectedBy, nil
 }
 
 func (b Bond) ntnbQuotation(rate decimal.Decimal, settlement time.Time) decimal.Decimal {
