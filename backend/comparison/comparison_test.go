@@ -296,6 +296,7 @@ func TestInvestingHoldsRemainderWithoutChangingMortgage(t *testing.T) {
 			require.NotNil(t, v.Invest.Bond)
 			assert.Equal(t, v.Invest.Bond.Net.Add(remainder).Sub(status.Balance).String(), v.Invest.NetWorth.String())
 			assert.Equal(t, v.Invest.NetWorth.Sub(v.Prepay.NetWorth).String(), v.Advantage.String())
+
 			for _, f := range v.Invest.CashFlows[1:] {
 				assert.Equal(t, "0.00", f.Prepaid.String())
 				assert.Equal(t, "0.00", f.Held.String())
@@ -589,22 +590,28 @@ func TestAnNTNBPrincipalVerdictFollowsTheIPCAPathInBothScenarios(t *testing.T) {
 			assert.Equal(t, tt.avoided, v.AvoidedCost.String())
 			assert.Equal(t, tt.prepay, flows(v.Prepay))
 			require.Equal(t, flow{Date: "2025-11-03", Invested: cost.String(), Prepaid: "0.00", Held: remainder.String(), OutstandingBalance: status.AtStart.String()}, flows(v.Invest)[0])
+
 			for _, installment := range status.Installments {
 				if !installment.DueDate.After(decided) {
 					continue
 				}
+
 				found := false
+
 				for _, f := range v.Invest.CashFlows {
 					if f.Date.Equal(installment.DueDate) {
 						require.NotNil(t, f.Installment)
 						assert.Equal(t, installment.Amount.String(), f.Installment.Amount.String())
 						assert.Equal(t, installment.OutstandingBalance.String(), f.OutstandingBalance.String())
 						assert.Equal(t, "0.00", f.Prepaid.String())
+
 						found = true
 					}
 				}
+
 				assert.True(t, found, "missing installment %s", installment.DueDate)
 			}
+
 			assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.IPCA, Method: indexes.Trailing12}}, v.ProjectedBy)
 			assert.Equal(t, []indexes.Index{indexes.IPCA, indexes.IPCANumber}, v.Indexes)
 		})

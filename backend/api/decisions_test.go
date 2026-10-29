@@ -89,10 +89,10 @@ type decisionResult struct {
 }
 
 // installmentFlow is a cash flow on an installment's due date.
-func installmentFlow(day string, number int, amount, prepaid, held, balance string) decisionFlow {
+func installmentFlow(day string, number int, balance string) decisionFlow {
 	return decisionFlow{
-		Date: day, Installment: &decisionInstallment{Number: number, Amount: amount},
-		Invested: "0.00", Prepaid: prepaid, Held: held, OutstandingBalance: balance,
+		Date: day, Installment: &decisionInstallment{Number: number, Amount: "1000.00"},
+		Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: balance,
 	}
 }
 
@@ -156,16 +156,16 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 		NetWorth: "5000.00", Cash: "5000.00", OutstandingBalance: "0.00",
 		CashFlows: []decisionFlow{
 			{Date: "2026-10-28", Invested: "0.00", Prepaid: "5000.00", Held: "0.00", OutstandingBalance: "10000.00"},
-			installmentFlow("2026-11-10", 10, "1000.00", "0.00", "0.00", "9000.00"),
-			installmentFlow("2026-12-10", 11, "1000.00", "0.00", "0.00", "8000.00"),
-			installmentFlow("2027-01-10", 12, "1000.00", "0.00", "0.00", "7000.00"),
-			installmentFlow("2027-02-10", 13, "1000.00", "0.00", "0.00", "6000.00"),
-			installmentFlow("2027-03-10", 14, "1000.00", "0.00", "0.00", "5000.00"),
-			installmentFlow("2027-04-10", 15, "1000.00", "0.00", "0.00", "4000.00"),
-			installmentFlow("2027-05-10", 16, "1000.00", "0.00", "0.00", "3000.00"),
-			installmentFlow("2027-06-10", 17, "1000.00", "0.00", "0.00", "2000.00"),
-			installmentFlow("2027-07-10", 18, "1000.00", "0.00", "0.00", "1000.00"),
-			installmentFlow("2027-08-10", 19, "1000.00", "0.00", "0.00", "0.00"),
+			installmentFlow("2026-11-10", 10, "9000.00"),
+			installmentFlow("2026-12-10", 11, "8000.00"),
+			installmentFlow("2027-01-10", 12, "7000.00"),
+			installmentFlow("2027-02-10", 13, "6000.00"),
+			installmentFlow("2027-03-10", 14, "5000.00"),
+			installmentFlow("2027-04-10", 15, "4000.00"),
+			installmentFlow("2027-05-10", 16, "3000.00"),
+			installmentFlow("2027-06-10", 17, "2000.00"),
+			installmentFlow("2027-07-10", 18, "1000.00"),
+			installmentFlow("2027-08-10", 19, "0.00"),
 			heldFlow("2027-09-10"),
 			heldFlow("2027-10-10"),
 			heldFlow("2027-11-10"),
@@ -180,21 +180,21 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 		NetWorth: "6229.89", Cash: "5.15", OutstandingBalance: "0.00", Bond: maturity,
 		CashFlows: []decisionFlow{
 			{Date: "2026-10-28", Invested: "4994.85", Prepaid: "0.00", Held: "5.15", OutstandingBalance: "15000.00"},
-			installmentFlow("2026-11-10", 10, "1000.00", "0.00", "0.00", "14000.00"),
-			installmentFlow("2026-12-10", 11, "1000.00", "0.00", "0.00", "13000.00"),
-			installmentFlow("2027-01-10", 12, "1000.00", "0.00", "0.00", "12000.00"),
-			installmentFlow("2027-02-10", 13, "1000.00", "0.00", "0.00", "11000.00"),
-			installmentFlow("2027-03-10", 14, "1000.00", "0.00", "0.00", "10000.00"),
-			installmentFlow("2027-04-10", 15, "1000.00", "0.00", "0.00", "9000.00"),
-			installmentFlow("2027-05-10", 16, "1000.00", "0.00", "0.00", "8000.00"),
-			installmentFlow("2027-06-10", 17, "1000.00", "0.00", "0.00", "7000.00"),
-			installmentFlow("2027-07-10", 18, "1000.00", "0.00", "0.00", "6000.00"),
-			installmentFlow("2027-08-10", 19, "1000.00", "0.00", "0.00", "5000.00"),
-			installmentFlow("2027-09-10", 20, "1000.00", "0.00", "0.00", "4000.00"),
-			installmentFlow("2027-10-10", 21, "1000.00", "0.00", "0.00", "3000.00"),
-			installmentFlow("2027-11-10", 22, "1000.00", "0.00", "0.00", "2000.00"),
-			installmentFlow("2027-12-10", 23, "1000.00", "0.00", "0.00", "1000.00"),
-			installmentFlow("2028-01-10", 24, "1000.00", "0.00", "0.00", "0.00"),
+			installmentFlow("2026-11-10", 10, "14000.00"),
+			installmentFlow("2026-12-10", 11, "13000.00"),
+			installmentFlow("2027-01-10", 12, "12000.00"),
+			installmentFlow("2027-02-10", 13, "11000.00"),
+			installmentFlow("2027-03-10", 14, "10000.00"),
+			installmentFlow("2027-04-10", 15, "9000.00"),
+			installmentFlow("2027-05-10", 16, "8000.00"),
+			installmentFlow("2027-06-10", 17, "7000.00"),
+			installmentFlow("2027-07-10", 18, "6000.00"),
+			installmentFlow("2027-08-10", 19, "5000.00"),
+			installmentFlow("2027-09-10", 20, "4000.00"),
+			installmentFlow("2027-10-10", 21, "3000.00"),
+			installmentFlow("2027-11-10", 22, "2000.00"),
+			installmentFlow("2027-12-10", 23, "1000.00"),
+			installmentFlow("2028-01-10", 24, "0.00"),
 			{Date: "2029-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "0.00"},
 		},
 	}, *v.Invest)
