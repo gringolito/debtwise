@@ -195,8 +195,9 @@ func TestStatementIsEdited(t *testing.T) {
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 }
 
-// The schedule a statement is compared with is corrected by the published TR: after the 2nd
-// installment it owes 40,071.58, as TestIndexedMortgageScheduleIsCorrectedByPublishedValues works out.
+// The schedule a statement is compared with is corrected by the published TR, but not on the 1st
+// installment: after the 2nd installment it owes 40,050.00, as
+// TestIndexedMortgageScheduleIsCorrectedByPublishedValues works out.
 func TestStatementDriftFollowsIndexCorrections(t *testing.T) {
 	t.Parallel()
 
@@ -212,8 +213,8 @@ func TestStatementDriftFollowsIndexCorrections(t *testing.T) {
 		`{"date": "2024-02-20", "outstanding_balance": "40100.00"}`, http.StatusCreated)
 
 	assert.JSONEq(t, `{"statements": [
-		{"id": 1, "date": "2024-02-20", "outstanding_balance": "40100.00", "computed_balance": "40071.58",
-		 "drift": "28.42"}
+		{"id": 1, "date": "2024-02-20", "outstanding_balance": "40100.00", "computed_balance": "40050.00",
+		 "drift": "50.00"}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 }
 
