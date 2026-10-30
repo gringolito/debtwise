@@ -1,5 +1,7 @@
 import type { Prepayment, RegisteredMortgage, Schedule, StatementDrift } from "@/lib/api";
 
+const FIXED_RATE = "0.126825030131969720661201";
+
 // A six-month SAC mortgage of R$ 60.000,00 at 12% a year nominal. MIP rises on 2024-04-01. The
 // admin fee and the DFI premium differ, so a screen that swaps their columns shows it.
 export const registeredMortgage: RegisteredMortgage = {
@@ -16,6 +18,7 @@ export const registeredMortgage: RegisteredMortgage = {
       basis: "nominal",
       nominal: "0.12",
       effective: "0.126825030131969720661201",
+      poupanca_additional: false,
     },
   ],
   mip_rates: [
@@ -33,6 +36,8 @@ export const schedule: Schedule = {
       due_date: "2024-01-10",
       correction: "0.00",
       index_values: [],
+      rate: FIXED_RATE,
+      rate_index_values: [],
       interest: "600.00",
       amortization: "10000.00",
       mip: "18.00",
@@ -47,6 +52,8 @@ export const schedule: Schedule = {
       due_date: "2024-02-10",
       correction: "0.00",
       index_values: [],
+      rate: FIXED_RATE,
+      rate_index_values: [],
       interest: "500.00",
       amortization: "10000.00",
       mip: "15.00",
@@ -61,6 +68,8 @@ export const schedule: Schedule = {
       due_date: "2024-03-10",
       correction: "0.00",
       index_values: [],
+      rate: FIXED_RATE,
+      rate_index_values: [],
       interest: "400.00",
       amortization: "10000.00",
       mip: "12.00",
@@ -75,6 +84,8 @@ export const schedule: Schedule = {
       due_date: "2024-04-10",
       correction: "0.00",
       index_values: [],
+      rate: FIXED_RATE,
+      rate_index_values: [],
       interest: "300.00",
       amortization: "10000.00",
       mip: "15.00",
@@ -89,6 +100,8 @@ export const schedule: Schedule = {
       due_date: "2024-05-10",
       correction: "0.00",
       index_values: [],
+      rate: FIXED_RATE,
+      rate_index_values: [],
       interest: "200.00",
       amortization: "10000.00",
       mip: "10.00",
@@ -103,6 +116,8 @@ export const schedule: Schedule = {
       due_date: "2024-06-10",
       correction: "0.00",
       index_values: [],
+      rate: FIXED_RATE,
+      rate_index_values: [],
       interest: "100.00",
       amortization: "10000.00",
       mip: "5.00",
@@ -124,6 +139,8 @@ export const scheduleAfterSave: Schedule = {
       due_date: "2024-01-15",
       correction: "0.00",
       index_values: [],
+      rate: FIXED_RATE,
+      rate_index_values: [],
       interest: "700.00",
       amortization: "60000.00",
       mip: "21.00",
@@ -156,6 +173,8 @@ export const trSchedule: Schedule = {
           methods: [],
         },
       ],
+      rate: FIXED_RATE,
+      rate_index_values: [],
       interest: "603.23",
       amortization: "10000.00",
       mip: "18.00",
@@ -178,6 +197,8 @@ export const trSchedule: Schedule = {
           methods: [],
         },
       ],
+      rate: FIXED_RATE,
+      rate_index_values: [],
       interest: "500.00",
       amortization: "10000.00",
       mip: "15.00",
@@ -192,6 +213,8 @@ export const trSchedule: Schedule = {
       due_date: "2024-03-10",
       correction: "0.00",
       index_values: [],
+      rate: FIXED_RATE,
+      rate_index_values: [],
       interest: "400.00",
       amortization: "10000.00",
       mip: "12.00",
@@ -223,6 +246,8 @@ export const ipcaSchedule: Schedule = {
           methods: [],
         },
       ],
+      rate: FIXED_RATE,
+      rate_index_values: [],
       interest: "603.23",
       amortization: "10000.00",
       mip: "18.00",
@@ -267,6 +292,8 @@ export const deferredSchedule: Schedule = {
           methods: [],
         },
       ],
+      rate: FIXED_RATE,
+      rate_index_values: [],
       interest: "603.23",
       amortization: "10000.00",
       mip: "18.00",
@@ -279,24 +306,82 @@ export const deferredSchedule: Schedule = {
   ],
 };
 
-// A poupança-indexed installment due after today: its yield derives from a projected TR and a
-// projected Selic target, so it names both methods.
+// A TR-indexed mortgage whose rate is 6% a year plus the poupança yield's additional part. The
+// first installment's Selic target is published; the second's is not, so its rate is the fixed
+// part alone.
+export const poupancaMortgage: RegisteredMortgage = {
+  ...trMortgage,
+  contract_rates: [
+    {
+      effective_from: "2023-12-10",
+      basis: "nominal",
+      nominal: "0.06",
+      effective: "0.0617",
+      poupanca_additional: true,
+    },
+  ],
+};
+
+export const poupancaSchedule: Schedule = {
+  installments: [
+    {
+      ...trSchedule.installments[0],
+      rate: "0.1233778",
+      rate_index_values: [
+        {
+          index: "selic_target",
+          status: "published",
+          value: "11.75",
+          period_start: "2023-12-06",
+          period_end: "2023-12-06",
+          methods: [],
+        },
+      ],
+    },
+    {
+      ...trSchedule.installments[2],
+      number: 2,
+      due_date: "2024-02-10",
+      rate: "0.0617",
+      rate_index_values: [
+        {
+          index: "selic_target",
+          status: "missing",
+          period_start: "2024-01-31",
+          period_end: "2024-01-31",
+          methods: [],
+        },
+      ],
+    },
+  ],
+};
+
+// An installment due after today: TR's correction and the Selic target that sets the rate's
+// poupança part are both projected, each naming its method.
 export const projectedSchedule: Schedule = {
   installments: [
     {
       ...trSchedule.installments[2],
-      correction: "188.99",
+      correction: "7.50",
       index_values: [
         {
-          index: "poupanca_yield",
+          index: "tr",
           status: "projected",
-          value: "0.6293",
+          value: "0.0150",
           period_start: "2024-02-10",
           period_end: "2024-03-10",
-          methods: [
-            { index: "tr", method: "trailing_12" },
-            { index: "selic_target", method: "focus" },
-          ],
+          methods: [{ index: "tr", method: "trailing_12" }],
+        },
+      ],
+      rate: "0.1191",
+      rate_index_values: [
+        {
+          index: "selic_target",
+          status: "projected",
+          value: "10.50",
+          period_start: "2024-02-29",
+          period_end: "2024-02-29",
+          methods: [{ index: "selic_target", method: "focus" }],
         },
       ],
     },

@@ -160,8 +160,14 @@ func saveRows(ctx context.Context, q *db.Queries, id int64, terms Terms) error {
 	}
 
 	for _, r := range terms.ContractRates {
+		var poupancaAdditional int64
+		if r.PoupancaAdditional {
+			poupancaAdditional = 1
+		}
+
 		err := q.InsertMortgageContractRate(ctx, db.InsertMortgageContractRateParams{
 			MortgageID: id, EffectiveFrom: formatDate(r.EffectiveFrom), Rate: r.Rate.String(), Basis: string(r.Basis),
+			PoupancaAdditional: poupancaAdditional,
 		})
 		if err != nil {
 			return fmt.Errorf("mortgage: save contract rate from %s: %w", formatDate(r.EffectiveFrom), err)
@@ -219,6 +225,7 @@ func readTerms(ctx context.Context, q *db.Queries, row db.Mortgage) (Terms, erro
 	for _, r := range contractRates {
 		terms.ContractRates = append(terms.ContractRates, ContractRate{
 			EffectiveFrom: p.date(r.EffectiveFrom), Rate: p.decimal(r.Rate), Basis: RateBasis(r.Basis),
+			PoupancaAdditional: r.PoupancaAdditional == 1,
 		})
 	}
 

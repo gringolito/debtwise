@@ -20,7 +20,6 @@ export type Indexer = MortgageTerms["indexer"];
 export const indexerLabels: Record<Indexer, string> = {
   none: "Nenhum (prefixado)",
   tr: indexNames.tr,
-  poupanca_yield: indexNames.poupanca_yield,
   ipca: indexNames.ipca,
 };
 
@@ -33,6 +32,7 @@ export interface EffectiveRow {
 export interface ContractRateRow extends EffectiveRow {
   rate: string;
   basis: Basis;
+  poupancaAdditional: boolean;
 }
 
 export interface MonthlyRateRow extends EffectiveRow {
@@ -66,6 +66,7 @@ export const blankContractRate = (): ContractRateRow => ({
   effectiveFrom: "",
   rate: "",
   basis: "nominal",
+  poupancaAdditional: false,
 });
 export const blankMonthlyRate = (): MonthlyRateRow => ({
   id: nextRowId(),
@@ -112,6 +113,7 @@ export function valuesFromMortgage(mortgage: RegisteredMortgage): FormValues {
       effectiveFrom: r.effective_from,
       rate: fractionToPercent(r.basis === "nominal" ? r.nominal : r.effective),
       basis: r.basis,
+      poupancaAdditional: r.poupanca_additional,
     })),
     mipRates: monthlyRows(mortgage.mip_rates),
     dfiRates: monthlyRows(mortgage.dfi_rates),
@@ -146,6 +148,7 @@ export function termsFromValues(values: FormValues): MortgageTerms {
       effective_from: r.effectiveFrom,
       rate: percentToFraction(r.rate),
       basis: r.basis,
+      poupanca_additional: r.poupancaAdditional,
     })),
     mip_rates: monthlyTerms(values.mipRates),
     dfi_rates: monthlyTerms(values.dfiRates),

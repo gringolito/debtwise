@@ -20,6 +20,11 @@ type Installment struct {
 	// the previous installment, each marked missing, published or projected by its Methods. There
 	// are none on the first installment or without an indexer.
 	IndexValues []IndexValue
+	// Rate is the effective annual contract rate Interest was charged at.
+	Rate decimal.Decimal
+	// RateIndexValues are the index values the rate's variable part follows, each marked missing,
+	// published or projected by its Methods. There are none for a rate without a variable part.
+	RateIndexValues []IndexValue
 	// Interest is charged on the outstanding balance before this installment, once corrected.
 	Interest     decimal.Decimal
 	Amortization decimal.Decimal
@@ -72,6 +77,7 @@ func (t Terms) Drifts(outlook indexes.Outlook, events Events, today time.Time) [
 // replayer replays a schedule once, keeping its state between installments.
 type replayer struct {
 	terms       Terms
+	outlook     indexes.Outlook
 	corrections *corrections
 	today       time.Time
 	events      []event
@@ -85,32 +91,20 @@ type replayer struct {
 	relevel bool
 	// drifts are those of the statements applied so far.
 	drifts []Drift
-	// rates are the contract rates as monthly rates, converted once.
+	// rates are the contract rates with their fixed parts converted once.
 	rates []chargedRate
 }
 
-// chargedRate is a contract rate as the monthly rate charged from a date.
-type chargedRate struct {
-	from time.Time
-	rate decimal.Decimal
-}
-
-func (m chargedRate) effectiveFrom() time.Time { return m.from }
-
 func (t Terms) replayer(outlook indexes.Outlook, events Events, today time.Time) *replayer {
-	rates := make([]chargedRate, 0, len(t.ContractRates))
-	for _, r := range t.ContractRates {
-		rates = append(rates, chargedRate{from: r.EffectiveFrom, rate: r.monthly()})
-	}
-
 	return &replayer{
 		terms:       t,
+		outlook:     outlook,
 		corrections: newCorrections(t, outlook),
 		today:       today,
 		events:      events.inOrder(),
 		balance:     t.OriginalAmount.RoundCents(),
 		term:        t.TermMonths,
-		rates:       rates,
+		rates:       chargedRates(t.ContractRates),
 	}
 }
 
@@ -138,7 +132,7 @@ func (r *replayer) installments() iter.Seq[Installment] {
 func (r *replayer) charge(number int) Installment {
 	t := r.terms
 	due := addMonths(t.FirstInstallmentDate, number-1)
-	rate := inEffect(r.rates, due).rate
+	rate := r.rateOf(number)
 	left := r.term - number + 1
 
 	values := r.corrections.through(due, !due.After(r.today))
@@ -155,7 +149,7 @@ func (r *replayer) charge(number int) Installment {
 		r.balance = r.balance.Add(corrected)
 	}
 
-	interest := r.balance.Mul(rate).RoundCents()
+	interest := r.balance.Mul(rate.monthly).RoundCents()
 
 	var amortization decimal.Decimal
 
@@ -163,10 +157,10 @@ func (r *replayer) charge(number int) Installment {
 	case left == 1:
 		amortization = r.balance
 	case t.AmortizationSystem == SAC:
-		amortization = level(SAC, r.balance, rate, left)
+		amortization = level(SAC, r.balance, rate.monthly, left)
 	default:
-		if number == 1 || r.relevel || rate.Cmp(r.paymentRate) != 0 || correction.Cmp(decimal.Decimal{}) != 0 {
-			r.payment, r.paymentRate = pricePayment(r.balance, rate, left), rate
+		if number == 1 || r.relevel || rate.monthly.Cmp(r.paymentRate) != 0 || correction.Cmp(decimal.Decimal{}) != 0 {
+			r.payment, r.paymentRate = pricePayment(r.balance, rate.monthly, left), rate.monthly
 		}
 
 		amortization = r.payment.Sub(interest)
@@ -179,16 +173,18 @@ func (r *replayer) charge(number int) Installment {
 	r.balance = r.balance.Sub(amortization)
 
 	return Installment{
-		Number:       number,
-		DueDate:      due,
-		Correction:   correction,
-		IndexValues:  values,
-		Interest:     interest,
-		Amortization: amortization,
-		MIP:          mip,
-		DFI:          dfi,
-		Fee:          fee,
-		Amount:       amortization.Add(interest).Add(mip).Add(dfi).Add(fee),
+		Number:          number,
+		DueDate:         due,
+		Correction:      correction,
+		IndexValues:     values,
+		Rate:            rate.effective,
+		RateIndexValues: rate.values,
+		Interest:        interest,
+		Amortization:    amortization,
+		MIP:             mip,
+		DFI:             dfi,
+		Fee:             fee,
+		Amount:          amortization.Add(interest).Add(mip).Add(dfi).Add(fee),
 	}
 }
 
@@ -239,7 +235,7 @@ func (r *replayer) prepay(paid int, p Prepayment) decimal.Decimal {
 	}
 
 	left := r.term - paid
-	rate := inEffect(r.rates, addMonths(r.terms.FirstInstallmentDate, paid)).rate
+	rate := r.rateOf(paid + 1).monthly
 	before := level(r.terms.AmortizationSystem, r.balance, rate, left)
 	r.balance = r.balance.Sub(amount)
 	r.relevel = true

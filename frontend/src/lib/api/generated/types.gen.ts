@@ -140,7 +140,7 @@ export type ContractRate = {
      */
     basis: 'nominal' | 'effective';
     /**
-     * Annual rate on the effective basis, as a decimal fraction string.
+     * Annual rate on the effective basis, as a decimal fraction string. The fixed part of the rate when poupanca_additional is set.
      */
     effective: string;
     /**
@@ -148,9 +148,13 @@ export type ContractRate = {
      */
     effective_from: string;
     /**
-     * Annual rate on the nominal basis, as a decimal fraction string.
+     * Annual rate on the nominal basis, as a decimal fraction string. The fixed part of the rate when poupanca_additional is set.
      */
     nominal: string;
+    /**
+     * Whether the contract adds the poupança yield's additional part to the fixed part each month, both as effective annual rates.
+     */
+    poupanca_additional: boolean;
 };
 
 export type ContractRateTerms = {
@@ -163,7 +167,11 @@ export type ContractRateTerms = {
      */
     effective_from: string;
     /**
-     * Annual rate as a decimal fraction string: 0.12 is 12% a year.
+     * Whether the contract adds the poupança yield's additional part to rate each month, both as effective annual rates. False when absent.
+     */
+    poupanca_additional?: boolean;
+    /**
+     * Annual rate as a decimal fraction string: 0.12 is 12% a year. The fixed part of the rate when poupanca_additional is set.
      */
     rate: string;
 };
@@ -178,7 +186,7 @@ export type CorrectionIndex = {
      */
     methods: Array<ProjectedBy>;
     /**
-     * The last day of the period the value covers. Equals period_start when the index is dated by month.
+     * The last day of the period the value covers. Equals period_start when the index is dated by day or by month.
      */
     period_end: string;
     /**
@@ -186,7 +194,7 @@ export type CorrectionIndex = {
      */
     period_start: string;
     /**
-     * published: the balance was corrected by the published value; projected: the balance was corrected by a projected value, by the methods listed in methods; missing: no value is available for the period yet, so the balance was not corrected by it.
+     * published: the published value was used; projected: a projected value was used, by the methods listed in methods; missing: no value is available for the period yet, so it was left out: the balance was not corrected by it, or the rate charged leaves out the part it sets.
      */
     status: 'published' | 'projected' | 'missing';
     /**
@@ -608,9 +616,9 @@ export type MortgageTerms = {
      */
     first_installment_date: string;
     /**
-     * The index the contract corrects the outstanding balance by: TR, the poupança yield, IPCA, or none for a fixed-rate contract.
+     * The index the contract corrects the outstanding balance by: TR, IPCA, or none for a fixed-rate contract.
      */
-    indexer: 'none' | 'tr' | 'poupanca_yield' | 'ipca';
+    indexer: 'none' | 'tr' | 'ipca';
     /**
      * The MIP (life and disability insurance) rate, and its changes as the borrower moves into a new age band.
      */
@@ -749,9 +757,9 @@ export type RegisteredMortgage = {
      */
     first_installment_date: string;
     /**
-     * The index the contract corrects the outstanding balance by: TR, the poupança yield, IPCA, or none for a fixed-rate contract.
+     * The index the contract corrects the outstanding balance by: TR, IPCA, or none for a fixed-rate contract.
      */
-    indexer: 'none' | 'tr' | 'poupanca_yield' | 'ipca';
+    indexer: 'none' | 'tr' | 'ipca';
     /**
      * The MIP (life and disability insurance) rate and its changes, in date order.
      */
@@ -845,6 +853,14 @@ export type ScheduledInstallment = {
      * Total of the prepayments made from this installment's due date until the next one's, in reais, as a decimal string.
      */
     prepaid: string;
+    /**
+     * Effective annual contract rate the interest was charged at, as a decimal fraction string.
+     */
+    rate: string;
+    /**
+     * The index values behind the rate's variable part: the Selic target that sets the poupança yield's additional part. Empty when the rate has no variable part.
+     */
+    rate_index_values: Array<CorrectionIndex>;
 };
 
 export type Statement = {

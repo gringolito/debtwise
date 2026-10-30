@@ -60,6 +60,12 @@ function ContractRates({ rates }: { rates: ContractRate[] }) {
             <span>
               Efetiva: {formatRate(rate.effective)} a.a. ({informedMark(rate, "effective")})
             </span>
+            {rate.poupanca_additional && (
+              <>
+                {" "}
+                <span>+ adicional da poupança</span>
+              </>
+            )}
           </li>
         ))}
       </ul>

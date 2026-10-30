@@ -22,7 +22,7 @@ func TestMigrateAppliesPendingMigrationsOnce(t *testing.T) {
 
 	applied, err := db.Migrate(t.Context(), conn)
 	require.NoError(t, err)
-	assert.Equal(t, []int64{1, 2, 3, 4, 5, 6, 7, 8}, applied)
+	assert.Equal(t, []int64{1, 2, 3, 4, 5, 6, 7, 8, 9}, applied)
 	require.NoError(t, conn.Close())
 
 	reopened, err := db.Open(t.Context(), path)
@@ -57,11 +57,76 @@ func TestMigrationMakesExistingMortgagesFixedRate(t *testing.T) {
 
 	applied, err := db.Migrate(t.Context(), conn)
 	require.NoError(t, err)
-	assert.Equal(t, []int64{4, 5, 6, 7, 8}, applied)
+	assert.Equal(t, []int64{4, 5, 6, 7, 8, 9}, applied)
 
 	var indexer string
 	require.NoError(t, conn.QueryRowContext(t.Context(), "SELECT indexer FROM mortgages").Scan(&indexer))
 	assert.Equal(t, "none", indexer)
+}
+
+// The poupança yield no longer corrects a mortgage: one it corrected is corrected by TR, and its
+// contract rates add the poupança yield's additional part, which is what the yield added to TR. No
+// mortgage can be stored with it as its indexer any more.
+func TestMigrationMovesThePoupancaYieldFromTheIndexerToTheContractRates(t *testing.T) {
+	t.Parallel()
+
+	conn, err := db.Open(t.Context(), filepath.Join(t.TempDir(), "debtwise.db"))
+	require.NoError(t, err)
+
+	t.Cleanup(func() { _ = conn.Close() })
+
+	provider, err := goose.NewProvider(goose.DialectSQLite3, conn, os.DirFS("migrations"))
+	require.NoError(t, err)
+
+	_, err = provider.UpTo(t.Context(), 8)
+	require.NoError(t, err)
+
+	_, err = conn.ExecContext(t.Context(), `INSERT INTO mortgages (
+		id, contract_date, original_amount, term_months, first_installment_date, amortization_system, indexer, appraisal_value
+	) VALUES
+		(1, '2023-12-10', '60000.00', 6, '2024-01-10', 'sac', 'poupanca_yield', '100000.00'),
+		(2, '2023-12-10', '60000.00', 6, '2024-01-10', 'sac', 'ipca', '100000.00');
+	INSERT INTO mortgage_contract_rates (mortgage_id, effective_from, rate, basis) VALUES
+		(1, '2023-12-10', '0.0389', 'effective'),
+		(1, '2025-12-10', '0.0289', 'effective'),
+		(2, '2023-12-10', '0.06', 'effective');`)
+	require.NoError(t, err)
+
+	applied, err := db.Migrate(t.Context(), conn)
+	require.NoError(t, err)
+	assert.Equal(t, []int64{9}, applied)
+
+	var indexers []string
+
+	rows, err := conn.QueryContext(t.Context(), "SELECT indexer FROM mortgages ORDER BY id")
+	require.NoError(t, err)
+
+	for rows.Next() {
+		var indexer string
+		require.NoError(t, rows.Scan(&indexer))
+		indexers = append(indexers, indexer)
+	}
+
+	require.NoError(t, rows.Err())
+	assert.Equal(t, []string{"tr", "ipca"}, indexers)
+
+	var flagged []string
+
+	rows, err = conn.QueryContext(t.Context(), `SELECT mortgage_id || ' ' || effective_from || ' ' || poupanca_additional
+		FROM mortgage_contract_rates ORDER BY mortgage_id, effective_from`)
+	require.NoError(t, err)
+
+	for rows.Next() {
+		var row string
+		require.NoError(t, rows.Scan(&row))
+		flagged = append(flagged, row)
+	}
+
+	require.NoError(t, rows.Err())
+	assert.Equal(t, []string{"1 2023-12-10 1", "1 2025-12-10 1", "2 2023-12-10 0"}, flagged)
+
+	_, err = conn.ExecContext(t.Context(), "UPDATE mortgages SET indexer = 'poupanca_yield' WHERE id = 2")
+	require.ErrorContains(t, err, "CHECK constraint failed")
 }
 
 func TestMigratedFileIsADebtWiseDatabase(t *testing.T) {

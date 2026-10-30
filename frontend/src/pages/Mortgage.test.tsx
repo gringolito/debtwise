@@ -7,6 +7,8 @@ import {
   deferredSchedule,
   ipcaMortgage,
   ipcaSchedule,
+  poupancaMortgage,
+  poupancaSchedule,
   prepayments,
   projectedSchedule,
   registeredMortgage,
@@ -131,6 +133,7 @@ describe("mortgage page with a mortgage", () => {
             basis: "effective",
             nominal: "0.1137",
             effective: "0.12",
+            poupanca_additional: false,
           },
         ],
       },
@@ -143,6 +146,32 @@ describe("mortgage page with a mortgage", () => {
       "A partir de 10/12/2023 Nominal: 11,37% a.a. (calculada) Efetiva: 12,00% a.a. (informada)",
     ]);
     expect(screen.getByText("Price")).toBeInTheDocument();
+  });
+
+  it("says a rate adds the poupança additional part to its fixed part", async () => {
+    stubMortgageApi({
+      mortgage: {
+        ...poupancaMortgage,
+        contract_rates: [
+          ...poupancaMortgage.contract_rates,
+          {
+            effective_from: "2024-06-10",
+            basis: "nominal",
+            nominal: "0.11",
+            effective: "0.1157",
+            poupanca_additional: false,
+          },
+        ],
+      },
+    });
+
+    renderAt("/financiamento");
+
+    const rates = await screen.findByRole("region", { name: "Taxa de juros" });
+    expect(within(rates).getAllByRole("listitem").map(text)).toEqual([
+      "A partir de 10/12/2023 Nominal: 6,00% a.a. (informada) Efetiva: 6,17% a.a. (calculada) + adicional da poupança",
+      "A partir de 10/06/2024 Nominal: 11,00% a.a. (informada) Efetiva: 11,57% a.a. (calculada)",
+    ]);
   });
 
   it("does not round small monthly rates away", async () => {
@@ -174,6 +203,7 @@ describe("mortgage page with a mortgage", () => {
         "Vencimento",
         "Índice",
         "Correção",
+        "Taxa de juros",
         "Juros",
         "Amortização",
         "MIP",
@@ -188,6 +218,7 @@ describe("mortgage page with a mortgage", () => {
         "10/01/2024",
         "—",
         "R$ 0,00",
+        "12,682503% a.a.",
         "R$ 600,00",
         "R$ 10.000,00",
         "R$ 18,00",
@@ -202,6 +233,7 @@ describe("mortgage page with a mortgage", () => {
         "10/02/2024",
         "—",
         "R$ 0,00",
+        "12,682503% a.a.",
         "R$ 500,00",
         "R$ 10.000,00",
         "R$ 15,00",
@@ -216,6 +248,7 @@ describe("mortgage page with a mortgage", () => {
         "10/03/2024",
         "—",
         "R$ 0,00",
+        "12,682503% a.a.",
         "R$ 400,00",
         "R$ 10.000,00",
         "R$ 12,00",
@@ -230,6 +263,7 @@ describe("mortgage page with a mortgage", () => {
         "10/04/2024",
         "—",
         "R$ 0,00",
+        "12,682503% a.a.",
         "R$ 300,00",
         "R$ 10.000,00",
         "R$ 15,00",
@@ -244,6 +278,7 @@ describe("mortgage page with a mortgage", () => {
         "10/05/2024",
         "—",
         "R$ 0,00",
+        "12,682503% a.a.",
         "R$ 200,00",
         "R$ 10.000,00",
         "R$ 10,00",
@@ -258,6 +293,7 @@ describe("mortgage page with a mortgage", () => {
         "10/06/2024",
         "—",
         "R$ 0,00",
+        "12,682503% a.a.",
         "R$ 100,00",
         "R$ 10.000,00",
         "R$ 5,00",
@@ -324,6 +360,7 @@ describe("the schedule of an indexed mortgage", () => {
     "Vencimento",
     "Índice",
     "Correção",
+    "Taxa de juros",
     "Juros",
     "Amortização",
     "MIP",
@@ -347,6 +384,7 @@ describe("the schedule of an indexed mortgage", () => {
         "10/01/2024",
         "TR 0,0539% 10/12/2023 a 10/01/2024",
         "R$ 32,34",
+        "12,682503% a.a.",
         "R$ 603,23",
         "R$ 10.000,00",
         "R$ 18,00",
@@ -361,6 +399,7 @@ describe("the schedule of an indexed mortgage", () => {
         "10/02/2024",
         "TR Sem índice 10/01/2024 a 10/02/2024",
         "R$ 0,00",
+        "12,682503% a.a.",
         "R$ 500,00",
         "R$ 10.000,00",
         "R$ 15,00",
@@ -375,6 +414,7 @@ describe("the schedule of an indexed mortgage", () => {
         "10/03/2024",
         "—",
         "R$ 0,00",
+        "12,682503% a.a.",
         "R$ 400,00",
         "R$ 10.000,00",
         "R$ 12,00",
@@ -399,6 +439,7 @@ describe("the schedule of an indexed mortgage", () => {
         "10/01/2024",
         "IPCA 0,56% dez/2023",
         "R$ 336,00",
+        "12,682503% a.a.",
         "R$ 603,23",
         "R$ 10.000,00",
         "R$ 18,00",
@@ -435,7 +476,7 @@ describe("the schedule of an indexed mortgage", () => {
 
   it("counts every month without an index value", async () => {
     const missing = (start: string, end: string): CorrectionIndex => ({
-      index: "poupanca_yield",
+      index: "tr",
       status: "missing",
       period_start: start,
       period_end: end,
@@ -443,7 +484,7 @@ describe("the schedule of an indexed mortgage", () => {
     });
     const [first, second, third] = trSchedule.installments;
     stubMortgageApi({
-      mortgage: { ...trMortgage, indexer: "poupanca_yield" },
+      mortgage: trMortgage,
       schedule: {
         installments: [
           { ...first, index_values: [missing("2023-12-10", "2024-01-10")] },
@@ -456,7 +497,7 @@ describe("the schedule of an indexed mortgage", () => {
     renderAt("/financiamento");
 
     expect(text(await screen.findByRole("alert"))).toBe(
-      "Faltam valores de Remuneração da poupança para 2 meses. Esses meses não foram corrigidos. Atualize os dados de mercado na página Índices.",
+      "Faltam valores de TR para 2 meses. Esses meses não foram corrigidos. Atualize os dados de mercado na página Índices.",
     );
   });
 
@@ -472,6 +513,7 @@ describe("the schedule of an indexed mortgage", () => {
         "10/03/2024",
         "TR Sem índice 10/12/2023 a 10/01/2024 TR Sem índice 10/01/2024 a 10/02/2024 TR 0,2166% 10/02/2024 a 10/03/2024",
         "R$ 108,30",
+        "12,682503% a.a.",
         "R$ 603,23",
         "R$ 10.000,00",
         "R$ 18,00",
@@ -488,10 +530,7 @@ describe("the schedule of an indexed mortgage", () => {
   });
 
   it("marks a projected value and names the projection methods behind it", async () => {
-    stubMortgageApi({
-      mortgage: { ...trMortgage, indexer: "poupanca_yield" },
-      schedule: projectedSchedule,
-    });
+    stubMortgageApi({ mortgage: trMortgage, schedule: projectedSchedule });
 
     renderAt("/financiamento");
 
@@ -500,8 +539,9 @@ describe("the schedule of an indexed mortgage", () => {
       [
         "3",
         "10/03/2024",
-        "Remuneração da poupança 0,6293% Projetado 10/02/2024 a 10/03/2024 TR: Média dos últimos 12 meses; Selic meta: Mediana do Focus (BCB)",
-        "R$ 188,99",
+        "TR 0,0150% Projetado 10/02/2024 a 10/03/2024 TR: Média dos últimos 12 meses",
+        "R$ 7,50",
+        "11,91% a.a. Selic meta 10,50% Projetado 29/02/2024 Selic meta: Mediana do Focus (BCB)",
         "R$ 400,00",
         "R$ 10.000,00",
         "R$ 12,00",
@@ -513,6 +553,102 @@ describe("the schedule of an indexed mortgage", () => {
       ],
     ]);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("shows the rate charged with the Selic target reading behind its poupança part", async () => {
+    stubMortgageApi({ mortgage: poupancaMortgage, schedule: poupancaSchedule });
+
+    renderAt("/financiamento");
+
+    const table = await screen.findByRole("table", { name: "Evolução do financiamento" });
+    expect(rowTexts(table).slice(1)).toEqual([
+      [
+        "1",
+        "10/01/2024",
+        "TR 0,0539% 10/12/2023 a 10/01/2024",
+        "R$ 32,34",
+        "12,33778% a.a. Selic meta 11,75% 06/12/2023",
+        "R$ 603,23",
+        "R$ 10.000,00",
+        "R$ 18,00",
+        "R$ 10,00",
+        "R$ 12,50",
+        "R$ 10.643,73",
+        "R$ 0,00",
+        "R$ 50.032,34",
+      ],
+      [
+        "2",
+        "10/02/2024",
+        "—",
+        "R$ 0,00",
+        "6,17% a.a. Selic meta Sem índice 31/01/2024",
+        "R$ 400,00",
+        "R$ 10.000,00",
+        "R$ 12,00",
+        "R$ 10,00",
+        "R$ 12,50",
+        "R$ 10.434,50",
+        "R$ 0,00",
+        "R$ 30.032,34",
+      ],
+    ]);
+  });
+
+  it("warns apart from the correction warning that the rate lacks Selic target values", async () => {
+    stubMortgageApi({ mortgage: poupancaMortgage, schedule: poupancaSchedule });
+
+    renderAt("/financiamento");
+
+    const alert = await screen.findByRole("alert");
+    expect(text(alert)).toBe(
+      "Faltam valores de Selic meta para 1 mês. A taxa de juros desse mês não inclui o adicional da poupança. Atualize os dados de mercado na página Índices.",
+    );
+    expect(within(alert).getByRole("link", { name: "Índices" })).toHaveAttribute(
+      "href",
+      "/indices",
+    );
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(
+      alert.compareDocumentPosition(
+        screen.getByRole("table", { name: "Evolução do financiamento" }),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("counts every month without a Selic target value", async () => {
+    const [first, second] = poupancaSchedule.installments;
+    stubMortgageApi({
+      mortgage: poupancaMortgage,
+      schedule: {
+        installments: [{ ...first, rate_index_values: second.rate_index_values }, second],
+      },
+    });
+
+    renderAt("/financiamento");
+
+    expect(text(await screen.findByRole("alert"))).toBe(
+      "Faltam valores de Selic meta para 2 meses. A taxa de juros desses meses não inclui o adicional da poupança. Atualize os dados de mercado na página Índices.",
+    );
+  });
+
+  it("keeps the correction warning when the rate warning shows too", async () => {
+    const [first, second] = trSchedule.installments;
+    const [, withMissingSelic] = poupancaSchedule.installments;
+    stubMortgageApi({
+      mortgage: poupancaMortgage,
+      schedule: {
+        installments: [first, { ...second, rate_index_values: withMissingSelic.rate_index_values }],
+      },
+    });
+
+    renderAt("/financiamento");
+
+    await screen.findByRole("table", { name: "Evolução do financiamento" });
+    expect(screen.getAllByRole("alert").map(text)).toEqual([
+      "Faltam valores de TR para 1 mês. Esse mês não foi corrigido. Atualize os dados de mercado na página Índices.",
+      "Faltam valores de Selic meta para 1 mês. A taxa de juros desse mês não inclui o adicional da poupança. Atualize os dados de mercado na página Índices.",
+    ]);
   });
 });
 

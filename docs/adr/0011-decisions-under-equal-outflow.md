@@ -33,8 +33,8 @@ less the prepay scenario's. The avoided cost is the prepay scenario's worth less
 less the amount: what the prepaid amount would have cost by the horizon had it stayed owed.
 
 A verdict names the projection method of each index a projected value it read comes from: the
-mortgage's corrections in either scenario, and the VNA of the purchase, of each coupon and of the
-maturity.
+mortgage's corrections and contract rates in either scenario, and the VNA of the purchase, of each
+coupon and of the maturity.
 
 ## Considered Options
 

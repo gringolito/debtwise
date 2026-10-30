@@ -102,10 +102,11 @@ type Mortgage struct {
 }
 
 type MortgageContractRate struct {
-	MortgageID    int64
-	EffectiveFrom string
-	Rate          string
-	Basis         string
+	MortgageID         int64
+	EffectiveFrom      string
+	Rate               string
+	Basis              string
+	PoupancaAdditional int64
 }
 
 type MortgageDfiRate struct {

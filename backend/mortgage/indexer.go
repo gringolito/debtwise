@@ -1,19 +1,29 @@
 package mortgage
 
 import (
+	"slices"
 	"time"
 
 	"github.com/gringolito/debtwise/backend/decimal"
 	"github.com/gringolito/debtwise/backend/indexes"
 )
 
-// Indexes returns the indexes a correction by i reads.
-func (i Indexer) Indexes() []indexes.Index {
+// Indexes returns the indexes the schedule of t reads: those its indexer corrects by, and the Selic
+// target when a contract rate adds the poupança yield's additional part.
+func (t Terms) Indexes() []indexes.Index {
+	read := t.Indexer.indexes()
+	if slices.ContainsFunc(t.ContractRates, func(r ContractRate) bool { return r.PoupancaAdditional }) {
+		read = append(read, indexes.SelicTarget)
+	}
+
+	return read
+}
+
+// indexes returns the indexes a correction by i reads.
+func (i Indexer) indexes() []indexes.Index {
 	switch i {
 	case TR:
 		return []indexes.Index{indexes.TR}
-	case PoupancaYield:
-		return []indexes.Index{indexes.TR, indexes.SelicTarget}
 	case IPCA:
 		return []indexes.Index{indexes.IPCA}
 	default:
@@ -42,10 +52,10 @@ type period struct {
 // corrections finds the index values that correct the outstanding balance, one on each monthly
 // anniversary of the contract, for the month that ends there. Months run from one anniversary to
 // the same day of the next month, or to the 1st of the month after when the next month is too
-// short, as SGS dates TR and the poupança yield; from then on the anniversaries fall on the 1st.
-// A month is corrected by its TR, its poupança yield, or, under a fixed two-month lag, the IPCA of
-// the second calendar month before its anniversary. Each value is read through the Outlook: the
-// published one where there is one, else the projected one (ADR-0009).
+// short, as SGS dates TR; from then on the anniversaries fall on the 1st. A month is corrected by
+// its TR or, under a fixed two-month lag, the IPCA of the second calendar month before its
+// anniversary. Each value is read through the Outlook: the published one where there is one, else
+// the projected one (ADR-0009).
 type corrections struct {
 	indexer Indexer
 	outlook indexes.Outlook
@@ -97,9 +107,6 @@ func (c *corrections) value(month period, publishedOnly bool) (IndexValue, bool)
 	case TR:
 		value.Index = indexes.TR
 		estimate, found = c.outlook.TR(month.start, month.end)
-	case PoupancaYield:
-		value.Index = indexes.PoupancaYield
-		estimate, found = c.outlook.PoupancaYield(month.start, month.end)
 	case IPCA:
 		value.Index = indexes.IPCA
 		first := time.Date(month.end.Year(), month.end.Month()-2, 1, 0, 0, 0, 0, time.UTC)

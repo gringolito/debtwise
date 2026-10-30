@@ -8,7 +8,7 @@ Past an index's published values, DebtWise projects it by the method the owner c
 - **IPCA:** the Focus median expectations (the default), or the average of its latest 12 or 60
   monthly values of SGS 433.
 - **Poupança yield:** not chosen. It is derived from TR and the Selic target, published where they
-  are and projected where they aren't, by the legal rule of ADR-0006.
+  are and projected where they aren't, by the legal rule of ADR-0012.
 
 A trailing average is the arithmetic mean of an index's latest monthly values: for TR the periods
 that run from the 1st of a month to the 1st of the next, for the Selic target the target in force on
@@ -38,6 +38,8 @@ An installment due by today is corrected only by published values, as ADR-0006 s
 due later is corrected by the published value where there is one and by the projected value where
 there isn't, and each value it reads is marked as one or the other. A future month with neither is
 reported missing. This replaces ADR-0006's rule that only installments due by today are corrected.
+A contract rate that adds the poupança yield's additional part reads the Selic target by the same
+rule (ADR-0012).
 
 ## Considered Options
 
