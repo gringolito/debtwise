@@ -5,7 +5,6 @@ metadata:
   name: {{ include "debtwise.fullname" . }}
   labels:
     {{- include "debtwise.labels" . | nindent 4 }}
-    app.kubernetes.io/component: web
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -28,7 +27,7 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "debtwise.web.fullname" $ }}
+                name: {{ include "debtwise.fullname" $ }}
                 port:
                   name: http
           {{- end }}

@@ -19,7 +19,14 @@ securityContext:
   capabilities:
     drop: [ALL]
 
-# The API server. It keeps its data in one SQLite file, so it always runs as a single replica.
+# One pod runs the server and web containers. The server keeps its data in one SQLite file, so the
+# pod always runs as a single replica.
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# The API server.
 server:
   image:
     repository: ghcr.io/gringolito/debtwise/server
@@ -31,29 +38,19 @@ server:
   logLevel: info
   extraEnv: []
   resources: {}
-  podAnnotations: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  service:
-    port: 8080
 
-# Caddy serving the frontend and proxying /api to the server.
+# Caddy serving the frontend and proxying /api to the server over localhost.
 web:
-  replicas: 1
   image:
     repository: ghcr.io/gringolito/debtwise/web
     # Defaults to the chart's appVersion.
     tag: ""
     pullPolicy: Always
   resources: {}
-  podAnnotations: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  service:
-    type: ClusterIP
-    port: 80
+
+service:
+  type: ClusterIP
+  port: 80
 
 persistence:
   # Without persistence the database lives in an emptyDir and is lost with the pod.

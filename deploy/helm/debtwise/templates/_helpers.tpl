@@ -3,7 +3,7 @@
 {{- end }}
 
 {{/*
-Leaves room for the -server and -web suffixes within the 63 character name limit.
+Truncated to 56, not 63, so the data claim named after it keeps its name across chart upgrades.
 */}}
 {{- define "debtwise.fullname" -}}
 {{- if .Values.fullnameOverride }}
@@ -33,14 +33,6 @@ app.kubernetes.io/part-of: debtwise
 {{- define "debtwise.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "debtwise.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{- define "debtwise.server.fullname" -}}
-{{ include "debtwise.fullname" . }}-server
-{{- end }}
-
-{{- define "debtwise.web.fullname" -}}
-{{ include "debtwise.fullname" . }}-web
 {{- end }}
 
 {{- define "debtwise.image" -}}

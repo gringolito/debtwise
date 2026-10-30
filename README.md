@@ -45,10 +45,11 @@ helm install debtwise oci://ghcr.io/gringolito/debtwise/charts/debtwise \
 Add `--devel` to track `main` instead. `helm install debtwise deploy/helm/debtwise` installs the
 chart from a checkout, running the `edge` images.
 
-The server keeps its SQLite file on a 1Gi `ReadWriteOnce` claim and always runs as one replica.
-`helm uninstall` leaves that claim in place, so reinstalling picks up the same data; set
-`persistence.keepOnUninstall=false` to delete it with the release. Set `ingress.enabled=true` and
-`ingress.hosts` to expose the web service, or follow the port-forward printed after the install.
+The server and web containers run in one pod. The server keeps its SQLite file on a 1Gi
+`ReadWriteOnce` claim, so the pod always runs as one replica. `helm uninstall` leaves that claim in
+place, so reinstalling picks up the same data; set `persistence.keepOnUninstall=false` to delete it
+with the release. Set `ingress.enabled=true` and `ingress.hosts` to expose the service, or follow
+the port-forward printed after the install.
 
 Pass the Radar Opções token from a Secret through `server.extraEnv`:
 
