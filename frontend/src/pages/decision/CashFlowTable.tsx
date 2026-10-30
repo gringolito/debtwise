@@ -1,3 +1,4 @@
+import { ProjectionCell } from "@/components/lots/LotValuesTables";
 import { IndexCell } from "@/components/mortgage/MortgageSchedule";
 import {
   Table,
@@ -7,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { CashFlow } from "@/lib/api";
+import type { CashFlow, LotAmount } from "@/lib/api";
 import { formatDate, formatMoney } from "@/lib/format";
 
 const NONE = "—";
@@ -26,11 +27,13 @@ const columns = [
   "Investido",
   "Amortização extraordinária",
   "Caixa retido",
-  "Resgate bruto",
+  "Pagamento do título",
+  "Bruto",
   "IOF",
   "IR",
   "Taxa de custódia",
-  "Resgate líquido",
+  "Líquido",
+  "Projeção",
   "Saldo devedor",
 ];
 
@@ -38,8 +41,19 @@ function MoneyCell({ value }: { value: string | undefined }) {
   return <TableCell>{value === undefined ? NONE : formatMoney(value)}</TableCell>;
 }
 
+/** bondPayment is what the bond paid on a date: a coupon before maturity, or its redemption. */
+function bondPayment({
+  coupon,
+  redeemed,
+}: CashFlow): { kind: string; amount: LotAmount } | undefined {
+  if (coupon) return { kind: "Cupom", amount: coupon };
+  if (redeemed) return { kind: "Resgate", amount: redeemed };
+  return undefined;
+}
+
 function CashFlowRow({ flow }: { flow: CashFlow }) {
-  const { installment, redeemed } = flow;
+  const { installment } = flow;
+  const payment = bondPayment(flow);
   return (
     <TableRow>
       <TableCell>{formatDate(flow.date)}</TableCell>
@@ -57,11 +71,13 @@ function CashFlowRow({ flow }: { flow: CashFlow }) {
       <MoneyCell value={flow.invested} />
       <MoneyCell value={flow.prepaid} />
       <MoneyCell value={flow.held} />
-      <MoneyCell value={redeemed?.gross} />
-      <MoneyCell value={redeemed?.iof} />
-      <MoneyCell value={redeemed?.income_tax} />
-      <MoneyCell value={redeemed?.custody_fee} />
-      <MoneyCell value={redeemed?.net} />
+      <TableCell>{payment?.kind ?? NONE}</TableCell>
+      <MoneyCell value={payment?.amount.gross} />
+      <MoneyCell value={payment?.amount.iof} />
+      <MoneyCell value={payment?.amount.income_tax} />
+      <MoneyCell value={payment?.amount.custody_fee} />
+      <MoneyCell value={payment?.amount.net} />
+      <ProjectionCell methods={payment?.amount.projected_by ?? []} />
       <MoneyCell value={flow.outstanding_balance} />
     </TableRow>
   );

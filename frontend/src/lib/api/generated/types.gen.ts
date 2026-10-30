@@ -62,6 +62,10 @@ export type BondsStatus = {
 
 export type CashFlow = {
     /**
+     * The bond's coupon paid that day, gross and net of income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only in the invest scenario of an ntn_f or ntn_b.
+     */
+    coupon?: LotAmount;
+    /**
      * The date of the flows.
      */
     date: string;
@@ -82,7 +86,7 @@ export type CashFlow = {
      */
     outstanding_balance: string;
     /**
-     * What the scenario's prepayment that day took off the outstanding balance, in reais, as a decimal string.
+     * What the scenario's prepayments that day took off the outstanding balance, in reais, as a decimal string.
      */
     prepaid: string;
     /**
@@ -205,7 +209,7 @@ export type Decision = {
      */
     effect: 'shorten_term' | 'lower_installment';
     /**
-     * A verdict for every bond on offer that follows the mortgage's indexer, pays no coupon and matures after the date, in the order of the bond catalogue.
+     * A verdict for every bond on offer that follows the mortgage's indexer and matures after the date, in the order of the bond catalogue.
      */
     verdicts: Array<Verdict>;
 };
@@ -933,7 +937,7 @@ export type Verdict = {
      */
     quantity?: string;
     /**
-     * The buy rate of the bond's quote, as a decimal fraction. For ntn_b_principal it is the real rate over IPCA.
+     * The buy rate of the bond's quote, as a decimal fraction. For ntn_b_principal and ntn_b it is the real rate over IPCA.
      */
     rate: string;
     /**

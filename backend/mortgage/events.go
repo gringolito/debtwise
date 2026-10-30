@@ -72,12 +72,13 @@ func (s Statement) Validate(terms Terms) []Violation {
 	return nil
 }
 
-// event is a prepayment or a statement. A planned prepayment is one a Plan adds.
+// event is a prepayment or a statement. A planned prepayment is one a Plan adds, and planned is
+// where it notes what it took.
 type event struct {
 	date       time.Time
 	prepayment *Prepayment
 	statement  *Statement
-	planned    bool
+	planned    *PlannedPrepayment
 }
 
 // inOrder returns the events by date. On the same date, prepayments come before statements, as a

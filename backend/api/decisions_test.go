@@ -46,6 +46,7 @@ type decisionFlow struct {
 	Date               string               `json:"date"`
 	Installment        *decisionInstallment `json:"installment"`
 	Invested           string               `json:"invested"`
+	Coupon             *decisionAmount      `json:"coupon"`
 	Prepaid            string               `json:"prepaid"`
 	Held               string               `json:"held"`
 	Redeemed           *decisionAmount      `json:"redeemed"`
@@ -111,16 +112,21 @@ func (s server) decide(t *testing.T, body string) decisionResult {
 	return got
 }
 
-// On 2026-10-28, 5,000.00 either prepays the interest-free mortgage or buys LTN maturing on
-// 2029-01-01, the only bond on offer that follows a mortgage without an indexer. At its buy rate of
-// 12.76%, over the 543 business days ANBIMA's calendar counts to its maturity, an LTN costs
-// 772.001684, so 5,000.00 buys 6.47 of them for 4,994.85 and the 5.15 left is held. Held 796 days,
-// they pay 6,470.00, less 28.22 of custody fee at 0.20% a year and 217.04 of income tax at 15% on
-// the gain: 6,224.74. The figures are worked out in Python's decimal module.
+// On 2026-10-28, 5,000.00 either prepays the interest-free mortgage or buys one of the bonds on
+// offer that follow a mortgage without an indexer: the LTN maturing on 2029-01-01, and next to it
+// the NTN-F maturing on 2037-01-01. At its buy rate of 12.76%, over the 543 business days ANBIMA's
+// calendar counts to its maturity, an LTN costs 772.001684, so 5,000.00 buys 6.47 of them for
+// 4,994.85 and the 5.15 left is held. Held 796 days, they pay 6,470.00, less 28.22 of custody fee
+// at 0.20% a year and 217.04 of income tax at 15% on the gain: 6,224.74. The figures are worked out
+// in Python's decimal module.
 //
 // Prepaying shortens the mortgage by 5 months, so the 5,000.00 it would have paid from 2027-09-10
 // to 2028-01-10 is held. Investing leaves the mortgage unchanged and holds 5.15 from the start.
 // With no interest, prepaying avoids nothing, and the advantage is the bond's net gain.
+//
+// The NTN-F costs 880.904015 at 12.88%, so 5,000.00 buys 5.67 of them. Its first coupon, on
+// 2027-01-01, pays 276.75, but only 23.62 of income tax: most of it returns the interest the price
+// paid for. Its 251.31 net is prepaid that day, off the 13,000.00 owed since 2026-12-10.
 func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	t.Parallel()
 
@@ -130,10 +136,23 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	got := s.decide(t, `{"amount": "5000.00", "effect": "shorten_term"}`)
 	status := s.status(t)
 
-	require.Len(t, got.Verdicts, 1)
+	require.Len(t, got.Verdicts, 2)
 	assert.Equal(t, "5000.00", got.Amount)
 	assert.Equal(t, "2026-10-28", got.Date, "today by default")
 	assert.Equal(t, "shorten_term", got.Effect)
+
+	ntnf := got.Verdicts[1]
+	assert.Equal(t, "ntn_f", ntnf.Type)
+	assert.Equal(t, "2037-01-01", ntnf.Maturity)
+	assert.Equal(t, "880.904015", ntnf.UnitPrice)
+	assert.Equal(t, "5.67", ntnf.Quantity)
+	require.NotNil(t, ntnf.Invest)
+	assert.Contains(t, ntnf.Invest.CashFlows, decisionFlow{
+		Date: "2027-01-01", Invested: "0.00", Prepaid: "251.31", Held: "0.00", OutstandingBalance: "12748.69",
+		Coupon: &decisionAmount{
+			Gross: "276.75", IOF: "0.00", IncomeTax: "23.62", CustodyFee: "1.82", Net: "251.31", ProjectedBy: []projectedBy{},
+		},
+	})
 
 	v := got.Verdicts[0]
 	assert.Equal(t, "ltn", v.Type)
@@ -200,10 +219,10 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	}, *v.Invest)
 }
 
-// An IPCA mortgage is compared with the NTN-B Principal on offer, whose VNA needs IBGE's index
-// number of June 2000, which this server never fetched. Its verdict says the IPCA is missing, and
-// names how fresh the IPCA and its index numbers are.
-func TestAnNTNBPrincipalVerdictWithoutTheIPCAItFollowsIsUnavailable(t *testing.T) {
+// An IPCA mortgage is compared with the NTN-B Principal and the NTN-B on offer, whose VNA needs
+// IBGE's index number of June 2000, which this server never fetched. Their verdicts say the IPCA is
+// missing, and name how fresh the IPCA and its index numbers are.
+func TestAnIPCABondVerdictWithoutTheIPCAItFollowsIsUnavailable(t *testing.T) {
 	t.Parallel()
 
 	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
@@ -220,18 +239,24 @@ func TestAnNTNBPrincipalVerdictWithoutTheIPCAItFollowsIsUnavailable(t *testing.T
 		}
 	}
 
+	marketData := verdictMarketData{Bonds: status.Bonds, Focus: status.Focus, Indexes: ipcaStatuses}
 	assert.Equal(t, decisionResult{
 		Amount: "5000.00", Date: "2026-11-03", Effect: "lower_installment",
-		Verdicts: []decisionVerdict{{
-			Type: "ntn_b_principal", Maturity: "2032-08-15", Rate: "0.0672", Unavailable: "missing_ipca",
-			ProjectedBy: []projectedBy{},
-			MarketData:  verdictMarketData{Bonds: status.Bonds, Focus: status.Focus, Indexes: ipcaStatuses},
-		}},
+		Verdicts: []decisionVerdict{
+			{
+				Type: "ntn_b_principal", Maturity: "2032-08-15", Rate: "0.0672", Unavailable: "missing_ipca",
+				ProjectedBy: []projectedBy{}, MarketData: marketData,
+			},
+			{
+				Type: "ntn_b", Maturity: "2037-05-15", Rate: "0.0670", Unavailable: "missing_ipca",
+				ProjectedBy: []projectedBy{}, MarketData: marketData,
+			},
+		},
 	}, got)
 }
 
-// 7.71 buys less than a hundredth of the LTN on offer, at 772.001684 a bond, so its verdict has the
-// price and no scenarios.
+// 7.71 buys less than a hundredth of the bonds on offer, at 772.001684 an LTN and 880.904015 an
+// NTN-F, so their verdicts have the price and no scenarios.
 func TestAnAmountBelowAHundredthOfTheBondHasNoScenarios(t *testing.T) {
 	t.Parallel()
 
@@ -241,13 +266,19 @@ func TestAnAmountBelowAHundredthOfTheBondHasNoScenarios(t *testing.T) {
 	got := s.decide(t, `{"amount": "7.71", "effect": "shorten_term"}`)
 	status := s.status(t)
 
+	marketData := verdictMarketData{Bonds: status.Bonds, Focus: status.Focus, Indexes: []indexStatus{}}
 	assert.Equal(t, decisionResult{
 		Amount: "7.71", Date: "2026-10-28", Effect: "shorten_term",
-		Verdicts: []decisionVerdict{{
-			Type: "ltn", Maturity: "2029-01-01", Rate: "0.1276", Unavailable: "amount_too_small",
-			UnitPrice: "772.001684", Quantity: "0.00", ProjectedBy: []projectedBy{},
-			MarketData: verdictMarketData{Bonds: status.Bonds, Focus: status.Focus, Indexes: []indexStatus{}},
-		}},
+		Verdicts: []decisionVerdict{
+			{
+				Type: "ltn", Maturity: "2029-01-01", Rate: "0.1276", Unavailable: "amount_too_small",
+				UnitPrice: "772.001684", Quantity: "0.00", ProjectedBy: []projectedBy{}, MarketData: marketData,
+			},
+			{
+				Type: "ntn_f", Maturity: "2037-01-01", Rate: "0.1288", Unavailable: "amount_too_small",
+				UnitPrice: "880.904015", Quantity: "0.00", ProjectedBy: []projectedBy{}, MarketData: marketData,
+			},
+		},
 	}, got)
 }
 

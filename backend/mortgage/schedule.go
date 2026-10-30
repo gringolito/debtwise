@@ -83,8 +83,6 @@ type replayer struct {
 	relevel bool
 	// drifts are those of the statements applied so far.
 	drifts []Drift
-	// initial is what planned prepayments took off the balance.
-	initial decimal.Decimal
 	// rates are the contract rates as monthly rates, converted once.
 	rates []chargedRate
 }
@@ -205,7 +203,8 @@ func (r *replayer) applyBefore(paid int, until time.Time) decimal.Decimal {
 }
 
 // applyNext applies the next event after paid installments, ends the schedule there if nothing is
-// owed any more, and returns what a prepayment took off the balance.
+// owed any more, and returns what a prepayment took off the balance. A planned prepayment also
+// notes what it took and the balance it left.
 func (r *replayer) applyNext(paid int) decimal.Decimal {
 	e := r.events[0]
 	r.events = r.events[1:]
@@ -217,9 +216,10 @@ func (r *replayer) applyNext(paid int) decimal.Decimal {
 		r.applyStatement(*e.statement)
 	case r.balance.Cmp(decimal.Decimal{}) > 0:
 		prepaid = r.prepay(paid, *e.prepayment)
-		if e.planned {
-			r.initial = r.initial.Add(prepaid)
-		}
+	}
+
+	if e.planned != nil {
+		e.planned.Prepaid, e.planned.OutstandingBalance = prepaid.RoundCents(), r.balance
 	}
 
 	if r.balance.Cmp(decimal.Decimal{}) == 0 {
