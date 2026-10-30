@@ -123,10 +123,6 @@ func (s server) decide(t *testing.T, body string) decisionResult {
 // Prepaying shortens the mortgage by 5 months, so the 5,000.00 it would have paid from 2027-09-10
 // to 2028-01-10 is held. Investing leaves the mortgage unchanged and holds 5.15 from the start.
 // With no interest, prepaying avoids nothing, and the advantage is the bond's net gain.
-//
-// The NTN-F costs 880.904015 at 12.88%, so 5,000.00 buys 5.67 of them. Its first coupon, on
-// 2027-01-01, pays 276.75, but only 23.62 of income tax: most of it returns the interest the price
-// paid for. Its 251.31 net is prepaid that day, off the 13,000.00 owed since 2026-12-10.
 func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	t.Parallel()
 
@@ -141,18 +137,7 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	assert.Equal(t, "2026-10-28", got.Date, "today by default")
 	assert.Equal(t, "shorten_term", got.Effect)
 
-	ntnf := got.Verdicts[1]
-	assert.Equal(t, "ntn_f", ntnf.Type)
-	assert.Equal(t, "2037-01-01", ntnf.Maturity)
-	assert.Equal(t, "880.904015", ntnf.UnitPrice)
-	assert.Equal(t, "5.67", ntnf.Quantity)
-	require.NotNil(t, ntnf.Invest)
-	assert.Contains(t, ntnf.Invest.CashFlows, decisionFlow{
-		Date: "2027-01-01", Invested: "0.00", Prepaid: "251.31", Held: "0.00", OutstandingBalance: "12748.69",
-		Coupon: &decisionAmount{
-			Gross: "276.75", IOF: "0.00", IncomeTax: "23.62", CustodyFee: "1.82", Net: "251.31", ProjectedBy: []projectedBy{},
-		},
-	})
+	assert.Equal(t, "ntn_f", got.Verdicts[1].Type)
 
 	v := got.Verdicts[0]
 	assert.Equal(t, "ltn", v.Type)
@@ -215,6 +200,96 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 			installmentFlow("2027-12-10", 23, "1000.00"),
 			installmentFlow("2028-01-10", 24, "0.00"),
 			{Date: "2029-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "0.00"},
+		},
+	}, *v.Invest)
+}
+
+// The NTN-F on offer costs 880.904015 at 12.88% on 2026-10-28, so 5,000.00 buys 5.67 of them for
+// 4,994.73. Each coupon of 276.75 is taxed on its yield only: the first, on 2027-01-01, pays just
+// 23.62 of income tax, as most of it returns the interest the price paid the seller for. Its net is
+// prepaid that day, and equal outflow prepays what the lower installments leave of the 1,000.00.
+// Once the mortgage is paid off on 2028-01-10, every later coupon is held. The figures are worked
+// out in Python's decimal module over ANBIMA's holiday list.
+func TestAnNTNFVerdictListsEachCouponItPrepays(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
+	do(t, s.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
+
+	got := s.decide(t, `{"amount": "5000.00", "effect": "shorten_term"}`)
+	require.Len(t, got.Verdicts, 2)
+
+	v := got.Verdicts[1]
+	assert.Equal(t, "ntn_f", v.Type)
+	assert.Equal(t, "2037-01-01", v.Maturity)
+	assert.Equal(t, "0.1288", v.Rate)
+	assert.Equal(t, "880.904015", v.UnitPrice)
+	assert.Equal(t, "5.67", v.Quantity)
+	assert.Equal(t, "5384.51", v.Advantage)
+	assert.Equal(t, "0.00", v.AvoidedCost)
+
+	installment := func(day string, number int, amount, prepaid, held, balance string) decisionFlow {
+		return decisionFlow{
+			Date: day, Installment: &decisionInstallment{Number: number, Amount: amount},
+			Invested: "0.00", Prepaid: prepaid, Held: held, OutstandingBalance: balance,
+		}
+	}
+	coupon := func(day, incomeTax, custodyFee, net, prepaid, held, balance string) decisionFlow {
+		return decisionFlow{
+			Date: day, Invested: "0.00", Prepaid: prepaid, Held: held, OutstandingBalance: balance,
+			Coupon: &decisionAmount{
+				Gross: "276.75", IOF: "0.00", IncomeTax: incomeTax, CustodyFee: custodyFee, Net: net, ProjectedBy: []projectedBy{},
+			},
+		}
+	}
+	held := func(day, incomeTax, custodyFee, net string) decisionFlow {
+		return coupon(day, incomeTax, custodyFee, net, "0.00", net, "0.00")
+	}
+	maturity := &decisionAmount{
+		Gross: "5946.75", IOF: "0.00", IncomeTax: "167.40", CustodyFee: "6.00", Net: "5773.35", ProjectedBy: []projectedBy{},
+	}
+
+	require.NotNil(t, v.Invest)
+	assert.Equal(t, decisionScenario{
+		NetWorth: "10384.51", Cash: "4611.16", OutstandingBalance: "0.00", Bond: maturity,
+		CashFlows: []decisionFlow{
+			{Date: "2026-10-28", Invested: "4994.73", Prepaid: "0.00", Held: "5.27", OutstandingBalance: "15000.00"},
+			installmentFlow("2026-11-10", 10, "14000.00"),
+			installmentFlow("2026-12-10", 11, "13000.00"),
+			coupon("2027-01-01", "23.62", "1.82", "251.31", "251.31", "0.00", "12748.69"),
+			installment("2027-01-10", 12, "980.67", "19.33", "0.00", "11748.69"),
+			installment("2027-02-10", 13, "979.06", "20.94", "0.00", "10748.69"),
+			installment("2027-03-10", 14, "977.15", "22.85", "0.00", "9748.69"),
+			installment("2027-04-10", 15, "974.87", "25.13", "0.00", "8748.69"),
+			installment("2027-05-10", 16, "972.08", "27.92", "0.00", "7748.69"),
+			installment("2027-06-10", 17, "968.59", "31.41", "0.00", "6748.69"),
+			coupon("2027-07-01", "54.33", "5.08", "217.34", "217.34", "0.00", "6531.35"),
+			installment("2027-07-10", 18, "933.05", "66.95", "0.00", "5531.35"),
+			installment("2027-08-10", 19, "921.89", "78.11", "0.00", "4531.35"),
+			installment("2027-09-10", 20, "906.27", "93.73", "0.00", "3531.35"),
+			installment("2027-10-10", 21, "882.84", "117.16", "0.00", "2531.35"),
+			installment("2027-11-10", 22, "843.78", "156.22", "0.00", "1531.35"),
+			installment("2027-12-10", 23, "765.68", "234.32", "0.00", "531.35"),
+			coupon("2028-01-01", "47.52", "5.19", "224.04", "224.04", "0.00", "307.31"),
+			installment("2028-01-10", 24, "307.31", "0.00", "692.69", "0.00"),
+			held("2028-07-01", "47.53", "5.16", "224.06"),
+			held("2029-01-01", "40.73", "5.24", "230.78"),
+			held("2029-07-01", "40.74", "5.18", "230.83"),
+			held("2030-01-01", "40.72", "5.29", "230.74"),
+			held("2030-07-01", "40.73", "5.23", "230.79"),
+			held("2031-01-01", "40.71", "5.36", "230.68"),
+			held("2031-07-01", "40.72", "5.30", "230.73"),
+			held("2032-01-01", "40.70", "5.44", "230.61"),
+			held("2032-07-01", "40.70", "5.42", "230.63"),
+			held("2033-01-01", "40.68", "5.53", "230.54"),
+			held("2033-07-01", "40.69", "5.48", "230.58"),
+			held("2034-01-01", "40.67", "5.63", "230.45"),
+			held("2034-07-01", "40.67", "5.59", "230.49"),
+			held("2035-01-01", "40.65", "5.73", "230.37"),
+			held("2035-07-01", "40.66", "5.69", "230.40"),
+			held("2036-01-01", "40.64", "5.85", "230.26"),
+			held("2036-07-01", "40.64", "5.85", "230.26"),
+			{Date: "2037-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "0.00"},
 		},
 	}, *v.Invest)
 }
