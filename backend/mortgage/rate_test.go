@@ -119,6 +119,88 @@ func TestPoupancaLinkedRateAddsTheAdditionalPartOfEachMonth(t *testing.T) {
 	}, ratedSchedule(poupancaLinkedSAC(t, mortgage.TR, "30000.00", 3), history, date(t, "2026-10-25")))
 }
 
+// The rate reads the month that ends on each due date, not the contract's anniversary month: signed
+// on 2024-01-05 with installments on the 10th, the 1st installment reads the Selic target of
+// 2024-01-10, not of 2024-01-05. A fixed part printed as 12% nominal is 12.6825% effective before
+// the additional part is added to it. Under Price, the installment is levelled again whenever the
+// additional part changes the rate. Figures worked out independently with python's decimal.
+func TestPoupancaLinkedPriceRateReadsTheMonthOfEachDueDate(t *testing.T) {
+	t.Parallel()
+
+	terms := poupancaLinkedSAC(t, mortgage.NoIndexer, "30000.00", 3)
+	terms.ContractDate = date(t, "2024-01-05")
+	terms.AmortizationSystem = mortgage.Price
+	terms.ContractRates[0] = mortgage.ContractRate{
+		EffectiveFrom: date(t, "2024-01-05"), Rate: dec(t, "0.12"), Basis: mortgage.Nominal, PoupancaAdditional: true,
+	}
+
+	history := outlookOf(publishedValues{indexes.SelicTarget: {
+		published(t, "2024-01-05", "2024-01-05", "7.00"),
+		published(t, "2024-01-10", "2024-01-10", "11.75"),
+		published(t, "2024-02-05", "2024-02-05", "7.00"),
+		published(t, "2024-02-10", "2024-02-10", "8.50"),
+		published(t, "2024-03-05", "2024-03-05", "7.00"),
+		published(t, "2024-03-10", "2024-03-10", "7.75"),
+	}})
+
+	assert.Equal(t, []ratedRow{
+		{
+			1, "0.00", "434.86", "0.1885028419964692894509086174316406",
+			"", "selic_target 11.75 2024-01-10..2024-01-10",
+		},
+		{
+			2, "0.00", "288.86", "0.1863244922247296037980059366951772",
+			"", "selic_target 8.50 2024-02-10..2024-02-10",
+		},
+		{
+			3, "0.00", "141.66", "0.1810728523596306772822383917108931",
+			"", "selic_target 7.75 2024-03-10..2024-03-10",
+		},
+	}, ratedSchedule(terms, history, date(t, "2026-10-25")))
+}
+
+// Shortening the term finds the fewest months at the rate of the next installment, the
+// poupança-linked one: 40,000.00 prepaid after the 1st installment of a 6-month Price mortgage at
+// 12% nominal plus the part of a Selic target at 11.75% leaves 10,356.30, paid off by the next
+// installment alone. At the fixed part alone it would take two. Figures worked out independently
+// with python's decimal.
+func TestShortenedTermUsesThePoupancaLinkedRateOfTheNextInstallment(t *testing.T) {
+	t.Parallel()
+
+	terms := poupancaLinkedSAC(t, mortgage.NoIndexer, "60000.00", 6)
+	terms.AmortizationSystem = mortgage.Price
+	terms.ContractRates[0].Rate, terms.ContractRates[0].Basis = dec(t, "0.12"), mortgage.Nominal
+
+	selic := make([]indexes.Value, 0, 6)
+
+	for i := range 6 {
+		day := date(t, "2024-01-10").AddDate(0, i, 0).Format(time.DateOnly)
+		selic = append(selic, published(t, day, day, "11.75"))
+	}
+
+	events := mortgage.Events{Prepayments: []mortgage.Prepayment{
+		{Date: date(t, "2024-02-10"), Amount: dec(t, "40000.00"), Effect: mortgage.ShortenTerm},
+	}}
+
+	var rows []replayed
+	for m := range terms.Schedule(outlookOf(publishedValues{indexes.SelicTarget: selic}), events, date(t, "2026-10-25")) {
+		rows = append(rows, replayed{
+			Number:             m.Number,
+			DueDate:            m.DueDate.Format(time.DateOnly),
+			Interest:           m.Interest.String(),
+			Amortization:       m.Amortization.String(),
+			Amount:             m.Amount.String(),
+			Prepaid:            m.Prepaid.String(),
+			OutstandingBalance: m.OutstandingBalance.String(),
+		})
+	}
+
+	assert.Equal(t, []replayed{
+		{1, "2024-02-10", "869.72", "9643.70", "10513.42", "40000.00", "10356.30"},
+		{2, "2024-03-10", "150.12", "10356.30", "10506.42", "0.00", "0.00"},
+	}, rows)
+}
+
 // A rate without a variable part reads no index, and is charged as the contract prints it.
 func TestFixedRateReadsNoIndex(t *testing.T) {
 	t.Parallel()

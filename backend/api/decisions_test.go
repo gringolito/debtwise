@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/gringolito/debtwise/backend/marketdata/sgs"
 )
 
 // interestFreeMortgage lends 24,000.00 on 2026-01-10 over 24 months under SAC at no interest, with
@@ -328,6 +330,48 @@ func TestAnIPCABondVerdictWithoutTheIPCAItFollowsIsUnavailable(t *testing.T) {
 			},
 		},
 	}, got)
+}
+
+// A poupança-linked rate reads the Selic target, so a decision loads its history. On 2026-10-28,
+// the installments due after today read targets past the latest published one, of 2026-10-01,
+// projected by the trailing 12 months, so each verdict names that method and how fresh the Selic
+// target is.
+func TestADecisionReadsTheSelicTargetAPoupancaLinkedRateNeeds(t *testing.T) {
+	t.Parallel()
+
+	var selic []sgs.Observation
+	for month := date(2025, time.November, 1); !month.After(date(2026, time.October, 1)); month = month.AddDate(0, 1, 0) {
+		selic = append(selic, sgs.Observation{Start: month, Value: mustDecimal("15.00")})
+	}
+
+	s := newServer(t, sgsWithRows(map[int][]sgs.Observation{432: selic}), quotingRadar(), onDay(date(2026, time.October, 28)))
+	require.Equal(t, http.StatusOK, s.chooseMethod(t, "selic_target", "trailing_12").Code)
+
+	var terms map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(fmt.Sprintf(interestFreeMortgage, "tr")), &terms))
+	terms["contract_rates"] = json.RawMessage(
+		`[{"effective_from": "2026-01-10", "rate": "0", "basis": "effective", "poupanca_additional": true}]`)
+	body, err := json.Marshal(terms)
+	require.NoError(t, err)
+	do(t, s.handler, http.MethodPut, "/mortgage", string(body), http.StatusOK)
+
+	got := s.decide(t, `{"amount": "5000.00", "effect": "shorten_term"}`)
+	status := s.status(t)
+
+	var selicStatuses []indexStatus
+
+	for _, index := range status.Indexes {
+		if index.Index == "tr" || index.Index == "selic_target" {
+			selicStatuses = append(selicStatuses, index)
+		}
+	}
+
+	require.Len(t, got.Verdicts, 2)
+
+	for _, v := range got.Verdicts {
+		assert.Equal(t, []projectedBy{by("selic_target", "trailing_12")}, v.ProjectedBy, v.Type)
+		assert.Equal(t, selicStatuses, v.MarketData.Indexes, v.Type)
+	}
 }
 
 // 7.71 buys less than a hundredth of the bonds on offer, at 772.001684 an LTN and 880.904015 an

@@ -16,9 +16,9 @@ type charge struct {
 type chargedRate struct {
 	from  time.Time
 	fixed charge
-	// plusAdditional is nil for a rate without a variable part. Otherwise it keeps the rate with
-	// each poupança yield's additional part converted so far, by that part, as converting is slow
-	// and the part takes few values.
+	// plusAdditional is nil for a rate without a variable part. Otherwise it keeps the rate with the
+	// poupança yield's additional part of each Selic target converted so far, by that target, as
+	// converting is slow and the target takes few values.
 	plusAdditional map[string]charge
 }
 
@@ -71,13 +71,13 @@ func (r *replayer) rateOf(number int) installmentRate {
 	}
 
 	value.Value, value.Methods = estimate.Value, estimate.Methods
-	additional := indexes.PoupancaAdditional(estimate.Value)
 
-	c, ok := rate.plusAdditional[additional.String()]
+	c, ok := rate.plusAdditional[estimate.Value.String()]
 	if !ok {
-		c.effective = rate.fixed.effective.Add(decimal.MonthlyToAnnual(decimal.PercentToFraction(additional)))
+		additional := decimal.MonthlyToAnnual(decimal.PercentToFraction(indexes.PoupancaAdditional(estimate.Value)))
+		c.effective = rate.fixed.effective.Add(additional)
 		c.monthly = decimal.AnnualToMonthly(c.effective)
-		rate.plusAdditional[additional.String()] = c
+		rate.plusAdditional[estimate.Value.String()] = c
 	}
 
 	return installmentRate{charge: c, values: []IndexValue{value}}
