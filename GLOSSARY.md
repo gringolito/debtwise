@@ -45,7 +45,8 @@ _Avoid_: Amortization table (names one system's output, not the rule)
 **Contract Rate** (taxa de juros do contrato):
 The annual interest rate a mortgage contract charges on the outstanding balance, on top of any
 indexer correction. A contract prints it as nominal or as effective, two ways of writing the same
-rate.
+rate. Some contracts add a part that follows the poupança yield to a fixed part, so their rate
+changes month by month.
 _Avoid_: Interest rate (also covers bond rates), CET (the total cost rate, which includes insurance
 and fees)
 
@@ -57,8 +58,9 @@ _Avoid_: Correction (names the effect, not the index), index (any published seri
 the one a contract uses)
 
 **Poupança Yield** (remuneração da poupança):
-The legally defined return of a savings account, which some mortgages use as their indexer. It
-moves with other indexes, so projecting it means projecting them.
+The legally defined return of a savings account: TR plus an additional part that follows Selic.
+Some mortgages add that additional part to their contract rate while TR corrects their balance; no
+mortgage is corrected by the whole yield.
 _Avoid_: Poupança (the account itself, not its return), savings rate (reads as how much a person
 saves)
 
