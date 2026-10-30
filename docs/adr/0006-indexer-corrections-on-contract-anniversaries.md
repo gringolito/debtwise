@@ -10,7 +10,12 @@ next month, or to the 1st of the month after when the next month is too short. T
 dates TR and poupança periods, so a contract signed on the 29th to the 31st has its anniversaries
 on the 1st from the first one on. Each installment applies, in order, the corrections of every
 anniversary since the previous installment, before interest is charged on the corrected balance.
-An installment due on the contract date has none; one deferred past an anniversary has several.
+
+The first installment is never corrected, whatever its due date, as Caixa doesn't correct it. The
+month that ends on the first anniversary corrects no installment, and nor do the months that end
+on anniversaries up to a first installment deferred past them: their corrections are dropped, not
+carried to a later installment. The second installment applies the anniversaries since the first,
+as any other does. This holds for every indexer.
 
 Each correction reads a published value:
 

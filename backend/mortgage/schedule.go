@@ -18,7 +18,7 @@ type Installment struct {
 	Correction decimal.Decimal
 	// IndexValues are the index values Correction applied, one for each contract anniversary since
 	// the previous installment, each marked missing, published or projected by its Methods. There
-	// are none without an indexer.
+	// are none on the first installment or without an indexer.
 	IndexValues []IndexValue
 	// Interest is charged on the outstanding balance before this installment, once corrected.
 	Interest     decimal.Decimal
@@ -39,11 +39,13 @@ type Installment struct {
 // Schedule returns the installments of valid terms in order, each priced with the rates and fee
 // in effect on its due date, with events replayed between them.
 //
-// Each installment first corrects the outstanding balance by the indexer's value on each contract
-// anniversary since the previous installment, unless that value is missing. An installment due by
-// today is corrected by published values only, so a month whose value is only projected is
-// missing. An installment due after today is corrected by the Outlook's estimate, published or
-// projected, and a month with no estimate is missing (ADR-0009).
+// From the second installment on, each installment first corrects the outstanding balance by the
+// indexer's value on each contract anniversary since the previous installment, unless that value
+// is missing. The first installment is never corrected, and the anniversaries up to it, the first
+// one's included, correct no installment (ADR-0006). An installment due by today is corrected by
+// published values only, so a month whose value is only projected is missing. An installment due
+// after today is corrected by the Outlook's estimate, published or projected, and a month with no
+// estimate is missing (ADR-0009).
 // Each charge and correction is rounded to centavos. The last installment amortizes whatever is
 // still owed, so the balance ends at zero. Under Price the amortization plus interest is set from
 // the balance, rate and months left on the first installment, whenever the rate changes and

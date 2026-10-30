@@ -53,12 +53,16 @@ type corrections struct {
 	month period
 }
 
+// newCorrections starts at the first month after both the first anniversary and the first
+// installment: the first installment is never corrected, and the first anniversary's month is
+// corrected by no installment.
 func newCorrections(terms Terms, outlook indexes.Outlook) *corrections {
-	return &corrections{
-		indexer: terms.Indexer,
-		outlook: outlook,
-		month:   period{terms.ContractDate, monthAfter(terms.ContractDate)},
+	month := period{monthAfter(terms.ContractDate), monthAfter(monthAfter(terms.ContractDate))}
+	for !month.end.After(terms.FirstInstallmentDate) {
+		month = period{month.end, monthAfter(month.end)}
 	}
+
+	return &corrections{indexer: terms.Indexer, outlook: outlook, month: month}
 }
 
 // through returns the index values of the anniversaries on or before day that it has not returned
