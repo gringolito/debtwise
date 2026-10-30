@@ -9,12 +9,15 @@ import (
 )
 
 // Plan is what an owner would do with the mortgage on top of its recorded events: prepay Amount
-// on Start, then, after each installment due after Start, prepay what TopUp returns for it on its
-// due date. Every prepayment of the plan has Effect. The plan's schedule runs up to Until.
+// on Start, prepay each of Prepayments on its date, and, after each installment due after Start,
+// prepay what TopUp returns for it on its due date. Every prepayment of the plan has Effect. The
+// plan's schedule runs up to Until.
 type Plan struct {
 	Start  time.Time
 	Amount decimal.Decimal
 	Effect PrepaymentEffect
+	// Prepayments are dated after Start and on or before Until. Their Effect is ignored.
+	Prepayments []Prepayment
 	// TopUp is given each installment due after Start once it is charged, and returns what to
 	// prepay on its due date. Nil, or a result that isn't positive, prepays nothing.
 	TopUp func(Installment) decimal.Decimal
@@ -22,10 +25,19 @@ type Plan struct {
 }
 
 // PlannedInstallment is an installment of a planned schedule, with what the plan's top-up after it
-// took off the outstanding balance.
+// took off the outstanding balance, and the outstanding balance once the events of its due date
+// and the top-up have applied.
 type PlannedInstallment struct {
 	Installment
-	TopUp decimal.Decimal
+	TopUp           decimal.Decimal
+	BalanceOnDueDay decimal.Decimal
+}
+
+// PlannedPrepayment is what one of a plan's Prepayments took off the outstanding balance, and the
+// outstanding balance it left.
+type PlannedPrepayment struct {
+	Prepaid            decimal.Decimal
+	OutstandingBalance decimal.Decimal
 }
 
 // Planned is a mortgage's schedule under a plan, up to the plan's Until.
@@ -34,6 +46,8 @@ type Planned struct {
 	Initial decimal.Decimal
 	// AtStart is the outstanding balance once the events dated on or before Start have applied.
 	AtStart decimal.Decimal
+	// Prepayments are what the plan's Prepayments took, in the plan's order.
+	Prepayments []PlannedPrepayment
 	// Installments are those due on or before Until. Their Prepaid includes the plan's
 	// prepayments, and the events applied after the last of them are only those dated on or
 	// before Until.
@@ -46,12 +60,25 @@ type Planned struct {
 // the events (ADR-0011). They never happened, so a recorded event can't account for them: each
 // applies after the recorded events of its date, a top-up after the installment it follows too.
 func (t Terms) Plan(outlook indexes.Outlook, events Events, today time.Time, plan Plan) Planned {
+	none := decimal.Decimal{}.RoundCents()
 	r := t.replayer(outlook, events, today)
+
+	initial := PlannedPrepayment{Prepaid: none}
 	if plan.Amount.Cmp(decimal.Decimal{}) > 0 {
 		r.schedule(event{
 			date:       plan.Start,
 			prepayment: &Prepayment{Date: plan.Start, Amount: plan.Amount, Effect: plan.Effect},
-			planned:    true,
+			planned:    &initial,
+		})
+	}
+
+	prepayments := make([]PlannedPrepayment, len(plan.Prepayments))
+	for i, prepayment := range plan.Prepayments {
+		prepayments[i].Prepaid = none
+		r.schedule(event{
+			date:       prepayment.Date,
+			prepayment: &Prepayment{Date: prepayment.Date, Amount: prepayment.Amount, Effect: plan.Effect},
+			planned:    &prepayments[i],
 		})
 	}
 
@@ -69,14 +96,16 @@ func (t Terms) Plan(outlook indexes.Outlook, events Events, today time.Time, pla
 		installment := r.charge(number)
 		sameDay := p.apply(number, due.AddDate(0, 0, 1))
 		topUp := p.topUp(number, installment)
+		onDueDay := r.balance
 		installment.Prepaid = sameDay.Add(topUp).Add(p.apply(number, addMonths(t.FirstInstallmentDate, number)))
 		installment.OutstandingBalance = r.balance
-		p.planned.Installments = append(p.planned.Installments, PlannedInstallment{Installment: installment, TopUp: topUp})
+		p.planned.Installments = append(p.planned.Installments, PlannedInstallment{Installment: installment, TopUp: topUp, BalanceOnDueDay: onDueDay})
 		paid = number
 	}
 
 	p.apply(paid, p.until)
-	p.planned.Initial = r.initial.RoundCents()
+	p.planned.Initial = initial.Prepaid
+	p.planned.Prepayments = prepayments
 	p.planned.Balance = r.balance
 
 	return p.planned

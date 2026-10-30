@@ -315,11 +315,13 @@ const cashFlowHeader = [
   "Investido",
   "Amortização extraordinária",
   "Caixa retido",
-  "Resgate bruto",
+  "Pagamento do título",
+  "Bruto",
   "IOF",
   "IR",
   "Taxa de custódia",
-  "Resgate líquido",
+  "Líquido",
+  "Projeção",
   "Saldo devedor",
 ];
 
@@ -359,7 +361,7 @@ describe("the scenarios of a verdict", () => {
       rowTexts(within(investing).getByRole("table", { name: "Fluxo de caixa de Investir" })),
     ).toEqual([
       cashFlowHeader,
-      ["27/10/2026", ...dash(9), "R$ 10.000,00", "R$ 0,00", "R$ 0,00", ...dash(5), "R$ 190.000,00"],
+      ["27/10/2026", ...dash(9), "R$ 10.000,00", "R$ 0,00", "R$ 0,00", ...dash(7), "R$ 190.000,00"],
       [
         "05/11/2026",
         "2",
@@ -374,7 +376,7 @@ describe("the scenarios of a verdict", () => {
         "R$ 0,00",
         "R$ 0,00",
         "-R$ 120,50",
-        ...dash(5),
+        ...dash(7),
         "R$ 189.199,60",
       ],
       [
@@ -383,11 +385,13 @@ describe("the scenarios of a verdict", () => {
         "R$ 0,00",
         "R$ 0,00",
         "R$ 0,00",
+        "Resgate",
         "R$ 13.500,00",
         "R$ 0,00",
         "R$ 525,00",
         "R$ 98,00",
         "R$ 12.877,00",
+        "—",
         "R$ 151.000,00",
       ],
     ]);
@@ -405,7 +409,7 @@ describe("the scenarios of a verdict", () => {
       rowTexts(within(prepaying).getByRole("table", { name: "Fluxo de caixa de Amortizar" })),
     ).toEqual([
       cashFlowHeader,
-      ["27/10/2026", ...dash(9), "R$ 0,00", "R$ 10.000,00", "R$ 0,00", ...dash(5), "R$ 180.000,00"],
+      ["27/10/2026", ...dash(9), "R$ 0,00", "R$ 10.000,00", "R$ 0,00", ...dash(7), "R$ 180.000,00"],
       [
         "05/11/2026",
         "2",
@@ -420,14 +424,88 @@ describe("the scenarios of a verdict", () => {
         "R$ 0,00",
         "R$ 0,00",
         "R$ 0,00",
-        ...dash(5),
+        ...dash(7),
         "R$ 179.493,30",
       ],
-      ["01/01/2029", ...dash(9), "R$ 0,00", "R$ 0,00", "R$ 10.642,44", ...dash(5), "R$ 150.000,00"],
+      ["01/01/2029", ...dash(9), "R$ 0,00", "R$ 0,00", "R$ 10.642,44", ...dash(7), "R$ 150.000,00"],
     ]);
 
     fireEvent.click(within(verdict).getByRole("button", { name: "Ocultar cenários" }));
     expect(within(verdict).queryByRole("table")).toBeNull();
+  });
+
+  it("shows each coupon of the bond with its taxes, prepaid on its date, and marks a projected one", async () => {
+    const coupon = (net: string, projected: boolean) => ({
+      gross: "296.41",
+      iof: "0.00",
+      income_tax: "61.13",
+      custody_fee: "5.85",
+      net,
+      projected_by: projected ? [{ index: "ipca" as const, method: "focus" as const }] : [],
+    });
+    const ntnbVerdict: Verdict = {
+      ...ntnbPrincipalVerdict,
+      type: "ntn_b",
+      maturity: "2037-05-15",
+      prepay,
+      invest: {
+        ...invest,
+        cash_flows: [
+          {
+            date: "2026-11-15",
+            invested: "0.00",
+            coupon: coupon("229.43", false),
+            prepaid: "229.43",
+            held: "0.00",
+            outstanding_balance: "188970.17",
+          },
+          {
+            date: "2027-05-15",
+            invested: "0.00",
+            coupon: coupon("229.43", true),
+            prepaid: "0.00",
+            held: "229.43",
+            outstanding_balance: "0.00",
+          },
+        ],
+      },
+    };
+    stubDecisions(() => Response.json(decisionOf([ntnbVerdict])));
+    renderAt("/decisao");
+
+    const form = await decisionForm();
+    fill(form, "Valor", "10000");
+    fireEvent.click(within(form).getByRole("button", { name: "Comparar" }));
+    const verdict = await verdictRegion("Tesouro IPCA+ com Juros Semestrais 2037");
+    fireEvent.click(within(verdict).getByRole("button", { name: "Ver cenários" }));
+
+    const investing = within(verdict).getByRole("region", { name: "Investir" });
+    const couponCells = ["Cupom", "R$ 296,41", "R$ 0,00", "R$ 61,13", "R$ 5,85", "R$ 229,43"];
+    expect(
+      rowTexts(within(investing).getByRole("table", { name: "Fluxo de caixa de Investir" })),
+    ).toEqual([
+      cashFlowHeader,
+      [
+        "15/11/2026",
+        ...dash(9),
+        "R$ 0,00",
+        "R$ 229,43",
+        "R$ 0,00",
+        ...couponCells,
+        "—",
+        "R$ 188.970,17",
+      ],
+      [
+        "15/05/2027",
+        ...dash(9),
+        "R$ 0,00",
+        "R$ 0,00",
+        "R$ 229,43",
+        ...couponCells,
+        "ProjetadoIPCA: Mediana do Focus (BCB)",
+        "R$ 0,00",
+      ],
+    ]);
   });
 });
 

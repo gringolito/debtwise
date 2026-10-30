@@ -11,7 +11,8 @@ import type { LotAmount, LotCoupon, LotValues, ProjectedBy } from "@/lib/api";
 import { formatDate, formatMoney } from "@/lib/format";
 import { projectedByText } from "@/lib/projectionMethods";
 
-function ProjectionCell({ methods }: { methods: ProjectedBy[] }) {
+/** ProjectionCell marks an amount projected and names the methods, or shows a dash when it isn't. */
+export function ProjectionCell({ methods }: { methods: ProjectedBy[] }) {
   if (methods.length === 0) return <TableCell>—</TableCell>;
   return (
     <TableCell>

@@ -25,13 +25,13 @@ type decision struct {
 	Amount   string    `json:"amount" doc:"The amount prepaid or invested, in reais, as a decimal string."`
 	Date     string    `json:"date" format:"date" doc:"The date the amount is prepaid or invested on."`
 	Effect   string    `json:"effect" enum:"shorten_term,lower_installment" doc:"What each prepayment changes."`
-	Verdicts []verdict `json:"verdicts" nullable:"false" doc:"A verdict for every bond on offer that follows the mortgage's indexer, pays no coupon and matures after the date, in the order of the bond catalogue."`
+	Verdicts []verdict `json:"verdicts" nullable:"false" doc:"A verdict for every bond on offer that follows the mortgage's indexer and matures after the date, in the order of the bond catalogue."`
 }
 
 type verdict struct {
 	Type        bondType          `json:"type" doc:"The type of the bond compared."`
 	Maturity    string            `json:"maturity" format:"date" doc:"The date the bond matures: the horizon both scenarios are valued on."`
-	Rate        string            `json:"rate" doc:"The buy rate of the bond's quote, as a decimal fraction. For ntn_b_principal it is the real rate over IPCA."`
+	Rate        string            `json:"rate" doc:"The buy rate of the bond's quote, as a decimal fraction. For ntn_b_principal and ntn_b it is the real rate over IPCA."`
 	Unavailable string            `json:"unavailable,omitempty" enum:"missing_ipca,amount_too_small" doc:"Why the verdict has no scenarios. missing_ipca: the IPCA the bond's VNA follows is not available yet; amount_too_small: the amount buys less than a hundredth of the bond. Absent when it has them."`
 	UnitPrice   string            `json:"unit_price,omitempty" doc:"The price of one bond at the rate for settlement on the date, in reais, as a decimal string. Absent when the verdict is unavailable for missing_ipca."`
 	Quantity    string            `json:"quantity,omitempty" doc:"How many bonds the amount buys, in hundredths of a bond, as a decimal string. Absent when the verdict is unavailable for missing_ipca."`
@@ -61,7 +61,8 @@ type cashFlow struct {
 	Date               string               `json:"date" format:"date" doc:"The date of the flows."`
 	Installment        *cashFlowInstallment `json:"installment,omitempty" doc:"The installment due that day. Absent when none is."`
 	Invested           string               `json:"invested" doc:"What the bond cost, in reais, as a decimal string."`
-	Prepaid            string               `json:"prepaid" doc:"What the scenario's prepayment that day took off the outstanding balance, in reais, as a decimal string."`
+	Coupon             *lotAmount           `json:"coupon,omitempty" doc:"The bond's coupon paid that day, gross and net of income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only in the invest scenario of an ntn_f or ntn_b."`
+	Prepaid            string               `json:"prepaid" doc:"What the scenario's prepayments that day took off the outstanding balance, in reais, as a decimal string."`
 	Held               string               `json:"held" doc:"The cash set aside that day because nothing is owed to prepay with it, in reais, as a decimal string. Negative when the scenario's installment is above the status quo's."`
 	Redeemed           *lotAmount           `json:"redeemed,omitempty" doc:"The bond's Maturity Value paid that day. Only on the horizon of the invest scenario."`
 	OutstandingBalance string               `json:"outstanding_balance" doc:"What is owed once the day's flows are done, in reais, as a decimal string."`
@@ -267,6 +268,10 @@ func newScenario(s comparison.Scenario) scenario {
 				Fee:          i.Fee.String(),
 				Amount:       i.Amount.String(),
 			}
+		}
+
+		if f.Coupon != nil {
+			flow.Coupon = new(newLotAmount(*f.Coupon))
 		}
 
 		if f.Redeemed != nil {

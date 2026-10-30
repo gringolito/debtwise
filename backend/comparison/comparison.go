@@ -91,7 +91,9 @@ type CashFlow struct {
 	Installment *mortgage.Installment
 	// Invested is what the bond cost.
 	Invested decimal.Decimal
-	// Prepaid is what the scenario's own prepayment that day took off the outstanding balance.
+	// Coupon is the bond's coupon paid that day, nil when none is.
+	Coupon *bonds.Amount
+	// Prepaid is what the scenario's own prepayments that day took off the outstanding balance.
 	Prepaid decimal.Decimal
 	// Held is the cash set aside that day, including any uninvested remainder.
 	Held decimal.Decimal
@@ -115,8 +117,8 @@ var (
 )
 
 // Decide returns a verdict for every bond on offer that follows the mortgage's indexer (ADR-0007)
-// and matures after the decision's date, in the order of the quotes. Only bonds that pay no coupon
-// are compared. today is the day installments start being corrected by projected values after.
+// and matures after the decision's date, in the order of the quotes. today is the day installments
+// start being corrected by projected values after.
 func Decide(m Mortgage, market Market, d Decision, today time.Time) ([]Verdict, error) {
 	var verdicts []Verdict
 
@@ -138,13 +140,14 @@ func Decide(m Mortgage, market Market, d Decision, today time.Time) ([]Verdict, 
 	return verdicts, nil
 }
 
-// follows reports whether a bond of type t that pays no coupon follows a mortgage's indexer.
+// follows reports whether a bond of type t follows a mortgage's indexer: the IPCA+ bonds an IPCA
+// mortgage, and the fixed-rate bonds any other.
 func follows(t bonds.Type, indexer mortgage.Indexer) bool {
 	if indexer == mortgage.IPCA {
-		return t == bonds.NTNBPrincipal
+		return t == bonds.NTNBPrincipal || t == bonds.NTNB
 	}
 
-	return t == bonds.LTN
+	return t == bonds.LTN || t == bonds.NTNF
 }
 
 // comparer builds the verdict on one bond.
@@ -166,7 +169,7 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 
 	v.UnitPrice = price
 	v.Quantity = c.decision.Amount.Quo(price).TruncateQuantity()
-	v.ProjectedBy = projectedBy(priceBy, nil, nil)
+	v.ProjectedBy = projectedBy(nil, priceBy)
 
 	if v.Quantity.Cmp(smallestFraction) < 0 {
 		v.Unavailable = AmountTooSmall
@@ -182,13 +185,19 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 	}
 
 	cost := price.Mul(v.Quantity).RoundCents()
-	statusQuo := c.plan(zero, nil)
+	statusQuo := c.plan(zero, nil, nil)
 
-	v.Prepay = c.scenario(statusQuo, c.decision.Amount, zero, zero, nil)
-	v.Invest = c.scenario(statusQuo, zero, cost, c.decision.Amount.Sub(cost), &valuation.Maturity)
+	v.Prepay = c.scenario(statusQuo, c.decision.Amount, zero, zero, nil, nil)
+	v.Invest = c.scenario(statusQuo, zero, cost, c.decision.Amount.Sub(cost), valuation.Coupons, &valuation.Maturity)
 	v.Advantage = v.Invest.NetWorth.Sub(v.Prepay.NetWorth)
 	v.AvoidedCost = statusQuo.Balance.Sub(v.Prepay.OutstandingBalance).Add(v.Prepay.Cash).Sub(c.decision.Amount)
-	v.ProjectedBy = projectedBy(priceBy, valuation.Maturity.ProjectedBy, statusQuo.Installments)
+
+	methods := [][]indexes.ProjectionMethod{priceBy, valuation.Maturity.ProjectedBy}
+	for _, coupon := range valuation.Coupons {
+		methods = append(methods, coupon.ProjectedBy)
+	}
+
+	v.ProjectedBy = projectedBy(statusQuo.Installments, methods...)
 
 	return v, nil
 }
@@ -205,10 +214,10 @@ func unavailable(v Verdict, err error) (Verdict, error) {
 }
 
 // indexes returns the indexes the verdict reads: those the mortgage's indexer corrects by, and the
-// IPCA and its index numbers that an NTN-B Principal's VNA follows.
+// IPCA and its index numbers that an NTN-B Principal's or NTN-B's VNA follows.
 func (c comparer) indexes() []indexes.Index {
 	read := c.mortgage.Terms.Indexer.Indexes()
-	if c.bond.Type == bonds.NTNBPrincipal {
+	if c.bond.Type == bonds.NTNBPrincipal || c.bond.Type == bonds.NTNB {
 		read = append(read, indexes.IPCA, indexes.IPCANumber)
 	}
 
@@ -224,23 +233,25 @@ func (c comparer) indexes() []indexes.Index {
 }
 
 // plan replays the mortgage from the decision's date to the horizon with prepaid prepaid on the
-// date and every installment topped up by topUp.
-func (c comparer) plan(prepaid decimal.Decimal, topUp func(mortgage.Installment) decimal.Decimal) mortgage.Planned {
+// date, prepayments on theirs, and every installment topped up by topUp.
+func (c comparer) plan(prepaid decimal.Decimal, prepayments []mortgage.Prepayment, topUp func(mortgage.Installment) decimal.Decimal) mortgage.Planned {
 	m := c.mortgage
 
 	return m.Terms.Plan(m.Outlook, m.Events, c.today, mortgage.Plan{
-		Start:  c.decision.Date,
-		Amount: prepaid,
-		Effect: c.decision.Effect,
-		TopUp:  topUp,
-		Until:  c.bond.Maturity,
+		Start:       c.decision.Date,
+		Amount:      prepaid,
+		Effect:      c.decision.Effect,
+		Prepayments: prepayments,
+		TopUp:       topUp,
+		Until:       c.bond.Maturity,
 	})
 }
 
 // scenario follows the decision's amount prepaid, invested in the bond, or held as cash on the
-// decision's date. Each month it pays what the status quo would, prepaying what its own installment
-// leaves of it, and holding what nothing is owed for. The bond is redeemed on the horizon.
-func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash decimal.Decimal, redeemed *bonds.Amount) Scenario {
+// decision's date. Each net coupon the bond pays is prepaid on its date. Each month it pays what
+// the status quo would, prepaying what its own installment leaves of it, and holding what nothing
+// is owed for. The bond is redeemed on the horizon.
+func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash decimal.Decimal, coupons []bonds.CouponPayment, redeemed *bonds.Amount) Scenario {
 	outflow := make(map[int]decimal.Decimal)
 
 	for _, i := range statusQuo.Installments {
@@ -249,23 +260,47 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 		}
 	}
 
+	prepayments := make([]mortgage.Prepayment, 0, len(coupons))
+	for _, coupon := range coupons {
+		prepayments = append(prepayments, mortgage.Prepayment{Date: coupon.Date, Amount: coupon.Net})
+	}
+
 	freed := make(map[int]decimal.Decimal)
-	planned := c.plan(prepaid, func(i mortgage.Installment) decimal.Decimal {
+	planned := c.plan(prepaid, prepayments, func(i mortgage.Installment) decimal.Decimal {
 		freed[i.Number] = outflow[i.Number].Sub(i.Amount)
 
 		return freed[i.Number]
 	})
 
 	s := Scenario{Bond: redeemed}
-	held := cash.Add(prepaid.Sub(planned.Initial))
-	s.CashFlows = append(s.CashFlows, CashFlow{
-		Date:               c.decision.Date,
-		Invested:           invested,
-		Prepaid:            planned.Initial,
-		Held:               held,
-		OutstandingBalance: planned.AtStart,
-	})
-	s.Cash = held
+	byDate := make(map[time.Time]int)
+	on := func(date time.Time) *CashFlow {
+		if i, ok := byDate[date]; ok {
+			return &s.CashFlows[i]
+		}
+
+		byDate[date] = len(s.CashFlows)
+		s.CashFlows = append(s.CashFlows, CashFlow{Date: date, Invested: zero, Prepaid: zero, Held: zero})
+
+		return &s.CashFlows[len(s.CashFlows)-1]
+	}
+	hold := func(f *CashFlow, held decimal.Decimal) {
+		f.Held = f.Held.Add(held)
+		s.Cash = s.Cash.Add(held)
+	}
+
+	start := on(c.decision.Date)
+	start.Invested, start.Prepaid, start.OutstandingBalance = invested, planned.Initial, planned.AtStart
+	hold(start, cash.Add(prepaid.Sub(planned.Initial)))
+
+	// A coupon on a due date is prepaid before that day's top-up, so the installment's balance is
+	// the day's last.
+	for n, coupon := range coupons {
+		took := planned.Prepayments[n]
+		f := on(coupon.Date)
+		f.Coupon, f.Prepaid, f.OutstandingBalance = &coupon.Amount, f.Prepaid.Add(took.Prepaid), took.OutstandingBalance
+		hold(f, coupon.Net.Sub(took.Prepaid))
+	}
 
 	charged := make(map[int]bool)
 
@@ -275,16 +310,9 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 		}
 
 		charged[i.Number] = true
-		held := freed[i.Number].Sub(i.TopUp)
-		s.Cash = s.Cash.Add(held)
-		s.CashFlows = append(s.CashFlows, CashFlow{
-			Date:               i.DueDate,
-			Installment:        &i.Installment,
-			Invested:           zero,
-			Prepaid:            i.TopUp,
-			Held:               held,
-			OutstandingBalance: i.OutstandingBalance,
-		})
+		f := on(i.DueDate)
+		f.Installment, f.Prepaid, f.OutstandingBalance = &i.Installment, f.Prepaid.Add(i.TopUp), i.BalanceOnDueDay
+		hold(f, freed[i.Number].Sub(i.TopUp))
 	}
 
 	for _, i := range statusQuo.Installments {
@@ -292,20 +320,15 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 			continue
 		}
 
-		s.Cash = s.Cash.Add(i.Amount)
-		s.CashFlows = append(s.CashFlows, CashFlow{
-			Date: i.DueDate, Invested: zero, Prepaid: zero, Held: i.Amount, OutstandingBalance: planned.Balance,
-		})
+		f := on(i.DueDate)
+		f.OutstandingBalance = planned.Balance
+		hold(f, i.Amount)
 	}
 
-	horizon := c.bond.Maturity
-	if last := &s.CashFlows[len(s.CashFlows)-1]; last.Date.Equal(horizon) {
-		last.Redeemed = redeemed
-	} else {
-		s.CashFlows = append(s.CashFlows, CashFlow{
-			Date: horizon, Invested: zero, Prepaid: zero, Held: zero, Redeemed: redeemed, OutstandingBalance: planned.Balance,
-		})
-	}
+	horizon := on(c.bond.Maturity)
+	horizon.Redeemed, horizon.OutstandingBalance = redeemed, planned.Balance
+
+	slices.SortStableFunc(s.CashFlows, func(a, b CashFlow) int { return a.Date.Compare(b.Date) })
 
 	s.OutstandingBalance = planned.Balance
 	s.NetWorth = s.Cash.Sub(planned.Balance)
@@ -317,10 +340,11 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 	return s
 }
 
-// projectedBy returns the projection methods of the bond's price and Maturity Value and of the
-// index values that corrected the installments up to the horizon, each index once, in the order of
-// indexes.All. The status quo's installments are those every scenario's balance is built on.
-func projectedBy(price, maturity []indexes.ProjectionMethod, installments []mortgage.PlannedInstallment) []indexes.ProjectionMethod {
+// projectedBy returns the projection methods of the index values that corrected the installments
+// up to the horizon and of methods, those of the bond's price and payments, each index once, in
+// the order of indexes.All. The status quo's installments are those every scenario's balance is
+// built on.
+func projectedBy(installments []mortgage.PlannedInstallment, methods ...[]indexes.ProjectionMethod) []indexes.ProjectionMethod {
 	byIndex := make(map[indexes.Index]indexes.ProjectionMethod)
 
 	note := func(methods []indexes.ProjectionMethod) {
@@ -329,8 +353,9 @@ func projectedBy(price, maturity []indexes.ProjectionMethod, installments []mort
 		}
 	}
 
-	note(price)
-	note(maturity)
+	for _, m := range methods {
+		note(m)
+	}
 
 	for _, i := range installments {
 		for _, v := range i.IndexValues {

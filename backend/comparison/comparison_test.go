@@ -374,10 +374,10 @@ func TestShorteningTheTermAndLoweringTheInstallmentGiveNearlyTheSameAdvantage(t 
 	}
 }
 
-// A decision offers the bonds that follow the mortgage's indexer (ADR-0007) and pay no coupon: an
-// NTN-B Principal against an IPCA mortgage, an LTN against any other. Only bonds on offer, maturing
-// after the decision's date, are compared. Without IPCA index numbers, the NTN-B Principal's VNA
-// is unknown, so its verdict says so.
+// A decision offers the bonds that follow the mortgage's indexer (ADR-0007): an NTN-B Principal or
+// an NTN-B against an IPCA mortgage, an LTN or an NTN-F against any other. Only bonds on offer,
+// maturing after the decision's date, are compared. Without IPCA index numbers, the VNA of an IPCA+
+// bond is unknown, so its verdict says so.
 func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 	t.Parallel()
 
@@ -401,10 +401,12 @@ func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 		indexer mortgage.Indexer
 		want    []string
 	}{
-		{mortgage.NoIndexer, []string{"ltn 2028-01-01", "ltn 2030-01-01"}},
-		{mortgage.TR, []string{"ltn 2028-01-01", "ltn 2030-01-01"}},
-		{mortgage.PoupancaYield, []string{"ltn 2028-01-01", "ltn 2030-01-01"}},
-		{mortgage.IPCA, []string{"ntn_b_principal 2029-05-15 missing_ipca", "ntn_b_principal 2033-05-15 missing_ipca"}},
+		{mortgage.NoIndexer, []string{"ltn 2028-01-01", "ltn 2030-01-01", "ntn_f 2031-01-01"}},
+		{mortgage.TR, []string{"ltn 2028-01-01", "ltn 2030-01-01", "ntn_f 2031-01-01"}},
+		{mortgage.PoupancaYield, []string{"ltn 2028-01-01", "ltn 2030-01-01", "ntn_f 2031-01-01"}},
+		{mortgage.IPCA, []string{
+			"ntn_b_principal 2029-05-15 missing_ipca", "ntn_b_principal 2033-05-15 missing_ipca", "ntn_b 2033-05-15 missing_ipca",
+		}},
 	}
 
 	for _, tt := range tests {
@@ -675,4 +677,236 @@ func TestAVerdictNamesTheProjectionsTheBalancesBeforeTheDecisionRead(t *testing.
 	require.Len(t, verdicts, 1)
 
 	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}}, verdicts[0].ProjectedBy)
+}
+
+// couponFlow is a scenario's cash flow on one date as text, with the coupon the bond paid that
+// day, gross, income tax, custody fee and net, where it paid one.
+type couponFlow struct {
+	flow
+	Coupon amountView
+}
+
+func couponFlows(s comparison.Scenario) []couponFlow {
+	out := make([]couponFlow, 0, len(s.CashFlows))
+
+	for i, f := range flows(s) {
+		row := couponFlow{flow: f}
+		if coupon := s.CashFlows[i].Coupon; coupon != nil {
+			row.Coupon = amountOf(coupon)
+		}
+
+		out = append(out, row)
+	}
+
+	return out
+}
+
+// 5,000.00 on 2025-01-10, with 12,000.00 still owed interest-free at 1,000.00 a month, buys 5.14
+// NTN-F maturing on 2027-01-01 at 12% a year, 970.884128 each. The expected figures come from a
+// separate implementation in Python's decimal module of Tesouro's NTN-F price over ANBIMA's holiday
+// list and the taxes. Each coupon of 48.80885 a bond, 250.88 for the lot, is taxed at the bracket
+// of the days since the purchase: 172 days pay 22.5%, 356 days 20% and 537 days 17.5%. Its custody
+// fee accrues from the purchase or the previous coupon. Each net coupon is prepaid on its date, and
+// equal outflow prepays what the lower installments leave of the 1,000.00. Once nothing is owed, the
+// coupon of 2026-07-01 is held.
+func TestAnNTNFVerdictPrepaysEachNetCouponOnItsDate(t *testing.T) {
+	t.Parallel()
+
+	decided := date(t, "2025-01-10")
+	verdicts, err := comparison.Decide(
+		comparison.Mortgage{Terms: interestFreeTerms(t)},
+		comparison.Market{
+			Quotes: []bonds.Quote{{
+				Bond: bonds.Bond{Type: bonds.NTNF, Maturity: date(t, "2027-01-01")},
+				Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "970.00")},
+			}},
+			Taxes: lotTaxes(t),
+		},
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm},
+		decided,
+	)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	v := verdicts[0]
+	assert.Equal(t, "970.884128", v.UnitPrice.String())
+	assert.Equal(t, "5.14", v.Quantity.String())
+
+	none := amountView{}
+	assert.Equal(t, []couponFlow{
+		{flow{"2025-01-10", "", "4990.34", "0.00", "9.66", "", "12000.00"}, none},
+		{flow{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "11000.00"}, none},
+		{flow{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "10000.00"}, none},
+		{flow{"2025-04-10", "1000.00", "0.00", "0.00", "0.00", "", "9000.00"}, none},
+		{flow{"2025-05-10", "1000.00", "0.00", "0.00", "0.00", "", "8000.00"}, none},
+		{flow{"2025-06-10", "1000.00", "0.00", "0.00", "0.00", "", "7000.00"}, none},
+		{flow{"2025-07-01", "", "0.00", "190.59", "0.00", "", "6809.41"}, amountView{"250.88", "0.00", "55.33", "4.96", "190.59"}},
+		{flow{"2025-07-10", "972.77", "0.00", "27.23", "0.00", "", "5809.41"}, none},
+		{flow{"2025-08-10", "968.24", "0.00", "31.76", "0.00", "", "4809.41"}, none},
+		{flow{"2025-09-10", "961.88", "0.00", "38.12", "0.00", "", "3809.41"}, none},
+		{flow{"2025-10-10", "952.35", "0.00", "47.65", "0.00", "", "2809.41"}, none},
+		{flow{"2025-11-10", "936.47", "0.00", "63.53", "0.00", "", "1809.41"}, none},
+		{flow{"2025-12-10", "904.71", "0.00", "95.29", "0.00", "", "809.41"}, none},
+		{flow{"2026-01-01", "", "0.00", "196.42", "0.00", "", "612.99"}, amountView{"250.88", "0.00", "49.11", "5.35", "196.42"}},
+		{flow{"2026-01-10", "612.99", "0.00", "0.00", "387.01", "", "0.00"}, none},
+		{flow{"2026-07-01", "", "0.00", "0.00", "202.60", "", "0.00"}, amountView{"250.88", "0.00", "42.98", "5.30", "202.60"}},
+		{flow{"2027-01-01", "", "0.00", "0.00", "0.00", "5326.17", "0.00"}, none},
+	}, couponFlows(v.Invest))
+	assert.Equal(t, amountView{"5390.88", "0.00", "59.27", "5.44", "5326.17"}, amountOf(v.Invest.Bond))
+	assert.Equal(t, "599.27", v.Invest.Cash.String())
+	assert.Equal(t, "5925.44", v.Invest.NetWorth.String())
+	assert.Equal(t, "925.44", v.Advantage.String())
+	assert.Empty(t, v.ProjectedBy)
+}
+
+// A coupon due the same day as an installment is prepaid after it, and the day shows both on one
+// row. With the interest-free mortgage due on the 1st, 5,000.00 on 2025-01-02 buys 5.16 NTN-F
+// maturing on 2027-01-01 at 12% a year. On 2025-07-01, 180 days after the purchase and so still at
+// 22.5% of income tax, the 1,000.00 installment leaves 6,000.00 and the 191.15 net coupon is prepaid
+// from it. The figures come from the same separate implementation in Python.
+func TestACouponDueWithAnInstallmentIsPrepaidAfterIt(t *testing.T) {
+	t.Parallel()
+
+	terms := interestFreeTerms(t)
+	terms.FirstInstallmentDate = date(t, "2024-02-01")
+	decided := date(t, "2025-01-02")
+
+	verdicts, err := comparison.Decide(
+		comparison.Mortgage{Terms: terms},
+		comparison.Market{
+			Quotes: []bonds.Quote{{
+				Bond: bonds.Bond{Type: bonds.NTNF, Maturity: date(t, "2027-01-01")},
+				Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "970.00")},
+			}},
+			Taxes: lotTaxes(t),
+		},
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm},
+		decided,
+	)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	got := couponFlows(verdicts[0].Invest)
+	i := slices.IndexFunc(got, func(f couponFlow) bool { return f.Date == "2025-07-01" })
+	require.Positive(t, i)
+	assert.Equal(t, []couponFlow{
+		{flow{"2025-06-01", "1000.00", "0.00", "0.00", "0.00", "", "7000.00"}, amountView{}},
+		{flow{"2025-07-01", "1000.00", "0.00", "191.15", "0.00", "", "5808.85"}, amountView{"251.85", "0.00", "55.49", "5.21", "191.15"}},
+		{flow{"2025-08-01", "968.14", "0.00", "31.86", "0.00", "", "4808.85"}, amountView{}},
+	}, got[i-1:i+2])
+}
+
+// A coupon's prepayment has the effect the owner chose. Over 240 months the interest-free mortgage
+// charges 100.00 a month, and on 2025-07-01 the NTN-F's 190.59 net coupon leaves 22,109.41 owed
+// over the 223 months left. Shortening the term drops one of them and keeps the installment at
+// most 100.00; lowering it spreads the balance over all 223. Equal outflow prepays the rest of each
+// 100.00. The figures come from the same separate implementation in Python.
+func TestACouponPrepaymentHasTheEffectTheOwnerChose(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		effect mortgage.PrepaymentEffect
+		after  []couponFlow
+	}{
+		{mortgage.ShortenTerm, []couponFlow{
+			{flow{"2025-07-10", "99.59", "0.00", "0.41", "0.00", "", "22009.41"}, amountView{}},
+			{flow{"2025-08-10", "99.59", "0.00", "0.41", "0.00", "", "21909.41"}, amountView{}},
+		}},
+		{mortgage.LowerInstallment, []couponFlow{
+			{flow{"2025-07-10", "99.15", "0.00", "0.85", "0.00", "", "22009.41"}, amountView{}},
+			{flow{"2025-08-10", "99.14", "0.00", "0.86", "0.00", "", "21909.41"}, amountView{}},
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.effect), func(t *testing.T) {
+			t.Parallel()
+
+			terms := interestFreeTerms(t)
+			terms.TermMonths = 240
+			decided := date(t, "2025-01-10")
+
+			verdicts, err := comparison.Decide(
+				comparison.Mortgage{Terms: terms},
+				comparison.Market{
+					Quotes: []bonds.Quote{{
+						Bond: bonds.Bond{Type: bonds.NTNF, Maturity: date(t, "2027-01-01")},
+						Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "970.00")},
+					}},
+					Taxes: lotTaxes(t),
+				},
+				comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: tt.effect},
+				decided,
+			)
+			require.NoError(t, err)
+			require.Len(t, verdicts, 1)
+
+			got := couponFlows(verdicts[0].Invest)
+			i := slices.IndexFunc(got, func(f couponFlow) bool { return f.Date == "2025-07-01" })
+			require.Positive(t, i)
+			assert.Equal(t, append([]couponFlow{
+				{flow{"2025-06-10", "100.00", "0.00", "0.00", "0.00", "", "22300.00"}, amountView{}},
+				{flow{"2025-07-01", "", "0.00", "190.59", "0.00", "", "22109.41"}, amountView{"250.88", "0.00", "55.33", "4.96", "190.59"}},
+			}, tt.after...), got[i-1:i+3])
+		})
+	}
+}
+
+// Against an IPCA mortgage, 10,000.00 on 2025-11-03 buys 2.20 NTN-B maturing on 2026-08-15 at 7.5%
+// a year over IPCA. Its coupon of 2026-02-15 is 2.956301% of that day's VNA, 4,557.465802, which
+// needs January's index number: IBGE's latest, 7,300.00 for 2025-09, grown by October's published
+// IPCA and the projected IPCA of the months after, so the coupon is marked projected. The expected
+// figures come from a separate implementation in Python's decimal module, whose schedule reproduces
+// the prepay scenario of the NTN-B Principal test above. 104 days after the purchase the coupon pays
+// 22.5% of income tax, and its net is prepaid on its date, between the installments of 2026-02-03
+// and 2026-03-03; equal outflow then prepays what the lower installments leave.
+func TestAnNTNBVerdictPrepaysItsProjectedCoupons(t *testing.T) {
+	t.Parallel()
+
+	m, outlook := ipcaMortgage(t, "0.20")
+	decided := date(t, "2025-11-03")
+	market := comparison.Market{
+		Quotes: []bonds.Quote{{
+			Bond: bonds.Bond{Type: bonds.NTNB, Maturity: date(t, "2026-08-15")},
+			Buy:  &bonds.Price{Rate: dec(t, "0.075"), UnitPrice: dec(t, "4000.00")},
+		}},
+		Taxes: lotTaxes(t),
+		IPCA: bonds.IPCA{
+			Numbers: bonds.IPCANumbers{date(t, "2000-06-01"): dec(t, "1614.62"), date(t, "2025-09-01"): dec(t, "7300.00")},
+			Outlook: outlook,
+		},
+	}
+
+	verdicts, err := comparison.Decide(m, market,
+		comparison.Decision{Amount: dec(t, "10000.00"), Date: decided, Effect: mortgage.ShortenTerm}, decided)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	v := verdicts[0]
+	assert.Equal(t, "4536.718091", v.UnitPrice.String())
+	assert.Equal(t, "2.20", v.Quantity.String())
+	assert.Equal(t, amountView{"10447.33", "0.00", "95.01", "10.36", "10341.96"}, amountOf(v.Invest.Bond))
+
+	none := amountView{}
+	assert.Equal(t, []couponFlow{
+		{flow{"2025-11-03", "", "9980.78", "0.00", "19.22", "", "29755.26"}, none},
+		{flow{"2025-12-03", "2274.75", "0.00", "0.00", "0.00", "", "27685.14"}, none},
+		{flow{"2026-01-03", "2268.92", "0.00", "0.00", "0.00", "", "25606.62"}, none},
+		{flow{"2026-02-03", "2263.04", "0.00", "0.00", "0.00", "", "23519.68"}, none},
+		{flow{"2026-02-15", "", "0.00", "229.43", "0.00", "", "23290.25"}, amountView{"296.41", "0.00", "61.13", "5.85", "229.43"}},
+		{flow{"2026-03-03", "2235.12", "0.00", "22.02", "0.00", "", "21193.28"}, none},
+		{flow{"2026-04-03", "2226.94", "0.00", "24.26", "0.00", "", "19087.84"}, none},
+		{flow{"2026-05-03", "2218.21", "0.00", "27.03", "0.00", "", "16973.88"}, none},
+		{flow{"2026-06-03", "2208.77", "0.00", "30.47", "0.00", "", "14851.38"}, none},
+		{flow{"2026-07-03", "2198.30", "0.00", "34.90", "0.00", "", "12720.31"}, none},
+		{flow{"2026-08-03", "2186.33", "0.00", "40.81", "0.00", "", "10580.65"}, none},
+		{flow{"2026-08-15", "", "0.00", "0.00", "0.00", "10341.96", "10580.65"}, none},
+	}, couponFlows(v.Invest))
+	assert.Equal(t, "-219.47", v.Invest.NetWorth.String())
+	assert.Equal(t, "-36.03", v.Advantage.String())
+
+	trailing := []indexes.ProjectionMethod{{Index: indexes.IPCA, Method: indexes.Trailing12}}
+	assert.Equal(t, trailing, v.Invest.CashFlows[4].Coupon.ProjectedBy)
+	assert.Equal(t, trailing, v.ProjectedBy)
+	assert.Equal(t, []indexes.Index{indexes.IPCA, indexes.IPCANumber}, v.Indexes)
 }

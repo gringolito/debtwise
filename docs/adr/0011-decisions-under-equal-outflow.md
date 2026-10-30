@@ -5,15 +5,18 @@ date to the horizon, the compared bond's maturity:
 
 - **Status quo:** nothing is prepaid. Its installments set the outflow of every later month.
 - **Prepay:** the amount is prepaid on the decision's date.
-- **Invest:** the amount buys the bond, and the remainder is held as cash at zero return.
+- **Invest:** the amount buys the bond, and the remainder is held as cash at zero return. Each
+  coupon an NTN-F or NTN-B pays before maturity is prepaid on its date, net of the income tax and
+  custody fee ADR-0010 takes from it, the income tax at the bracket of the days since the purchase.
 
-The prepay scenario's initial prepayment and later top-ups have the effect the owner chose. They never
-happened, so a recorded prepayment or statement can't account for them: each applies after the
-recorded events of its date, and after that day's installment as ADR-0008 orders a prepayment. After
-every installment due after the decision's date, a scenario pays what the status quo's installment
-of that month is: its own installment, and the difference prepaid on its due date. What nothing is
-owed for any more, a prepayment larger than the balance or a month after the mortgage is paid off,
-is held as cash at zero return until the horizon.
+The prepay scenario's initial prepayment and later top-ups, and the invest scenario's coupons, have
+the effect the owner chose. They never happened, so a recorded prepayment or statement can't account
+for them: each applies after the recorded events of its date, and after that day's installment as
+ADR-0008 orders a prepayment. A coupon paid on an installment's due date applies before that day's
+top-up. After every installment due after the decision's date, a scenario pays what the status
+quo's installment of that month is: its own installment, and the difference prepaid on its due
+date. What nothing is owed for any more, a prepayment larger than the balance, a coupon or a month
+after the mortgage is paid off, is held as cash at zero return until the horizon.
 A month in which a scenario's installment is above the status quo's holds the difference as negative
 cash, so both scenarios still pay the same out of pocket.
 
@@ -30,7 +33,8 @@ less the prepay scenario's. The avoided cost is the prepay scenario's worth less
 less the amount: what the prepaid amount would have cost by the horizon had it stayed owed.
 
 A verdict names the projection method of each index a projected value it read comes from: the
-mortgage's corrections in either scenario, and the VNA of the purchase and of the maturity.
+mortgage's corrections in either scenario, and the VNA of the purchase, of each coupon and of the
+maturity.
 
 ## Considered Options
 
@@ -44,3 +48,6 @@ mortgage's corrections in either scenario, and the VNA of the purchase and of th
   the one the schedule shows, and statements' drift uses the same balance.
 - **Fractional bonds to the cent of the amount:** rejected. Tesouro Direto sells hundredths of a
   bond, and what is left over is held as cash until the horizon, not prepaid.
+- **Reinvesting coupons in the bond or in anything other than the mortgage:** rejected. It would
+  need a reinvestment rate, which equal outflow never assumes, and prepaying a coupon on its date
+  is what the owner can always do with it.
