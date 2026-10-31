@@ -1667,7 +1667,7 @@
             "type": "string"
           },
           "break_even_rate": {
-            "description": "The yearly bond rate, as a decimal fraction of at most 10 places, at which buying the bond with the amount on the date gives an advantage within a centavo of zero. For ntn_b_principal and ntn_b it is the real rate over IPCA, priced through the VNA of the date. Absent when the verdict is unavailable or has no_break_even.",
+            "description": "The yearly bond rate, as a decimal fraction of at most 10 places, at which buying the bond with the amount on the date gives an advantage within a centavo of zero; where the hundredths the amount buys make the advantage jump over zero, the lowest rate at which it is positive. For ntn_b_principal and ntn_b it is the real rate over IPCA, priced through the VNA of the date. Absent when the verdict is unavailable or has no_break_even.",
             "type": "string"
           },
           "invest": {
@@ -1684,11 +1684,10 @@
             "type": "string"
           },
           "no_break_even": {
-            "description": "Why no yearly bond rate from 0% to 100% gives an advantage within a centavo of zero. below_range: investing wins even at 0%; above_range: prepaying wins even at 100%; skips_zero: the advantage jumps over zero, mostly where the amount buys one more hundredth of the bond. Absent when the verdict has a break_even_rate or is unavailable.",
+            "description": "Why no yearly bond rate from 0% to 100% is a break-even rate. below_range: investing wins even at 0%; above_range: prepaying wins even at 100%. Absent when the verdict has a break_even_rate or is unavailable.",
             "enum": [
               "below_range",
-              "above_range",
-              "skips_zero"
+              "above_range"
             ],
             "type": "string"
           },

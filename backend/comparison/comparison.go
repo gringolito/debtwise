@@ -62,8 +62,10 @@ type Verdict struct {
 	// AvoidedCost is what prepaying the amount saves by the horizon, beyond the amount itself.
 	AvoidedCost decimal.Decimal
 	// BreakEvenRate is the bond rate, of at most 10 places, that bought with the amount on the
-	// decision's date gives an advantage within a centavo of zero. For an NTN-B Principal or NTN-B
-	// it is the real rate over IPCA. It is zero when NoBreakEven says why there is none.
+	// decision's date gives an advantage within a centavo of zero, or where the hundredths the
+	// amount buys make the advantage jump over zero, the lowest rate at which it is positive. For
+	// an NTN-B Principal or NTN-B it is the real rate over IPCA. It is zero when NoBreakEven says
+	// why there is none.
 	BreakEvenRate decimal.Decimal
 	NoBreakEven   NoBreakEven
 	Invest        Scenario
@@ -111,17 +113,8 @@ type CashFlow struct {
 var (
 	zero = decimal.Decimal{}.RoundCents()
 	// smallestFraction is the smallest quantity of a bond Tesouro Direto sells.
-	smallestFraction = constant("0.01")
+	smallestFraction = decimal.MustParse("0.01")
 )
-
-func constant(s string) decimal.Decimal {
-	d, err := decimal.Parse(s)
-	if err != nil {
-		panic(err)
-	}
-
-	return d
-}
 
 // Decide returns a verdict for every bond on offer that follows the mortgage's indexer (ADR-0007)
 // and matures after the decision's date, in the order of the quotes. today is the day installments

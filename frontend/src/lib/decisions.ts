@@ -52,7 +52,7 @@ export function breakEvenText(type: BondType, rate: string, breakEven: string): 
   return `Taxa de equilíbrio: ${bondRate(type, breakEven)}. A taxa de hoje, ${bondRate(type, rate)}, ${side}.`;
 }
 
-/** noBreakEvenText says why no rate from 0% to 100% a year gives an advantage of zero. */
+/** noBreakEvenText says why no rate from 0% to 100% a year is a break-even rate. */
 export function noBreakEvenText(
   type: BondType,
   reason: NonNullable<Verdict["no_break_even"]>,
@@ -62,8 +62,6 @@ export function noBreakEvenText(
       return `Sem taxa de equilíbrio: investir vence mesmo a ${bondRate(type, "0")} ao ano.`;
     case "above_range":
       return `Sem taxa de equilíbrio: amortizar vence mesmo a ${bondRate(type, "1")} ao ano.`;
-    case "skips_zero":
-      return "Sem taxa de equilíbrio: a vantagem salta de negativa para positiva sem passar por zero, onde o valor passa a comprar mais um centésimo do título.";
   }
 }
 

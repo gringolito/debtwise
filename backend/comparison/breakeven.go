@@ -5,7 +5,7 @@ import (
 	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
-// NoBreakEven says why no bond rate from 0% to 100% a year gives an advantage of zero.
+// NoBreakEven says why no bond rate from 0% to 100% a year is a break-even rate.
 type NoBreakEven string
 
 const (
@@ -13,26 +13,24 @@ const (
 	BelowRange NoBreakEven = "below_range"
 	// AboveRange is a verdict whose advantage favours prepaying even at 100% a year.
 	AboveRange NoBreakEven = "above_range"
-	// SkipsZero is a verdict whose advantage jumps over zero between two rates a ten-billionth
-	// apart, mostly where the amount buys one more hundredth of the bond.
-	SkipsZero NoBreakEven = "skips_zero"
 )
 
 var (
-	centavo = constant("0.01")
-	half    = constant("0.5")
+	centavo = decimal.MustParse("0.01")
+	half    = decimal.MustParse("0.5")
 	// highestRate is the top of the rates the break-even search tries, 100% a year; the bottom is
 	// 0%.
-	highestRate = constant("1")
+	highestRate = decimal.MustParse("1")
 	// firstStep is how far from the buy rate the break-even search first looks, a percentage point.
-	firstStep = constant("0.01")
+	firstStep = decimal.MustParse("0.01")
 	// rateStep is the closest two rates the break-even search tries are.
-	rateStep = constant("0.0000000001")
+	rateStep = decimal.MustParse("0.0000000001")
 )
 
 // breakEven searches the rates from 0% to 100% a year, at 10 places, for one at which buying the
-// bond with the decision's amount gives an advantage within a centavo of zero. from is the
-// advantage at the buy rate, and prepay the scenario every advantage is measured against.
+// bond with the decision's amount gives an advantage within a centavo of zero. Where the advantage
+// jumps over zero instead, it returns the lowest rate at which the advantage is positive. from is
+// the advantage at the buy rate, and prepay the scenario every advantage is measured against.
 //
 // A higher rate buys the bond cheaper, so the advantage grows with it: smoothly while the amount
 // buys the same quantity, and in a jump where it buys one more hundredth, which is worth more on the
@@ -169,8 +167,9 @@ func (s search) bracket(p point) (bracket, *outcome, error) {
 }
 
 // narrow narrows b by regula falsi with the Illinois step, bisecting when that fails to halve it,
-// until a rate evens. Once a single hundredth's jump is left in b, it keeps to the side of the jump
-// whose advantage crosses zero, if either does.
+// until a rate evens or b is a single step wide, when its high end is the lowest rate at which the
+// advantage is positive. Once a single hundredth's jump is left in b, it keeps to the side of the
+// jump whose advantage crosses zero, if either does.
 func (s search) narrow(b bracket) (*outcome, error) {
 	for b.hi.rate.Sub(b.lo.rate).Cmp(rateStep) > 0 {
 		if b.hi.quantity.Sub(b.lo.quantity).Cmp(smallestFraction) == 0 {
@@ -196,12 +195,13 @@ func (s search) narrow(b bracket) (*outcome, error) {
 		b.narrow(p)
 	}
 
-	return &outcome{none: SkipsZero}, nil
+	return &outcome{rate: b.hi.rate}, nil
 }
 
 // acrossJump finds the rate at which b's high quantity is first bought, and returns the side of it
-// whose advantage crosses zero, or the outcome when a rate on either side of it evens or neither
-// crosses zero.
+// whose advantage crosses zero. When a rate on either side of it evens, or the advantage jumps over
+// zero at it, it returns the outcome instead: the jump's rate is then the lowest at which the
+// advantage is positive.
 func (s search) acrossJump(b bracket) (bracket, *outcome, error) {
 	jump, err := s.jump(b)
 	if err != nil {
@@ -232,7 +232,7 @@ func (s search) acrossJump(b bracket) (bracket, *outcome, error) {
 	case after.short():
 		return newBracket(after, b.hi), nil, nil
 	default:
-		return bracket{}, &outcome{none: SkipsZero}, nil
+		return bracket{}, &outcome{rate: after.rate}, nil
 	}
 }
 

@@ -216,11 +216,10 @@ describe("the break-even rate of a verdict", () => {
     ).toBeInTheDocument();
   });
 
-  it("says why no rate gives an advantage of zero", async () => {
+  it("says why no rate is one", async () => {
     await compare([
       { ...ltnVerdict, no_break_even: "below_range" },
       { ...ntnbPrincipalVerdict, no_break_even: "above_range" },
-      { ...ltnVerdict, maturity: "2031-01-01", no_break_even: "skips_zero" },
     ]);
 
     const below = await verdictRegion("Tesouro Prefixado 2029");
@@ -231,12 +230,6 @@ describe("the break-even rate of a verdict", () => {
     expect(
       within(above).getByText(
         "Sem taxa de equilíbrio: amortizar vence mesmo a IPCA + 100,00% ao ano.",
-      ),
-    ).toBeInTheDocument();
-    const skips = await verdictRegion("Tesouro Prefixado 2031");
-    expect(
-      within(skips).getByText(
-        "Sem taxa de equilíbrio: a vantagem salta de negativa para positiva sem passar por zero, onde o valor passa a comprar mais um centésimo do título.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/^Taxa de equilíbrio/)).toBeNull();

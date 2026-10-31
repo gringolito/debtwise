@@ -39,9 +39,10 @@ hundredths the amount buys. A rate at which the amount buys no hundredth has no 
 break-even either. For an IPCA+ bond the rate is the real rate over IPCA, as Tesouro quotes it.
 The search starts from the buy rate, since a higher rate buys the bond cheaper and the advantage
 grows with it. Where the amount buys one more hundredth, the advantage jumps by what that hundredth
-gains over the cash it takes, often a few reais, and the zero can fall inside that jump. Then no
-rate gives an advantage of zero, and the verdict says so instead of naming one, as it does when
-investing wins even at 0% or prepaying even at 100%.
+gains over the cash it takes, often a few reais, and the zero can fall inside that jump. Then the
+break-even rate is the lowest rate at which the advantage is positive: below it prepaying wins,
+from it investing does. When investing wins even at 0% or prepaying even at 100%, the verdict says
+so instead of naming a rate.
 
 A verdict names the projection method of each index a projected value it read comes from: the
 mortgage's corrections and contract rates in either scenario, and the VNA of the purchase, of each
@@ -66,5 +67,6 @@ coupon and of the maturity.
   quoted back as the buy rate, that rate leaves an advantage of up to a hundredth's gain, since the
   verdict buys hundredths. A rate the owner can't check against the verdict's own advantage is no
   break-even.
-- **The rate where the advantage jumps over zero:** rejected. Quoted back, it leaves the advantage
-  on one side of the jump, reais away from zero.
+- **Saying no rate breaks even where the zero falls inside a jump:** rejected. It keeps every named
+  rate within a centavo of zero when quoted back, but it left most verdicts without a rate, and the
+  rate where investing starts to win is what the owner compares the buy rate with.
