@@ -5,6 +5,7 @@ import {
   addLot,
   addPrepayment,
   addStatement,
+  checkEarlySales,
   decide as requestDecision,
   deleteLot,
   deleteMortgage,
@@ -39,6 +40,8 @@ import type {
   CorrectionIndex,
   Decision,
   DecisionInput,
+  EarlySaleCheck,
+  EarlySaleCheckList,
   ErrorModel,
   Health,
   IndexHistory,
@@ -84,6 +87,8 @@ export type {
   CorrectionIndex,
   Decision,
   DecisionInput,
+  EarlySaleCheck,
+  EarlySaleCheckList,
   Health,
   IndexHistory,
   IndexProjection,
@@ -303,6 +308,19 @@ export async function removeLot(id: number): Promise<void> {
 
 export async function decide(body: DecisionInput): Promise<Decision> {
   const { data, error, response } = await requestDecision({ body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+/** earlySaleChecksKey is the query key of the early sale checks of every lot, prepaid with effect. */
+export function earlySaleChecksKey(effect: EarlySaleCheckList["effect"]) {
+  return ["early-sale-checks", effect] as const;
+}
+
+export async function fetchEarlySaleChecks(
+  effect: EarlySaleCheckList["effect"],
+): Promise<EarlySaleCheckList> {
+  const { data, error, response } = await checkEarlySales({ query: { effect } });
   if (!data) throw failure(error, response);
   return data;
 }

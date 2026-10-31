@@ -55,18 +55,19 @@ type scenario struct {
 	NetWorth           string     `json:"net_worth" doc:"The bond's net Maturity Value and the cash held, less the outstanding balance, on the horizon, in reais, as a decimal string."`
 	Cash               string     `json:"cash" doc:"The cash held at zero return on the horizon, in reais, as a decimal string."`
 	OutstandingBalance string     `json:"outstanding_balance" doc:"What is still owed on the horizon, in reais, as a decimal string."`
-	Bond               *lotAmount `json:"bond,omitempty" doc:"The bond's Maturity Value, gross and net of IOF, income tax and the custody fee. Only in the invest scenario."`
+	Bond               *lotAmount `json:"bond,omitempty" doc:"The bond's Maturity Value, gross and net of IOF, income tax and the custody fee. Only in a decision's invest scenario and an early sale check's hold scenario."`
 	CashFlows          []cashFlow `json:"cash_flows" nullable:"false" doc:"The scenario's cash flows from the date to the horizon, by date."`
 }
 
 type cashFlow struct {
 	Date               string               `json:"date" format:"date" doc:"The date of the flows."`
 	Installment        *cashFlowInstallment `json:"installment,omitempty" doc:"The installment due that day. Absent when none is."`
-	Invested           string               `json:"invested" doc:"What the bond cost, in reais, as a decimal string."`
-	Coupon             *lotAmount           `json:"coupon,omitempty" doc:"The bond's coupon paid that day, gross and net of income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only in the invest scenario of an ntn_f or ntn_b."`
+	Invested           string               `json:"invested" doc:"What the bond cost, in reais, as a decimal string. Zero in an early sale check, which buys no bond."`
+	Sold               *lotAmount           `json:"sold,omitempty" doc:"The Market Value the lot was sold for that day, gross and net of IOF, income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only on the first day of an early sale check's sell scenario."`
+	Coupon             *lotAmount           `json:"coupon,omitempty" doc:"The bond's coupon paid that day, gross and net of income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only for an ntn_f or ntn_b, in a decision's invest scenario and an early sale check's hold scenario."`
 	Prepaid            string               `json:"prepaid" doc:"What the scenario's prepayments that day took off the outstanding balance, in reais, as a decimal string."`
 	Held               string               `json:"held" doc:"The cash set aside that day because nothing is owed to prepay with it, in reais, as a decimal string. Negative when the scenario's installment is above the status quo's."`
-	Redeemed           *lotAmount           `json:"redeemed,omitempty" doc:"The bond's Maturity Value paid that day. Only on the horizon of the invest scenario."`
+	Redeemed           *lotAmount           `json:"redeemed,omitempty" doc:"The bond's Maturity Value paid that day. Only on the horizon of a decision's invest scenario and an early sale check's hold scenario."`
 	OutstandingBalance string               `json:"outstanding_balance" doc:"What is owed once the day's flows are done, in reais, as a decimal string."`
 }
 
@@ -154,38 +155,46 @@ func readDecision(ctx context.Context, mortgages Mortgages, body decisionInput, 
 
 // decide reads what the comparison needs and compares d against every bond on offer.
 func decide(ctx context.Context, services Services, terms mortgage.Terms, d comparison.Decision, today time.Time) ([]comparison.Verdict, error) {
-	outlook, err := outlookOf(ctx, services.Indexes, terms.Indexes()...)
+	m, market, err := comparisonOf(ctx, services, terms, terms.Indexer == mortgage.IPCA)
 	if err != nil {
 		return nil, err
+	}
+
+	return comparison.Decide(m, market, d, today)
+}
+
+// comparisonOf reads the mortgage of terms with its events and outlook, and the market: the bond
+// quotes, the tax tables and, when withIPCA, what an IPCA+ bond's VNA is computed from.
+func comparisonOf(ctx context.Context, services Services, terms mortgage.Terms, withIPCA bool) (comparison.Mortgage, comparison.Market, error) {
+	outlook, err := outlookOf(ctx, services.Indexes, terms.Indexes()...)
+	if err != nil {
+		return comparison.Mortgage{}, comparison.Market{}, err
 	}
 
 	events, err := services.Mortgages.Events(ctx)
 	if err != nil {
-		return nil, mortgageFailure(err)
+		return comparison.Mortgage{}, comparison.Market{}, mortgageFailure(err)
 	}
 
 	quotes, err := services.Quotes.Quotes(ctx)
 	if err != nil {
-		return nil, err
+		return comparison.Mortgage{}, comparison.Market{}, err
 	}
 
 	taxes, err := services.Lots.Taxes(ctx)
 	if err != nil {
-		return nil, err
+		return comparison.Mortgage{}, comparison.Market{}, err
 	}
 
 	var ipca bonds.IPCA
-	if terms.Indexer == mortgage.IPCA {
+	if withIPCA {
 		if ipca, err = ipcaOf(ctx, services.Indexes); err != nil {
-			return nil, err
+			return comparison.Mortgage{}, comparison.Market{}, err
 		}
 	}
 
-	return comparison.Decide(
-		comparison.Mortgage{Terms: terms, Events: events, Outlook: outlook},
-		comparison.Market{Quotes: quotes, Taxes: taxes, IPCA: ipca},
-		d, today,
-	)
+	return comparison.Mortgage{Terms: terms, Events: events, Outlook: outlook},
+		comparison.Market{Quotes: quotes, Taxes: taxes, IPCA: ipca}, nil
 }
 
 func newVerdict(v comparison.Verdict, status marketdata.Status) verdict {
@@ -262,6 +271,10 @@ func newScenario(s comparison.Scenario) scenario {
 			Prepaid:            f.Prepaid.String(),
 			Held:               f.Held.String(),
 			OutstandingBalance: f.OutstandingBalance.String(),
+		}
+
+		if f.Sold != nil {
+			flow.Sold = new(newLotAmount(*f.Sold))
 		}
 
 		if i := f.Installment; i != nil {

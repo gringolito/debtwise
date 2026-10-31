@@ -1,4 +1,4 @@
-import { ApiError, type DecisionInput, type Verdict } from "@/lib/api";
+import { ApiError, type DecisionInput, type EarlySaleCheck, type Verdict } from "@/lib/api";
 import { type BondType, bondRate } from "@/lib/bondKinds";
 import { formatMoney, inputToMoney } from "@/lib/format";
 import type { PrepaymentEffect } from "@/lib/mortgageEvents";
@@ -24,19 +24,36 @@ export function decisionInput(values: DecisionFormValues): DecisionInput {
 
 const ZERO = /^-?0+(\.0+)?$/;
 
-/** advantageText writes an Advantage signed, with the option it favours. */
-export function advantageText(advantage: string): string {
+/**
+ * advantageText writes an Advantage signed, with the option it favours: ifPositive when it is above
+ * zero, ifNegative when below.
+ */
+export function advantageText(advantage: string, ifPositive: string, ifNegative: string): string {
   if (ZERO.test(advantage)) {
-    return `${formatMoney(advantage.replace("-", ""))}, sem diferença entre investir e amortizar`;
+    return `${formatMoney(advantage.replace("-", ""))}, sem diferença entre ${ifPositive} e ${ifNegative}`;
   }
-  if (advantage.startsWith("-")) return `${formatMoney(advantage)}, a favor de amortizar`;
-  return `+${formatMoney(advantage)}, a favor de investir`;
+  if (advantage.startsWith("-")) return `${formatMoney(advantage)}, a favor de ${ifNegative}`;
+  return `+${formatMoney(advantage)}, a favor de ${ifPositive}`;
 }
 
 export const unavailableReasons: Record<NonNullable<Verdict["unavailable"]>, string> = {
   missing_ipca:
     "A comparação depende de um número-índice do IPCA que ainda não foi divulgado nem pode ser projetado.",
   amount_too_small: "O valor compra menos que um centésimo do título. Informe um valor maior.",
+};
+
+export const earlySaleVerdicts: Record<NonNullable<EarlySaleCheck["verdict"]>, string> = {
+  sell: "Vender agora",
+  hold: "Manter até o vencimento",
+};
+
+export const earlySaleUnavailableReasons: Record<
+  NonNullable<EarlySaleCheck["unavailable"]>,
+  string
+> = {
+  missing_ipca: unavailableReasons.missing_ipca,
+  no_market_value: "O Tesouro Direto não informa um preço de venda para este título.",
+  matured: "O título deste lote já venceu.",
 };
 
 /**

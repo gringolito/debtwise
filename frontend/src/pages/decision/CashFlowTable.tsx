@@ -41,11 +41,13 @@ function MoneyCell({ value }: { value: string | undefined }) {
   return <TableCell>{value === undefined ? NONE : formatMoney(value)}</TableCell>;
 }
 
-/** bondPayment is what the bond paid on a date: a coupon before maturity, or its redemption. */
+/** bondPayment is what the bond paid on a date: a lot's sale, a coupon before maturity, or its redemption. */
 function bondPayment({
+  sold,
   coupon,
   redeemed,
 }: CashFlow): { kind: string; amount: LotAmount } | undefined {
+  if (sold) return { kind: "Venda", amount: sold };
   if (coupon) return { kind: "Cupom", amount: coupon };
   if (redeemed) return { kind: "Resgate", amount: redeemed };
   return undefined;

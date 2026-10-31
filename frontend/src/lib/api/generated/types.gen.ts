@@ -62,7 +62,7 @@ export type BondsStatus = {
 
 export type CashFlow = {
     /**
-     * The bond's coupon paid that day, gross and net of income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only in the invest scenario of an ntn_f or ntn_b.
+     * The bond's coupon paid that day, gross and net of income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only for an ntn_f or ntn_b, in a decision's invest scenario and an early sale check's hold scenario.
      */
     coupon?: LotAmount;
     /**
@@ -78,7 +78,7 @@ export type CashFlow = {
      */
     installment?: CashFlowInstallment;
     /**
-     * What the bond cost, in reais, as a decimal string.
+     * What the bond cost, in reais, as a decimal string. Zero in an early sale check, which buys no bond.
      */
     invested: string;
     /**
@@ -90,9 +90,13 @@ export type CashFlow = {
      */
     prepaid: string;
     /**
-     * The bond's Maturity Value paid that day. Only on the horizon of the invest scenario.
+     * The bond's Maturity Value paid that day. Only on the horizon of a decision's invest scenario and an early sale check's hold scenario.
      */
     redeemed?: LotAmount;
+    /**
+     * The Market Value the lot was sold for that day, gross and net of IOF, income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only on the first day of an early sale check's sell scenario.
+     */
+    sold?: LotAmount;
 };
 
 export type CashFlowInstallment = {
@@ -233,6 +237,79 @@ export type DecisionInput = {
     date?: string;
     /**
      * What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.
+     */
+    effect: 'shorten_term' | 'lower_installment';
+};
+
+export type EarlySale = {
+    /**
+     * The lot's early sale check.
+     */
+    check: EarlySaleCheck;
+    /**
+     * The date the lot is sold on: today.
+     */
+    date: string;
+    /**
+     * What each prepayment changes.
+     */
+    effect: 'shorten_term' | 'lower_installment';
+};
+
+export type EarlySaleCheck = {
+    /**
+     * The hold scenario's net worth on the horizon, the bond's maturity, less the sell scenario's, in reais, as a decimal string. Positive favours holding, negative selling. Absent when the check is unavailable.
+     */
+    advantage?: string;
+    /**
+     * Holding the lot to maturity. Absent when the check is unavailable.
+     */
+    hold?: Scenario;
+    /**
+     * The lot checked.
+     */
+    lot: Lot;
+    /**
+     * How fresh the market data the check reads is.
+     */
+    market_data: VerdictMarketData;
+    /**
+     * The lot's Market Value today, gross and net of IOF, income tax and the custody fee: what selling it pays. Absent when the check is unavailable.
+     */
+    market_value?: LotAmount;
+    /**
+     * The projection method of each index a projected value of the check comes from. Empty when it reads published values only.
+     */
+    projected_by: Array<ProjectedBy>;
+    /**
+     * Selling the lot today and prepaying its Market Value. Absent when the check is unavailable.
+     */
+    sell?: Scenario;
+    /**
+     * The rate and price Tesouro Direto buys the lot's bond back at. Absent when it quotes none.
+     */
+    sell_price?: BondPrice;
+    /**
+     * Why the check has no scenarios. missing_ipca: the IPCA the lot's values follow is not available yet; no_market_value: Tesouro Direto quotes no sell price for the lot's bond; matured: the lot's bond has matured. Absent when it has them.
+     */
+    unavailable?: 'missing_ipca' | 'no_market_value' | 'matured';
+    /**
+     * Which option the check favours. sell: selling the lot today and prepaying beats holding it; hold: holding it to maturity does at least as well. Absent when the check is unavailable.
+     */
+    verdict?: 'sell' | 'hold';
+};
+
+export type EarlySaleCheckList = {
+    /**
+     * An early sale check for every lot recorded, ranked by advantage, lowest first, so the lots selling favours most come first. The unavailable ones follow, by purchase date.
+     */
+    checks: Array<EarlySaleCheck>;
+    /**
+     * The date each lot is sold on: today.
+     */
+    date: string;
+    /**
+     * What each prepayment changes.
      */
     effect: 'shorten_term' | 'lower_installment';
 };
@@ -776,7 +853,7 @@ export type RegisteredMortgage = {
 
 export type Scenario = {
     /**
-     * The bond's Maturity Value, gross and net of IOF, income tax and the custody fee. Only in the invest scenario.
+     * The bond's Maturity Value, gross and net of IOF, income tax and the custody fee. Only in a decision's invest scenario and an early sale check's hold scenario.
      */
     bond?: LotAmount;
     /**
@@ -1042,6 +1119,71 @@ export type DecideResponses = {
 };
 
 export type DecideResponse = DecideResponses[keyof DecideResponses];
+
+export type CheckEarlySalesData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.
+         */
+        effect: 'shorten_term' | 'lower_installment';
+    };
+    url: '/early-sale-checks';
+};
+
+export type CheckEarlySalesErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type CheckEarlySalesError = CheckEarlySalesErrors[keyof CheckEarlySalesErrors];
+
+export type CheckEarlySalesResponses = {
+    /**
+     * OK
+     */
+    200: EarlySaleCheckList;
+};
+
+export type CheckEarlySalesResponse = CheckEarlySalesResponses[keyof CheckEarlySalesResponses];
+
+export type CheckEarlySaleData = {
+    body?: never;
+    path: {
+        /**
+         * The ID the lot was recorded with.
+         */
+        id: number;
+    };
+    query: {
+        /**
+         * What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.
+         */
+        effect: 'shorten_term' | 'lower_installment';
+    };
+    url: '/early-sale-checks/{id}';
+};
+
+export type CheckEarlySaleErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type CheckEarlySaleError = CheckEarlySaleErrors[keyof CheckEarlySaleErrors];
+
+export type CheckEarlySaleResponses = {
+    /**
+     * OK
+     */
+    200: EarlySale;
+};
+
+export type CheckEarlySaleResponse = CheckEarlySaleResponses[keyof CheckEarlySaleResponses];
 
 export type HealthData = {
     body?: never;

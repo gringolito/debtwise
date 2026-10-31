@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddLotData, AddLotErrors, AddLotResponses, AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, DecideData, DecideErrors, DecideResponses, DeleteLotData, DeleteLotErrors, DeleteLotResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditLotData, EditLotErrors, EditLotResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListLotsData, ListLotsErrors, ListLotsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
+import type { AddLotData, AddLotErrors, AddLotResponses, AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, CheckEarlySaleData, CheckEarlySaleErrors, CheckEarlySaleResponses, CheckEarlySalesData, CheckEarlySalesErrors, CheckEarlySalesResponses, DecideData, DecideErrors, DecideResponses, DeleteLotData, DeleteLotErrors, DeleteLotResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditLotData, EditLotErrors, EditLotResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListLotsData, ListLotsErrors, ListLotsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -38,6 +38,20 @@ export const decide = <ThrowOnError extends boolean = false>(options: Options<De
         ...options.headers
     }
 });
+
+/**
+ * Check every lot for an early sale
+ *
+ * Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.
+ */
+export const checkEarlySales = <ThrowOnError extends boolean = false>(options: Options<CheckEarlySalesData, ThrowOnError>) => (options.client ?? client).get<CheckEarlySalesResponses, CheckEarlySalesErrors, ThrowOnError>({ url: '/early-sale-checks', ...options });
+
+/**
+ * Check a lot for an early sale
+ *
+ * Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.
+ */
+export const checkEarlySale = <ThrowOnError extends boolean = false>(options: Options<CheckEarlySaleData, ThrowOnError>) => (options.client ?? client).get<CheckEarlySaleResponses, CheckEarlySaleErrors, ThrowOnError>({ url: '/early-sale-checks/{id}', ...options });
 
 /**
  * Check server health

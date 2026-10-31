@@ -75,6 +75,7 @@ func NewHandler(services Services, opts ...Option) http.Handler {
 		registerLots(humaAPI, services.Lots, services.Quotes, services.Indexes, now)
 		registerMortgage(humaAPI, services.Mortgages, services.Indexes, now)
 		registerDecisions(humaAPI, services, now)
+		registerEarlySales(humaAPI, services, now)
 	})
 }
 
