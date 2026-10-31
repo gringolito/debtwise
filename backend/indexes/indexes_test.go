@@ -32,14 +32,9 @@ func openDatabase(t *testing.T, migrate bool) *sql.DB {
 }
 
 func oneValue() []indexes.Value {
-	one, err := decimal.Parse("1")
-	if err != nil {
-		panic(err)
-	}
-
 	day := time.Date(2026, time.October, 1, 0, 0, 0, 0, time.UTC)
 
-	return []indexes.Value{{PeriodStart: day, PeriodEnd: day, Value: one, FetchedAt: day}}
+	return []indexes.Value{{PeriodStart: day, PeriodEnd: day, Value: decimal.MustParse("1"), FetchedAt: day}}
 }
 
 // operations calls every Store operation and returns its error.

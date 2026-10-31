@@ -61,8 +61,15 @@ type Verdict struct {
 	Advantage decimal.Decimal
 	// AvoidedCost is what prepaying the amount saves by the horizon, beyond the amount itself.
 	AvoidedCost decimal.Decimal
-	Invest      Scenario
-	Prepay      Scenario
+	// BreakEvenRate is the bond rate, of at most 10 places, that bought with the amount on the
+	// decision's date gives an advantage within a centavo of zero, or where the hundredths the
+	// amount buys make the advantage jump over zero, the lowest rate at which it is positive. For
+	// an NTN-B Principal or NTN-B it is the real rate over IPCA. It is zero when NoBreakEven says
+	// why there is none.
+	BreakEvenRate decimal.Decimal
+	NoBreakEven   NoBreakEven
+	Invest        Scenario
+	Prepay        Scenario
 	// ProjectedBy names the projection method of each index a projected value of the verdict
 	// comes from, in the order of indexes.All.
 	ProjectedBy []indexes.ProjectionMethod
@@ -106,14 +113,7 @@ type CashFlow struct {
 var (
 	zero = decimal.Decimal{}.RoundCents()
 	// smallestFraction is the smallest quantity of a bond Tesouro Direto sells.
-	smallestFraction = func() decimal.Decimal {
-		fraction, err := decimal.Parse("0.01")
-		if err != nil {
-			panic(err)
-		}
-
-		return fraction
-	}()
+	smallestFraction = decimal.MustParse("0.01")
 )
 
 // Decide returns a verdict for every bond on offer that follows the mortgage's indexer (ADR-0007)
@@ -168,7 +168,7 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 	}
 
 	v.UnitPrice = price
-	v.Quantity = c.decision.Amount.Quo(price).TruncateQuantity()
+	v.Quantity = c.quantity(price)
 	v.ProjectedBy = projectedBy(nil, priceBy)
 
 	if v.Quantity.Cmp(smallestFraction) < 0 {
@@ -177,18 +177,15 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 		return v, nil
 	}
 
-	lot := bonds.Lot{Bond: c.bond, PurchaseDate: c.decision.Date, Rate: rate, UnitPrice: price, Quantity: v.Quantity}
+	statusQuo := c.plan(zero, nil, nil)
 
-	valuation, err := lot.Value(c.decision.Date, c.market.Taxes, c.market.IPCA, nil)
+	invest, valuation, err := c.invest(statusQuo, rate, price, v.Quantity)
 	if err != nil {
 		return unavailable(v, err)
 	}
 
-	cost := price.Mul(v.Quantity).RoundCents()
-	statusQuo := c.plan(zero, nil, nil)
-
+	v.Invest = invest
 	v.Prepay = c.scenario(statusQuo, c.decision.Amount, zero, zero, nil, nil)
-	v.Invest = c.scenario(statusQuo, zero, cost, c.decision.Amount.Sub(cost), valuation.Coupons, &valuation.Maturity)
 	v.Advantage = v.Invest.NetWorth.Sub(v.Prepay.NetWorth)
 	v.AvoidedCost = statusQuo.Balance.Sub(v.Prepay.OutstandingBalance).Add(v.Prepay.Cash).Sub(c.decision.Amount)
 
@@ -199,7 +196,33 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 
 	v.ProjectedBy = projectedBy(statusQuo.Installments, methods...)
 
+	v.BreakEvenRate, v.NoBreakEven, err = c.breakEven(statusQuo, v.Prepay, point{rate: rate, quantity: v.Quantity, advantage: v.Advantage})
+	if err != nil {
+		return Verdict{}, fmt.Errorf("break-even rate: %w", err)
+	}
+
 	return v, nil
+}
+
+// quantity is how many bonds the decision's amount buys at price, in the hundredths Tesouro Direto
+// sells.
+func (c comparer) quantity(price decimal.Decimal) decimal.Decimal {
+	return c.decision.Amount.Quo(price).TruncateQuantity()
+}
+
+// invest follows the decision's amount spent on quantity bonds bought at rate for price each, and
+// what that leaves held as cash.
+func (c comparer) invest(statusQuo mortgage.Planned, rate, price, quantity decimal.Decimal) (Scenario, bonds.Valuation, error) {
+	lot := bonds.Lot{Bond: c.bond, PurchaseDate: c.decision.Date, Rate: rate, UnitPrice: price, Quantity: quantity}
+
+	valuation, err := lot.Value(c.decision.Date, c.market.Taxes, c.market.IPCA, nil)
+	if err != nil {
+		return Scenario{}, bonds.Valuation{}, err
+	}
+
+	cost := price.Mul(quantity).RoundCents()
+
+	return c.scenario(statusQuo, zero, cost, c.decision.Amount.Sub(cost), valuation.Coupons, &valuation.Maturity), valuation, nil
 }
 
 // unavailable returns v marked as missing the IPCA when err says so, and err otherwise.

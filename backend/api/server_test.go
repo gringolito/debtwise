@@ -96,7 +96,7 @@ func (f *fakeSGS) lastFrom(series int) time.Time {
 func sgsWithRows(rows map[int][]sgs.Observation) *fakeSGS {
 	f := &fakeSGS{rows: map[int][]sgs.Observation{}, failures: map[int]error{}, from: map[int]time.Time{}}
 	for _, series := range []int{226, 195, 432, 11, 433, 2266} {
-		f.rows[series] = []sgs.Observation{{Start: date(2026, time.September, 1), Value: mustDecimal("1.00")}}
+		f.rows[series] = []sgs.Observation{{Start: date(2026, time.September, 1), Value: decimal.MustParse("1.00")}}
 	}
 
 	maps.Copy(f.rows, rows)
@@ -377,15 +377,6 @@ func (s server) history(t *testing.T, index string) indexHistory {
 
 func date(year int, month time.Month, day int) time.Time {
 	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
-}
-
-func mustDecimal(s string) decimal.Decimal {
-	d, err := decimal.Parse(s)
-	if err != nil {
-		panic(err)
-	}
-
-	return d
 }
 
 func mustDate(s string) time.Time {

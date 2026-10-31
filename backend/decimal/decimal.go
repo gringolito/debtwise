@@ -39,6 +39,17 @@ func Parse(s string) (Decimal, error) {
 	return x, nil
 }
 
+// MustParse is Parse for a constant written in the code, such as "0.01". It panics when s is not
+// a decimal string.
+func MustParse(s string) Decimal {
+	x, err := Parse(s)
+	if err != nil {
+		panic(err)
+	}
+
+	return x
+}
+
 // String formats x as a decimal string without an exponent, keeping its places.
 func (x Decimal) String() string {
 	return x.d.Text('f')

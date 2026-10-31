@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gringolito/debtwise/backend/decimal"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -22,10 +24,10 @@ const (
 // once for each period end.
 func trRows() []sgs.Observation {
 	return []sgs.Observation{
-		{Start: date(2024, time.February, 29), End: date(2024, time.March, 29), Value: mustDecimal("0.0620")},
-		{Start: date(2024, time.March, 1), End: date(2024, time.March, 30), Value: mustDecimal(marchTR)},
-		{Start: date(2024, time.March, 1), End: date(2024, time.March, 31), Value: mustDecimal(marchTR)},
-		{Start: date(2024, time.March, 1), End: date(2024, time.April, 1), Value: mustDecimal(marchTR)},
+		{Start: date(2024, time.February, 29), End: date(2024, time.March, 29), Value: decimal.MustParse("0.0620")},
+		{Start: date(2024, time.March, 1), End: date(2024, time.March, 30), Value: decimal.MustParse(marchTR)},
+		{Start: date(2024, time.March, 1), End: date(2024, time.March, 31), Value: decimal.MustParse(marchTR)},
+		{Start: date(2024, time.March, 1), End: date(2024, time.April, 1), Value: decimal.MustParse(marchTR)},
 	}
 }
 
@@ -60,11 +62,11 @@ func TestRefreshStoresTheHistoryOfEveryIndex(t *testing.T) {
 	s := newServer(t, sgsWithRows(map[int][]sgs.Observation{
 		226: trRows(),
 		432: {
-			{Start: date(2026, time.October, 24), Value: mustDecimal("13.75")},
-			{Start: date(2026, time.November, 4), Value: mustDecimal("13.75")},
+			{Start: date(2026, time.October, 24), Value: decimal.MustParse("13.75")},
+			{Start: date(2026, time.November, 4), Value: decimal.MustParse("13.75")},
 		},
-		433:  {{Start: date(2026, time.August, 1), Value: mustDecimal("-0.32")}},
-		2266: {{Start: date(2026, time.August, 1), Value: mustDecimal("7329.25")}},
+		433:  {{Start: date(2026, time.August, 1), Value: decimal.MustParse("-0.32")}},
+		2266: {{Start: date(2026, time.August, 1), Value: decimal.MustParse("7329.25")}},
 	}), quotingRadar())
 
 	tr := s.history(t, "tr")
@@ -98,7 +100,7 @@ func TestRefreshingAgainKeepsOneValuePerPeriod(t *testing.T) {
 
 	source := sgsWithRows(map[int][]sgs.Observation{
 		226: trRows(),
-		432: {{Start: date(2099, time.January, 1), Value: mustDecimal("13.75")}},
+		432: {{Start: date(2099, time.January, 1), Value: decimal.MustParse("13.75")}},
 	})
 
 	start := time.Now()
@@ -106,7 +108,7 @@ func TestRefreshingAgainKeepsOneValuePerPeriod(t *testing.T) {
 	firstRefreshDone := time.Now()
 
 	revised := trRows()
-	revised[1].Value = mustDecimal("0.0335")
+	revised[1].Value = decimal.MustParse("0.0335")
 	source.answer(226, revised)
 
 	// An hour after the first refresh, so a fetch time the second refresh failed to replace shows.
@@ -174,7 +176,7 @@ func TestRefreshThatFailsForOneIndexStoresTheOthers(t *testing.T) {
 
 	source.answer(226, nil)
 	source.fail(226, errors.New("sgs: series 226: status 406"))
-	source.answer(432, []sgs.Observation{{Start: date(2026, time.October, 1), Value: mustDecimal("13.75")}})
+	source.answer(432, []sgs.Observation{{Start: date(2026, time.October, 1), Value: decimal.MustParse("13.75")}})
 
 	secondRefresh := time.Now()
 

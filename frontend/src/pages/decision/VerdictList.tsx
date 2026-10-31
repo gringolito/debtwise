@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { Decision, Scenario, Verdict } from "@/lib/api";
 import { bondKinds, bondRate } from "@/lib/bondKinds";
-import { advantageText, unavailableReasons } from "@/lib/decisions";
+import { advantageText, breakEvenText, noBreakEvenText, unavailableReasons } from "@/lib/decisions";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { projectedByText } from "@/lib/projectionMethods";
 import { MarketDataFreshness } from "@/pages/decision/MarketDataFreshness";
@@ -57,6 +57,10 @@ function VerdictCard({ verdict }: { verdict: Verdict }) {
         {verdict.avoided_cost && (
           <p>Custo evitado ao amortizar: {formatMoney(verdict.avoided_cost)}</p>
         )}
+        {verdict.break_even_rate && (
+          <p>{breakEvenText(verdict.type, verdict.rate, verdict.break_even_rate)}</p>
+        )}
+        {verdict.no_break_even && <p>{noBreakEvenText(verdict.type, verdict.no_break_even)}</p>}
         <p>
           {verdict.projected_by.length === 0
             ? "Somente valores publicados."

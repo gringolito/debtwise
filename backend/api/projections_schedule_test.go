@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gringolito/debtwise/backend/decimal"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -120,7 +122,7 @@ func indexedMortgage(indexer, amount, contractDate, firstInstallmentDate string,
 }
 
 func observation(start, value string) sgs.Observation {
-	return sgs.Observation{Start: mustDate(start), Value: mustDecimal(value)}
+	return sgs.Observation{Start: mustDate(start), Value: decimal.MustParse(value)}
 }
 
 // monthObservation is a value SGS publishes for the month that runs from start to the 1st of the
@@ -128,7 +130,7 @@ func observation(start, value string) sgs.Observation {
 func monthObservation(start, value string) sgs.Observation {
 	first := mustDate(start)
 
-	return sgs.Observation{Start: first, End: first.AddDate(0, 1, 0), Value: mustDecimal(value)}
+	return sgs.Observation{Start: first, End: first.AddDate(0, 1, 0), Value: decimal.MustParse(value)}
 }
 
 // SGS series 226's TR for the 12 months before 2017-07-01, each period from the 1st to the 1st,

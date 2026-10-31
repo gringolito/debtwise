@@ -214,7 +214,7 @@ financeiro (the old spreadsheet's figure, computed differently)
 
 **Break-even Rate**:
 The bond rate at which investing and prepaying come out even. Comparing it with the rate on offer
-shows how much margin a bond gives.
+shows how much margin a bond gives. For an IPCA+ bond it is the real rate over IPCA.
 _Avoid_: Hurdle rate (a corporate-finance term with a wider meaning)
 
 ### Market data

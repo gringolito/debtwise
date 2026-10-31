@@ -27,6 +27,12 @@ func (x Decimal) RoundProjection() Decimal {
 	return x.quantize(4, apd.RoundHalfEven)
 }
 
+// TruncateBreakEvenRate truncates a rate the break-even search tries at 10 places. One step of a
+// ten-billionth moves the advantage of a million reais in a 30-year bond by under a centavo.
+func (x Decimal) TruncateBreakEvenRate() Decimal {
+	return x.quantize(10, apd.RoundDown)
+}
+
 // MonthlyToAnnual returns the effective annual rate that compounds from a monthly rate.
 func MonthlyToAnnual(monthly Decimal) Decimal {
 	return rounded(compound(&monthly.d, &twelve))
