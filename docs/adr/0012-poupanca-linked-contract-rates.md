@@ -25,9 +25,6 @@ the projected one where there isn't. A month without one is charged the fixed pa
 Selic target is reported missing. A projected target records its method on the installment, as a
 projected correction does.
 
-A mortgage stored with the poupança yield as its indexer before this decision is corrected by TR
-from then on, and its rates add the part, which is what the yield added to TR.
-
 ## Considered Options
 
 - **Correcting the balance by the whole poupança yield, with a fixed rate on top:** rejected. It was
