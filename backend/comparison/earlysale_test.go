@@ -89,6 +89,42 @@ func TestAnEarlySaleCheckComparesSellingTodayWithHoldingToMaturity(t *testing.T)
 	assert.Empty(t, c.Indexes)
 }
 
+// The sale's prepayment has the effect the owner chose. Lowering the installment spreads the
+// 7,595.11 left by the LTN lot's sale above over the 12 months left, and equal outflow prepays the
+// rest of each 1,000.00, so the balance falls as it does when the term is shortened.
+func TestAnEarlySaleCheckPrepaysTheSaleWithTheEffectTheOwnerChose(t *testing.T) {
+	t.Parallel()
+
+	ltn := bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")}
+
+	checks, err := comparison.CheckEarlySales(
+		comparison.Mortgage{Terms: interestFreeTerms(t)},
+		comparison.Market{Quotes: []bonds.Quote{{Bond: ltn, Sell: bonds.Price{Rate: dec(t, "0.0845"), UnitPrice: dec(t, "900.00")}}}, Taxes: lotTaxes(t)},
+		[]bonds.Lot{{Bond: ltn, PurchaseDate: date(t, "2024-01-02"), Rate: dec(t, "0.11"), UnitPrice: dec(t, "800.00"), Quantity: dec(t, "5.00")}},
+		mortgage.LowerInstallment, date(t, "2025-01-10"),
+	)
+	require.NoError(t, err)
+	require.Len(t, checks, 1)
+
+	assert.Equal(t, []flow{
+		{"2025-01-10", "", "0.00", "4404.89", "0.00", "", "7595.11"},
+		{"2025-02-10", "632.93", "0.00", "367.07", "0.00", "", "6595.11"},
+		{"2025-03-10", "599.56", "0.00", "400.44", "0.00", "", "5595.11"},
+		{"2025-04-10", "559.51", "0.00", "440.49", "0.00", "", "4595.11"},
+		{"2025-05-10", "510.57", "0.00", "489.43", "0.00", "", "3595.11"},
+		{"2025-06-10", "449.39", "0.00", "550.61", "0.00", "", "2595.11"},
+		{"2025-07-10", "370.73", "0.00", "629.27", "0.00", "", "1595.11"},
+		{"2025-08-10", "265.85", "0.00", "734.15", "0.00", "", "595.11"},
+		{"2025-09-10", "119.02", "0.00", "476.09", "404.89", "", "0.00"},
+		{"2025-10-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2025-11-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2025-12-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2026-01-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
+	}, flows(checks[0].Sell))
+	assert.Equal(t, "419.61", checks[0].Advantage.String())
+}
+
 // IOF falls on the gain of a sale within 30 days of the purchase. 5.00 LTN maturing on 2027-01-01,
 // bought for 800.00 each and sold on 2025-01-10 at 810.00, gain 50.00. Bought on 2024-12-12, 29
 // days before, the sale pays 3% of IOF, 1.50, and income tax at 22.5% on what is left of the gain
@@ -142,57 +178,107 @@ func TestAnEarlySaleWithinThirtyDaysOfThePurchasePaysIOF(t *testing.T) {
 	}
 }
 
-// On 2025-07-10 the owner holds the 5.14 NTN-F maturing on 2027-01-01 bought on 2025-01-10 at 12%
-// a year for 970.884128 each, whose coupons are worked out in the NTN-F decision test above. The
-// coupon of 2025-07-01 is already paid, so only those of 2026-01-01 and 2026-07-01 are part of
-// holding, each prepaid on its date. Sold at 1,000.00 each, 181 days after the purchase, the gain
-// over the 4,990.34 the lot cost, which the first coupon's yield left whole, pays 20% of income tax
-// after the custody fee of the 9 days since that coupon: 5,109.87 net. Prepaying it leaves 890.13
-// of the 6,000.00 owed, paid off the next month.
+// The owner holds the 5.14 NTN-F maturing on 2027-01-01 bought on 2025-01-10 at 12% a year for
+// 970.884128 each, whose coupons are worked out in the NTN-F decision test above. The coupon of
+// 2025-07-01 is paid by a check on that day or after it, so only those of 2026-01-01 and 2026-07-01
+// are part of holding, each prepaid on its date. Sold at 1,000.00 each, the gain over the 4,990.34
+// the lot cost, which the first coupon's yield left whole, pays income tax after the custody fee
+// accrued since that coupon. On 2025-07-10, 181 days after the purchase, that is 20% after 9 days'
+// fee: 5,109.87 net, which leaves 890.13 of the 6,000.00 owed, paid off the next month. On
+// 2025-07-01, 172 days after it, 22.5% and no fee: 5,106.33 net, which leaves 1,893.67 of the
+// 7,000.00 owed, spread over the 2 months it needs.
 func TestAnEarlySaleCheckHoldsTheCouponsTheLotStillPays(t *testing.T) {
 	t.Parallel()
 
-	ntnf := bonds.Bond{Type: bonds.NTNF, Maturity: date(t, "2027-01-01")}
-	lot := bonds.Lot{Bond: ntnf, PurchaseDate: date(t, "2025-01-10"), Rate: dec(t, "0.12"), UnitPrice: dec(t, "970.884128"), Quantity: dec(t, "5.14")}
-
-	checks, err := comparison.CheckEarlySales(
-		comparison.Mortgage{Terms: interestFreeTerms(t)},
-		comparison.Market{Quotes: []bonds.Quote{{Bond: ntnf, Sell: bonds.Price{Rate: dec(t, "0.10"), UnitPrice: dec(t, "1000.00")}}}, Taxes: lotTaxes(t)},
-		[]bonds.Lot{lot}, mortgage.ShortenTerm, date(t, "2025-07-10"),
-	)
-	require.NoError(t, err)
-	require.Len(t, checks, 1)
-
-	c := checks[0]
 	none := amountView{}
-	assert.Equal(t, []couponFlow{
-		{flow{"2025-07-10", "", "0.00", "0.00", "0.00", "", "6000.00"}, none},
-		{flow{"2025-08-10", "1000.00", "0.00", "0.00", "0.00", "", "5000.00"}, none},
-		{flow{"2025-09-10", "1000.00", "0.00", "0.00", "0.00", "", "4000.00"}, none},
-		{flow{"2025-10-10", "1000.00", "0.00", "0.00", "0.00", "", "3000.00"}, none},
-		{flow{"2025-11-10", "1000.00", "0.00", "0.00", "0.00", "", "2000.00"}, none},
-		{flow{"2025-12-10", "1000.00", "0.00", "0.00", "0.00", "", "1000.00"}, none},
-		{flow{"2026-01-01", "", "0.00", "196.42", "0.00", "", "803.58"}, amountView{"250.88", "0.00", "49.11", "5.35", "196.42"}},
-		{flow{"2026-01-10", "803.58", "0.00", "0.00", "196.42", "", "0.00"}, none},
-		{flow{"2026-07-01", "", "0.00", "0.00", "202.60", "", "0.00"}, amountView{"250.88", "0.00", "42.98", "5.30", "202.60"}},
-		{flow{"2027-01-01", "", "0.00", "0.00", "0.00", "5326.17", "0.00"}, none},
-	}, couponFlows(c.Hold))
-	assert.Equal(t, "5725.19", c.Hold.NetWorth.String())
+	firstCoupon := amountView{"250.88", "0.00", "49.11", "5.35", "196.42"}
+	secondCoupon := amountView{"250.88", "0.00", "42.98", "5.30", "202.60"}
+	tests := []struct {
+		today, holdWorth, sellWorth, advantage string
+		sale                                   amountView
+		hold                                   []couponFlow
+		sell                                   []flow
+	}{
+		{
+			today: "2025-07-10", holdWorth: "5725.19", sellWorth: "5109.87", advantage: "615.32",
+			sale: amountView{"5140.00", "0.00", "29.88", "0.25", "5109.87"},
+			hold: []couponFlow{
+				{flow{"2025-07-10", "", "0.00", "0.00", "0.00", "", "6000.00"}, none},
+				{flow{"2025-08-10", "1000.00", "0.00", "0.00", "0.00", "", "5000.00"}, none},
+				{flow{"2025-09-10", "1000.00", "0.00", "0.00", "0.00", "", "4000.00"}, none},
+				{flow{"2025-10-10", "1000.00", "0.00", "0.00", "0.00", "", "3000.00"}, none},
+				{flow{"2025-11-10", "1000.00", "0.00", "0.00", "0.00", "", "2000.00"}, none},
+				{flow{"2025-12-10", "1000.00", "0.00", "0.00", "0.00", "", "1000.00"}, none},
+				{flow{"2026-01-01", "", "0.00", "196.42", "0.00", "", "803.58"}, firstCoupon},
+				{flow{"2026-01-10", "803.58", "0.00", "0.00", "196.42", "", "0.00"}, none},
+				{flow{"2026-07-01", "", "0.00", "0.00", "202.60", "", "0.00"}, secondCoupon},
+				{flow{"2027-01-01", "", "0.00", "0.00", "0.00", "5326.17", "0.00"}, none},
+			},
+			sell: []flow{
+				{"2025-07-10", "", "0.00", "5109.87", "0.00", "", "890.13"},
+				{"2025-08-10", "890.13", "0.00", "0.00", "109.87", "", "0.00"},
+				{"2025-09-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2025-10-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2025-11-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2025-12-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2026-01-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
+			},
+		},
+		{
+			today: "2025-07-01", holdWorth: "5725.19", sellWorth: "5106.33", advantage: "618.86",
+			sale: amountView{"5140.00", "0.00", "33.67", "0.00", "5106.33"},
+			hold: []couponFlow{
+				{flow{"2025-07-01", "", "0.00", "0.00", "0.00", "", "7000.00"}, none},
+				{flow{"2025-07-10", "1000.00", "0.00", "0.00", "0.00", "", "6000.00"}, none},
+				{flow{"2025-08-10", "1000.00", "0.00", "0.00", "0.00", "", "5000.00"}, none},
+				{flow{"2025-09-10", "1000.00", "0.00", "0.00", "0.00", "", "4000.00"}, none},
+				{flow{"2025-10-10", "1000.00", "0.00", "0.00", "0.00", "", "3000.00"}, none},
+				{flow{"2025-11-10", "1000.00", "0.00", "0.00", "0.00", "", "2000.00"}, none},
+				{flow{"2025-12-10", "1000.00", "0.00", "0.00", "0.00", "", "1000.00"}, none},
+				{flow{"2026-01-01", "", "0.00", "196.42", "0.00", "", "803.58"}, firstCoupon},
+				{flow{"2026-01-10", "803.58", "0.00", "0.00", "196.42", "", "0.00"}, none},
+				{flow{"2026-07-01", "", "0.00", "0.00", "202.60", "", "0.00"}, secondCoupon},
+				{flow{"2027-01-01", "", "0.00", "0.00", "0.00", "5326.17", "0.00"}, none},
+			},
+			sell: []flow{
+				{"2025-07-01", "", "0.00", "5106.33", "0.00", "", "1893.67"},
+				{"2025-07-10", "946.84", "0.00", "53.16", "0.00", "", "893.67"},
+				{"2025-08-10", "893.67", "0.00", "0.00", "106.33", "", "0.00"},
+				{"2025-09-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2025-10-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2025-11-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2025-12-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2026-01-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
+			},
+		},
+	}
 
-	assert.Equal(t, amountView{"5140.00", "0.00", "29.88", "0.25", "5109.87"}, amountOf(&c.MarketValue))
-	assert.Equal(t, []flow{
-		{"2025-07-10", "", "0.00", "5109.87", "0.00", "", "890.13"},
-		{"2025-08-10", "890.13", "0.00", "0.00", "109.87", "", "0.00"},
-		{"2025-09-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
-		{"2025-10-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
-		{"2025-11-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
-		{"2025-12-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
-		{"2026-01-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
-		{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
-	}, flows(c.Sell))
-	assert.Equal(t, "5109.87", c.Sell.NetWorth.String())
+	for _, tt := range tests {
+		t.Run(tt.today, func(t *testing.T) {
+			t.Parallel()
 
-	assert.Equal(t, "615.32", c.Advantage.String())
+			ntnf := bonds.Bond{Type: bonds.NTNF, Maturity: date(t, "2027-01-01")}
+			lot := bonds.Lot{Bond: ntnf, PurchaseDate: date(t, "2025-01-10"), Rate: dec(t, "0.12"), UnitPrice: dec(t, "970.884128"), Quantity: dec(t, "5.14")}
+
+			checks, err := comparison.CheckEarlySales(
+				comparison.Mortgage{Terms: interestFreeTerms(t)},
+				comparison.Market{Quotes: []bonds.Quote{{Bond: ntnf, Sell: bonds.Price{Rate: dec(t, "0.10"), UnitPrice: dec(t, "1000.00")}}}, Taxes: lotTaxes(t)},
+				[]bonds.Lot{lot}, mortgage.ShortenTerm, date(t, tt.today),
+			)
+			require.NoError(t, err)
+			require.Len(t, checks, 1)
+
+			c := checks[0]
+			assert.Equal(t, tt.hold, couponFlows(c.Hold))
+			assert.Equal(t, tt.holdWorth, c.Hold.NetWorth.String())
+			assert.Equal(t, tt.sale, amountOf(&c.MarketValue))
+			assert.Equal(t, tt.sell, flows(c.Sell))
+			assert.Equal(t, tt.sellWorth, c.Sell.NetWorth.String())
+			assert.Equal(t, tt.advantage, c.Advantage.String())
+		})
+	}
 }
 
 // Lots are checked whatever the mortgage's indexer (ADR-0007). On 2025-12-03 the owner holds the

@@ -292,6 +292,30 @@ describe("the early sale checks", () => {
     ]);
   });
 
+  const cashFlowHeader = [
+    "Data",
+    "Nº",
+    "Índice",
+    "Correção",
+    "Juros",
+    "Amortização",
+    "MIP",
+    "DFI",
+    "Taxa adm.",
+    "Prestação",
+    "Investido",
+    "Amortização extraordinária",
+    "Caixa retido",
+    "Pagamento do título",
+    "Bruto",
+    "IOF",
+    "IR",
+    "Taxa de custódia",
+    "Líquido",
+    "Projeção",
+    "Saldo devedor",
+  ];
+
   it("shows holding and selling, with the sale on its first day", async () => {
     stubChecks(() => Response.json(listOf([sellingCheck])));
     renderAt("/venda-antecipada");
@@ -306,8 +330,41 @@ describe("the early sale checks", () => {
       ["Saldo devedor no horizonte", "R$ 0,00"],
     ]);
     expect(
-      within(holding).getByRole("table", { name: "Valor no vencimento de Manter" }),
-    ).toBeInTheDocument();
+      rowTexts(within(holding).getByRole("table", { name: "Valor no vencimento de Manter" })),
+    ).toEqual([
+      ["Valor", "Bruto", "IOF", "IR", "Taxa de custódia", "Líquido", "Projeção"],
+      [
+        "Valor no vencimento",
+        "R$ 10.000,00",
+        "R$ 0,00",
+        "R$ 513,00",
+        "R$ 80,00",
+        "R$ 9.407,00",
+        "—",
+      ],
+    ]);
+    const dash = (count: number) => Array<string>(count).fill("—");
+    expect(
+      rowTexts(within(holding).getByRole("table", { name: "Fluxo de caixa de Manter" })),
+    ).toEqual([
+      cashFlowHeader,
+      ["28/10/2026", ...dash(9), "R$ 0,00", "R$ 0,00", "R$ 0,00", ...dash(7), "R$ 15.000,00"],
+      [
+        "01/01/2029",
+        ...dash(9),
+        "R$ 0,00",
+        "R$ 0,00",
+        "R$ 0,00",
+        "Resgate",
+        "R$ 10.000,00",
+        "R$ 0,00",
+        "R$ 513,00",
+        "R$ 80,00",
+        "R$ 9.407,00",
+        "—",
+        "R$ 0,00",
+      ],
+    ]);
 
     const selling = within(check).getByRole("region", { name: "Vender" });
     expect(rowTexts(within(selling).getByRole("table", { name: "Resumo de Vender" }))).toEqual([
@@ -315,23 +372,27 @@ describe("the early sale checks", () => {
       ["Caixa retido no horizonte", "R$ 2.550,19"],
       ["Saldo devedor no horizonte", "R$ 0,00"],
     ]);
-    const flows = rowTexts(
-      within(selling).getByRole("table", { name: "Fluxo de caixa de Vender" }),
-    );
-    expect(flows[1]).toEqual([
-      "28/10/2026",
-      ...Array<string>(9).fill("—"),
-      "R$ 0,00",
-      "R$ 7.462,69",
-      "R$ 0,00",
-      "Venda",
-      "R$ 7.694,90",
-      "R$ 0,00",
-      "R$ 204,21",
-      "R$ 28,00",
-      "R$ 7.462,69",
-      "—",
-      "R$ 7.537,31",
+    expect(within(selling).queryByRole("table", { name: /^Valor no vencimento/ })).toBeNull();
+    expect(
+      rowTexts(within(selling).getByRole("table", { name: "Fluxo de caixa de Vender" })),
+    ).toEqual([
+      cashFlowHeader,
+      [
+        "28/10/2026",
+        ...dash(9),
+        "R$ 0,00",
+        "R$ 7.462,69",
+        "R$ 0,00",
+        "Venda",
+        "R$ 7.694,90",
+        "R$ 0,00",
+        "R$ 204,21",
+        "R$ 28,00",
+        "R$ 7.462,69",
+        "—",
+        "R$ 7.537,31",
+      ],
+      ["01/01/2029", ...dash(9), "R$ 0,00", "R$ 0,00", "R$ 0,00", ...dash(7), "R$ 0,00"],
     ]);
   });
 
