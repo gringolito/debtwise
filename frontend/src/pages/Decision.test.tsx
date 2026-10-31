@@ -181,6 +181,68 @@ describe("the decision form", () => {
   });
 });
 
+describe("the break-even rate of a verdict", () => {
+  async function compare(verdicts: Verdict[]) {
+    stubDecisions(() => Response.json(decisionOf(verdicts)));
+    renderAt("/decisao");
+
+    const form = await decisionForm();
+    fill(form, "Valor", "10000");
+    fireEvent.click(within(form).getByRole("button", { name: "Comparar" }));
+  }
+
+  it("says whether today's buy rate is above, below or at it, as Tesouro quotes the bond", async () => {
+    await compare([
+      { ...ltnVerdict, break_even_rate: "0.1399121448" },
+      { ...ntnbPrincipalVerdict, break_even_rate: "0.065" },
+      { ...ltnVerdict, maturity: "2031-01-01", break_even_rate: "0.1276000000" },
+    ]);
+
+    const below = await verdictRegion("Tesouro Prefixado 2029");
+    expect(
+      within(below).getByText(
+        "Taxa de equilíbrio: 13,991214%. A taxa de hoje, 12,76%, está abaixo dela.",
+      ),
+    ).toBeInTheDocument();
+    const above = await verdictRegion("Tesouro IPCA+ 2032");
+    expect(
+      within(above).getByText(
+        "Taxa de equilíbrio: IPCA + 6,50%. A taxa de hoje, IPCA + 6,72%, está acima dela.",
+      ),
+    ).toBeInTheDocument();
+    const at = await verdictRegion("Tesouro Prefixado 2031");
+    expect(
+      within(at).getByText("Taxa de equilíbrio: 12,76%. A taxa de hoje, 12,76%, é igual a ela."),
+    ).toBeInTheDocument();
+  });
+
+  it("says why no rate gives an advantage of zero", async () => {
+    await compare([
+      { ...ltnVerdict, no_break_even: "below_range" },
+      { ...ntnbPrincipalVerdict, no_break_even: "above_range" },
+      { ...ltnVerdict, maturity: "2031-01-01", no_break_even: "skips_zero" },
+    ]);
+
+    const below = await verdictRegion("Tesouro Prefixado 2029");
+    expect(
+      within(below).getByText("Sem taxa de equilíbrio: investir vence mesmo a 0,00% ao ano."),
+    ).toBeInTheDocument();
+    const above = await verdictRegion("Tesouro IPCA+ 2032");
+    expect(
+      within(above).getByText(
+        "Sem taxa de equilíbrio: amortizar vence mesmo a IPCA + 100,00% ao ano.",
+      ),
+    ).toBeInTheDocument();
+    const skips = await verdictRegion("Tesouro Prefixado 2031");
+    expect(
+      within(skips).getByText(
+        "Sem taxa de equilíbrio: a vantagem salta de negativa para positiva sem passar por zero, onde o valor passa a comprar mais um centésimo do título.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Taxa de equilíbrio/)).toBeNull();
+  });
+});
+
 const dash = (count: number) => Array<string>(count).fill("—");
 
 const investFlows: CashFlow[] = [

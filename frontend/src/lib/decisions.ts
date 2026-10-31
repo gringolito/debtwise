@@ -1,4 +1,5 @@
 import { ApiError, type DecisionInput, type Verdict } from "@/lib/api";
+import { type BondType, bondRate } from "@/lib/bondKinds";
 import { formatMoney, inputToMoney } from "@/lib/format";
 import type { PrepaymentEffect } from "@/lib/mortgageEvents";
 
@@ -37,6 +38,34 @@ export const unavailableReasons: Record<NonNullable<Verdict["unavailable"]>, str
     "A comparação depende de um número-índice do IPCA que ainda não foi divulgado nem pode ser projetado.",
   amount_too_small: "O valor compra menos que um centésimo do título. Informe um valor maior.",
 };
+
+/**
+ * breakEvenText writes a Break-even Rate and where today's buy rate sits against it, both the way
+ * Tesouro quotes the bond. Both are decimal strings of at most 10 places, which Number reads in
+ * their exact order.
+ */
+export function breakEvenText(type: BondType, rate: string, breakEven: string): string {
+  const today = Number(rate);
+  const even = Number(breakEven);
+  const side =
+    today > even ? "está acima dela" : today < even ? "está abaixo dela" : "é igual a ela";
+  return `Taxa de equilíbrio: ${bondRate(type, breakEven)}. A taxa de hoje, ${bondRate(type, rate)}, ${side}.`;
+}
+
+/** noBreakEvenText says why no rate from 0% to 100% a year gives an advantage of zero. */
+export function noBreakEvenText(
+  type: BondType,
+  reason: NonNullable<Verdict["no_break_even"]>,
+): string {
+  switch (reason) {
+    case "below_range":
+      return `Sem taxa de equilíbrio: investir vence mesmo a ${bondRate(type, "0")} ao ano.`;
+    case "above_range":
+      return `Sem taxa de equilíbrio: amortizar vence mesmo a ${bondRate(type, "1")} ao ano.`;
+    case "skips_zero":
+      return "Sem taxa de equilíbrio: a vantagem salta de negativa para positiva sem passar por zero, onde o valor passa a comprar mais um centésimo do título.";
+  }
+}
 
 // The API's own reasons are English sentences for API consumers; the owner reads these.
 const fieldMessages: Record<string, string> = {

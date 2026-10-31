@@ -70,18 +70,20 @@ type verdictMarketData struct {
 }
 
 type decisionVerdict struct {
-	Type        string            `json:"type"`
-	Maturity    string            `json:"maturity"`
-	Rate        string            `json:"rate"`
-	Unavailable string            `json:"unavailable"`
-	UnitPrice   string            `json:"unit_price"`
-	Quantity    string            `json:"quantity"`
-	Advantage   string            `json:"advantage"`
-	AvoidedCost string            `json:"avoided_cost"`
-	Invest      *decisionScenario `json:"invest"`
-	Prepay      *decisionScenario `json:"prepay"`
-	ProjectedBy []projectedBy     `json:"projected_by"`
-	MarketData  verdictMarketData `json:"market_data"`
+	Type          string            `json:"type"`
+	Maturity      string            `json:"maturity"`
+	Rate          string            `json:"rate"`
+	Unavailable   string            `json:"unavailable"`
+	UnitPrice     string            `json:"unit_price"`
+	Quantity      string            `json:"quantity"`
+	Advantage     string            `json:"advantage"`
+	AvoidedCost   string            `json:"avoided_cost"`
+	BreakEvenRate string            `json:"break_even_rate"`
+	NoBreakEven   string            `json:"no_break_even"`
+	Invest        *decisionScenario `json:"invest"`
+	Prepay        *decisionScenario `json:"prepay"`
+	ProjectedBy   []projectedBy     `json:"projected_by"`
+	MarketData    verdictMarketData `json:"market_data"`
 }
 
 type decisionResult struct {
@@ -204,6 +206,45 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 			{Date: "2029-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "0.00"},
 		},
 	}, *v.Invest)
+}
+
+// Quoted back as the LTN's buy rate, the Break-even Rate the API answers leaves investing and
+// prepaying within a centavo of each other on the horizon.
+func TestABreakEvenRateQuotedBackGivesAnAdvantageOfZero(t *testing.T) {
+	t.Parallel()
+
+	mortgage := fmt.Sprintf(interestFreeMortgage, "none")
+	decision := `{"amount": "5000.00", "effect": "shorten_term"}`
+	today := onDay(date(2026, time.October, 28))
+
+	s := newServer(t, sgsWithRows(nil), quotingRadar(), today)
+	do(t, s.handler, http.MethodPut, "/mortgage", mortgage, http.StatusOK)
+
+	got := s.decide(t, decision)
+	require.NotEmpty(t, got.Verdicts)
+
+	v := got.Verdicts[0]
+	require.Equal(t, "ltn", v.Type)
+	require.Empty(t, v.NoBreakEven)
+
+	breakEven := mustDecimal(v.BreakEvenRate)
+	assert.Positive(t, breakEven.Cmp(mustDecimal("0")), "a bond at 0% loses its custody fee")
+	assert.Negative(t, breakEven.Cmp(mustDecimal(v.Rate)), "the LTN's buy rate favours investing")
+
+	ltn := radarBonds()[1]
+	require.Equal(t, ltn2029, ltn.Name)
+	ltn.InvestmentRate = &breakEven
+	quoted := radarWithBonds([]string{ltn2029}, ltn)
+	fedBack := newServer(t, sgsWithRows(nil), quoted, today)
+	do(t, fedBack.handler, http.MethodPut, "/mortgage", mortgage, http.StatusOK)
+
+	again := fedBack.decide(t, decision)
+	require.Len(t, again.Verdicts, 1)
+	assert.Equal(t, v.BreakEvenRate, again.Verdicts[0].Rate)
+
+	advantage := mustDecimal(again.Verdicts[0].Advantage)
+	assert.LessOrEqual(t, advantage.Cmp(mustDecimal("0.01")), 0, advantage.String())
+	assert.GreaterOrEqual(t, advantage.Cmp(mustDecimal("-0.01")), 0, advantage.String())
 }
 
 // The NTN-F on offer costs 880.904015 at 12.88% on 2026-10-28, so 5,000.00 buys 5.67 of them for

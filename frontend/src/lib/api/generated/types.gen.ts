@@ -929,6 +929,10 @@ export type Verdict = {
      */
     avoided_cost?: string;
     /**
+     * The yearly bond rate, as a decimal fraction of at most 10 places, at which buying the bond with the amount on the date gives an advantage within a centavo of zero. For ntn_b_principal and ntn_b it is the real rate over IPCA, priced through the VNA of the date. Absent when the verdict is unavailable or has no_break_even.
+     */
+    break_even_rate?: string;
+    /**
      * Investing the amount in the bond. Absent when the verdict is unavailable.
      */
     invest?: Scenario;
@@ -940,6 +944,10 @@ export type Verdict = {
      * The date the bond matures: the horizon both scenarios are valued on.
      */
     maturity: string;
+    /**
+     * Why no yearly bond rate from 0% to 100% gives an advantage within a centavo of zero. below_range: investing wins even at 0%; above_range: prepaying wins even at 100%; skips_zero: the advantage jumps over zero, mostly where the amount buys one more hundredth of the bond. Absent when the verdict has a break_even_rate or is unavailable.
+     */
+    no_break_even?: 'below_range' | 'above_range' | 'skips_zero';
     /**
      * Prepaying the amount. Absent when the verdict is unavailable.
      */
