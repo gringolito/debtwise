@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gringolito/debtwise/backend/decimal"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -168,7 +170,7 @@ func TestMortgageScheduleIsServed(t *testing.T) {
 
 // publishedValue is one value of an index as SGS published it.
 func publishedValue(start, end, value string) indexes.Value {
-	return indexes.Value{PeriodStart: mustDate(start), PeriodEnd: mustDate(end), Value: mustDecimal(value), FetchedAt: time.Now()}
+	return indexes.Value{PeriodStart: mustDate(start), PeriodEnd: mustDate(end), Value: decimal.MustParse(value), FetchedAt: time.Now()}
 }
 
 // The TR of each period is stored as SGS published it, except for the period starting on

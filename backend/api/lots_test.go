@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gringolito/debtwise/backend/decimal"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -58,7 +60,7 @@ func saveQuote(t *testing.T, conn *sql.DB, bond bonds.Bond, sellRate, sellUnitPr
 
 	err := bonds.NewStore(conn).SaveQuotes(t.Context(), []bonds.Quote{{
 		Bond:      bond,
-		Sell:      bonds.Price{Rate: mustDecimal(sellRate), UnitPrice: mustDecimal(sellUnitPrice)},
+		Sell:      bonds.Price{Rate: decimal.MustParse(sellRate), UnitPrice: decimal.MustParse(sellUnitPrice)},
 		FetchedAt: time.Now(),
 	}}, time.Now())
 	require.NoError(t, err)

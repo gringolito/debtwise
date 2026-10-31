@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gringolito/debtwise/backend/decimal"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -38,7 +40,7 @@ func monthlyTR() []sgs.Observation {
 		}
 
 		start := date(2021, time.October+time.Month(i), 1)
-		rows = append(rows, sgs.Observation{Start: start, End: start.AddDate(0, 1, 0), Value: mustDecimal(value)})
+		rows = append(rows, sgs.Observation{Start: start, End: start.AddDate(0, 1, 0), Value: decimal.MustParse(value)})
 	}
 
 	return rows
