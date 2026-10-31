@@ -32,6 +32,18 @@ without interest accrued since the last installment. The advantage is the invest
 less the prepay scenario's. The avoided cost is the prepay scenario's worth less the status quo's,
 less the amount: what the prepaid amount would have cost by the horizon had it stayed owed.
 
+The break-even rate is the yearly bond rate, from 0% to 100% and of at most 10 decimal places, at
+which the same decision gives an advantage within a centavo of zero: the bond bought at the unit
+price that rate gives on the decision's date, through the VNA of that date for an IPCA+ bond, in the
+hundredths the amount buys. A rate at which the amount buys no hundredth has no verdict, so it is no
+break-even either. For an IPCA+ bond the rate is the real rate over IPCA, as Tesouro quotes it.
+The search starts from the buy rate, since a higher rate buys the bond cheaper and the advantage
+grows with it. Where the amount buys one more hundredth, the advantage jumps by what that hundredth
+gains over the cash it takes, often a few reais, and the zero can fall inside that jump. Then the
+break-even rate is the lowest rate at which the advantage is positive: below it prepaying wins,
+from it investing does. When investing wins even at 0% or prepaying even at 100%, the verdict says
+so instead of naming a rate.
+
 A verdict names the projection method of each index a projected value it read comes from: the
 mortgage's corrections and contract rates in either scenario, and the VNA of the purchase, of each
 coupon and of the maturity.
@@ -51,3 +63,10 @@ coupon and of the maturity.
 - **Reinvesting coupons in the bond or in anything other than the mortgage:** rejected. It would
   need a reinvestment rate, which equal outflow never assumes, and prepaying a coupon on its date
   is what the owner can always do with it.
+- **A break-even rate for a bond sold in any fraction:** rejected. It always names a rate, but
+  quoted back as the buy rate, that rate leaves an advantage of up to a hundredth's gain, since the
+  verdict buys hundredths. A rate the owner can't check against the verdict's own advantage is no
+  break-even.
+- **Saying no rate breaks even where the zero falls inside a jump:** rejected. It keeps every named
+  rate within a centavo of zero when quoted back, but it left most verdicts without a rate, and the
+  rate where investing starts to win is what the owner compares the buy rate with.

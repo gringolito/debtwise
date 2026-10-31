@@ -19,8 +19,8 @@ func DerivePoupancaYield(tr, selicTarget decimal.Decimal) decimal.Decimal {
 // the Selic target is above 8.5% a year, or 70% of the Selic target turned into a monthly rate
 // while it is at or below 8.5%.
 func PoupancaAdditional(selicTarget decimal.Decimal) decimal.Decimal {
-	if selicTarget.Cmp(decimal.FromInt(85).Quo(decimal.FromInt(10))) > 0 {
-		return decimal.FromInt(5).Quo(decimal.FromInt(10))
+	if selicTarget.Cmp(decimal.MustParse("8.5")) > 0 {
+		return decimal.MustParse("0.5")
 	}
 
 	seventyPercent := selicTarget.Mul(decimal.FromInt(7)).Quo(decimal.FromInt(1000))
