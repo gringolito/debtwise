@@ -247,6 +247,25 @@ func TestABreakEvenRateQuotedBackGivesAnAdvantageOfZero(t *testing.T) {
 	assert.GreaterOrEqual(t, advantage.Cmp(mustDecimal("-0.01")), 0, advantage.String())
 }
 
+// 7.80 buys a hundredth of an LTN only at rates near its buy rate of 12.76%, at 780.00 or less, far
+// above the rate whose gain would just pay its custody fee against a mortgage at no interest. Its
+// advantage jumps from nothing bought to that hundredth's gain, so its verdict says no rate gives
+// zero, and the NTN-F it can't buy a hundredth of has no break-even either.
+func TestAVerdictWithoutABreakEvenRateSaysWhy(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
+	do(t, s.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
+
+	got := s.decide(t, `{"amount": "7.80", "effect": "shorten_term"}`)
+
+	require.Len(t, got.Verdicts, 2)
+
+	ltn, ntnf := got.Verdicts[0], got.Verdicts[1]
+	assert.Equal(t, []string{"ltn", "", "", "skips_zero"}, []string{ltn.Type, ltn.Unavailable, ltn.BreakEvenRate, ltn.NoBreakEven})
+	assert.Equal(t, []string{"ntn_f", "amount_too_small", "", ""}, []string{ntnf.Type, ntnf.Unavailable, ntnf.BreakEvenRate, ntnf.NoBreakEven})
+}
+
 // The NTN-F on offer costs 880.904015 at 12.88% on 2026-10-28, so 5,000.00 buys 5.67 of them for
 // 4,994.73. Each coupon of 276.75 is taxed on its yield only: the first, on 2027-01-01, pays just
 // 23.62 of income tax, as most of it returns the interest the price paid the seller for. Its net is

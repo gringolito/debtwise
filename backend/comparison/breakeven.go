@@ -61,6 +61,19 @@ type point struct {
 	rate, quantity, advantage decimal.Decimal
 }
 
+// evens reports whether p is a break-even: the amount buys at least a hundredth of the bond at
+// p's rate, and the advantage is within a centavo of zero.
+func (p point) evens() bool {
+	return p.quantity.Cmp(smallestFraction) >= 0 &&
+		p.advantage.Cmp(centavo) <= 0 && zero.Sub(p.advantage).Cmp(centavo) <= 0
+}
+
+// short reports whether p falls short of a break-even from below: its advantage is negative, or
+// the amount buys no hundredth of the bond at p's rate, where a decision has no verdict.
+func (p point) short() bool {
+	return p.advantage.Cmp(zero) < 0 || p.quantity.Cmp(smallestFraction) < 0
+}
+
 // outcome is where a break-even search ends: at a rate, or with why there is none.
 type outcome struct {
 	rate decimal.Decimal
@@ -110,11 +123,11 @@ func (s search) bracket(p point) (bracket, *outcome, error) {
 	}
 
 	for step := firstStep; ; step = step.Add(step) {
-		if evens(p.advantage) {
+		if p.evens() {
 			return bracket{}, &outcome{rate: p.rate}, nil
 		}
 
-		rising := p.advantage.Cmp(zero) < 0
+		rising := p.short()
 
 		var next decimal.Decimal
 
@@ -140,10 +153,14 @@ func (s search) bracket(p point) (bracket, *outcome, error) {
 			return bracket{}, nil, err
 		}
 
+		if q.evens() {
+			return bracket{}, &outcome{rate: q.rate}, nil
+		}
+
 		switch {
-		case rising && q.advantage.Cmp(zero) > 0:
+		case rising && !q.short():
 			return newBracket(p, q), nil, nil
-		case !rising && q.advantage.Cmp(zero) < 0:
+		case !rising && q.short():
 			return newBracket(q, p), nil, nil
 		}
 
@@ -172,7 +189,7 @@ func (s search) narrow(b bracket) (*outcome, error) {
 			return nil, err
 		}
 
-		if evens(p.advantage) {
+		if p.evens() {
 			return &outcome{rate: p.rate}, nil
 		}
 
@@ -206,13 +223,13 @@ func (s search) acrossJump(b bracket) (bracket, *outcome, error) {
 	}
 
 	switch {
-	case evens(before.advantage):
+	case before.evens():
 		return bracket{}, &outcome{rate: before.rate}, nil
-	case evens(after.advantage):
+	case after.evens():
 		return bracket{}, &outcome{rate: after.rate}, nil
-	case before.advantage.Cmp(zero) > 0:
+	case !before.short():
 		return newBracket(b.lo, before), nil, nil
-	case after.advantage.Cmp(zero) < 0:
+	case after.short():
 		return newBracket(after, b.hi), nil, nil
 	default:
 		return bracket{}, &outcome{none: SkipsZero}, nil
@@ -282,7 +299,7 @@ func (b bracket) next() decimal.Decimal {
 func (b *bracket) narrow(p point) {
 	width := b.hi.rate.Sub(b.lo.rate)
 
-	if p.advantage.Cmp(zero) < 0 {
+	if p.short() {
 		b.lo, b.atLo = p, p.advantage
 		if b.replaced < 0 {
 			b.atHi = b.atHi.Mul(half)
@@ -299,9 +316,4 @@ func (b *bracket) narrow(p point) {
 	}
 
 	b.bisect = !b.bisect && b.hi.rate.Sub(b.lo.rate).Cmp(width.Mul(half)) > 0
-}
-
-// evens reports whether an advantage is within a centavo of zero.
-func evens(advantage decimal.Decimal) bool {
-	return advantage.Cmp(centavo) <= 0 && zero.Sub(advantage).Cmp(centavo) <= 0
 }

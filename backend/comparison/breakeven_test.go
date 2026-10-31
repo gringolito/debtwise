@@ -12,7 +12,8 @@ import (
 	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
-// breakEvenCase decides on amount on date between prepaying m and buying bond at rate.
+// breakEvenCase decides on amount on date between prepaying m and buying bond at rate, with today
+// the day projected values start after, the decision's date when empty.
 type breakEvenCase struct {
 	name     string
 	m        comparison.Mortgage
@@ -21,12 +22,17 @@ type breakEvenCase struct {
 	rate     string
 	amount   string
 	decision string
+	today    string
 }
 
 func (c breakEvenCase) verdict(t *testing.T, rate decimal.Decimal) comparison.Verdict {
 	t.Helper()
 
-	decided := date(t, c.decision)
+	decided, today := date(t, c.decision), date(t, c.decision)
+	if c.today != "" {
+		today = date(t, c.today)
+	}
+
 	market := comparison.Market{
 		Quotes: []bonds.Quote{{Bond: c.bond, Buy: &bonds.Price{Rate: rate}}},
 		Taxes:  lotTaxes(t),
@@ -34,7 +40,7 @@ func (c breakEvenCase) verdict(t *testing.T, rate decimal.Decimal) comparison.Ve
 	}
 
 	verdicts, err := comparison.Decide(c.m, market,
-		comparison.Decision{Amount: dec(t, c.amount), Date: decided, Effect: mortgage.ShortenTerm}, decided)
+		comparison.Decision{Amount: dec(t, c.amount), Date: decided, Effect: mortgage.ShortenTerm}, today)
 	require.NoError(t, err)
 	require.Len(t, verdicts, 1)
 	require.Empty(t, verdicts[0].Unavailable)
@@ -63,9 +69,13 @@ func ipcaBreakEvenCase(t *testing.T, name string, bondType bonds.Type) breakEven
 
 // Quoted back as the bond's buy rate, the Break-even Rate buys the bond at the price that rate
 // gives on the decision's date, through the VNA projected to that date for an IPCA+ bond, and
-// leaves investing and prepaying within a centavo of each other on the horizon.
+// leaves investing and prepaying within a centavo of each other on the horizon. A decision dated a
+// month after today buys an IPCA+ bond at the VNA grown past the 15th in between.
 func TestABreakEvenRateFedBackGivesAnAdvantageOfZero(t *testing.T) {
 	t.Parallel()
+
+	later := ipcaBreakEvenCase(t, "NTN-B Principal bought a month after today", bonds.NTNBPrincipal)
+	later.decision, later.today = "2025-12-03", "2025-11-03"
 
 	tests := []breakEvenCase{
 		{
@@ -80,6 +90,7 @@ func TestABreakEvenRateFedBackGivesAnAdvantageOfZero(t *testing.T) {
 		},
 		ipcaBreakEvenCase(t, "NTN-B Principal against an IPCA mortgage", bonds.NTNBPrincipal),
 		ipcaBreakEvenCase(t, "NTN-B against an IPCA mortgage", bonds.NTNB),
+		later,
 	}
 
 	for _, tt := range tests {
@@ -98,9 +109,11 @@ func TestABreakEvenRateFedBackGivesAnAdvantageOfZero(t *testing.T) {
 
 // Tesouro Direto sells hundredths of a bond, and what the amount can't buy is held as cash. Between
 // two rates one hundredth apart, 10,000.00 buys 21.76 or 21.77 LTN maturing on 2031-01-01, and the
-// advantage jumps from about -3.58 to 0.92 without passing through zero. A mortgage at 150% a year
-// costs more than the bond pays at 100%; one that shrinks by half a year costs less than it pays at
-// 0%.
+// advantage jumps from about -3.58 to 0.92 without passing through zero. Against a mortgage at no
+// interest, 7.90 buys a hundredth of an LTN maturing on 2027-01-01 only above about 12.5%, far
+// above the rate whose gain would just pay its custody fee, so the advantage jumps from nothing
+// bought to that hundredth's gain. A mortgage at 150% a year costs more than the bond pays at
+// 100%; one that shrinks by half a year costs less than it pays at 0%.
 func TestAVerdictSaysWhenNoRateGivesAnAdvantageOfZero(t *testing.T) {
 	t.Parallel()
 
@@ -119,6 +132,13 @@ func TestAVerdictSaysWhenNoRateGivesAnAdvantageOfZero(t *testing.T) {
 	}{
 		{
 			breakEvenCase{name: "the advantage jumps over zero", m: trMortgage(t), bond: ltn, rate: "0.1504", amount: "10000.00", decision: "2025-01-08"},
+			comparison.SkipsZero,
+		},
+		{
+			breakEvenCase{
+				name: "the amount buys no hundredth where the advantage would be zero", m: comparison.Mortgage{Terms: interestFreeTerms(t)},
+				bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")}, rate: "0.1276", amount: "7.90", decision: "2025-01-10",
+			},
 			comparison.SkipsZero,
 		},
 		{
