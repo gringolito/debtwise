@@ -90,6 +90,13 @@ const basisOptions = [
   { value: "effective", label: "Efetiva" },
 ] as const satisfies readonly { value: Basis; label: string }[];
 
+type VariablePart = "none" | "poupanca_additional";
+
+const variablePartOptions = [
+  { value: "none", label: "Nenhuma" },
+  { value: "poupanca_additional", label: "Adicional da poupança" },
+] as const satisfies readonly { value: VariablePart; label: string }[];
+
 export function ContractRateRows(props: RowsProps<ContractRateRow>) {
   return (
     <RowList
@@ -116,6 +123,14 @@ export function ContractRateRows(props: RowsProps<ContractRateRow>) {
             value={row.basis}
             onChange={(basis) => update({ basis })}
             invalid={invalid("basis")}
+          />
+          <SelectField
+            label="Parte variável"
+            accessibleName={`Parte variável da taxa de juros ${n}`}
+            options={variablePartOptions}
+            value={row.poupancaAdditional ? "poupanca_additional" : "none"}
+            onChange={(part) => update({ poupancaAdditional: part === "poupanca_additional" })}
+            invalid={invalid("poupanca_additional")}
           />
         </>
       )}

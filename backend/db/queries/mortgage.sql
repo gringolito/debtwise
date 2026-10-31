@@ -18,11 +18,12 @@ WHERE id = ?;
 DELETE FROM mortgages;
 
 -- name: ListMortgageContractRates :many
-SELECT effective_from, rate, basis FROM mortgage_contract_rates
+SELECT effective_from, rate, basis, poupanca_additional FROM mortgage_contract_rates
 WHERE mortgage_id = ? ORDER BY effective_from;
 
 -- name: InsertMortgageContractRate :exec
-INSERT INTO mortgage_contract_rates (mortgage_id, effective_from, rate, basis) VALUES (?, ?, ?, ?);
+INSERT INTO mortgage_contract_rates (mortgage_id, effective_from, rate, basis, poupanca_additional)
+VALUES (?, ?, ?, ?, ?);
 
 -- name: DeleteMortgageContractRates :exec
 DELETE FROM mortgage_contract_rates WHERE mortgage_id = ?;

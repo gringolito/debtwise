@@ -184,56 +184,68 @@ func newServerOn2017June30(t *testing.T) server {
 	return s
 }
 
-// A poupança-indexed mortgage signed on 2017-03-01 with its installments on the 1st is corrected
-// by the yield of the month before each installment, except the 1st, which is never corrected: the
-// yield of March, the month before it, corrects no installment. Today is 2017-06-30, so the 1st to
-// the 3rd installments are past, and the 4th, due 2017-07-01, is corrected by the yield of June,
-// whose TR and Selic target SGS has published: all of them are published. The yield of July needs a TR
-// that is not published: its trailing 12 months average (1.5440 / 12 = 0.1287) is projected. The
-// Selic target of 2017-07-01 is still published (10.25), and of the days after 2017-07-26 it is the
-// Focus median of the latest meeting in effect: R5/2017's 9.50 from 2017-07-27, R6's 8.75 from
-// 2017-09-08, R7's 8.50 from 2017-10-26 and R8's 8.50 from 2017-12-07. While it is above 8.5 the
-// yield is the TR with 0.5% a month (0.1287 and 0.5 give 0.6293), from then on the TR with 70% of
-// the target (8.5 gives 0.4828 a month, so 0.6121). The figures were worked out independently with
-// python's decimal, from the yields of each month and the balance each installment leaves.
-func TestPoupancaIndexedScheduleFollowsTheFocusSelicPath(t *testing.T) {
+// ratedRow is what TestPoupancaLinkedRateFollowsTheFocusSelicPath reads of each installment.
+type ratedRow struct {
+	Number             int             `json:"number"`
+	Correction         string          `json:"correction"`
+	Interest           string          `json:"interest"`
+	OutstandingBalance string          `json:"outstanding_balance"`
+	Rate               string          `json:"rate"`
+	RateIndexValues    []scheduleIndex `json:"rate_index_values"`
+}
+
+// A TR-indexed mortgage signed on 2017-03-01 with its installments on the 1st charges 3.89% a year
+// plus the poupança yield's additional part of the month before each installment, set by the Selic
+// target on the month's 1st. Today is 2017-06-30. Up to the 5th installment, due 2017-08-01, the
+// rate reads a Selic target SGS has published, the 5th's because SGS has published it up to
+// 2017-07-26. From the 6th on, it reads the Focus median of the latest meeting in effect: R5/2017's
+// 9.50 from 2017-07-27, R6's 8.75 from 2017-09-08 and R7's 8.50 from 2017-10-26. While the target
+// is above 8.5 the part is 0.5% a month, 6.1678% a year, so the rate is 10.0578%; at 8.5 it is 70%
+// of the target, 0.4828% a month, so the rate is 9.8399%. TR alone corrects the balance, projected
+// past June by its trailing 12 months average (0.1287). The figures were worked out independently
+// with python's decimal.
+func TestPoupancaLinkedRateFollowsTheFocusSelicPath(t *testing.T) {
 	t.Parallel()
 
 	s := newServerOn2017June30(t)
-	do(t, s.handler, http.MethodPut, "/mortgage",
-		indexedMortgage("poupanca_yield", "50000.00", "2017-03-01", "2017-04-01", 10), http.StatusOK)
+	do(t, s.handler, http.MethodPut, "/mortgage", `{
+		"contract_date": "2017-03-01", "original_amount": "50000.00", "term_months": 10,
+		"first_installment_date": "2017-04-01", "amortization_system": "sac", "indexer": "tr",
+		"appraisal_value": "200000.00",
+		"contract_rates": [{"effective_from": "2017-03-01", "rate": "0.0389", "basis": "effective", "poupanca_additional": true}],
+		"mip_rates": [{"effective_from": "2017-03-01", "rate": "0"}],
+		"dfi_rates": [{"effective_from": "2017-03-01", "rate": "0"}],
+		"fees": [{"effective_from": "2017-03-01", "amount": "0.00"}]
+	}`, http.StatusOK)
 
-	assert.Equal(t, []scheduleRow{
-		{1, "2017-04-01", "0.00", "45000.00", []scheduleIndex{}},
-		{2, "2017-05-01", "225.00", "40200.00", []scheduleIndex{publishedIndex("poupanca_yield", "0.5000", "2017-04-01", "2017-05-01")}},
-		{3, "2017-06-01", "231.87", "35377.89", []scheduleIndex{publishedIndex("poupanca_yield", "0.5768", "2017-05-01", "2017-06-01")}},
-		{4, "2017-07-01", "195.96", "30491.87", []scheduleIndex{publishedIndex("poupanca_yield", "0.5539", "2017-06-01", "2017-07-01")}},
-		{5, "2017-08-01", "191.89", "25569.80", []scheduleIndex{projectedIndex("poupanca_yield", "0.6293", "2017-07-01", "2017-08-01", by("tr", "trailing_12"))}},
-		{6, "2017-09-01", "160.91", "20584.57", []scheduleIndex{projectedIndex("poupanca_yield", "0.6293", "2017-08-01", "2017-09-01", by("tr", "trailing_12"), by("selic_target", "focus"))}},
-		{7, "2017-10-01", "129.54", "15535.58", []scheduleIndex{projectedIndex("poupanca_yield", "0.6293", "2017-09-01", "2017-10-01", by("tr", "trailing_12"), by("selic_target", "focus"))}},
-		{8, "2017-11-01", "97.77", "10422.23", []scheduleIndex{projectedIndex("poupanca_yield", "0.6293", "2017-10-01", "2017-11-01", by("tr", "trailing_12"), by("selic_target", "focus"))}},
-		{9, "2017-12-01", "63.79", "5243.01", []scheduleIndex{projectedIndex("poupanca_yield", "0.6121", "2017-11-01", "2017-12-01", by("tr", "trailing_12"), by("selic_target", "focus"))}},
-		{10, "2018-01-01", "32.09", "0.00", []scheduleIndex{projectedIndex("poupanca_yield", "0.6121", "2017-12-01", "2018-01-01", by("tr", "trailing_12"), by("selic_target", "focus"))}},
-	}, s.schedule(t))
+	body := do(t, s.handler, http.MethodGet, "/mortgage/schedule", "", http.StatusOK)
 
-	// On the wire, a published value lists no methods, and a projected one the methods it comes from.
-	var wire struct {
-		Installments []json.RawMessage `json:"installments"`
+	var got struct {
+		Installments []ratedRow `json:"installments"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(body), &got))
+
+	above := "0.1005778118644995687897076174316406"
+	atSwitch := "0.09839946209275988313680493669517718"
+	selic := func(value, day string) []scheduleIndex {
+		return []scheduleIndex{publishedIndex("selic_target", value, day, day)}
+	}
+	focus := func(value, day string) []scheduleIndex {
+		return []scheduleIndex{projectedIndex("selic_target", value, day, day, by("selic_target", "focus"))}
 	}
 
-	require.NoError(t, json.Unmarshal([]byte(do(t, s.handler, http.MethodGet, "/mortgage/schedule", "", http.StatusOK)), &wire))
-	require.Len(t, wire.Installments, 10)
-	assert.JSONEq(t, `{"number": 4, "due_date": "2017-07-01", "correction": "195.96",
-		"index_values": [{"index": "poupanca_yield", "status": "published", "value": "0.5539",
-		                  "period_start": "2017-06-01", "period_end": "2017-07-01", "methods": []}],
-		"interest": "355.74", "amortization": "5081.98", "mip": "0.00", "dfi": "0.00", "fee": "0.00",
-		"amount": "5437.72", "prepaid": "0.00", "outstanding_balance": "30491.87"}`, string(wire.Installments[3]))
-	assert.JSONEq(t, `{"number": 5, "due_date": "2017-08-01", "correction": "191.89",
-		"index_values": [{"index": "poupanca_yield", "status": "projected", "value": "0.6293",
-		                  "period_start": "2017-07-01", "period_end": "2017-08-01",
-		                  "methods": [{"index": "tr", "method": "trailing_12"}]}],
-		"interest": "306.84", "amortization": "5113.96", "mip": "0.00", "dfi": "0.00", "fee": "0.00",
-		"amount": "5420.80", "prepaid": "0.00", "outstanding_balance": "25569.80"}`, string(wire.Installments[4]))
+	assert.Equal(t, []ratedRow{
+		{1, "0.00", "400.91", "45000.00", above, selic("12.25", "2017-03-01")},
+		{2, "0.00", "360.82", "40000.00", above, selic("12.25", "2017-04-01")},
+		{3, "30.56", "320.98", "35026.74", above, selic("11.25", "2017-05-01")},
+		{4, "18.77", "281.00", "30039.01", above, selic("10.25", "2017-06-01")},
+		{5, "38.66", "241.17", "25064.72", above, selic("10.25", "2017-07-01")},
+		{6, "32.26", "201.23", "20077.58", above, focus("9.5000", "2017-08-01")},
+		{7, "25.84", "161.19", "15077.56", above, focus("9.5000", "2017-09-01")},
+		{8, "19.40", "121.05", "10064.64", above, focus("8.7500", "2017-10-01")},
+		{9, "12.95", "79.13", "5038.79", atSwitch, focus("8.5000", "2017-11-01")},
+		{10, "6.48", "39.61", "0.00", atSwitch, focus("8.5000", "2017-12-01")},
+	}, got.Installments)
 }
 
 // An IPCA-indexed mortgage signed on 2017-01-10 is corrected on each anniversary by the IPCA of

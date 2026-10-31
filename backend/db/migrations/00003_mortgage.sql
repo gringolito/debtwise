@@ -13,10 +13,11 @@ CREATE TABLE mortgages (
 ) STRICT;
 
 CREATE TABLE mortgage_contract_rates (
-    mortgage_id    INTEGER NOT NULL REFERENCES mortgages (id) ON DELETE CASCADE,
-    effective_from TEXT    NOT NULL,
-    rate           TEXT    NOT NULL,
-    basis          TEXT    NOT NULL CHECK (basis IN ('nominal', 'effective')),
+    mortgage_id         INTEGER NOT NULL REFERENCES mortgages (id) ON DELETE CASCADE,
+    effective_from      TEXT    NOT NULL,
+    rate                TEXT    NOT NULL,
+    basis               TEXT    NOT NULL CHECK (basis IN ('nominal', 'effective')),
+    poupanca_additional INTEGER NOT NULL CHECK (poupanca_additional IN (0, 1)),
     PRIMARY KEY (mortgage_id, effective_from)
 ) STRICT;
 

@@ -403,7 +403,6 @@ func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 	}{
 		{mortgage.NoIndexer, []string{"ltn 2028-01-01", "ltn 2030-01-01", "ntn_f 2031-01-01"}},
 		{mortgage.TR, []string{"ltn 2028-01-01", "ltn 2030-01-01", "ntn_f 2031-01-01"}},
-		{mortgage.PoupancaYield, []string{"ltn 2028-01-01", "ltn 2030-01-01", "ntn_f 2031-01-01"}},
 		{mortgage.IPCA, []string{
 			"ntn_b_principal 2029-05-15 missing_ipca", "ntn_b_principal 2033-05-15 missing_ipca", "ntn_b 2033-05-15 missing_ipca",
 		}},
@@ -678,6 +677,40 @@ func TestAVerdictNamesTheProjectionsTheBalancesBeforeTheDecisionRead(t *testing.
 	require.Len(t, verdicts, 1)
 
 	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}}, verdicts[0].ProjectedBy)
+}
+
+// A poupança-linked contract rate reads the Selic target of each month, so a verdict names the
+// Selic target's method once an installment's rate reads a projected one, and the Selic target is
+// among the indexes it reads. Today is 2025-01-08; the installment of 2025-01-10 reads the target of
+// 2024-12-10, after the latest published one, and the LTN matures on 2025-03-01.
+func TestAVerdictNamesTheProjectionsAPoupancaLinkedRateRead(t *testing.T) {
+	t.Parallel()
+
+	terms := interestFreeTerms(t)
+	terms.ContractRates[0].PoupancaAdditional = true
+
+	var selic []indexes.Value
+
+	for month := date(t, "2024-01-01"); month.Year() == 2024; month = month.AddDate(0, 1, 0) {
+		selic = append(selic, indexes.Value{PeriodStart: month, PeriodEnd: month, Value: dec(t, "11.75")})
+	}
+
+	trailing := []indexes.ProjectionMethod{{Index: indexes.SelicTarget, Method: indexes.Trailing12}}
+	outlook := indexes.NewOutlook(map[indexes.Index][]indexes.Value{indexes.SelicTarget: selic}, indexes.Expectations{}, trailing)
+
+	verdicts, err := comparison.Decide(comparison.Mortgage{Terms: terms, Outlook: outlook},
+		comparison.Market{Quotes: []bonds.Quote{{
+			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2025-03-01")},
+			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")},
+		}}},
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, "2025-02-15"), Effect: mortgage.ShortenTerm},
+		date(t, "2025-01-08"),
+	)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	assert.Equal(t, trailing, verdicts[0].ProjectedBy)
+	assert.Equal(t, []indexes.Index{indexes.SelicTarget}, verdicts[0].Indexes)
 }
 
 // couponFlow is a scenario's cash flow on one date as text, with the coupon the bond paid that

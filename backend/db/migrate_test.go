@@ -64,6 +64,24 @@ func TestMigrationMakesExistingMortgagesFixedRate(t *testing.T) {
 	assert.Equal(t, "none", indexer)
 }
 
+// The poupança yield is not an indexer, so no mortgage can be stored with it as one.
+func TestTheDatabaseRejectsThePoupancaYieldAsAnIndexer(t *testing.T) {
+	t.Parallel()
+
+	conn, err := db.Open(t.Context(), filepath.Join(t.TempDir(), "debtwise.db"))
+	require.NoError(t, err)
+
+	t.Cleanup(func() { _ = conn.Close() })
+
+	_, err = db.Migrate(t.Context(), conn)
+	require.NoError(t, err)
+
+	_, err = conn.ExecContext(t.Context(), `INSERT INTO mortgages (
+		contract_date, original_amount, term_months, first_installment_date, amortization_system, indexer, appraisal_value
+	) VALUES ('2023-12-10', '60000.00', 6, '2024-01-10', 'sac', 'poupanca_yield', '100000.00')`)
+	require.ErrorContains(t, err, "CHECK constraint failed")
+}
+
 func TestMigratedFileIsADebtWiseDatabase(t *testing.T) {
 	t.Parallel()
 

@@ -95,6 +95,7 @@ describe("the prepayments of the mortgage", () => {
       "10/02/2024",
       "—",
       "R$ 0,00",
+      "12,682503% a.a.",
       "R$ 500,00",
       "R$ 10.000,00",
       "R$ 15,00",
@@ -216,7 +217,7 @@ describe("editing a prepayment", () => {
       ["02/04/2024", "R$ 1.234,00", "Reduzir prazo"],
     ]);
     const schedule = screen.getByRole("table", { name: "Evolução do financiamento" });
-    expect(rowTexts(schedule)[2][10]).toBe("R$ 5.000,00");
+    expect(rowTexts(schedule)[2][11]).toBe("R$ 5.000,00");
   });
 
   it("keeps the prepayment when the owner cancels", async () => {
@@ -287,7 +288,7 @@ describe("deleting a prepayment", () => {
     ]);
     await waitFor(() =>
       expect(
-        rowTexts(screen.getByRole("table", { name: "Evolução do financiamento" }))[2][10],
+        rowTexts(screen.getByRole("table", { name: "Evolução do financiamento" }))[2][11],
       ).toBe("R$ 0,00"),
     );
   });

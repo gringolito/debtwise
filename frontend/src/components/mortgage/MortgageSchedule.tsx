@@ -10,9 +10,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { CorrectionIndex } from "@/lib/api";
+import type { CorrectionIndex, ScheduledInstallment } from "@/lib/api";
 import { useMortgageSchedule } from "@/lib/mortgageQueries";
-import { formatDate, formatMoney, formatMonth, formatPercent, formatPeriod } from "@/lib/format";
+import {
+  formatDate,
+  formatMoney,
+  formatMonth,
+  formatPercent,
+  formatPeriod,
+  formatRate,
+} from "@/lib/format";
 import { indexNames } from "@/lib/indexNames";
 import { projectedByText } from "@/lib/projectionMethods";
 
@@ -21,6 +28,7 @@ const columns = [
   "Vencimento",
   "Índice",
   "Correção",
+  "Taxa de juros",
   "Juros",
   "Amortização",
   "MIP",
@@ -31,9 +39,10 @@ const columns = [
   "Saldo devedor",
 ];
 
-// TR and the poupança yield run from one day to the same day of the next month; IPCA is a
-// calendar month, which the API sends as a single day.
+// TR runs from one day to the same day of the next month; IPCA is a calendar month, which the API
+// sends as a single day; the Selic target is the one day it was set.
 function indexPeriod({ index, period_start, period_end }: CorrectionIndex): string {
+  if (index === "selic_target") return formatDate(period_start);
   return index === "ipca" ? formatMonth(period_start) : formatPeriod(period_start, period_end);
 }
 
@@ -82,6 +91,37 @@ function MissingIndexWarning({ missing }: { missing: CorrectionIndex[] }) {
   );
 }
 
+function MissingRateWarning({ missing }: { missing: CorrectionIndex[] }) {
+  if (missing.length === 0) return null;
+  const months =
+    missing.length === 1
+      ? "1 mês. A taxa de juros desse mês não inclui o adicional da poupança."
+      : `${missing.length} meses. A taxa de juros desses meses não inclui o adicional da poupança.`;
+  return (
+    <Alert variant="warning">
+      <AlertDescription>
+        Faltam valores de {indexNames[missing[0].index]} para {months} Atualize os dados de mercado
+        na página{" "}
+        <Link to="/indices" className="underline">
+          Índices
+        </Link>
+        .
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+function RateCell({ installment }: { installment: ScheduledInstallment }) {
+  return (
+    <>
+      <div>{formatRate(installment.rate)} a.a.</div>{" "}
+      {installment.rate_index_values.length > 0 && (
+        <IndexCell indexValues={installment.rate_index_values} />
+      )}
+    </>
+  );
+}
+
 function ScheduleTable() {
   const { data, isPending, isError } = useMortgageSchedule();
 
@@ -92,6 +132,11 @@ function ScheduleTable() {
       <MissingIndexWarning
         missing={data.installments.flatMap((installment) =>
           installment.index_values.filter((value) => value.status === "missing"),
+        )}
+      />
+      <MissingRateWarning
+        missing={data.installments.flatMap((installment) =>
+          installment.rate_index_values.filter((value) => value.status === "missing"),
         )}
       />
       <Table aria-label="Evolução do financiamento">
@@ -111,6 +156,9 @@ function ScheduleTable() {
                 <IndexCell indexValues={installment.index_values} />
               </TableCell>
               <TableCell>{formatMoney(installment.correction)}</TableCell>
+              <TableCell>
+                <RateCell installment={installment} />
+              </TableCell>
               <TableCell>{formatMoney(installment.interest)}</TableCell>
               <TableCell>{formatMoney(installment.amortization)}</TableCell>
               <TableCell>{formatMoney(installment.mip)}</TableCell>

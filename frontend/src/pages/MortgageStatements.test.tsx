@@ -90,7 +90,7 @@ describe("the statements of the mortgage", () => {
       ["/api/mortgage/statements", { date: "2024-02-20", outstanding_balance: "41000.00" }],
     ]);
     const scheduleTable = screen.getByRole("table", { name: "Evolução do financiamento" });
-    expect(rowTexts(scheduleTable)[2][11]).toBe("R$ 35.000,00");
+    expect(rowTexts(scheduleTable)[2][12]).toBe("R$ 35.000,00");
     expect(within(form).getByLabelText("Saldo informado")).toHaveValue("");
   });
 });
@@ -206,7 +206,7 @@ describe("editing a statement", () => {
       fixtureRows[3],
     ]);
     const scheduleTable = screen.getByRole("table", { name: "Evolução do financiamento" });
-    await waitFor(() => expect(rowTexts(scheduleTable)[2][11]).toBe("R$ 35.000,00"));
+    await waitFor(() => expect(rowTexts(scheduleTable)[2][12]).toBe("R$ 35.000,00"));
   });
 
   it("lets a statement keep its own date", async () => {
@@ -275,7 +275,7 @@ describe("deleting a statement", () => {
       fixtureRows[3],
     ]);
     const scheduleTable = screen.getByRole("table", { name: "Evolução do financiamento" });
-    await waitFor(() => expect(rowTexts(scheduleTable)[2][11]).toBe("R$ 40.000,00"));
+    await waitFor(() => expect(rowTexts(scheduleTable)[2][12]).toBe("R$ 40.000,00"));
   });
 
   it("keeps the statement when the owner cancels", async () => {

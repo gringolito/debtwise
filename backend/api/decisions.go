@@ -152,7 +152,7 @@ func readDecision(ctx context.Context, mortgages Mortgages, body decisionInput, 
 
 // decide reads what the comparison needs and compares d against every bond on offer.
 func decide(ctx context.Context, services Services, terms mortgage.Terms, d comparison.Decision, today time.Time) ([]comparison.Verdict, error) {
-	outlook, err := outlookOf(ctx, services.Indexes, terms.Indexer.Indexes()...)
+	outlook, err := outlookOf(ctx, services.Indexes, terms.Indexes()...)
 	if err != nil {
 		return nil, err
 	}

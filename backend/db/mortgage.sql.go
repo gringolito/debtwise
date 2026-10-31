@@ -161,14 +161,16 @@ func (q *Queries) InsertMortgage(ctx context.Context, arg InsertMortgageParams) 
 }
 
 const insertMortgageContractRate = `-- name: InsertMortgageContractRate :exec
-INSERT INTO mortgage_contract_rates (mortgage_id, effective_from, rate, basis) VALUES (?, ?, ?, ?)
+INSERT INTO mortgage_contract_rates (mortgage_id, effective_from, rate, basis, poupanca_additional)
+VALUES (?, ?, ?, ?, ?)
 `
 
 type InsertMortgageContractRateParams struct {
-	MortgageID    int64
-	EffectiveFrom string
-	Rate          string
-	Basis         string
+	MortgageID         int64
+	EffectiveFrom      string
+	Rate               string
+	Basis              string
+	PoupancaAdditional int64
 }
 
 func (q *Queries) InsertMortgageContractRate(ctx context.Context, arg InsertMortgageContractRateParams) error {
@@ -177,6 +179,7 @@ func (q *Queries) InsertMortgageContractRate(ctx context.Context, arg InsertMort
 		arg.EffectiveFrom,
 		arg.Rate,
 		arg.Basis,
+		arg.PoupancaAdditional,
 	)
 	return err
 }
@@ -267,14 +270,15 @@ func (q *Queries) InsertMortgageStatement(ctx context.Context, arg InsertMortgag
 }
 
 const listMortgageContractRates = `-- name: ListMortgageContractRates :many
-SELECT effective_from, rate, basis FROM mortgage_contract_rates
+SELECT effective_from, rate, basis, poupanca_additional FROM mortgage_contract_rates
 WHERE mortgage_id = ? ORDER BY effective_from
 `
 
 type ListMortgageContractRatesRow struct {
-	EffectiveFrom string
-	Rate          string
-	Basis         string
+	EffectiveFrom      string
+	Rate               string
+	Basis              string
+	PoupancaAdditional int64
 }
 
 func (q *Queries) ListMortgageContractRates(ctx context.Context, mortgageID int64) ([]ListMortgageContractRatesRow, error) {
@@ -286,7 +290,12 @@ func (q *Queries) ListMortgageContractRates(ctx context.Context, mortgageID int6
 	var items []ListMortgageContractRatesRow
 	for rows.Next() {
 		var i ListMortgageContractRatesRow
-		if err := rows.Scan(&i.EffectiveFrom, &i.Rate, &i.Basis); err != nil {
+		if err := rows.Scan(
+			&i.EffectiveFrom,
+			&i.Rate,
+			&i.Basis,
+			&i.PoupancaAdditional,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

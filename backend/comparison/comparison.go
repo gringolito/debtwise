@@ -213,10 +213,10 @@ func unavailable(v Verdict, err error) (Verdict, error) {
 	return v, nil
 }
 
-// indexes returns the indexes the verdict reads: those the mortgage's indexer corrects by, and the
-// IPCA and its index numbers that an NTN-B Principal's or NTN-B's VNA follows.
+// indexes returns the indexes the verdict reads: those the mortgage's schedule reads, and the IPCA
+// and its index numbers that an NTN-B Principal's or NTN-B's VNA follows.
 func (c comparer) indexes() []indexes.Index {
-	read := c.mortgage.Terms.Indexer.Indexes()
+	read := c.mortgage.Terms.Indexes()
 	if c.bond.Type == bonds.NTNBPrincipal || c.bond.Type == bonds.NTNB {
 		read = append(read, indexes.IPCA, indexes.IPCANumber)
 	}
@@ -341,9 +341,9 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 }
 
 // projectedBy returns the projection methods of the index values that corrected the installments
-// up to the horizon and of methods, those of the bond's price and payments, each index once, in
-// the order of indexes.All. The status quo's installments are those every scenario's balance is
-// built on.
+// up to the horizon or set their contract rates, and of methods, those of the bond's price and
+// payments, each index once, in the order of indexes.All. The status quo's installments are those
+// every scenario's balance is built on.
 func projectedBy(installments []mortgage.PlannedInstallment, methods ...[]indexes.ProjectionMethod) []indexes.ProjectionMethod {
 	byIndex := make(map[indexes.Index]indexes.ProjectionMethod)
 
@@ -359,6 +359,10 @@ func projectedBy(installments []mortgage.PlannedInstallment, methods ...[]indexe
 
 	for _, i := range installments {
 		for _, v := range i.IndexValues {
+			note(v.Methods)
+		}
+
+		for _, v := range i.RateIndexValues {
 			note(v.Methods)
 		}
 	}

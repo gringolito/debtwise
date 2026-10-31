@@ -94,16 +94,16 @@ func TestPrepaymentIsReplayedInTheScheduleUntilDeleted(t *testing.T) {
 		`{"date": "2024-02-10", "amount": "20000.00", "effect": "shorten_term"}`, http.StatusCreated)
 
 	assert.JSONEq(t, `{"installments": [
-		{"number": 1, "due_date": "2024-01-10", "correction": "0.00", "index_values": [], "interest": "600.00",
+		{"number": 1, "due_date": "2024-01-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "600.00",
 		 "amortization": "10000.00", "mip": "18.00", "dfi": "10.00", "fee": "12.50", "amount": "10640.50",
 		 "prepaid": "0.00", "outstanding_balance": "50000.00"},
-		{"number": 2, "due_date": "2024-02-10", "correction": "0.00", "index_values": [], "interest": "500.00",
+		{"number": 2, "due_date": "2024-02-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "500.00",
 		 "amortization": "10000.00", "mip": "15.00", "dfi": "10.00", "fee": "12.50", "amount": "10537.50",
 		 "prepaid": "20000.00", "outstanding_balance": "20000.00"},
-		{"number": 3, "due_date": "2024-03-10", "correction": "0.00", "index_values": [], "interest": "200.00",
+		{"number": 3, "due_date": "2024-03-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "200.00",
 		 "amortization": "10000.00", "mip": "6.00", "dfi": "10.00", "fee": "12.50", "amount": "10228.50",
 		 "prepaid": "0.00", "outstanding_balance": "10000.00"},
-		{"number": 4, "due_date": "2024-04-10", "correction": "0.00", "index_values": [], "interest": "100.00",
+		{"number": 4, "due_date": "2024-04-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "100.00",
 		 "amortization": "10000.00", "mip": "5.00", "dfi": "10.00", "fee": "12.50", "amount": "10127.50",
 		 "prepaid": "0.00", "outstanding_balance": "0.00"}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/schedule", "", http.StatusOK))
@@ -137,22 +137,22 @@ func TestStatementsSetTheScheduleAndShowTheirDriftUntilDeleted(t *testing.T) {
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 
 	assert.JSONEq(t, `{"installments": [
-		{"number": 1, "due_date": "2024-01-10", "correction": "0.00", "index_values": [], "interest": "600.00",
+		{"number": 1, "due_date": "2024-01-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "600.00",
 		 "amortization": "10000.00", "mip": "18.00", "dfi": "10.00", "fee": "12.50", "amount": "10640.50",
 		 "prepaid": "0.00", "outstanding_balance": "50000.00"},
-		{"number": 2, "due_date": "2024-02-10", "correction": "0.00", "index_values": [], "interest": "500.00",
+		{"number": 2, "due_date": "2024-02-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "500.00",
 		 "amortization": "10000.00", "mip": "15.00", "dfi": "10.00", "fee": "12.50", "amount": "10537.50",
 		 "prepaid": "0.00", "outstanding_balance": "40123.45"},
-		{"number": 3, "due_date": "2024-03-10", "correction": "0.00", "index_values": [], "interest": "401.23",
+		{"number": 3, "due_date": "2024-03-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "401.23",
 		 "amortization": "10030.86", "mip": "12.04", "dfi": "10.00", "fee": "12.50", "amount": "10466.63",
 		 "prepaid": "0.00", "outstanding_balance": "30092.59"},
-		{"number": 4, "due_date": "2024-04-10", "correction": "0.00", "index_values": [], "interest": "300.93",
+		{"number": 4, "due_date": "2024-04-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "300.93",
 		 "amortization": "10030.86", "mip": "15.05", "dfi": "10.00", "fee": "12.50", "amount": "10369.34",
 		 "prepaid": "0.00", "outstanding_balance": "20061.73"},
-		{"number": 5, "due_date": "2024-05-10", "correction": "0.00", "index_values": [], "interest": "200.62",
+		{"number": 5, "due_date": "2024-05-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "200.62",
 		 "amortization": "10030.87", "mip": "10.03", "dfi": "10.00", "fee": "12.50", "amount": "10264.02",
 		 "prepaid": "0.00", "outstanding_balance": "10000.00"},
-		{"number": 6, "due_date": "2024-06-10", "correction": "0.00", "index_values": [], "interest": "100.00",
+		{"number": 6, "due_date": "2024-06-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "100.00",
 		 "amortization": "10000.00", "mip": "5.00", "dfi": "10.00", "fee": "12.50", "amount": "10127.50",
 		 "prepaid": "0.00", "outstanding_balance": "0.00"}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/schedule", "", http.StatusOK))
@@ -269,22 +269,22 @@ func TestEventsBeforeAMovedContractStillReplay(t *testing.T) {
 		 "drift": "-19876.55"}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 	assert.JSONEq(t, `{"installments": [
-		{"number": 1, "due_date": "2024-05-01", "correction": "0.00", "index_values": [], "interest": "351.23",
+		{"number": 1, "due_date": "2024-05-01", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "351.23",
 		 "amortization": "5853.91", "mip": "17.56", "dfi": "10.00", "fee": "12.50", "amount": "6245.20",
 		 "prepaid": "0.00", "outstanding_balance": "29269.54"},
-		{"number": 2, "due_date": "2024-06-01", "correction": "0.00", "index_values": [], "interest": "292.70",
+		{"number": 2, "due_date": "2024-06-01", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "292.70",
 		 "amortization": "5853.91", "mip": "14.63", "dfi": "10.00", "fee": "12.50", "amount": "6183.74",
 		 "prepaid": "0.00", "outstanding_balance": "23415.63"},
-		{"number": 3, "due_date": "2024-07-01", "correction": "0.00", "index_values": [], "interest": "234.16",
+		{"number": 3, "due_date": "2024-07-01", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "234.16",
 		 "amortization": "5853.91", "mip": "11.71", "dfi": "10.00", "fee": "12.50", "amount": "6122.28",
 		 "prepaid": "0.00", "outstanding_balance": "17561.72"},
-		{"number": 4, "due_date": "2024-08-01", "correction": "0.00", "index_values": [], "interest": "175.62",
+		{"number": 4, "due_date": "2024-08-01", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "175.62",
 		 "amortization": "5853.91", "mip": "8.78", "dfi": "10.00", "fee": "12.50", "amount": "6060.81",
 		 "prepaid": "0.00", "outstanding_balance": "11707.81"},
-		{"number": 5, "due_date": "2024-09-01", "correction": "0.00", "index_values": [], "interest": "117.08",
+		{"number": 5, "due_date": "2024-09-01", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "117.08",
 		 "amortization": "5853.91", "mip": "5.85", "dfi": "10.00", "fee": "12.50", "amount": "5999.34",
 		 "prepaid": "0.00", "outstanding_balance": "5853.90"},
-		{"number": 6, "due_date": "2024-10-01", "correction": "0.00", "index_values": [], "interest": "58.54",
+		{"number": 6, "due_date": "2024-10-01", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "58.54",
 		 "amortization": "5853.90", "mip": "2.93", "dfi": "10.00", "fee": "12.50", "amount": "5937.87",
 		 "prepaid": "0.00", "outstanding_balance": "0.00"}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/schedule", "", http.StatusOK))

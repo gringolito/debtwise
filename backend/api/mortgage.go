@@ -33,7 +33,7 @@ type mortgageTerms struct {
 	TermMonths           int                 `json:"term_months" minimum:"1" maximum:"600" doc:"Number of monthly installments."`
 	FirstInstallmentDate string              `json:"first_installment_date" format:"date" doc:"Due date of the first installment."`
 	AmortizationSystem   string              `json:"amortization_system" enum:"sac,price" doc:"How each installment splits into amortization and interest."`
-	Indexer              string              `json:"indexer" enum:"none,tr,poupanca_yield,ipca" doc:"The index the contract corrects the outstanding balance by: TR, the poupança yield, IPCA, or none for a fixed-rate contract."`
+	Indexer              string              `json:"indexer" enum:"none,tr,ipca" doc:"The index the contract corrects the outstanding balance by: TR, IPCA, or none for a fixed-rate contract."`
 	AppraisalValue       string              `json:"appraisal_value" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"Appraisal value of the property, in reais, as a decimal string."`
 	ContractRates        []contractRateTerms `json:"contract_rates" nullable:"false" doc:"The contract's interest rate, and its later changes."`
 	MIPRates             []monthlyRate       `json:"mip_rates" nullable:"false" doc:"The MIP (life and disability insurance) rate, and its changes as the borrower moves into a new age band."`
@@ -42,9 +42,10 @@ type mortgageTerms struct {
 }
 
 type contractRateTerms struct {
-	EffectiveFrom string `json:"effective_from" format:"date" doc:"Installments due on or after this date pay this rate, until a later row's date."`
-	Rate          string `json:"rate" pattern:"^(0|[1-9][0-9]{0,2})(\\.[0-9]{1,12})?$" doc:"Annual rate as a decimal fraction string: 0.12 is 12% a year."`
-	Basis         string `json:"basis" enum:"nominal,effective" doc:"Whether the contract prints the rate as nominal or as effective."`
+	EffectiveFrom      string `json:"effective_from" format:"date" doc:"Installments due on or after this date pay this rate, until a later row's date."`
+	Rate               string `json:"rate" pattern:"^(0|[1-9][0-9]{0,2})(\\.[0-9]{1,12})?$" doc:"Annual rate as a decimal fraction string: 0.12 is 12% a year. The fixed part of the rate when poupanca_additional is set."`
+	Basis              string `json:"basis" enum:"nominal,effective" doc:"Whether the contract prints the rate as nominal or as effective."`
+	PoupancaAdditional bool   `json:"poupanca_additional,omitempty" doc:"Whether the contract adds the poupança yield's additional part to rate each month, both as effective annual rates. False when absent."`
 }
 
 type monthlyRate struct {
@@ -63,7 +64,7 @@ type registeredMortgage struct {
 	TermMonths           int            `json:"term_months" doc:"Number of monthly installments."`
 	FirstInstallmentDate string         `json:"first_installment_date" format:"date" doc:"Due date of the first installment."`
 	AmortizationSystem   string         `json:"amortization_system" enum:"sac,price" doc:"How each installment splits into amortization and interest."`
-	Indexer              string         `json:"indexer" enum:"none,tr,poupanca_yield,ipca" doc:"The index the contract corrects the outstanding balance by: TR, the poupança yield, IPCA, or none for a fixed-rate contract."`
+	Indexer              string         `json:"indexer" enum:"none,tr,ipca" doc:"The index the contract corrects the outstanding balance by: TR, IPCA, or none for a fixed-rate contract."`
 	AppraisalValue       string         `json:"appraisal_value" doc:"Appraisal value of the property, in reais, as a decimal string."`
 	ContractRates        []contractRate `json:"contract_rates" nullable:"false" doc:"The contract's interest rate and its later changes, in date order."`
 	MIPRates             []monthlyRate  `json:"mip_rates" nullable:"false" doc:"The MIP (life and disability insurance) rate and its changes, in date order."`
@@ -72,10 +73,11 @@ type registeredMortgage struct {
 }
 
 type contractRate struct {
-	EffectiveFrom string `json:"effective_from" format:"date" doc:"Installments due on or after this date pay this rate, until a later row's date."`
-	Basis         string `json:"basis" enum:"nominal,effective" doc:"The basis the rate was entered on; the other one is derived from it."`
-	Nominal       string `json:"nominal" doc:"Annual rate on the nominal basis, as a decimal fraction string."`
-	Effective     string `json:"effective" doc:"Annual rate on the effective basis, as a decimal fraction string."`
+	EffectiveFrom      string `json:"effective_from" format:"date" doc:"Installments due on or after this date pay this rate, until a later row's date."`
+	Basis              string `json:"basis" enum:"nominal,effective" doc:"The basis the rate was entered on; the other one is derived from it."`
+	Nominal            string `json:"nominal" doc:"Annual rate on the nominal basis, as a decimal fraction string. The fixed part of the rate when poupanca_additional is set."`
+	Effective          string `json:"effective" doc:"Annual rate on the effective basis, as a decimal fraction string. The fixed part of the rate when poupanca_additional is set."`
+	PoupancaAdditional bool   `json:"poupanca_additional" doc:"Whether the contract adds the poupança yield's additional part to the fixed part each month, both as effective annual rates."`
 }
 
 type schedule struct {
@@ -87,6 +89,8 @@ type scheduledInstallment struct {
 	DueDate            string            `json:"due_date" format:"date" doc:"Date the installment falls due."`
 	Correction         string            `json:"correction" doc:"Indexer correction added to the outstanding balance before interest is charged, in reais, as a decimal string."`
 	IndexValues        []correctionIndex `json:"index_values" nullable:"false" doc:"The index values behind the correction, oldest period first. Empty when no index value applies to the installment."`
+	Rate               string            `json:"rate" doc:"Effective annual contract rate the interest was charged at, as a decimal fraction string."`
+	RateIndexValues    []correctionIndex `json:"rate_index_values" nullable:"false" doc:"The index values behind the rate's variable part: the Selic target that sets the poupança yield's additional part. Empty when the rate has no variable part."`
 	Interest           string            `json:"interest" doc:"Interest charged, in reais, as a decimal string."`
 	Amortization       string            `json:"amortization" doc:"Outstanding balance paid off, in reais, as a decimal string."`
 	MIP                string            `json:"mip" doc:"MIP (life and disability insurance) premium, in reais, as a decimal string."`
@@ -99,10 +103,10 @@ type scheduledInstallment struct {
 
 type correctionIndex struct {
 	Index       indexCode     `json:"index" doc:"The index the value belongs to."`
-	Status      string        `json:"status" enum:"published,projected,missing" doc:"published: the balance was corrected by the published value; projected: the balance was corrected by a projected value, by the methods listed in methods; missing: no value is available for the period yet, so the balance was not corrected by it."`
+	Status      string        `json:"status" enum:"published,projected,missing" doc:"published: the published value was used; projected: a projected value was used, by the methods listed in methods; missing: no value is available for the period yet, so it was left out: the balance was not corrected by it, or the rate charged leaves out the part it sets."`
 	Value       string        `json:"value,omitempty" doc:"The index value for the period, in percent, as a decimal string. Absent when status is missing."`
 	PeriodStart string        `json:"period_start" format:"date" doc:"The first day of the period the value covers."`
-	PeriodEnd   string        `json:"period_end" format:"date" doc:"The last day of the period the value covers. Equals period_start when the index is dated by month."`
+	PeriodEnd   string        `json:"period_end" format:"date" doc:"The last day of the period the value covers. Equals period_start when the index is dated by day or by month."`
 	Methods     []projectedBy `json:"methods" nullable:"false" doc:"The projection methods the value comes from, one for each projected index it is derived from. Empty unless status is projected."`
 }
 
@@ -197,6 +201,8 @@ func registerMortgage(humaAPI huma.API, mortgages Mortgages, store IndexStore, n
 				DueDate:            m.DueDate.Format(time.DateOnly),
 				Correction:         m.Correction.String(),
 				IndexValues:        newCorrectionIndexes(m.IndexValues),
+				Rate:               m.Rate.String(),
+				RateIndexValues:    newCorrectionIndexes(m.RateIndexValues),
 				Interest:           m.Interest.String(),
 				Amortization:       m.Amortization.String(),
 				MIP:                m.MIP.String(),
@@ -268,6 +274,7 @@ func (b mortgageTerms) terms() (mortgage.Terms, error) {
 	for _, r := range b.ContractRates {
 		terms.ContractRates = append(terms.ContractRates, mortgage.ContractRate{
 			EffectiveFrom: p.date(r.EffectiveFrom), Rate: p.decimal(r.Rate), Basis: mortgage.RateBasis(r.Basis),
+			PoupancaAdditional: r.PoupancaAdditional,
 		})
 	}
 
@@ -307,10 +314,11 @@ func newRegisteredMortgage(terms mortgage.Terms) registeredMortgage {
 
 	for _, r := range terms.ContractRates {
 		out.ContractRates = append(out.ContractRates, contractRate{
-			EffectiveFrom: r.EffectiveFrom.Format(time.DateOnly),
-			Basis:         string(r.Basis),
-			Nominal:       r.Nominal().String(),
-			Effective:     r.Effective().String(),
+			EffectiveFrom:      r.EffectiveFrom.Format(time.DateOnly),
+			Basis:              string(r.Basis),
+			Nominal:            r.Nominal().String(),
+			Effective:          r.Effective().String(),
+			PoupancaAdditional: r.PoupancaAdditional,
 		})
 	}
 

@@ -36,9 +36,7 @@ type Indexer string
 const (
 	NoIndexer Indexer = "none"
 	TR        Indexer = "tr"
-	// PoupancaYield follows the poupança yield's legal rule, from TR and the Selic target.
-	PoupancaYield Indexer = "poupanca_yield"
-	IPCA          Indexer = "ipca"
+	IPCA      Indexer = "ipca"
 )
 
 // Terms are a mortgage's contract terms. Rates and fees are rows effective from a date: each
@@ -64,11 +62,14 @@ type Terms struct {
 }
 
 // ContractRate is the annual interest rate the contract charges from a date, as a fraction (0.12
-// is 12%), on the basis the contract prints it.
+// is 12%), on the basis the contract prints it. With PoupancaAdditional, Rate is the fixed part,
+// and each month the poupança yield's additional part is added to it, both as effective annual
+// rates.
 type ContractRate struct {
-	EffectiveFrom time.Time
-	Rate          decimal.Decimal
-	Basis         RateBasis
+	EffectiveFrom      time.Time
+	Rate               decimal.Decimal
+	Basis              RateBasis
+	PoupancaAdditional bool
 }
 
 // Nominal returns the rate as a nominal annual rate.

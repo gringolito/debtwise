@@ -250,7 +250,7 @@ func registerStatements(humaAPI huma.API, mortgages Mortgages, store IndexStore,
 }
 
 // replayInputs reads what replaying the registered mortgage's schedule needs: its terms, the
-// outlook over the history of the indexes its indexer reads, the Focus expectations and the
+// outlook over the history of the indexes the schedule reads, the Focus expectations and the
 // projection methods, and its events.
 func replayInputs(ctx context.Context, mortgages Mortgages, store IndexStore) (mortgage.Terms, indexes.Outlook, mortgage.Events, error) {
 	terms, err := mortgages.Find(ctx)
@@ -258,7 +258,7 @@ func replayInputs(ctx context.Context, mortgages Mortgages, store IndexStore) (m
 		return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, mortgageFailure(err)
 	}
 
-	outlook, err := outlookOf(ctx, store, terms.Indexer.Indexes()...)
+	outlook, err := outlookOf(ctx, store, terms.Indexes()...)
 	if err != nil {
 		return mortgage.Terms{}, indexes.Outlook{}, mortgage.Events{}, err
 	}

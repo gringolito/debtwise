@@ -219,7 +219,7 @@
             "type": "string"
           },
           "effective": {
-            "description": "Annual rate on the effective basis, as a decimal fraction string.",
+            "description": "Annual rate on the effective basis, as a decimal fraction string. The fixed part of the rate when poupanca_additional is set.",
             "type": "string"
           },
           "effective_from": {
@@ -228,15 +228,20 @@
             "type": "string"
           },
           "nominal": {
-            "description": "Annual rate on the nominal basis, as a decimal fraction string.",
+            "description": "Annual rate on the nominal basis, as a decimal fraction string. The fixed part of the rate when poupanca_additional is set.",
             "type": "string"
+          },
+          "poupanca_additional": {
+            "description": "Whether the contract adds the poupança yield's additional part to the fixed part each month, both as effective annual rates.",
+            "type": "boolean"
           }
         },
         "required": [
           "effective_from",
           "basis",
           "nominal",
-          "effective"
+          "effective",
+          "poupanca_additional"
         ],
         "type": "object"
       },
@@ -256,8 +261,12 @@
             "format": "date",
             "type": "string"
           },
+          "poupanca_additional": {
+            "description": "Whether the contract adds the poupança yield's additional part to rate each month, both as effective annual rates. False when absent.",
+            "type": "boolean"
+          },
           "rate": {
-            "description": "Annual rate as a decimal fraction string: 0.12 is 12% a year.",
+            "description": "Annual rate as a decimal fraction string: 0.12 is 12% a year. The fixed part of the rate when poupanca_additional is set.",
             "pattern": "^(0|[1-9][0-9]{0,2})(\\.[0-9]{1,12})?$",
             "type": "string"
           }
@@ -292,7 +301,7 @@
             "type": "array"
           },
           "period_end": {
-            "description": "The last day of the period the value covers. Equals period_start when the index is dated by month.",
+            "description": "The last day of the period the value covers. Equals period_start when the index is dated by day or by month.",
             "format": "date",
             "type": "string"
           },
@@ -302,7 +311,7 @@
             "type": "string"
           },
           "status": {
-            "description": "published: the balance was corrected by the published value; projected: the balance was corrected by a projected value, by the methods listed in methods; missing: no value is available for the period yet, so the balance was not corrected by it.",
+            "description": "published: the published value was used; projected: a projected value was used, by the methods listed in methods; missing: no value is available for the period yet, so it was left out: the balance was not corrected by it, or the rate charged leaves out the part it sets.",
             "enum": [
               "published",
               "projected",
@@ -1064,11 +1073,10 @@
             "type": "string"
           },
           "indexer": {
-            "description": "The index the contract corrects the outstanding balance by: TR, the poupança yield, IPCA, or none for a fixed-rate contract.",
+            "description": "The index the contract corrects the outstanding balance by: TR, IPCA, or none for a fixed-rate contract.",
             "enum": [
               "none",
               "tr",
-              "poupanca_yield",
               "ipca"
             ],
             "type": "string"
@@ -1374,11 +1382,10 @@
             "type": "string"
           },
           "indexer": {
-            "description": "The index the contract corrects the outstanding balance by: TR, the poupança yield, IPCA, or none for a fixed-rate contract.",
+            "description": "The index the contract corrects the outstanding balance by: TR, IPCA, or none for a fixed-rate contract.",
             "enum": [
               "none",
               "tr",
-              "poupanca_yield",
               "ipca"
             ],
             "type": "string"
@@ -1521,6 +1528,17 @@
           "prepaid": {
             "description": "Total of the prepayments made from this installment's due date until the next one's, in reais, as a decimal string.",
             "type": "string"
+          },
+          "rate": {
+            "description": "Effective annual contract rate the interest was charged at, as a decimal fraction string.",
+            "type": "string"
+          },
+          "rate_index_values": {
+            "description": "The index values behind the rate's variable part: the Selic target that sets the poupança yield's additional part. Empty when the rate has no variable part.",
+            "items": {
+              "$ref": "#/components/schemas/CorrectionIndex"
+            },
+            "type": "array"
           }
         },
         "required": [
@@ -1528,6 +1546,8 @@
           "due_date",
           "correction",
           "index_values",
+          "rate",
+          "rate_index_values",
           "interest",
           "amortization",
           "mip",

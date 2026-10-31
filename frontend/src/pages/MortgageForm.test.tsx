@@ -77,7 +77,14 @@ describe("registering the mortgage", () => {
         amortization_system: "price",
         indexer: "tr",
         appraisal_value: "100000",
-        contract_rates: [{ effective_from: "2023-12-10", rate: "0.095", basis: "effective" }],
+        contract_rates: [
+          {
+            effective_from: "2023-12-10",
+            rate: "0.095",
+            basis: "effective",
+            poupanca_additional: false,
+          },
+        ],
         mip_rates: [{ effective_from: "2023-12-10", rate: "0.000258" }],
         dfi_rates: [{ effective_from: "2023-12-10", rate: "0.0001" }],
         fees: [{ effective_from: "2023-12-10", amount: "25.90" }],
@@ -110,11 +117,41 @@ describe("registering the mortgage", () => {
         amortization_system: "sac",
         indexer: "none",
         appraisal_value: "",
-        contract_rates: [{ effective_from: "", rate: "alta", basis: "nominal" }],
+        contract_rates: [
+          { effective_from: "", rate: "alta", basis: "nominal", poupanca_additional: false },
+        ],
         mip_rates: [{ effective_from: "", rate: "" }],
         dfi_rates: [{ effective_from: "", rate: "" }],
         fees: [{ effective_from: "", amount: "" }],
       },
+    ]);
+  });
+
+  it("sends the poupança additional part when the owner declares it", async () => {
+    const requests = stubMortgageApi({ onSave: () => registeredMortgage });
+    renderAt("/financiamento/editar");
+
+    await screen.findByRole("heading", { name: "Cadastrar financiamento" });
+    const part = screen.getByLabelText("Parte variável da taxa de juros 1");
+    expect(part).toHaveValue("none");
+    expect(
+      within(part)
+        .getAllByRole("option")
+        .map((option) => [option.getAttribute("value"), option.textContent]),
+    ).toEqual([
+      ["none", "Nenhuma"],
+      ["poupanca_additional", "Adicional da poupança"],
+    ]);
+    fill("Parte variável da taxa de juros 1", "poupanca_additional");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await savedPage();
+    expect(putBodies(requests)).toEqual([
+      expect.objectContaining({
+        contract_rates: [
+          { effective_from: "", rate: "", basis: "nominal", poupanca_additional: true },
+        ],
+      }),
     ]);
   });
 });
@@ -133,7 +170,6 @@ describe("the indexer choice", () => {
     ).toEqual([
       ["none", "Nenhum (prefixado)"],
       ["tr", "TR"],
-      ["poupanca_yield", "Remuneração da poupança"],
       ["ipca", "IPCA"],
     ]);
   });
@@ -164,7 +200,14 @@ describe("the term in months", () => {
         amortization_system: "sac",
         indexer: "none",
         appraisal_value: "100000.00",
-        contract_rates: [{ effective_from: "2023-12-10", rate: "0.12", basis: "nominal" }],
+        contract_rates: [
+          {
+            effective_from: "2023-12-10",
+            rate: "0.12",
+            basis: "nominal",
+            poupanca_additional: false,
+          },
+        ],
         mip_rates: [
           { effective_from: "2023-12-10", rate: "0.0003" },
           { effective_from: "2024-04-01", rate: "0.0005" },
@@ -218,7 +261,14 @@ describe("editing the mortgage", () => {
         amortization_system: "sac",
         indexer: "none",
         appraisal_value: "100000.00",
-        contract_rates: [{ effective_from: "2023-12-10", rate: "0.12", basis: "nominal" }],
+        contract_rates: [
+          {
+            effective_from: "2023-12-10",
+            rate: "0.12",
+            basis: "nominal",
+            poupanca_additional: false,
+          },
+        ],
         mip_rates: [
           { effective_from: "2023-12-10", rate: "0.0003" },
           { effective_from: "2024-04-01", rate: "0.0006" },
@@ -252,6 +302,7 @@ describe("editing the mortgage", () => {
             basis: "effective",
             nominal: "0.1137",
             effective: "0.12",
+            poupanca_additional: false,
           },
         ],
       },
@@ -260,6 +311,45 @@ describe("editing the mortgage", () => {
 
     expect(await screen.findByLabelText("Taxa de juros 1 (% a.a.)")).toHaveValue("12");
     expect(screen.getByLabelText("Base da taxa de juros 1")).toHaveValue("effective");
+  });
+
+  it("shows the poupança additional part as declared and sends it back", async () => {
+    const requests = stubMortgageApi({
+      mortgage: {
+        ...registeredMortgage,
+        contract_rates: [
+          {
+            effective_from: "2023-12-10",
+            basis: "nominal",
+            nominal: "0.06",
+            effective: "0.0617",
+            poupanca_additional: true,
+          },
+        ],
+      },
+      onSave: () => registeredMortgage,
+    });
+    renderAt("/financiamento/editar");
+
+    expect(await screen.findByLabelText("Parte variável da taxa de juros 1")).toHaveValue(
+      "poupanca_additional",
+    );
+    expect(screen.getByLabelText("Taxa de juros 1 (% a.a.)")).toHaveValue("6");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await savedPage();
+    expect(putBodies(requests)).toEqual([
+      expect.objectContaining({
+        contract_rates: [
+          {
+            effective_from: "2023-12-10",
+            rate: "0.06",
+            basis: "nominal",
+            poupanca_additional: true,
+          },
+        ],
+      }),
+    ]);
   });
 
   it("prefills a rate with more than two decimal digits in full", async () => {
@@ -332,8 +422,18 @@ describe("rows of the lists", () => {
         indexer: "none",
         appraisal_value: "100000.00",
         contract_rates: [
-          { effective_from: "2023-12-10", rate: "0.12", basis: "nominal" },
-          { effective_from: "2025-01-10", rate: "0.1", basis: "nominal" },
+          {
+            effective_from: "2023-12-10",
+            rate: "0.12",
+            basis: "nominal",
+            poupanca_additional: false,
+          },
+          {
+            effective_from: "2025-01-10",
+            rate: "0.1",
+            basis: "nominal",
+            poupanca_additional: false,
+          },
         ],
         mip_rates: [{ effective_from: "2024-04-01", rate: "0.0005" }],
         dfi_rates: [{ effective_from: "2024-02-01", rate: "0.0002" }],
@@ -491,6 +591,7 @@ describe("rates saved with fewer than two fraction digits", () => {
             basis: "nominal",
             nominal: "0.1",
             effective: "0.104713",
+            poupanca_additional: false,
           },
         ],
         mip_rates: [
@@ -513,8 +614,20 @@ describe("each location the API can reject", () => {
   const twoRowsEach: RegisteredMortgage = {
     ...registeredMortgage,
     contract_rates: [
-      { effective_from: "2023-12-10", basis: "nominal", nominal: "0.12", effective: "0.1268" },
-      { effective_from: "2024-06-10", basis: "nominal", nominal: "0.11", effective: "0.1157" },
+      {
+        effective_from: "2023-12-10",
+        basis: "nominal",
+        nominal: "0.12",
+        effective: "0.1268",
+        poupanca_additional: false,
+      },
+      {
+        effective_from: "2024-06-10",
+        basis: "nominal",
+        nominal: "0.11",
+        effective: "0.1157",
+        poupanca_additional: false,
+      },
     ],
     mip_rates: [
       { effective_from: "2023-12-10", rate: "0.0003" },
@@ -541,6 +654,7 @@ describe("each location the API can reject", () => {
     ["body.contract_rates[1].effective_from", "Vigência da taxa de juros 2"],
     ["body.contract_rates[1].rate", "Taxa de juros 2 (% a.a.)"],
     ["body.contract_rates[1].basis", "Base da taxa de juros 2"],
+    ["body.contract_rates[1].poupanca_additional", "Parte variável da taxa de juros 2"],
     ["body.mip_rates[1].effective_from", "Vigência do MIP 2"],
     ["body.mip_rates[1].rate", "Taxa do MIP 2 (% a.m.)"],
     ["body.dfi_rates[1].effective_from", "Vigência do DFI 2"],
@@ -601,9 +715,27 @@ describe("removing a middle row", () => {
   const threeRowsEach: RegisteredMortgage = {
     ...registeredMortgage,
     contract_rates: [
-      { effective_from: "2023-12-10", basis: "nominal", nominal: "0.12", effective: "0.1268" },
-      { effective_from: "2024-06-10", basis: "effective", nominal: "0.0957", effective: "0.1" },
-      { effective_from: "2025-01-10", basis: "nominal", nominal: "0.09", effective: "0.0938" },
+      {
+        effective_from: "2023-12-10",
+        basis: "nominal",
+        nominal: "0.12",
+        effective: "0.1268",
+        poupanca_additional: false,
+      },
+      {
+        effective_from: "2024-06-10",
+        basis: "effective",
+        nominal: "0.0957",
+        effective: "0.1",
+        poupanca_additional: false,
+      },
+      {
+        effective_from: "2025-01-10",
+        basis: "nominal",
+        nominal: "0.09",
+        effective: "0.0938",
+        poupanca_additional: false,
+      },
     ],
     fees: [
       { effective_from: "2023-12-10", amount: "12.50" },
@@ -637,8 +769,18 @@ describe("removing a middle row", () => {
     expect(putBodies(requests)).toHaveLength(1);
     expect(putBodies(requests)[0]).toMatchObject({
       contract_rates: [
-        { effective_from: "2023-12-10", rate: "0.12", basis: "nominal" },
-        { effective_from: "2025-01-10", rate: "0.09", basis: "nominal" },
+        {
+          effective_from: "2023-12-10",
+          rate: "0.12",
+          basis: "nominal",
+          poupanca_additional: false,
+        },
+        {
+          effective_from: "2025-01-10",
+          rate: "0.09",
+          basis: "nominal",
+          poupanca_additional: false,
+        },
       ],
       fees: [
         { effective_from: "2023-12-10", amount: "12.50" },

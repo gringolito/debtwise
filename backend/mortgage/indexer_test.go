@@ -161,50 +161,6 @@ func TestTRIndexedScheduleCorrectsTheBalanceWithPublishedTR(t *testing.T) {
 	}, rows)
 }
 
-// The contract was signed on 2021-11-02, and the 1st installment is never corrected. The Selic
-// target was 7.75% when the second period started, on 2021-12-02, so poupança paid TR plus 70% of
-// Selic, and 9.25% from the third on, so it paid TR plus 0.5%. The yields are those SGS series 195
-// published for the same periods. Price levels the installment again on each corrected balance.
-func TestPoupancaIndexedMonthsFollowTheSelicRule(t *testing.T) {
-	t.Parallel()
-
-	terms := mortgage.Terms{
-		ContractDate:         date(t, "2021-11-02"),
-		OriginalAmount:       dec(t, "30000.00"),
-		TermMonths:           4,
-		FirstInstallmentDate: date(t, "2021-12-02"),
-		AmortizationSystem:   mortgage.Price,
-		Indexer:              mortgage.PoupancaYield,
-		AppraisalValue:       dec(t, "50000.00"),
-		ContractRates: []mortgage.ContractRate{
-			{EffectiveFrom: date(t, "2021-11-02"), Rate: dec(t, "0.12"), Basis: mortgage.Nominal},
-		},
-		MIPRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2021-11-02"), Rate: dec(t, "0")}},
-		DFIRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2021-11-02"), Rate: dec(t, "0")}},
-		Fees:     []mortgage.Fee{{EffectiveFrom: date(t, "2021-11-02"), Amount: dec(t, "0")}},
-	}
-	history := outlookOf(publishedValues{
-		indexes.TR: {
-			published(t, "2021-12-02", "2022-01-02", "0.0326"),
-			published(t, "2022-01-02", "2022-02-02", "0.0868"),
-			published(t, "2022-02-02", "2022-03-02", "0.0000"),
-		},
-		indexes.SelicTarget: {
-			published(t, "2021-12-01", "2021-12-01", "7.75"),
-			published(t, "2021-12-02", "2021-12-02", "7.75"),
-			published(t, "2022-01-02", "2022-01-02", "9.25"),
-			published(t, "2022-02-02", "2022-02-02", "9.25"),
-		},
-	})
-
-	assert.Equal(t, []indexedRow{
-		{1, "0.00", "300.00", "7388.43", "0.00", "7688.43", "22611.57", ""},
-		{2, "107.16", "227.19", "7497.68", "0.00", "7724.87", "15221.05", "poupanca_yield 0.4739 2021-12-02..2022-01-02"},
-		{3, "89.38", "153.10", "7617.13", "0.00", "7770.23", "7693.30", "poupanca_yield 0.5872 2022-01-02..2022-02-02"},
-		{4, "38.47", "77.32", "7731.77", "0.00", "7809.09", "0.00", "poupanca_yield 0.5000 2022-02-02..2022-03-02"},
-	}, indexedSchedule(terms, history, date(t, "2026-10-25")))
-}
-
 // An installment is corrected by the IPCA of the second month before the anniversary that ends
 // its period: the anniversary on 2024-03-10 reads January 2024's IPCA.
 func TestIPCAIndexedScheduleReadsTheIPCAOfTwoMonthsBefore(t *testing.T) {
@@ -415,21 +371,6 @@ func TestMissingIndexInputsAreMarkedMissing(t *testing.T) {
 			want:    "tr missing 2024-01-15..2024-02-15",
 		},
 		{
-			name:    "poupança yield without the period's TR",
-			indexer: mortgage.PoupancaYield,
-			history: publishedValues{indexes.SelicTarget: {published(t, "2024-01-15", "2024-01-15", "11.75")}},
-			want:    "poupanca_yield missing 2024-01-15..2024-02-15",
-		},
-		{
-			name:    "poupança yield without the Selic target on the period's first day",
-			indexer: mortgage.PoupancaYield,
-			history: publishedValues{
-				indexes.TR:          {published(t, "2024-01-15", "2024-02-15", "0.0717")},
-				indexes.SelicTarget: {published(t, "2024-01-14", "2024-01-14", "11.75")},
-			},
-			want: "poupanca_yield missing 2024-01-15..2024-02-15",
-		},
-		{
 			name:    "IPCA of two months before the anniversary",
 			indexer: mortgage.IPCA,
 			history: publishedValues{indexes.IPCA: {published(t, "2024-01-01", "2024-01-01", "0.42")}},
@@ -615,53 +556,6 @@ func TestChangingTheProjectionMethodChangesTheFutureMonths(t *testing.T) {
 				indexedSchedule(indexedSAC(t, mortgage.TR, "50000.00", 5), outlook, date(t, "2024-03-20")))
 		})
 	}
-}
-
-// The poupança yield records the methods of the inputs it projects, and only those. On 2024-02-20
-// the 3rd installment, not due yet, reads the TR already published for its month and the Selic
-// target of 2024-02-15, which isn't published, projected by the trailing 12 months (13.0833%), so
-// it records only the Selic target's method; the 4th has neither the TR nor the Selic target
-// published and records both. The 2nd, due, is published, and the 1st is never corrected. Figures
-// worked out independently.
-func TestFuturePoupancaMonthRecordsOnlyTheProjectedInputs(t *testing.T) {
-	t.Parallel()
-
-	selicMonths := []string{
-		"13.75", "13.75", "13.75", "13.75", "13.75", "13.75", "13.25", "12.75", "12.75", "12.25", "11.75", "11.75",
-	}
-	selic := make([]indexes.Value, 0, 1+len(selicMonths))
-
-	for i, v := range selicMonths {
-		first := date(t, "2023-02-01").AddDate(0, i, 0).Format(time.DateOnly)
-		selic = append(selic, published(t, first, first, v))
-	}
-
-	selic = append(selic, published(t, "2024-01-15", "2024-01-15", "11.75"))
-
-	history := publishedValues{
-		indexes.TR: append(monthlyTR(t),
-			published(t, "2024-01-15", "2024-02-15", "0.0717"),
-			published(t, "2024-02-15", "2024-03-15", "0.0665"),
-		),
-		indexes.SelicTarget: selic,
-	}
-	outlook := indexes.NewOutlook(history, indexes.Expectations{}, []indexes.ProjectionMethod{
-		{Index: indexes.TR, Method: indexes.Trailing12},
-		{Index: indexes.SelicTarget, Method: indexes.Trailing12},
-	})
-
-	assert.Equal(t, []indexedRow{
-		{1, "0.00", "400.00", "10000.00", "0.00", "10400.00", "30000.00", ""},
-		{2, "171.63", "301.72", "10057.21", "0.00", "10358.93", "20114.42", "poupanca_yield 0.5721 2024-01-15..2024-02-15"},
-		{
-			3, "114.01", "202.28", "10114.22", "0.00", "10316.50", "10114.21",
-			"poupanca_yield 0.5668 2024-02-15..2024-03-15 (selic_target trailing_12)",
-		},
-		{
-			4, "57.02", "101.71", "10171.23", "0.00", "10272.94", "0.00",
-			"poupanca_yield 0.5638 2024-03-15..2024-04-15 (tr trailing_12, selic_target trailing_12)",
-		},
-	}, indexedSchedule(indexedSAC(t, mortgage.PoupancaYield, "40000.00", 4), outlook, date(t, "2024-02-20")))
 }
 
 // A future installment reads the IPCA of the second month before its anniversary, as the past ones
