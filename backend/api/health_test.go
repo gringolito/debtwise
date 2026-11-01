@@ -152,6 +152,7 @@ func TestOpenAPIContractIsServed(t *testing.T) {
 		"/indexes/{index}/projection":        {get: {OperationID: "index-projection"}},
 		"/indexes/{index}/projection-method": {"put": {OperationID: "save-projection-method"}},
 		"/lots":                              {get: {OperationID: "list-lots"}, "post": {OperationID: "add-lot"}},
+		"/lots/import":                       {"post": {OperationID: "import-lots"}},
 		"/lots/{id}":                         {"put": {OperationID: "edit-lot"}, "delete": {OperationID: "delete-lot"}},
 		"/market-data/status":                {get: {OperationID: "market-data-status"}},
 		"/market-data/refresh":               {"post": {OperationID: "refresh-market-data"}},

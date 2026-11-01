@@ -937,6 +937,39 @@
         ],
         "type": "object"
       },
+      "LotImport": {
+        "additionalProperties": false,
+        "properties": {
+          "lots": {
+            "description": "The lots to record, every one or none.",
+            "items": {
+              "$ref": "#/components/schemas/LotInput"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "lots"
+        ],
+        "type": "object"
+      },
+      "LotImported": {
+        "additionalProperties": false,
+        "properties": {
+          "lots": {
+            "description": "The lots recorded, in the order they were sent, each with its ID.",
+            "items": {
+              "$ref": "#/components/schemas/Lot"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "lots"
+        ],
+        "type": "object"
+      },
       "LotInput": {
         "additionalProperties": false,
         "properties": {
@@ -2404,6 +2437,48 @@
           }
         },
         "summary": "Record a lot",
+        "tags": [
+          "Lots"
+        ]
+      }
+    },
+    "/lots/import": {
+      "post": {
+        "description": "Records every lot of the batch or none: a batch with any invalid lot records nothing and answers the violations of every lot.",
+        "operationId": "import-lots",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotImport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotImported"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Import lots",
         "tags": [
           "Lots"
         ]

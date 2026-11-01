@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/gringolito/debtwise/backend/bonds"
 	"github.com/gringolito/debtwise/backend/db"
 	"github.com/gringolito/debtwise/backend/indexes"
+	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
 // lotsOn serves the API over a fresh, migrated database with today as the day the API reads. It
@@ -31,10 +33,11 @@ func lotsOn(t *testing.T, today string) (http.Handler, *sql.DB) {
 	now := mustDate(today)
 
 	handler := api.NewHandler(api.Services{
-		Database: db.New(conn),
-		Indexes:  indexes.NewStore(conn),
-		Lots:     store,
-		Quotes:   store,
+		Database:  db.New(conn),
+		Indexes:   indexes.NewStore(conn),
+		Lots:      store,
+		Quotes:    store,
+		Mortgages: mortgage.NewStore(conn),
 	}, api.WithLogger(slog.New(slog.DiscardHandler)), api.WithClock(func() time.Time { return now }))
 
 	return handler, conn
@@ -504,6 +507,211 @@ func TestInvalidLotIsRejectedAndKeepsWhatIsRecorded(t *testing.T) {
 	}
 }
 
+// A batch of every bond type is recorded as sent, whatever the registered Mortgage's indexer: NTN-B
+// Principal and NTN-B lots import like the others, and two lots of the same bond stay two lots.
+// The response lists them in request order with their IDs, and the list orders them by purchase
+// date.
+func TestLotsAreImportedInABatch(t *testing.T) {
+	t.Parallel()
+
+	for _, indexer := range []string{"none", "tr", "ipca"} {
+		t.Run(indexer, func(t *testing.T) {
+			t.Parallel()
+
+			handler, _ := lotsOn(t, "2026-10-26")
+			do(t, handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, indexer), http.StatusOK)
+
+			assert.JSONEq(t, `{"lots": [
+		{"id": 1, "type": "ltn", "maturity": "2027-01-01", "purchase_date": "2026-03-10", "rate": "0.1276", "unit_price": "771.26", "quantity": "10"},
+		{"id": 2, "type": "ntn_f", "maturity": "2029-01-01", "purchase_date": "2026-01-05", "rate": "0.1288", "unit_price": "880.05", "quantity": "1.5"},
+		{"id": 3, "type": "ntn_b_principal", "maturity": "2035-05-15", "purchase_date": "2026-02-01", "rate": "0.0745", "unit_price": "1500.123456", "quantity": "0.25"},
+		{"id": 4, "type": "ntn_b", "maturity": "2035-05-15", "purchase_date": "2026-04-20", "rate": "0.0612", "unit_price": "4012.5", "quantity": "2"},
+		{"id": 5, "type": "ltn", "maturity": "2027-01-01", "purchase_date": "2026-05-05", "rate": "0.1301", "unit_price": "790.5", "quantity": "3"}
+	]}`, do(t, handler, http.MethodPost, "/lots/import", `{"lots": [`+
+				lotBody("ltn", "2027-01-01", "2026-03-10", "0.1276", "771.26", "10")+`,`+
+				lotBody("ntn_f", "2029-01-01", "2026-01-05", "0.1288", "880.05", "1.5")+`,`+
+				lotBody("ntn_b_principal", "2035-05-15", "2026-02-01", "0.0745", "1500.123456", "0.25")+`,`+
+				lotBody("ntn_b", "2035-05-15", "2026-04-20", "0.0612", "4012.5", "2")+`,`+
+				lotBody("ltn", "2027-01-01", "2026-05-05", "0.1301", "790.5", "3")+`]}`, http.StatusCreated))
+
+			assert.Equal(t, []lotRow{
+				{
+					ID: 2, Type: "ntn_f", Maturity: "2029-01-01", PurchaseDate: "2026-01-05", Rate: "0.1288",
+					UnitPrice: "880.05", Quantity: "1.5",
+				},
+				{
+					ID: 3, Type: "ntn_b_principal", Maturity: "2035-05-15", PurchaseDate: "2026-02-01", Rate: "0.0745",
+					UnitPrice: "1500.123456", Quantity: "0.25",
+				},
+				{
+					ID: 1, Type: "ltn", Maturity: "2027-01-01", PurchaseDate: "2026-03-10", Rate: "0.1276",
+					UnitPrice: "771.26", Quantity: "10",
+				},
+				{
+					ID: 4, Type: "ntn_b", Maturity: "2035-05-15", PurchaseDate: "2026-04-20", Rate: "0.0612",
+					UnitPrice: "4012.5", Quantity: "2",
+				},
+				{
+					ID: 5, Type: "ltn", Maturity: "2027-01-01", PurchaseDate: "2026-05-05", Rate: "0.1301",
+					UnitPrice: "790.5", Quantity: "3",
+				},
+			}, lotRows(t, handler))
+		})
+	}
+}
+
+// A batch with any invalid lot records nothing, and answers every violation of every lot, located
+// by the lot's position in the batch. The valid lots around the invalid ones are not recorded.
+func TestInvalidLotsRejectTheWholeImport(t *testing.T) {
+	t.Parallel()
+
+	const (
+		ratePattern     = `expected string to match pattern ^0(\.[0-9]{1,12})?$`
+		quantityPattern = `expected string to match pattern ^(0|[1-9][0-9]{0,8})(\.[0-9]{1,2})?$`
+	)
+
+	valid := lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "1")
+
+	tests := []struct {
+		name string
+		lots []string
+		want []errorDetail
+	}{
+		{
+			name: "lots breaking the lot rules",
+			lots: []string{
+				valid,
+				lotBody("ltn", "2027-01-02", "2026-10-27", "0.12", "800", "1"),
+				valid,
+				lotBody("ntn_b", "2035-05-15", "2026-03-10", "0.06", "0", "0.00"),
+			},
+			want: []errorDetail{
+				{"body.lots[1].maturity", "must be the 1st of a month"},
+				{"body.lots[1].purchase_date", "must not be after today"},
+				{"body.lots[3].unit_price", "must be greater than zero"},
+				{"body.lots[3].quantity", "must be greater than zero"},
+			},
+		},
+		{
+			name: "malformed lots and lots breaking the lot rules",
+			lots: []string{
+				lotBody("ltn", "2027-01-02", "2026-03-10", "0.12", "800", "1"),
+				lotBody("selic", "2027-01-01", "2026-03-10", "0.12", "800", "1"),
+				lotBody("ltn", "2027-01-01", "2026-10-27", "0.12", "800", "-1"),
+				lotBody("ltn", "2027-01-01", "2026-10-27", "0.12", "800", "1"),
+			},
+			want: []errorDetail{
+				{"body.lots[0].maturity", "must be the 1st of a month"},
+				{"body.lots[1].type", `expected value to be one of "ltn, ntn_f, ntn_b_principal, ntn_b"`},
+				{"body.lots[2].quantity", quantityPattern},
+				{"body.lots[3].purchase_date", "must not be after today"},
+			},
+		},
+		{
+			name: "a lot of the wrong JSON types",
+			lots: []string{
+				`{"type": "ltn", "maturity": "2027-01-01", "purchase_date": "2026-03-10", "rate": 0.12, "unit_price": "800", "quantity": "1"}`,
+				lotBody("ltn", "2027-01-02", "2026-03-10", "0.12", "800", "1"),
+			},
+			want: []errorDetail{
+				{"body.lots[0].rate", "expected string"},
+				{"body.lots[1].maturity", "must be the 1st of a month"},
+			},
+		},
+		{
+			name: "malformed lots",
+			lots: []string{
+				lotBody("ltn", "2027-01-01", "2026-03-10", "1.2", "800", "1"),
+				valid,
+				lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "-1"),
+			},
+			want: []errorDetail{
+				{"body.lots[0].rate", ratePattern},
+				{"body.lots[2].quantity", quantityPattern},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler, _ := lotsOn(t, "2026-10-26")
+			addLots(t, handler, valid)
+
+			rec := serve(t, handler, http.MethodPost, "/lots/import", `{"lots": [`+strings.Join(tt.lots, ",")+`]}`)
+
+			require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
+
+			var problem struct {
+				Errors []errorDetail `json:"errors"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &problem))
+			assert.Equal(t, tt.want, problem.Errors)
+
+			assert.Equal(t, []lotRow{{
+				ID: 1, Type: "ltn", Maturity: "2027-01-01", PurchaseDate: "2026-03-10", Rate: "0.12",
+				UnitPrice: "800", Quantity: "1",
+			}}, lotRows(t, handler))
+		})
+	}
+}
+
+func TestAnImportWithoutLotsIsRejected(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		body string
+		want []errorDetail
+	}{
+		{name: "no lots", body: `{"lots": []}`, want: []errorDetail{{"body.lots", "expected array length >= 1"}}},
+		{name: "null lots", body: `{"lots": null}`, want: []errorDetail{{"body.lots", "expected array"}}},
+		{name: "missing lots", body: `{}`, want: []errorDetail{{"body", "expected required property lots to be present"}}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler, _ := lotsOn(t, "2026-10-26")
+
+			rec := serve(t, handler, http.MethodPost, "/lots/import", tt.body)
+
+			require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
+
+			var problem struct {
+				Errors []errorDetail `json:"errors"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &problem))
+			assert.Equal(t, tt.want, problem.Errors)
+		})
+	}
+}
+
+// A lot the database refuses part way through the batch leaves none of the batch recorded.
+func TestRefusedLotKeepsTheWholeImportOut(t *testing.T) {
+	t.Parallel()
+
+	handler, conn := lotsOn(t, "2026-10-26")
+	addLots(t, handler, lotBody("ltn", "2027-01-01", "2026-03-10", "0.1276", "771.26", "10"))
+
+	_, err := conn.ExecContext(t.Context(), `CREATE TRIGGER refuse_third_lot BEFORE INSERT ON lots
+		WHEN NEW.quantity = '3' BEGIN SELECT RAISE(ABORT, 'refused'); END`)
+	require.NoError(t, err)
+
+	rec := serve(t, handler, http.MethodPost, "/lots/import", `{"lots": [`+
+		lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "1")+`,`+
+		lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "2")+`,`+
+		lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "3")+`]}`)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
+	assert.Equal(t, []lotRow{{
+		ID: 1, Type: "ltn", Maturity: "2027-01-01", PurchaseDate: "2026-03-10", Rate: "0.1276",
+		UnitPrice: "771.26", Quantity: "10",
+	}}, lotRows(t, handler))
+}
+
 func TestMalformedLotIsRejectedBySchema(t *testing.T) {
 	t.Parallel()
 
@@ -633,6 +841,13 @@ func TestLotsFailWithoutTheirTables(t *testing.T) {
 			method: http.MethodPost,
 			path:   "/lots",
 			body:   lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "1"),
+		},
+		{
+			name:   "import lots",
+			table:  "lots",
+			method: http.MethodPost,
+			path:   "/lots/import",
+			body:   `{"lots": [` + lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "1") + `]}`,
 		},
 		{
 			name:   "edit lot",

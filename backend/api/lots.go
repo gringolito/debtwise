@@ -2,10 +2,14 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -20,6 +24,7 @@ import (
 type Lots interface {
 	Lots(ctx context.Context) ([]bonds.Lot, error)
 	AddLot(ctx context.Context, l bonds.Lot) (bonds.Lot, error)
+	AddLots(ctx context.Context, lots []bonds.Lot) ([]bonds.Lot, error)
 	UpdateLot(ctx context.Context, l bonds.Lot) error
 	DeleteLot(ctx context.Context, id int64) error
 	Taxes(ctx context.Context) (bonds.Taxes, error)
@@ -42,6 +47,31 @@ type lot struct {
 	Rate         string   `json:"rate" doc:"The yearly rate the lot was bought at, as a decimal fraction: 0.1276 is 12.76% a year. For ntn_b_principal and ntn_b it is the real rate over IPCA."`
 	UnitPrice    string   `json:"unit_price" doc:"The price paid for one bond, in reais, as a decimal string."`
 	Quantity     string   `json:"quantity" doc:"How many bonds the lot bought, as a decimal string."`
+}
+
+type lotImport struct {
+	Lots []lotInput `json:"lots" minItems:"1" nullable:"false" doc:"The lots to record, every one or none."`
+
+	raw []byte
+}
+
+// UnmarshalJSON keeps the JSON it reads, for readLots to validate against the schema. It leaves the
+// lots that don't fit lotInput for readLots to report.
+func (i *lotImport) UnmarshalJSON(data []byte) error {
+	type plain lotImport
+
+	i.raw = slices.Clone(data)
+
+	var typeErr *json.UnmarshalTypeError
+	if err := json.Unmarshal(data, (*plain)(i)); err != nil && !errors.As(err, &typeErr) {
+		return err
+	}
+
+	return nil
+}
+
+type lotImported struct {
+	Lots []lot `json:"lots" nullable:"false" doc:"The lots recorded, in the order they were sent, each with its ID."`
 }
 
 type lotAmount struct {
@@ -138,6 +168,37 @@ func registerLots(humaAPI huma.API, lots Lots, quotes Quotes, store IndexStore, 
 		}
 
 		return &struct{ Body lot }{Body: newLot(added)}, nil
+	})
+
+	importSchema := humaAPI.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[lotImport](), true, "")
+
+	register(humaAPI, huma.Operation{
+		OperationID:   "import-lots",
+		Method:        http.MethodPost,
+		Path:          lotsPath + "/import",
+		DefaultStatus: http.StatusCreated,
+		Summary:       "Import lots",
+		Description:   "Records every lot of the batch or none: a batch with any invalid lot records nothing and answers the violations of every lot.",
+		Tags:          []string{lotsTag},
+		// readLots validates the body itself, to answer the errors of every lot at once.
+		SkipValidateBody: true,
+	}, func(ctx context.Context, in *struct{ Body lotImport }) (*struct{ Body lotImported }, error) {
+		read, err := readLots(humaAPI.OpenAPI().Components.Schemas, importSchema, in.Body.raw, in.Body.Lots, dateOf(now()))
+		if err != nil {
+			return nil, err
+		}
+
+		added, err := lots.AddLots(ctx, read)
+		if err != nil {
+			return nil, err
+		}
+
+		imported := make([]lot, 0, len(added))
+		for _, l := range added {
+			imported = append(imported, newLot(l))
+		}
+
+		return &struct{ Body lotImported }{Body: lotImported{Lots: imported}}, nil
 	})
 
 	register(humaAPI, huma.Operation{
@@ -283,6 +344,17 @@ func ipcaOf(ctx context.Context, store IndexStore) (bonds.IPCA, error) {
 // readLot reads a lot from a body whose dates and decimals the schema has already checked, and
 // checks it on the day today.
 func readLot(body lotInput, today time.Time) (bonds.Lot, error) {
+	l, violations, err := checkLot(body, today)
+	if err != nil {
+		return bonds.Lot{}, err
+	}
+
+	return l, violationsFailure(violations)
+}
+
+// checkLot reads a lot like readLot, and returns the violations of the lot's rules instead of
+// failing with them.
+func checkLot(body lotInput, today time.Time) (bonds.Lot, []mortgage.Violation, error) {
 	var p parser
 
 	l := bonds.Lot{
@@ -293,7 +365,7 @@ func readLot(body lotInput, today time.Time) (bonds.Lot, error) {
 		Quantity:     p.decimal(body.Quantity),
 	}
 	if p.err != nil {
-		return bonds.Lot{}, fmt.Errorf("read lot: %w", p.err)
+		return bonds.Lot{}, nil, fmt.Errorf("read lot: %w", p.err)
 	}
 
 	violations := l.Validate(today)
@@ -303,7 +375,86 @@ func readLot(body lotInput, today time.Time) (bonds.Lot, error) {
 		converted = append(converted, mortgage.Violation(v))
 	}
 
-	return l, violationsFailure(converted)
+	return l, converted, nil
+}
+
+// readLots reads every lot of an import like readLot. The operation skips huma's validation of the
+// body, so a malformed lot doesn't hide the violations of the others: raw is validated here against
+// schema, with the errors huma would answer, and the lot rules are checked on every lot that passed
+// it. It fails with the errors of all the lots, each located by the lot's position in the batch.
+func readLots(registry huma.Registry, schema *huma.Schema, raw []byte, bodies []lotInput, today time.Time) ([]bonds.Lot, error) {
+	var parsed any
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return nil, fmt.Errorf("read lots: %w", err)
+	}
+
+	var res huma.ValidateResult
+
+	huma.Validate(registry, schema, huma.NewPathBuffer([]byte("body"), len("body")), huma.ModeWriteToServer, parsed, &res)
+
+	var details []error // errors of the batch itself, then of each lot in turn
+
+	malformed := make(map[int][]error)
+
+	for _, err := range res.Errors {
+		if i, ok := lotIndex(err); ok {
+			malformed[i] = append(malformed[i], err)
+		} else {
+			details = append(details, err)
+		}
+	}
+
+	lots := make([]bonds.Lot, 0, len(bodies))
+
+	for i, body := range bodies {
+		if errs, ok := malformed[i]; ok {
+			details = append(details, errs...)
+
+			continue
+		}
+
+		l, violations, err := checkLot(body, today)
+		if err != nil {
+			return nil, fmt.Errorf("lot %d: %w", i, err)
+		}
+
+		for _, v := range violations {
+			details = append(details, &huma.ErrorDetail{
+				Location: fmt.Sprintf("body.lots[%d].%s", i, v.Field),
+				Message:  v.Reason,
+			})
+		}
+
+		lots = append(lots, l)
+	}
+
+	if len(details) > 0 {
+		return nil, huma.Error422UnprocessableEntity("validation failed", details...)
+	}
+
+	return lots, nil
+}
+
+// lotIndex returns the position in the batch of the lot a validation error is located in.
+func lotIndex(err error) (int, bool) {
+	var detail *huma.ErrorDetail
+	if !errors.As(err, &detail) {
+		return 0, false
+	}
+
+	rest, found := strings.CutPrefix(detail.Location, "body.lots[")
+	if !found {
+		return 0, false
+	}
+
+	digits, _, found := strings.Cut(rest, "]")
+	if !found {
+		return 0, false
+	}
+
+	i, err := strconv.Atoi(digits)
+
+	return i, err == nil
 }
 
 func lotFailure(err error) error {
