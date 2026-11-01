@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { BondQuote, LotAmount, LotImport, LotInput, LotValued, LotValues } from "@/lib/api";
+import type { LotAmount, LotInput, LotValued, LotValues } from "@/lib/api";
 import { rowTexts } from "@/test/dom";
 import { renderAt } from "@/test/renderAt";
 import { problem, stubRoutes } from "@/test/stubServer";
@@ -288,177 +288,13 @@ describe("deleting a lot", () => {
   });
 });
 
-const catalogue: BondQuote[] = (
-  [
-    ["ltn", "2029-01-01"],
-    ["ntn_f", "2031-01-01"],
-    ["ntn_b_principal", "2035-05-15"],
-    ["ntn_b", "2037-05-15"],
-  ] as const
-).map(([type, maturity]) => ({
-  type,
-  maturity,
-  sell: { rate: "0.1", unit_price: "1000" },
-  fetched_at: "2026-10-27T09:00:00Z",
-}));
-
-function stubImport(rejections: { location: string; message: string }[] = []) {
-  let lots: LotValued[] = [];
-  return stubRoutes({
-    "GET /api/lots": () => Response.json({ lots }),
-    "GET /api/bonds": () => Response.json({ bonds: catalogue }),
-    "POST /api/lots/import": (req) => {
-      if (rejections.length > 0) {
-        return problem(422, "Unprocessable Entity", "validation failed", rejections);
-      }
-      const body = req.body as LotImport;
-      const added = body.lots.map((l, i) => ({ id: i + 1, ...l }));
-      lots = added.map((l) => ({ ...l, values: ltnValues }));
-      return Response.json({ lots: added }, { status: 201 });
-    },
-  });
-}
-
-async function importFile(contents: string) {
-  const form = await screen.findByRole("form", { name: "Importar lotes" });
-  const file = new File([contents], "lotes.csv", { type: "text/csv" });
-  fireEvent.change(within(form).getByLabelText("Arquivo CSV"), { target: { files: [file] } });
-  fireEvent.click(within(form).getByRole("button", { name: "Importar" }));
-  return form;
-}
-
-describe("importing lots from a CSV file", () => {
-  it.each([
-    {
-      separator: "semicolons",
-      contents: [
-        "Título;Data da compra;Taxa;Preço unitário;Quantidade",
-        "Tesouro Prefixado 2029;02/01/2026;12,76%;R$ 771,26;10",
-        "Tesouro Prefixado com Juros Semestrais 2031;20/10/2026;13,52;912,345678;1,25",
-        "Tesouro Prefixado 2029;15/06/2026;13,1;780;3",
-        "",
-        "Tesouro IPCA+ 2035;10/03/2026;6,84%;R$ 2.256,93;0,5",
-        "Tesouro IPCA+ com Juros Semestrais 2037;15/04/2026;6,7;4.629,32;2",
-      ].join("\n"),
-    },
-    {
-      separator: "commas",
-      contents: [
-        "Título,Data da compra,Taxa,Preço unitário,Quantidade",
-        'Tesouro Prefixado 2029,02/01/2026,"12,76%","R$ 771,26",10',
-        'Tesouro Prefixado com Juros Semestrais 2031,20/10/2026,"13,52","912,345678","1,25"',
-        'Tesouro Prefixado 2029,15/06/2026,"13,1",780,3',
-        'Tesouro IPCA+ 2035,10/03/2026,"6,84%","R$ 2.256,93","0,5"',
-        '"Tesouro IPCA+ com Juros Semestrais 2037",15/04/2026,"6,7","4.629,32",2',
-      ].join("\r\n"),
-    },
-  ])("imports every lot of a file separated by $separator", async ({ contents }) => {
-    const requests = stubImport();
+describe("importing lots", () => {
+  it("leads to the page that imports a CSV file", async () => {
+    stubLots([]);
     renderAt("/lotes");
 
-    const form = await importFile(contents);
-
-    expect(await within(form).findByText("5 lotes importados.")).toBeInTheDocument();
-    await lotRegion("Tesouro IPCA+ 2035 (compra em 10/03/2026)");
-    expect(requests.filter((r) => r.method === "POST").map((r) => r.body)).toEqual([
-      {
-        lots: [
-          {
-            type: "ltn",
-            maturity: "2029-01-01",
-            purchase_date: "2026-01-02",
-            rate: "0.1276",
-            unit_price: "771.26",
-            quantity: "10",
-          },
-          {
-            type: "ntn_f",
-            maturity: "2031-01-01",
-            purchase_date: "2026-10-20",
-            rate: "0.1352",
-            unit_price: "912.345678",
-            quantity: "1.25",
-          },
-          {
-            type: "ltn",
-            maturity: "2029-01-01",
-            purchase_date: "2026-06-15",
-            rate: "0.131",
-            unit_price: "780",
-            quantity: "3",
-          },
-          {
-            type: "ntn_b_principal",
-            maturity: "2035-05-15",
-            purchase_date: "2026-03-10",
-            rate: "0.0684",
-            unit_price: "2256.93",
-            quantity: "0.5",
-          },
-          {
-            type: "ntn_b",
-            maturity: "2037-05-15",
-            purchase_date: "2026-04-15",
-            rate: "0.067",
-            unit_price: "4629.32",
-            quantity: "2",
-          },
-        ],
-      },
-    ]);
-  });
-
-  it("reports every invalid row, bonds outside the catalogue included, and imports nothing", async () => {
-    const requests = stubImport([
-      { location: "body.lots[0].type", message: 'expected value to be one of "ltn, ntn_f"' },
-      { location: "body.lots[0].maturity", message: "expected string to be RFC 3339 date" },
-      { location: "body.lots[1].maturity", message: "expected string to be RFC 3339 date" },
-      { location: "body.lots[3].purchase_date", message: "must not be after today" },
-      { location: "body.lots[4].rate", message: "expected string to match pattern" },
-      { location: "body.lots[5].type", message: 'expected value to be one of "ltn, ntn_f"' },
-      { location: "body.lots[5].rate", message: "expected string to match pattern" },
-      { location: "body.lots[6].type", message: 'expected value to be one of "ltn, ntn_f"' },
-    ]);
-    renderAt("/lotes");
-
-    const form = await importFile(
-      [
-        "Título;Data da compra;Taxa;Preço unitário;Quantidade",
-        "Tesouro Selic 2029;02/01/2026;0,1;15.000,00;1",
-        "Tesouro Prefixado 2099;02/01/2026;12,76;771,26;10",
-        "Tesouro IPCA+ 2035;10/03/2026;6,84;2.256,93;0,5",
-        "Tesouro Prefixado 2029;10/12/2026;12,76;771,26;10",
-        "Tesouro Prefixado 2029;02/01/2026;127,6;771,26;10",
-        'Tesouro Prefixado 2029;02/01/2026;12,76;771,26;1"0"',
-        'Tesouro Prefixado 2029;02/01/2026;12,76;771,26;"10',
-      ].join("\n"),
-    );
-
-    const invalidRows = await within(form).findByRole("list", { name: "Linhas inválidas" });
     expect(
-      within(invalidRows)
-        .getAllByRole("listitem")
-        .map((item) => item.textContent),
-    ).toEqual([
-      "Linha 2: Título fora do catálogo.",
-      "Linha 3: Título fora do catálogo.",
-      "Linha 5: Informe a data da compra (dd/mm/aaaa), que não pode ser futura.",
-      "Linha 6: Informe uma taxa de 0% a menos de 100% ao ano.",
-      "Linha 7: Aspas sem par: a linha não pode ser lida.",
-      "Linha 8: Aspas sem par: a linha não pode ser lida.",
-    ]);
-    expect(requests.find((r) => r.method === "POST")?.body).toMatchObject({
-      lots: [
-        { type: "Tesouro Selic 2029", maturity: "" },
-        { type: "Tesouro Prefixado 2099", maturity: "" },
-        { type: "ntn_b_principal", maturity: "2035-05-15" },
-        { type: "ltn", maturity: "2029-01-01", purchase_date: "2026-12-10" },
-        { type: "ltn", maturity: "2029-01-01", rate: "1.276" },
-        { type: "", quantity: "" },
-        { type: "", quantity: "" },
-      ],
-    });
-    expect(within(form).queryByRole("status")).toBeNull();
-    expect(screen.queryByRole("region", { name: /compra em/ })).toBeNull();
+      await screen.findByRole("link", { name: "Importar lotes de um arquivo CSV" }),
+    ).toHaveAttribute("href", "/lotes/importar");
   });
 });

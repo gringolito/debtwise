@@ -11,6 +11,7 @@ import { Bonds } from "@/pages/Bonds";
 import { Dashboard } from "@/pages/Dashboard";
 import { Decision } from "@/pages/Decision";
 import { EarlySale } from "@/pages/EarlySale";
+import { ImportLots } from "@/pages/ImportLots";
 import { Indexes } from "@/pages/Indexes";
 import { Lots } from "@/pages/Lots";
 import { Mortgage } from "@/pages/Mortgage";
@@ -72,6 +73,12 @@ const lotsRoute = createRoute({
   component: Lots,
 });
 
+const importLotsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/lotes/importar",
+  component: ImportLots,
+});
+
 const decisionRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/decisao",
@@ -101,6 +108,7 @@ const routeTree = rootRoute.addChildren([
   indexesRoute,
   bondsRoute,
   lotsRoute,
+  importLotsRoute,
   decisionRoute,
   earlySaleRoute,
   mortgageRoute,

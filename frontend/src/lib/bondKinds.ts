@@ -3,13 +3,13 @@ import { formatRate } from "@/lib/format";
 
 export type BondType = BondQuote["type"];
 
-// The API sends the type and maturity; Tesouro Direto's name is written here, as its names carry
-// only those two facts. IPCA+ rates are real rates over IPCA.
-export const bondKinds: Record<BondType, { name: string; ipcaLinked: boolean }> = {
-  ltn: { name: "Tesouro Prefixado", ipcaLinked: false },
-  ntn_f: { name: "Tesouro Prefixado com Juros Semestrais", ipcaLinked: false },
-  ntn_b_principal: { name: "Tesouro IPCA+", ipcaLinked: true },
-  ntn_b: { name: "Tesouro IPCA+ com Juros Semestrais", ipcaLinked: true },
+// The API sends the type and maturity; Tesouro Direto's name and the bond's code are written here,
+// as its names carry only those two facts. IPCA+ rates are real rates over IPCA.
+export const bondKinds: Record<BondType, { name: string; code: string; ipcaLinked: boolean }> = {
+  ltn: { name: "Tesouro Prefixado", code: "LTN", ipcaLinked: false },
+  ntn_f: { name: "Tesouro Prefixado com Juros Semestrais", code: "NTN-F", ipcaLinked: false },
+  ntn_b_principal: { name: "Tesouro IPCA+", code: "NTN-B Principal", ipcaLinked: true },
+  ntn_b: { name: "Tesouro IPCA+ com Juros Semestrais", code: "NTN-B", ipcaLinked: true },
 };
 
 export const bondTypeOptions = (Object.entries(bondKinds) as [BondType, { name: string }][]).map(
