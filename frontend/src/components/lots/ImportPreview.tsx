@@ -1,3 +1,7 @@
+import { Trash2Icon } from "lucide-react";
+import { useId } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import {
   Table,
@@ -11,10 +15,10 @@ import type { BondQuote } from "@/lib/api";
 import { bondLabel } from "@/lib/bondKinds";
 import { type CsvRow, problemMessages } from "@/lib/lotsCsv";
 
-/** PreviewRow is a row of a lots file with the catalogue bond the owner keeps for it, if any. */
+/** PreviewRow is a row of a lots file, as the owner edits it, with the catalogue bond kept for it. */
 export interface PreviewRow {
   row: CsvRow;
-  /** Whether the file names the bond exactly, so there is nothing to pick. */
+  /** Whether the file names the bond exactly, so there is no suggestion to check. */
   exact: boolean;
   bond: BondQuote | null;
 }
@@ -22,17 +26,29 @@ export interface PreviewRow {
 /** bondKey tells the bonds of the catalogue apart as the value of an option. */
 const bondKey = ({ type, maturity }: BondQuote) => `${type} ${maturity}`;
 
+type EditableField = "purchaseDate" | "rate" | "unitPrice" | "quantity";
+
+const editableFields: { field: EditableField; label: string }[] = [
+  { field: "purchaseDate", label: "Data da compra" },
+  { field: "rate", label: "Taxa" },
+  { field: "unitPrice", label: "Preço unitário" },
+  { field: "quantity", label: "Quantidade" },
+];
+
 interface ImportPreviewProps {
   rows: PreviewRow[];
   catalogue: BondQuote[];
-  onPick: (index: number, bond: BondQuote | null) => void;
+  onChange: (index: number, row: PreviewRow) => void;
+  onRemove: (index: number) => void;
 }
 
 /**
- * ImportPreview lists the rows of a lots file as the file writes them, with a bond picker on every
- * row whose name doesn't match a catalogue bond exactly.
+ * ImportPreview lists the rows of a lots file for the owner to edit or remove before importing
+ * them. Every row has a bond picker; one whose name doesn't match a catalogue bond exactly holds a
+ * suggestion, or nothing, with the name the file gives for the owner to check it against.
  */
-export function ImportPreview({ rows, catalogue, onPick }: ImportPreviewProps) {
+export function ImportPreview({ rows, catalogue, onChange, onRemove }: ImportPreviewProps) {
+  const id = useId();
   const inexact = rows.filter((p) => !p.exact && !p.row.malformed).length;
   return (
     <>
@@ -48,37 +64,38 @@ export function ImportPreview({ rows, catalogue, onPick }: ImportPreviewProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Linha</TableHead>
-            <TableHead>No arquivo</TableHead>
             <TableHead>Título</TableHead>
             <TableHead>Data da compra</TableHead>
-            <TableHead>Taxa</TableHead>
+            <TableHead>Taxa (% ao ano)</TableHead>
             <TableHead>Preço unitário</TableHead>
             <TableHead>Quantidade</TableHead>
+            <TableHead />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map(({ row, exact, bond }, index) => (
-            <TableRow key={row.line}>
-              <TableCell>{row.line}</TableCell>
-              {row.malformed ? (
-                <TableCell colSpan={6}>
-                  <span className="text-destructive">{problemMessages.malformed}</span>
-                </TableCell>
-              ) : (
-                <>
-                  <TableCell>{row.bond.trim()}</TableCell>
-                  <TableCell>
-                    {exact && bond ? (
-                      bondLabel(bond)
-                    ) : (
+          {rows.map((preview, index) => {
+            const { row, exact, bond } = preview;
+            const fileNameId = `${id}-${row.line}`;
+            return (
+              <TableRow key={row.line}>
+                <TableCell>{row.line}</TableCell>
+                {row.malformed ? (
+                  <TableCell colSpan={5}>
+                    <span className="text-destructive">{problemMessages.malformed}</span>
+                  </TableCell>
+                ) : (
+                  <>
+                    <TableCell>
                       <NativeSelect
+                        className="w-72"
                         aria-label={`Título da linha ${row.line}`}
+                        aria-describedby={exact ? undefined : fileNameId}
                         value={bond ? bondKey(bond) : ""}
                         onChange={(event) =>
-                          onPick(
-                            index,
-                            catalogue.find((b) => bondKey(b) === event.target.value) ?? null,
-                          )
+                          onChange(index, {
+                            ...preview,
+                            bond: catalogue.find((b) => bondKey(b) === event.target.value) ?? null,
+                          })
                         }
                       >
                         <NativeSelectOption value="">Escolha um título</NativeSelectOption>
@@ -88,16 +105,44 @@ export function ImportPreview({ rows, catalogue, onPick }: ImportPreviewProps) {
                           </NativeSelectOption>
                         ))}
                       </NativeSelect>
-                    )}
-                  </TableCell>
-                  <TableCell>{row.purchaseDate.trim()}</TableCell>
-                  <TableCell>{row.rate.trim()}</TableCell>
-                  <TableCell>{row.unitPrice.trim()}</TableCell>
-                  <TableCell>{row.quantity.trim()}</TableCell>
-                </>
-              )}
-            </TableRow>
-          ))}
+                      {!exact && (
+                        <p id={fileNameId} className="mt-1 text-xs text-muted-foreground">
+                          No arquivo: {row.bond.trim()}
+                        </p>
+                      )}
+                    </TableCell>
+                    {editableFields.map(({ field, label }) => (
+                      <TableCell key={field}>
+                        <Input
+                          aria-label={`${label} da linha ${row.line}`}
+                          className="w-28"
+                          inputMode={field === "purchaseDate" ? undefined : "decimal"}
+                          value={row[field]}
+                          onChange={(event) =>
+                            onChange(index, {
+                              ...preview,
+                              row: { ...row, [field]: event.target.value },
+                            })
+                          }
+                        />
+                      </TableCell>
+                    ))}
+                  </>
+                )}
+                <TableCell>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Remover linha ${row.line}`}
+                    onClick={() => onRemove(index)}
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </>

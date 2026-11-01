@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BondQuote, LotImport, LotValued } from "@/lib/api";
-import { rowTexts } from "@/test/dom";
+import { rowTexts, text } from "@/test/dom";
 import { renderAt } from "@/test/renderAt";
 import { problem, stubRoutes } from "@/test/stubServer";
 
@@ -54,6 +54,33 @@ async function chooseFile(contents: string) {
 const posted = (requests: { method: string; body?: unknown }[]) =>
   requests.filter((r) => r.method === "POST").map((r) => r.body);
 
+/**
+ * previewValues reads each row of the preview the way the owner sees it: the text of a cell, the
+ * option a picker shows or the value of an input. The header row is left out.
+ */
+function previewValues(preview: HTMLElement): string[][] {
+  return within(preview)
+    .getAllByRole("row")
+    .slice(1)
+    .map((row) =>
+      Array.from(row.querySelectorAll("td")).map((cell) => {
+        const control = cell.querySelector("select, input");
+        if (control instanceof HTMLSelectElement) return control.selectedOptions[0]?.text ?? "";
+        if (control instanceof HTMLInputElement) return control.value;
+        return text(cell);
+      }),
+    );
+}
+
+/** previewRow is the row of the preview for the file's line. */
+function previewRow(line: number): HTMLElement {
+  const row = screen
+    .getAllByRole("row")
+    .find((r) => r.querySelector("td")?.textContent === String(line));
+  if (!row) throw new Error(`no preview row for line ${line}`);
+  return row;
+}
+
 describe("importing lots from a CSV file", () => {
   it.each([
     {
@@ -88,45 +115,29 @@ describe("importing lots from a CSV file", () => {
 
       const preview = await chooseFile(contents);
 
-      expect(rowTexts(preview)).toEqual([
-        ["Linha", "No arquivo", "Título", "Data da compra", "Taxa", "Preço unitário", "Quantidade"],
-        [
-          "2",
-          "Tesouro Prefixado 2029",
-          "Tesouro Prefixado 2029",
-          "02/01/2026",
-          "12,76%",
-          "R$ 771,26",
-          "10",
-        ],
+      expect(rowTexts(preview)[0]).toEqual([
+        "Linha",
+        "Título",
+        "Data da compra",
+        "Taxa (% ao ano)",
+        "Preço unitário",
+        "Quantidade",
+        "",
+      ]);
+      expect(previewValues(preview)).toEqual([
+        ["2", "Tesouro Prefixado 2029", "02/01/2026", "12,76%", "R$ 771,26", "10", ""],
         [
           "3",
-          "Tesouro Prefixado com Juros Semestrais 2031",
           "Tesouro Prefixado com Juros Semestrais 2031",
           "20/10/2026",
           "13,52",
           "912,345678",
           "1,25",
+          "",
         ],
-        ["4", "Tesouro Prefixado 2029", "Tesouro Prefixado 2029", "15/06/2026", "13,1", "780", "3"],
-        [
-          "6",
-          "Tesouro IPCA+ 2035",
-          "Tesouro IPCA+ 2035",
-          "10/03/2026",
-          "6,84%",
-          "R$ 2.256,93",
-          "0,5",
-        ],
-        [
-          "7",
-          "Tesouro IPCA+ com Juros Semestrais 2037",
-          "Tesouro IPCA+ com Juros Semestrais 2037",
-          "15/04/2026",
-          "6,7",
-          "4.629,32",
-          "2",
-        ],
+        ["4", "Tesouro Prefixado 2029", "15/06/2026", "13,1", "780", "3", ""],
+        ["6", "Tesouro IPCA+ 2035", "10/03/2026", "6,84%", "R$ 2.256,93", "0,5", ""],
+        ["7", "Tesouro IPCA+ com Juros Semestrais 2037", "15/04/2026", "6,7", "4.629,32", "2", ""],
       ]);
       expect(posted(requests)).toEqual([]);
 
@@ -228,7 +239,10 @@ describe("importing lots from a CSV file", () => {
     for (const unmatched of [7, 8, 9, 10]) {
       expect(bondOf(unmatched)).toHaveDisplayValue("Escolha um título");
     }
-    expect(screen.queryByLabelText("Título da linha 11")).toBeNull();
+    expect(bondOf(2)).toHaveAccessibleDescription("No arquivo: tesouro ipca 2035");
+    expect(bondOf(7)).toHaveAccessibleDescription("No arquivo: Tesouro Selic 2029");
+    expect(bondOf(11)).toHaveDisplayValue("Tesouro Prefixado 2029");
+    expect(bondOf(11)).not.toHaveAccessibleDescription();
     expect(bondOf(12)).toHaveDisplayValue("Tesouro IPCA+ com Juros Semestrais 2035");
     expect(
       within(bondOf(7))
@@ -280,6 +294,76 @@ describe("importing lots from a CSV file", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
+  it("imports the lots as the owner edits them and leaves out the rows removed", async () => {
+    const requests = stubImport();
+    renderAt("/lotes/importar");
+
+    const preview = await chooseFile(
+      [
+        "Título;Data da compra;Taxa;Preço unitário;Quantidade",
+        "Tesouro Prefixado 2029;02/01/2026;12,76%;R$ 771,26;10",
+        "Tesouro IPCA+ 2035;10/03/2026;6,84;2.256,93;0,5",
+        'Tesouro Prefixado 2029;02/01/2026;12,76;771,26;"10',
+        "Tesouro Selic 2029;02/01/2026;0,1;15.000,00;1",
+      ].join("\n"),
+    );
+    const edit = (label: string, value: string) =>
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+    edit("Título da linha 2", "ntn_f 2031-01-01");
+    edit("Data da compra da linha 2", "05/01/2026");
+    edit("Taxa da linha 2", "13,1");
+    edit("Preço unitário da linha 2", "800,5");
+    edit("Quantidade da linha 2", "12,5");
+    expect(within(previewRow(4)).queryByRole("textbox")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Remover linha 4" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remover linha 5" }));
+
+    expect(previewValues(preview).map(([line]) => line)).toEqual(["2", "3"]);
+    expect(screen.queryByText(/não correspondem? exatamente a um título do catálogo/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Importar 2 lotes" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("2 lotes importados.");
+    expect(posted(requests)).toEqual([
+      {
+        lots: [
+          {
+            type: "ntn_f",
+            maturity: "2031-01-01",
+            purchase_date: "2026-01-05",
+            rate: "0.131",
+            unit_price: "800.5",
+            quantity: "12.5",
+          },
+          {
+            type: "ntn_b_principal",
+            maturity: "2035-05-15",
+            purchase_date: "2026-03-10",
+            rate: "0.0684",
+            unit_price: "2256.93",
+            quantity: "0.5",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("has nothing to import once every row is removed", async () => {
+    const requests = stubImport();
+    renderAt("/lotes/importar");
+
+    await chooseFile(
+      [
+        "Título;Data da compra;Taxa;Preço unitário;Quantidade",
+        "Tesouro Prefixado 2029;02/01/2026;12,76;771,26;10",
+      ].join("\n"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Remover linha 2" }));
+
+    expect(screen.getByText("Nenhum lote para importar.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Importar/ })).toBeNull();
+    expect(posted(requests)).toEqual([]);
+  });
+
   it("reports every invalid row, bonds left unpicked included, and imports nothing", async () => {
     const requests = stubImport([
       { location: "body.lots[0].type", message: 'expected value to be one of "ltn, ntn_f"' },
@@ -305,9 +389,9 @@ describe("importing lots from a CSV file", () => {
         'Tesouro Prefixado 2029;02/01/2026;12,76;771,26;"10',
       ].join("\n"),
     );
-    expect(rowTexts(preview).slice(-2)).toEqual([
-      ["7", "Aspas sem par: a linha não pode ser lida."],
-      ["8", "Aspas sem par: a linha não pode ser lida."],
+    expect(previewValues(preview).slice(-2)).toEqual([
+      ["7", "Aspas sem par: a linha não pode ser lida.", ""],
+      ["8", "Aspas sem par: a linha não pode ser lida.", ""],
     ]);
     fireEvent.click(screen.getByRole("button", { name: "Importar 7 lotes" }));
 

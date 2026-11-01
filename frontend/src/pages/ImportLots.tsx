@@ -6,14 +6,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { type BondQuote, bondsKey, fetchBonds } from "@/lib/api";
+import { bondsKey, fetchBonds } from "@/lib/api";
 import { matchBond } from "@/lib/bondMatch";
 import { useImportLots } from "@/lib/lotQueries";
 import { type ImportedRow, importErrors, importedRow, readLotsCsv } from "@/lib/lotsCsv";
 
 /**
- * ImportLots reads a lots file in the browser and previews its rows, letting the owner pick the
- * bond of each row whose name the catalogue lacks, then records every lot of the file, or none.
+ * ImportLots reads a lots file in the browser and previews its rows for the owner to edit, remove,
+ * and pick the bond of each row whose name the catalogue lacks, then records every lot left, or
+ * none.
  */
 export function ImportLots() {
   const fileId = useId();
@@ -45,8 +46,12 @@ export function ImportLots() {
     );
   }
 
-  function pick(index: number, bond: BondQuote | null) {
-    setPreview((rows) => rows?.map((p, i) => (i === index ? { ...p, bond } : p)) ?? null);
+  function change(index: number, row: PreviewRow) {
+    setPreview((rows) => rows?.map((p, i) => (i === index ? row : p)) ?? null);
+  }
+
+  function remove(index: number) {
+    setPreview((rows) => rows?.filter((_, i) => i !== index) ?? null);
   }
 
   function submit() {
@@ -115,8 +120,7 @@ export function ImportLots() {
         <Alert variant="destructive">
           <AlertDescription>
             <p>
-              Nenhum lote foi importado. Escolha o título das linhas abaixo ou corrija-as no arquivo
-              e importe de novo:
+              Nenhum lote foi importado. Corrija ou remova estas linhas abaixo e importe de novo:
             </p>
             <ul aria-label="Linhas inválidas" className="list-disc pl-5">
               {invalidRows.map(({ line, messages }) => (
@@ -126,10 +130,10 @@ export function ImportLots() {
           </AlertDescription>
         </Alert>
       )}
-      {preview?.length === 0 && <p>O arquivo não tem lotes.</p>}
+      {preview?.length === 0 && <p>Nenhum lote para importar.</p>}
       {preview && preview.length > 0 && (
         <>
-          <ImportPreview rows={preview} catalogue={bonds} onPick={pick} />
+          <ImportPreview rows={preview} catalogue={bonds} onChange={change} onRemove={remove} />
           <div>
             <Button type="button" onClick={submit} disabled={importLots.isPending}>
               {preview.length === 1 ? "Importar 1 lote" : `Importar ${preview.length} lotes`}
