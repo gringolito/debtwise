@@ -125,7 +125,7 @@
             "description": "The installment due that day. Absent when none is."
           },
           "invested": {
-            "description": "What the bond cost, in reais, as a decimal string. Zero in an early sale check, which buys no bond.",
+            "description": "What the bond cost, in reais, as a decimal string.",
             "type": "string"
           },
           "outstanding_balance": {
@@ -1978,17 +1978,17 @@
     },
     "/early-sale-checks": {
       "get": {
-        "description": "Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.",
+        "description": "Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.",
         "operationId": "check-early-sales",
         "parameters": [
           {
-            "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.",
+            "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
             "explode": false,
             "in": "query",
             "name": "effect",
             "required": true,
             "schema": {
-              "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.",
+              "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
               "enum": [
                 "shorten_term",
                 "lower_installment"
@@ -2027,7 +2027,7 @@
     },
     "/early-sale-checks/{id}": {
       "get": {
-        "description": "Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.",
+        "description": "Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.",
         "operationId": "check-early-sale",
         "parameters": [
           {
@@ -2042,13 +2042,13 @@
             }
           },
           {
-            "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.",
+            "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
             "explode": false,
             "in": "query",
             "name": "effect",
             "required": true,
             "schema": {
-              "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.",
+              "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
               "enum": [
                 "shorten_term",
                 "lower_installment"

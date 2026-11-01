@@ -15,7 +15,7 @@ import (
 )
 
 type earlySaleInput struct {
-	Effect string `query:"effect" required:"true" enum:"shorten_term,lower_installment" doc:"What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it."`
+	Effect string `query:"effect" required:"true" enum:"shorten_term,lower_installment" doc:"What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments."`
 }
 
 type earlySaleCheck struct {
@@ -51,7 +51,7 @@ func registerEarlySales(humaAPI huma.API, services Services, now func() time.Tim
 		Method:      http.MethodGet,
 		Path:        "/early-sale-checks",
 		Summary:     "Check every lot for an early sale",
-		Description: "Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.",
+		Description: "Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.",
 		Tags:        []string{earlySaleChecksTag},
 	}, func(ctx context.Context, in *earlySaleInput) (*struct{ Body earlySaleCheckList }, error) {
 		today := dateOf(now())
@@ -84,11 +84,11 @@ func registerEarlySales(humaAPI huma.API, services Services, now func() time.Tim
 		Method:      http.MethodGet,
 		Path:        "/early-sale-checks/{id}",
 		Summary:     "Check a lot for an early sale",
-		Description: "Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.",
+		Description: "Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.",
 		Tags:        []string{earlySaleChecksTag},
 	}, func(ctx context.Context, in *struct {
 		ID     int64  `path:"id" doc:"The ID the lot was recorded with."`
-		Effect string `query:"effect" required:"true" enum:"shorten_term,lower_installment" doc:"What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it."`
+		Effect string `query:"effect" required:"true" enum:"shorten_term,lower_installment" doc:"What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments."`
 	},
 	) (*struct{ Body earlySale }, error) {
 		today := dateOf(now())

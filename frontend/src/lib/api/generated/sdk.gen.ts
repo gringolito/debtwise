@@ -42,14 +42,14 @@ export const decide = <ThrowOnError extends boolean = false>(options: Options<De
 /**
  * Check every lot for an early sale
  *
- * Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.
+ * Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.
  */
 export const checkEarlySales = <ThrowOnError extends boolean = false>(options: Options<CheckEarlySalesData, ThrowOnError>) => (options.client ?? client).get<CheckEarlySalesResponses, CheckEarlySalesErrors, ThrowOnError>({ url: '/early-sale-checks', ...options });
 
 /**
  * Check a lot for an early sale
  *
- * Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.
+ * Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.
  */
 export const checkEarlySale = <ThrowOnError extends boolean = false>(options: Options<CheckEarlySaleData, ThrowOnError>) => (options.client ?? client).get<CheckEarlySaleResponses, CheckEarlySaleErrors, ThrowOnError>({ url: '/early-sale-checks/{id}', ...options });
 

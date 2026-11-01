@@ -78,7 +78,7 @@ export type CashFlow = {
      */
     installment?: CashFlowInstallment;
     /**
-     * What the bond cost, in reais, as a decimal string. Zero in an early sale check, which buys no bond.
+     * What the bond cost, in reais, as a decimal string.
      */
     invested: string;
     /**
@@ -1125,7 +1125,7 @@ export type CheckEarlySalesData = {
     path?: never;
     query: {
         /**
-         * What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.
+         * What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.
          */
         effect: 'shorten_term' | 'lower_installment';
     };
@@ -1160,7 +1160,7 @@ export type CheckEarlySaleData = {
     };
     query: {
         /**
-         * What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.
+         * What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.
          */
         effect: 'shorten_term' | 'lower_installment';
     };

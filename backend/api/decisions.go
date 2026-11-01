@@ -62,7 +62,7 @@ type scenario struct {
 type cashFlow struct {
 	Date               string               `json:"date" format:"date" doc:"The date of the flows."`
 	Installment        *cashFlowInstallment `json:"installment,omitempty" doc:"The installment due that day. Absent when none is."`
-	Invested           string               `json:"invested" doc:"What the bond cost, in reais, as a decimal string. Zero in an early sale check, which buys no bond."`
+	Invested           string               `json:"invested" doc:"What the bond cost, in reais, as a decimal string."`
 	Sold               *lotAmount           `json:"sold,omitempty" doc:"The Market Value the lot was sold for that day, gross and net of IOF, income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only on the first day of an early sale check's sell scenario."`
 	Coupon             *lotAmount           `json:"coupon,omitempty" doc:"The bond's coupon paid that day, gross and net of income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only for an ntn_f or ntn_b, in a decision's invest scenario and an early sale check's hold scenario."`
 	Prepaid            string               `json:"prepaid" doc:"What the scenario's prepayments that day took off the outstanding balance, in reais, as a decimal string."`
