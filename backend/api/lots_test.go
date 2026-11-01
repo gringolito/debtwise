@@ -201,7 +201,45 @@ func TestLotsAreValuedOnTodayWithTesouroPrices(t *testing.T) {
 				"coupons": []
 			}
 		}
-	]}`, do(t, handler, http.MethodGet, "/lots", "", http.StatusOK))
+	], "market_value": {"gross": "7600.00", "net": "7465.00"}}`, do(t, handler, http.MethodGet, "/lots", "", http.StatusOK))
+}
+
+// On the day of the example above, the lots that have a Market Value add up to the total: ten
+// bonds at 760.00 are 7,600.00, netting 7,465.00, and two more bought at 700.00 are 1,520.00,
+// whose 120.00 gain is taxed 27.00 at 22.5%, netting 1,493.00. The matured lot has no Market
+// Value, so it adds nothing.
+func TestLotsTotalTheirMarketValue(t *testing.T) {
+	t.Parallel()
+
+	handler, conn := lotsOn(t, "2008-05-21")
+	saveQuote(t, conn, bonds.Bond{Type: bonds.LTN, Maturity: date(2010, time.July, 1)}, "0.1400", "760.00")
+	addLots(t, handler,
+		lotBody("ltn", "2010-07-01", "2008-05-21", "0.1436", "700.00", "10"),
+		lotBody("ltn", "2008-01-01", "2007-01-02", "0.1", "900.00", "1.5"),
+		lotBody("ltn", "2010-07-01", "2008-05-21", "0.1436", "700.00", "2"),
+	)
+
+	var got struct {
+		Lots        []lotRow        `json:"lots"`
+		MarketValue json.RawMessage `json:"market_value"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(do(t, handler, http.MethodGet, "/lots", "", http.StatusOK)), &got))
+
+	assert.Equal(t, []lotRow{
+		{
+			ID: 2, Type: "ltn", Maturity: "2008-01-01", PurchaseDate: "2007-01-02", Rate: "0.1",
+			UnitPrice: "900.00", Quantity: "1.5",
+		},
+		{
+			ID: 1, Type: "ltn", Maturity: "2010-07-01", PurchaseDate: "2008-05-21", Rate: "0.1436",
+			UnitPrice: "700.00", Quantity: "10",
+		},
+		{
+			ID: 3, Type: "ltn", Maturity: "2010-07-01", PurchaseDate: "2008-05-21", Rate: "0.1436",
+			UnitPrice: "700.00", Quantity: "2",
+		},
+	}, got.Lots)
+	assert.JSONEq(t, `{"gross": "9120.00", "net": "8958.00"}`, string(got.MarketValue))
 }
 
 // An LTN lot of two bonds bought on 2026-10-16 at 990.00 and valued ten days later, at a contracted
@@ -235,7 +273,7 @@ func TestLotsAreNetOfIOFAndCustodyFee(t *testing.T) {
 				"coupons": []
 			}
 		}
-	]}`, do(t, handler, http.MethodGet, "/lots", "", http.StatusOK))
+	], "market_value": {"gross": "1990.00", "net": "1982.55"}}`, do(t, handler, http.MethodGet, "/lots", "", http.StatusOK))
 }
 
 // The IPCA index numbers of June 2000 and November 2011 are IBGE's (SIDRA table 1737); October 2011

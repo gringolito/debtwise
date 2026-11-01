@@ -1,7 +1,12 @@
 import { ApiError, type DecisionInput, type EarlySaleCheck, type Verdict } from "@/lib/api";
-import { type BondType, bondRate } from "@/lib/bondKinds";
+import { type BondType, bondKinds, bondRate } from "@/lib/bondKinds";
 import { formatMoney, inputToMoney } from "@/lib/format";
 import type { PrepaymentEffect } from "@/lib/mortgageEvents";
+
+/** verdictTitle names a verdict's bond the way Tesouro Direto does: its kind and maturity year. */
+export function verdictTitle({ type, maturity }: Verdict): string {
+  return `${bondKinds[type].name} ${maturity.slice(0, 4)}`;
+}
 
 /** DecisionFormValues is what the owner typed for a decision, as text, the way the inputs show it. */
 export interface DecisionFormValues {

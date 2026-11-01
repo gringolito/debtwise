@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderAt } from "./test/renderAt";
-import { stubServer } from "./test/stubServer";
+import { stubRoutes, stubServer } from "./test/stubServer";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -9,15 +9,16 @@ afterEach(() => {
 
 describe("server status", () => {
   it("reports a healthy server", async () => {
-    const requests = stubServer(() => Response.json({ status: "ok" }));
+    const requests = stubRoutes({ "GET /api/health": () => Response.json({ status: "ok" }) });
 
     renderAt("/");
 
     expect(await screen.findByText("Servidor disponível")).toBeInTheDocument();
     // Same origin as the page: in the images Caddy proxies /api to the server.
-    expect(requests).toEqual([
-      { method: "GET", url: new URL("/api/health", window.location.origin).href },
-    ]);
+    expect(requests).toContainEqual({
+      method: "GET",
+      url: new URL("/api/health", window.location.origin).href,
+    });
   });
 
   it("reports an unavailable server", async () => {
@@ -60,7 +61,7 @@ describe("server status", () => {
 
 describe("shell", () => {
   it("names the app in every page", async () => {
-    stubServer(() => Response.json({ status: "ok" }));
+    stubRoutes({ "GET /api/health": () => Response.json({ status: "ok" }) });
 
     renderAt("/");
 

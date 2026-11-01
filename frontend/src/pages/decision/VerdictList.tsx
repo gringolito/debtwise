@@ -1,17 +1,19 @@
 import { Section } from "@/components/mortgage/Section";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Decision, Verdict } from "@/lib/api";
-import { bondKinds, bondRate } from "@/lib/bondKinds";
-import { advantageText, breakEvenText, noBreakEvenText, unavailableReasons } from "@/lib/decisions";
+import { bondRate } from "@/lib/bondKinds";
+import {
+  advantageText,
+  breakEvenText,
+  noBreakEvenText,
+  unavailableReasons,
+  verdictTitle,
+} from "@/lib/decisions";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { projectedByText } from "@/lib/projectionMethods";
 import { MarketDataFreshness } from "@/pages/decision/MarketDataFreshness";
 import { ScenarioDetails } from "@/pages/decision/ScenarioDetails";
 import { Scenarios } from "@/pages/decision/Scenarios";
-
-function verdictTitle({ type, maturity }: Verdict): string {
-  return `${bondKinds[type].name} ${maturity.slice(0, 4)}`;
-}
 
 function VerdictCard({ verdict }: { verdict: Verdict }) {
   return (
