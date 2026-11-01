@@ -58,9 +58,9 @@ const unreadable: LotInput = {
 };
 
 /**
- * importedRow builds the lot row records with bond, the catalogue bond picked for it. Text the API
- * cannot read goes through for it to reject, and so does a row with no bond: its name is sent as
- * the type.
+ * importedRow builds the lot recorded for row, with bond, the catalogue bond picked for it. Text
+ * the API cannot read goes through for it to reject, and so does a row with no bond: its name is
+ * sent as the type.
  */
 export function importedRow(row: CsvRow, bond: BondQuote | null): ImportedRow {
   if (row.malformed) return { line: row.line, input: unreadable, problem: "malformed" };

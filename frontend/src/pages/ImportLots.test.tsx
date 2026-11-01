@@ -209,12 +209,14 @@ describe("importing lots from a CSV file", () => {
         "Tesouro Educa+ 2035;02/01/2026;6,1;3.000,00;1",
         "NTN-B 2031;02/01/2026;6,1;3.000,00;1",
         "  tesouro prefixado 2029 ;02/01/2026;12,76;771,26;10",
+        "Tesouro IPCA+ Juros Semestrais 2035;15/04/2026;6,7;4.629,32;2",
+        'Tesouro IPCA+ 2035;10/03/2026;6,84;2.256,93;"0,5',
       ].join("\n"),
     );
 
     expect(
       screen.getByText(
-        "9 linhas não correspondem exatamente a um título do catálogo. Confira o título sugerido ou escolha outro.",
+        "10 linhas não correspondem exatamente a um título do catálogo. Confira o título sugerido ou escolha outro.",
       ),
     ).toBeInTheDocument();
     const bondOf = (line: number) => screen.getByLabelText(`Título da linha ${line}`);
@@ -227,6 +229,7 @@ describe("importing lots from a CSV file", () => {
       expect(bondOf(unmatched)).toHaveDisplayValue("Escolha um título");
     }
     expect(screen.queryByLabelText("Título da linha 11")).toBeNull();
+    expect(bondOf(12)).toHaveDisplayValue("Tesouro IPCA+ com Juros Semestrais 2035");
     expect(
       within(bondOf(7))
         .getAllByRole("option")
@@ -267,6 +270,14 @@ describe("importing lots from a CSV file", () => {
       ["ntn_b", "2037-05-15"],
       ["ltn", "2029-01-01"],
     ]);
+
+    await chooseFile(
+      [
+        "Título;Data da compra;Taxa;Preço unitário;Quantidade",
+        "Tesouro Prefixado 2029;02/01/2026;12;771;1",
+      ].join("\n"),
+    );
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("reports every invalid row, bonds left unpicked included, and imports nothing", async () => {

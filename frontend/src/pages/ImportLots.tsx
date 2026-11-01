@@ -30,10 +30,8 @@ export function ImportLots() {
     lastFile.current = file;
     importLots.reset();
     setImported([]);
-    if (!file) {
-      setPreview(null);
-      return;
-    }
+    setPreview(null);
+    if (!file) return;
     const rows = readLotsCsv(await file.text());
     // A file picked while this one was being read replaces it.
     if (lastFile.current !== file) return;
@@ -88,6 +86,10 @@ export function ImportLots() {
           accept=".csv,text/csv"
           disabled={!catalogue.data || importLots.isPending}
           aria-describedby={`${fileId}-hint`}
+          // Cleared on each click so picking the same file again, edited, still reads it.
+          onClick={(event) => {
+            event.currentTarget.value = "";
+          }}
           onChange={(event) => read(event.target.files?.[0] ?? null)}
         />
         <FieldDescription id={`${fileId}-hint`}>
