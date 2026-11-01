@@ -22,6 +22,35 @@ The compose file runs the `ghcr.io/gringolito/debtwise/server:edge` and
 `ghcr.io/gringolito/debtwise/web:edge` images. `mise run build:image:all` builds both from source
 under those names.
 
+### Backing up
+
+SQLite keeps recent writes in `debtwise.db-wal` next to `debtwise.db`, so a copy of `debtwise.db`
+alone can miss them. A clean stop folds them into `debtwise.db`, but Docker kills a server that
+takes longer than its stop timeout, and the writes then stay in `debtwise.db-wal`. So stop the
+server and copy the whole data directory: SQLite replays a leftover write-ahead file the next time it
+opens the database.
+
+```sh
+docker compose -f deploy/compose.yaml stop server
+docker compose -f deploy/compose.yaml cp server:/data ./debtwise-backup
+docker compose -f deploy/compose.yaml start server
+```
+
+To restore, stop the server and replace the data files with the backup's. The server image has no
+shell, so a helper container does it. It removes the old database's files, so none of them can be
+replayed onto the restored one, and gives the new ones to the server's `nonroot` user (UID 65532),
+which must be able to write them:
+
+```sh
+docker compose -f deploy/compose.yaml stop server
+docker run --rm -v "$PWD/debtwise-backup":/backup \
+  --volumes-from "$(docker compose -f deploy/compose.yaml ps -aq server)" alpine \
+  sh -c 'rm -f /data/debtwise.db /data/debtwise.db-wal /data/debtwise.db-shm &&
+    cp /backup/debtwise.db* /data/ && rm -f /data/debtwise.db-shm &&
+    chown 65532:65532 /data/debtwise.db*'
+docker compose -f deploy/compose.yaml start server
+```
+
 ### Container images and chart
 
 Every push to `main` that touches the backend, the frontend, `build/` or the chart publishes both
