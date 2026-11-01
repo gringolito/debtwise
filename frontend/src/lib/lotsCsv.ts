@@ -3,7 +3,7 @@ import type { BondType } from "@/lib/bondKinds";
 import { inputToMoney, percentToFraction } from "@/lib/format";
 import { lotFieldMessages } from "@/lib/lots";
 
-/** CsvRow is one row of a lots file, its fields as the file writes them. */
+/** CsvRow is one row of a lots file, its fields as text: as the file writes them or as edited. */
 export interface CsvRow {
   /** The row's line in the file, counting from 1 at the header. */
   line: number;

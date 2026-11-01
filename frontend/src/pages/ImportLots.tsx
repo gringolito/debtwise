@@ -24,13 +24,17 @@ export function ImportLots() {
   const importLots = useImportLots();
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [imported, setImported] = useState<ImportedRow[]>([]);
+  // Lines edited or removed since the last import; the API's rejection no longer speaks for them.
+  const [revised, setRevised] = useState<ReadonlySet<number>>(new Set());
   const bonds = catalogue.data?.bonds ?? [];
-  const invalidRows = importErrors(importLots.error, imported);
+  const rejectedRows = importErrors(importLots.error, imported);
+  const invalidRows = rejectedRows.filter(({ line }) => !revised.has(line));
 
   async function read(file: File | null) {
     lastFile.current = file;
     importLots.reset();
     setImported([]);
+    setRevised(new Set());
     setPreview(null);
     if (!file) return;
     const rows = readLotsCsv(await file.text());
@@ -46,11 +50,18 @@ export function ImportLots() {
     );
   }
 
+  function revise(line: number) {
+    setRevised((lines) => new Set(lines).add(line));
+  }
+
   function change(index: number, row: PreviewRow) {
+    revise(row.row.line);
     setPreview((rows) => rows?.map((p, i) => (i === index ? row : p)) ?? null);
   }
 
   function remove(index: number) {
+    const line = preview?.[index]?.row.line;
+    if (line !== undefined) revise(line);
     setPreview((rows) => rows?.filter((_, i) => i !== index) ?? null);
   }
 
@@ -58,6 +69,7 @@ export function ImportLots() {
     if (!preview) return;
     const rows = preview.map((p) => importedRow(p.row, p.bond));
     setImported(rows);
+    setRevised(new Set());
     importLots.mutate(
       rows.map((r) => r.input),
       {
@@ -111,7 +123,7 @@ export function ImportLots() {
           <Link to="/lotes">Ver lotes</Link>.
         </p>
       )}
-      {importLots.isError && invalidRows.length === 0 && (
+      {importLots.isError && rejectedRows.length === 0 && (
         <Alert variant="destructive">
           <AlertDescription>Não foi possível importar os lotes.</AlertDescription>
         </Alert>

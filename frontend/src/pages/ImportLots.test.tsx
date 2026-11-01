@@ -122,7 +122,7 @@ describe("importing lots from a CSV file", () => {
         "Taxa (% ao ano)",
         "Preço unitário",
         "Quantidade",
-        "",
+        "Ações",
       ]);
       expect(previewValues(preview)).toEqual([
         ["2", "Tesouro Prefixado 2029", "02/01/2026", "12,76%", "R$ 771,26", "10", ""],
@@ -243,6 +243,7 @@ describe("importing lots from a CSV file", () => {
     expect(bondOf(7)).toHaveAccessibleDescription("No arquivo: Tesouro Selic 2029");
     expect(bondOf(11)).toHaveDisplayValue("Tesouro Prefixado 2029");
     expect(bondOf(11)).not.toHaveAccessibleDescription();
+    expect(screen.queryByText("No arquivo: tesouro prefixado 2029")).toBeNull();
     expect(bondOf(12)).toHaveDisplayValue("Tesouro IPCA+ com Juros Semestrais 2035");
     expect(
       within(bondOf(7))
@@ -345,6 +346,76 @@ describe("importing lots from a CSV file", () => {
         ],
       },
     ]);
+  });
+
+  it("drops the rejection of each row the owner fixes or removes, and imports what is left", async () => {
+    let rejected = false;
+    const requests = stubRoutes({
+      "GET /api/bonds": () => Response.json({ bonds: catalogue }),
+      "POST /api/lots/import": (req) => {
+        if (!rejected) {
+          rejected = true;
+          return problem(422, "Unprocessable Entity", "validation failed", [
+            { location: "body.lots[0].rate", message: "expected string to match pattern" },
+            { location: "body.lots[1].type", message: 'expected value to be one of "ltn"' },
+            { location: "body.lots[1].maturity", message: "expected string to be RFC 3339 date" },
+          ]);
+        }
+        const body = req.body as LotImport;
+        return Response.json(
+          { lots: body.lots.map((l, i) => ({ id: i + 1, ...l })) },
+          { status: 201 },
+        );
+      },
+    });
+    renderAt("/lotes/importar");
+
+    await chooseFile(
+      [
+        "Título;Data da compra;Taxa;Preço unitário;Quantidade",
+        "Tesouro Prefixado 2029;02/01/2026;127,6;771,26;10",
+        "Tesouro Selic 2029;02/01/2026;0,1;15.000,00;1",
+        "Tesouro IPCA+ 2035;10/03/2026;6,84;2.256,93;0,5",
+      ].join("\n"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Importar 3 lotes" }));
+    const listed = async () =>
+      within(await screen.findByRole("list", { name: "Linhas inválidas" }))
+        .getAllByRole("listitem")
+        .map((item) => item.textContent);
+    expect(await listed()).toEqual([
+      "Linha 2: Informe uma taxa de 0% a menos de 100% ao ano.",
+      "Linha 3: Título fora do catálogo.",
+    ]);
+
+    fireEvent.change(screen.getByLabelText("Taxa da linha 2"), { target: { value: "12,76" } });
+    expect(await listed()).toEqual(["Linha 3: Título fora do catálogo."]);
+    fireEvent.click(screen.getByRole("button", { name: "Remover linha 3" }));
+    expect(screen.queryByRole("list", { name: "Linhas inválidas" })).toBeNull();
+    expect(screen.queryByText("Não foi possível importar os lotes.")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Importar 2 lotes" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("2 lotes importados.");
+    expect(posted(requests)[1]).toEqual({
+      lots: [
+        {
+          type: "ltn",
+          maturity: "2029-01-01",
+          purchase_date: "2026-01-02",
+          rate: "0.1276",
+          unit_price: "771.26",
+          quantity: "10",
+        },
+        {
+          type: "ntn_b_principal",
+          maturity: "2035-05-15",
+          purchase_date: "2026-03-10",
+          rate: "0.0684",
+          unit_price: "2256.93",
+          quantity: "0.5",
+        },
+      ],
+    });
   });
 
   it("has nothing to import once every row is removed", async () => {

@@ -28,11 +28,15 @@ const bondKey = ({ type, maturity }: BondQuote) => `${type} ${maturity}`;
 
 type EditableField = "purchaseDate" | "rate" | "unitPrice" | "quantity";
 
-const editableFields: { field: EditableField; label: string }[] = [
+const editableFields: {
+  field: EditableField;
+  label: string;
+  inputMode?: "decimal";
+}[] = [
   { field: "purchaseDate", label: "Data da compra" },
-  { field: "rate", label: "Taxa" },
-  { field: "unitPrice", label: "Preço unitário" },
-  { field: "quantity", label: "Quantidade" },
+  { field: "rate", label: "Taxa", inputMode: "decimal" },
+  { field: "unitPrice", label: "Preço unitário", inputMode: "decimal" },
+  { field: "quantity", label: "Quantidade", inputMode: "decimal" },
 ];
 
 interface ImportPreviewProps {
@@ -48,7 +52,7 @@ interface ImportPreviewProps {
  * suggestion, or nothing, with the name the file gives for the owner to check it against.
  */
 export function ImportPreview({ rows, catalogue, onChange, onRemove }: ImportPreviewProps) {
-  const id = useId();
+  const fileNameIdPrefix = useId();
   const inexact = rows.filter((p) => !p.exact && !p.row.malformed).length;
   return (
     <>
@@ -69,13 +73,13 @@ export function ImportPreview({ rows, catalogue, onChange, onRemove }: ImportPre
             <TableHead>Taxa (% ao ano)</TableHead>
             <TableHead>Preço unitário</TableHead>
             <TableHead>Quantidade</TableHead>
-            <TableHead />
+            <TableHead className="sr-only">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.map((preview, index) => {
             const { row, exact, bond } = preview;
-            const fileNameId = `${id}-${row.line}`;
+            const fileNameId = `${fileNameIdPrefix}-${row.line}`;
             return (
               <TableRow key={row.line}>
                 <TableCell>{row.line}</TableCell>
@@ -111,12 +115,12 @@ export function ImportPreview({ rows, catalogue, onChange, onRemove }: ImportPre
                         </p>
                       )}
                     </TableCell>
-                    {editableFields.map(({ field, label }) => (
+                    {editableFields.map(({ field, label, inputMode }) => (
                       <TableCell key={field}>
                         <Input
                           aria-label={`${label} da linha ${row.line}`}
                           className="w-28"
-                          inputMode={field === "purchaseDate" ? undefined : "decimal"}
+                          inputMode={inputMode}
                           value={row[field]}
                           onChange={(event) =>
                             onChange(index, {
