@@ -220,10 +220,25 @@ func TestLotsTotalTheirMarketValue(t *testing.T) {
 	)
 
 	var got struct {
+		Lots        []lotRow        `json:"lots"`
 		MarketValue json.RawMessage `json:"market_value"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(do(t, handler, http.MethodGet, "/lots", "", http.StatusOK)), &got))
 
+	assert.Equal(t, []lotRow{
+		{
+			ID: 2, Type: "ltn", Maturity: "2008-01-01", PurchaseDate: "2007-01-02", Rate: "0.1",
+			UnitPrice: "900.00", Quantity: "1.5",
+		},
+		{
+			ID: 1, Type: "ltn", Maturity: "2010-07-01", PurchaseDate: "2008-05-21", Rate: "0.1436",
+			UnitPrice: "700.00", Quantity: "10",
+		},
+		{
+			ID: 3, Type: "ltn", Maturity: "2010-07-01", PurchaseDate: "2008-05-21", Rate: "0.1436",
+			UnitPrice: "700.00", Quantity: "2",
+		},
+	}, got.Lots)
 	assert.JSONEq(t, `{"gross": "9120.00", "net": "8958.00"}`, string(got.MarketValue))
 }
 

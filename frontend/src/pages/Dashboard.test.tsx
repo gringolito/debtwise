@@ -73,6 +73,37 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
+
+describe("a market-data refresh running when the dashboard opens", () => {
+  it("reloads the figures that read market data once it ends", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(2024, 2, 20, 9, 30));
+    const statuses = [{ ...FRESH_STATUS, refreshing: true }, FRESH_STATUS];
+    const requests = stubDashboard({
+      "GET /api/market-data/status": () => Response.json(statuses.shift() ?? FRESH_STATUS),
+      "GET /api/lots": () =>
+        Response.json(
+          statuses.length === 0
+            ? { lots: [maturedLot], market_value: { gross: "900.00", net: "882.50" } }
+            : { lots: [maturedLot] },
+        ),
+    });
+    renderAt("/");
+
+    const lots = await region("Lotes");
+    expect(
+      await within(lots).findByText("Nenhum lote tem valor de mercado hoje."),
+    ).toBeInTheDocument();
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(await within(lots).findByText("R$ 882,50")).toBeInTheDocument();
+    const reads = (path: string) => requests.filter((r) => new URL(r.url).pathname === path).length;
+    expect(["/api/mortgage/schedule", "/api/lots", "/api/early-sale-checks"].map(reads)).toEqual([
+      2, 2, 2,
+    ]);
+  });
 });
 
 describe("the mortgage on the dashboard", () => {
@@ -100,6 +131,19 @@ describe("the mortgage on the dashboard", () => {
     const mortgage = await region("Financiamento");
     expect(
       await within(mortgage).findByText("R$ 20.000,00 após a parcela 4, de 10/04/2024"),
+    ).toBeInTheDocument();
+  });
+
+  it("reads today in the owner's time zone", async () => {
+    vi.stubEnv("TZ", "America/Sao_Paulo");
+    // Already 2024-04-10 in UTC, but still the evening of 2024-04-09 in São Paulo.
+    vi.setSystemTime(new Date("2024-04-10T02:55:00Z"));
+    stubDashboard({ "GET /api/mortgage/schedule": () => Response.json(schedule) });
+    renderAt("/");
+
+    const mortgage = await region("Financiamento");
+    expect(
+      await within(mortgage).findByText("R$ 30.000,00 após a parcela 3, de 10/03/2024"),
     ).toBeInTheDocument();
   });
 
@@ -180,6 +224,41 @@ describe("the lots on the dashboard", () => {
     const lots = await region("Lotes");
     expect(
       await within(lots).findByText("Nenhum lote tem valor de mercado hoje."),
+    ).toBeInTheDocument();
+  });
+
+  it("says how many lots held to maturity the total leaves out for having no Market Value", async () => {
+    const quoted: LotValued = {
+      ...maturedLot,
+      id: 2,
+      maturity: "2026-01-01",
+      values: { on: "2024-03-20", market: MARKET, maturity: MATURED, coupons: [] },
+    };
+    const unquoted: LotValued = {
+      ...quoted,
+      id: 3,
+      values: { on: "2024-03-20", accrual: MARKET, maturity: MATURED, coupons: [] },
+    };
+    const missingIPCA: LotValued = {
+      ...maturedLot,
+      id: 4,
+      type: "ntn_b_principal",
+      maturity: "2035-05-15",
+      values: undefined,
+      values_unavailable: "missing_ipca",
+    };
+    stubDashboard({
+      "GET /api/lots": () =>
+        Response.json({
+          lots: [maturedLot, quoted, unquoted, missingIPCA],
+          market_value: { gross: "900.00", net: "882.50" },
+        }),
+    });
+    renderAt("/");
+
+    const lots = await region("Lotes");
+    expect(
+      await within(lots).findByText("2 lotes sem valor de mercado ficaram fora do total."),
     ).toBeInTheDocument();
   });
 
@@ -367,6 +446,23 @@ describe("the best decision on the dashboard", () => {
       "href",
       "/decisao",
     );
+  });
+
+  it("tells apart advantages a cent apart however large", async () => {
+    stubDashboard({
+      "POST /api/decisions": decisionOf([
+        { ...ltn, advantage: "100000000000000.01" },
+        { ...ntnf, advantage: "100000000000000.02" },
+      ]),
+    });
+    renderAt("/");
+
+    await compare("10000");
+
+    const best = await region("Melhor decisão");
+    expect(
+      await within(best).findByText("Tesouro Prefixado com Juros Semestrais 2035"),
+    ).toBeInTheDocument();
   });
 
   it("shows prepaying as the best decision when every advantage favours it", async () => {

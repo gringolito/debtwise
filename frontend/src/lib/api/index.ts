@@ -312,9 +312,12 @@ export async function decide(body: DecisionInput): Promise<Decision> {
   return data;
 }
 
+/** earlySaleChecksKeys prefixes the query key of the early sale checks of every effect. */
+export const earlySaleChecksKeys = ["early-sale-checks"] as const;
+
 /** earlySaleChecksKey is the query key of the early sale checks of every lot, prepaid with effect. */
 export function earlySaleChecksKey(effect: EarlySaleCheckList["effect"]) {
-  return ["early-sale-checks", effect] as const;
+  return [...earlySaleChecksKeys, effect] as const;
 }
 
 export async function fetchEarlySaleChecks(
