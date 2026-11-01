@@ -24,26 +24,30 @@ under those names.
 
 ### Backing up
 
-While the server runs, SQLite keeps recent writes in `debtwise.db-wal` next to the database, so a
-copy of `debtwise.db` alone can miss them. Stop the server first: it folds those writes into
-`debtwise.db` on the way out, and that one file is then the whole backup.
+SQLite keeps recent writes in `debtwise.db-wal` next to `debtwise.db`, so a copy of `debtwise.db`
+alone can miss them. A clean stop folds them into `debtwise.db`, but Docker kills a server that
+takes longer than its stop timeout, and the writes then stay in `debtwise.db-wal`. So stop the
+server and copy the whole data directory: SQLite replays a leftover write-ahead file the next time it
+opens the database.
 
 ```sh
 docker compose -f deploy/compose.yaml stop server
-docker compose -f deploy/compose.yaml cp server:/data/debtwise.db ./debtwise.db
+docker compose -f deploy/compose.yaml cp server:/data ./debtwise-backup
 docker compose -f deploy/compose.yaml start server
 ```
 
-To restore, stop the server and replace the file. The server image has no shell, so a helper
-container does it. It removes any write-ahead files left from the old database and gives the file to
-the server's `nonroot` user (UID 65532), which must be able to write it:
+To restore, stop the server and replace the data files with the backup's. The server image has no
+shell, so a helper container does it. It removes the old database's files, so none of them can be
+replayed onto the restored one, and gives the new ones to the server's `nonroot` user (UID 65532),
+which must be able to write them:
 
 ```sh
 docker compose -f deploy/compose.yaml stop server
-docker run --rm -v "$PWD":/backup \
+docker run --rm -v "$PWD/debtwise-backup":/backup \
   --volumes-from "$(docker compose -f deploy/compose.yaml ps -aq server)" alpine \
-  sh -c 'rm -f /data/debtwise.db-wal /data/debtwise.db-shm &&
-    cp /backup/debtwise.db /data/debtwise.db && chown 65532:65532 /data/debtwise.db'
+  sh -c 'rm -f /data/debtwise.db /data/debtwise.db-wal /data/debtwise.db-shm &&
+    cp /backup/debtwise.db* /data/ && rm -f /data/debtwise.db-shm &&
+    chown 65532:65532 /data/debtwise.db*'
 docker compose -f deploy/compose.yaml start server
 ```
 
