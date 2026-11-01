@@ -287,3 +287,14 @@ describe("deleting a lot", () => {
     expect(screen.getByRole("region", { name: ntnbName })).toBeInTheDocument();
   });
 });
+
+describe("importing lots", () => {
+  it("leads to the page that imports a CSV file", async () => {
+    stubLots([]);
+    renderAt("/lotes");
+
+    expect(
+      await screen.findByRole("link", { name: "Importar lotes de um arquivo CSV" }),
+    ).toHaveAttribute("href", "/lotes/importar");
+  });
+});

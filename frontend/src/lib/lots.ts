@@ -57,7 +57,7 @@ export function lotLabel({ type, maturity, purchase_date }: Lot): string {
 }
 
 // The API's own reasons are English sentences for API consumers; the owner reads these.
-const fieldMessages: Record<string, string> = {
+export const lotFieldMessages: Record<string, string> = {
   type: "Escolha um dos títulos.",
   maturity:
     "O vencimento deve ser posterior à compra e cair no dia 1 (Prefixado) ou no dia 15 (IPCA+).",
@@ -78,7 +78,7 @@ export function lotErrors(error: Error | null): Map<string, string> {
   for (const location of error.locations) {
     if (!location.startsWith("body.")) continue;
     const field = location.slice("body.".length);
-    errors.set(field, fieldMessages[field] ?? "Valor inválido.");
+    errors.set(field, lotFieldMessages[field] ?? "Valor inválido.");
   }
   return errors;
 }

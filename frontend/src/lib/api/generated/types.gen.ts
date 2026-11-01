@@ -537,6 +537,20 @@ export type LotCoupon = {
     projected_by: Array<ProjectedBy>;
 };
 
+export type LotImport = {
+    /**
+     * The lots to record, every one or none.
+     */
+    lots: Array<LotInput>;
+};
+
+export type LotImported = {
+    /**
+     * The lots recorded, in the order they were sent, each with its ID.
+     */
+    lots: Array<Lot>;
+};
+
 export type LotInput = {
     /**
      * The date the bond matures.
@@ -1389,6 +1403,31 @@ export type AddLotResponses = {
 };
 
 export type AddLotResponse = AddLotResponses[keyof AddLotResponses];
+
+export type ImportLotsData = {
+    body: LotImport;
+    path?: never;
+    query?: never;
+    url: '/lots/import';
+};
+
+export type ImportLotsErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type ImportLotsError = ImportLotsErrors[keyof ImportLotsErrors];
+
+export type ImportLotsResponses = {
+    /**
+     * Created
+     */
+    201: LotImported;
+};
+
+export type ImportLotsResponse = ImportLotsResponses[keyof ImportLotsResponses];
 
 export type DeleteLotData = {
     body?: never;

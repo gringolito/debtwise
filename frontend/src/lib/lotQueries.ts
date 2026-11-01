@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchLots, type LotInput, postLot, putLot, removeLot } from "@/lib/api";
+import { fetchLots, importLots, type LotInput, postLot, putLot, removeLot } from "@/lib/api";
 
 export const lotsKey = ["lots"] as const;
 
@@ -15,6 +15,10 @@ function useRefreshLots() {
 
 export function useAddLot() {
   return useMutation({ mutationFn: postLot, onSuccess: useRefreshLots() });
+}
+
+export function useImportLots() {
+  return useMutation({ mutationFn: importLots, onSuccess: useRefreshLots() });
 }
 
 export function useEditLot() {

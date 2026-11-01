@@ -15,6 +15,7 @@ import {
   editPrepayment,
   editStatement,
   health,
+  importLots as importLotsRequest,
   indexHistory,
   indexProjection,
   listBonds,
@@ -51,6 +52,7 @@ import type {
   Lot,
   LotAmount,
   LotCoupon,
+  LotImport,
   LotInput,
   LotList,
   LotValued,
@@ -97,6 +99,7 @@ export type {
   Lot,
   LotAmount,
   LotCoupon,
+  LotImport,
   LotInput,
   LotList,
   LotValued,
@@ -299,6 +302,13 @@ export async function putLot(id: number, body: LotInput): Promise<Lot> {
   const { data, error, response } = await editLot({ path: { id }, body });
   if (!data) throw failure(error, response);
   return data;
+}
+
+/** importLots records every lot, or none when any is rejected. */
+export async function importLots(lots: LotInput[]): Promise<Lot[]> {
+  const { data, error, response } = await importLotsRequest({ body: { lots } });
+  if (!data) throw failure(error, response);
+  return data.lots;
 }
 
 export async function removeLot(id: number): Promise<void> {

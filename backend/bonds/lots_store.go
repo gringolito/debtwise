@@ -33,14 +33,7 @@ func (s *Store) Lots(ctx context.Context) ([]Lot, error) {
 
 // AddLot records l and returns it with its ID.
 func (s *Store) AddLot(ctx context.Context, l Lot) (Lot, error) {
-	id, err := db.New(s.conn).InsertLot(ctx, db.InsertLotParams{
-		BondType:     string(l.Bond.Type),
-		Maturity:     l.Bond.Maturity.Format(dateLayout),
-		PurchaseDate: l.PurchaseDate.Format(dateLayout),
-		Rate:         l.Rate.String(),
-		UnitPrice:    l.UnitPrice.String(),
-		Quantity:     l.Quantity.String(),
-	})
+	id, err := db.New(s.conn).InsertLot(ctx, insertLotParams(l))
 	if err != nil {
 		return Lot{}, fmt.Errorf("bonds: add lot: %w", err)
 	}
@@ -48,6 +41,47 @@ func (s *Store) AddLot(ctx context.Context, l Lot) (Lot, error) {
 	l.ID = id
 
 	return l, nil
+}
+
+// AddLots records every lot of lots, or none when one fails, and returns them with their IDs in
+// the order given.
+func (s *Store) AddLots(ctx context.Context, lots []Lot) ([]Lot, error) {
+	tx, err := s.conn.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("bonds: add lots: begin: %w", err)
+	}
+
+	defer func() { _ = tx.Rollback() }()
+
+	queries := db.New(s.conn).WithTx(tx)
+	added := make([]Lot, 0, len(lots))
+
+	for i, l := range lots {
+		id, err := queries.InsertLot(ctx, insertLotParams(l))
+		if err != nil {
+			return nil, fmt.Errorf("bonds: add lot %d of %d: %w", i+1, len(lots), err)
+		}
+
+		l.ID = id
+		added = append(added, l)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("bonds: add lots: commit: %w", err)
+	}
+
+	return added, nil
+}
+
+func insertLotParams(l Lot) db.InsertLotParams {
+	return db.InsertLotParams{
+		BondType:     string(l.Bond.Type),
+		Maturity:     l.Bond.Maturity.Format(dateLayout),
+		PurchaseDate: l.PurchaseDate.Format(dateLayout),
+		Rate:         l.Rate.String(),
+		UnitPrice:    l.UnitPrice.String(),
+		Quantity:     l.Quantity.String(),
+	}
 }
 
 // UpdateLot replaces the lot with l's ID by l, or returns ErrLotNotFound.
