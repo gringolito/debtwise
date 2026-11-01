@@ -995,6 +995,10 @@
               "$ref": "#/components/schemas/LotValued"
             },
             "type": "array"
+          },
+          "market_value": {
+            "$ref": "#/components/schemas/MarketTotal",
+            "description": "The total Market Value of the lots that have one. Absent when none has."
           }
         },
         "required": [
@@ -1128,6 +1132,24 @@
           "indexes",
           "bonds",
           "focus"
+        ],
+        "type": "object"
+      },
+      "MarketTotal": {
+        "additionalProperties": false,
+        "properties": {
+          "gross": {
+            "description": "The total before IOF, income tax and the custody fee, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "net": {
+            "description": "The total after IOF, income tax and the custody fee, in reais, as a decimal string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "gross",
+          "net"
         ],
         "type": "object"
       },

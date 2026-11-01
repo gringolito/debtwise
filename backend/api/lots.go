@@ -11,6 +11,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/gringolito/debtwise/backend/bonds"
+	"github.com/gringolito/debtwise/backend/decimal"
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/mortgage"
 )
@@ -84,7 +85,13 @@ type lotValued struct {
 }
 
 type lotList struct {
-	Lots []lotValued `json:"lots" nullable:"false" doc:"Every lot recorded, by purchase date, each valued on today."`
+	Lots        []lotValued  `json:"lots" nullable:"false" doc:"Every lot recorded, by purchase date, each valued on today."`
+	MarketValue *marketTotal `json:"market_value,omitempty" doc:"The total Market Value of the lots that have one. Absent when none has."`
+}
+
+type marketTotal struct {
+	Gross string `json:"gross" doc:"The total before IOF, income tax and the custody fee, in reais, as a decimal string."`
+	Net   string `json:"net" doc:"The total after IOF, income tax and the custody fee, in reais, as a decimal string."`
 }
 
 const (
@@ -103,12 +110,12 @@ func registerLots(humaAPI huma.API, lots Lots, quotes Quotes, store IndexStore, 
 		Description: "Lists the lots recorded, each with its Accrual, Market and Maturity Values and its coupons, gross and net of IOF, income tax and the custody fee, valued on today.",
 		Tags:        []string{lotsTag},
 	}, func(ctx context.Context, _ *struct{}) (*struct{ Body lotList }, error) {
-		valued, err := valuedLots(ctx, lots, quotes, store, dateOf(now()))
+		valued, total, err := valuedLots(ctx, lots, quotes, store, dateOf(now()))
 		if err != nil {
 			return nil, err
 		}
 
-		return &struct{ Body lotList }{Body: lotList{Lots: valued}}, nil
+		return &struct{ Body lotList }{Body: lotList{Lots: valued, MarketValue: total}}, nil
 	})
 
 	register(humaAPI, huma.Operation{
@@ -179,21 +186,22 @@ func registerLots(humaAPI huma.API, lots Lots, quotes Quotes, store IndexStore, 
 	})
 }
 
-// valuedLots values every recorded lot on the date on.
-func valuedLots(ctx context.Context, lots Lots, quotes Quotes, store IndexStore, on time.Time) ([]lotValued, error) {
+// valuedLots values every recorded lot on the date on, and totals the Market Value of the lots that
+// have one; the total is nil when none has.
+func valuedLots(ctx context.Context, lots Lots, quotes Quotes, store IndexStore, on time.Time) ([]lotValued, *marketTotal, error) {
 	recorded, err := lots.Lots(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	taxes, err := lots.Taxes(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	stored, err := quotes.Quotes(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sells := make(map[bonds.Bond]bonds.Price, len(stored))
@@ -205,11 +213,16 @@ func valuedLots(ctx context.Context, lots Lots, quotes Quotes, store IndexStore,
 
 	if slices.ContainsFunc(recorded, func(l bonds.Lot) bool { return readsIPCA(l.Bond.Type) }) {
 		if ipca, err = ipcaOf(ctx, store); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	valued := make([]lotValued, 0, len(recorded))
+
+	var (
+		gross, net decimal.Decimal
+		hasMarket  bool
+	)
 
 	for _, l := range recorded {
 		var sell *bonds.Price
@@ -223,13 +236,22 @@ func valuedLots(ctx context.Context, lots Lots, quotes Quotes, store IndexStore,
 		case errors.Is(err, bonds.ErrMissingIPCANumber):
 			valued = append(valued, newLotValued(l, nil, missingIPCA))
 		case err != nil:
-			return nil, fmt.Errorf("value lot %d: %w", l.ID, err)
+			return nil, nil, fmt.Errorf("value lot %d: %w", l.ID, err)
 		default:
 			valued = append(valued, newLotValued(l, new(newLotValues(v)), ""))
+
+			if v.Market != nil {
+				gross, net = gross.Add(v.Market.Gross), net.Add(v.Market.Net)
+				hasMarket = true
+			}
 		}
 	}
 
-	return valued, nil
+	if !hasMarket {
+		return valued, nil, nil
+	}
+
+	return valued, &marketTotal{Gross: gross.String(), Net: net.String()}, nil
 }
 
 // readsIPCA reports whether the values of a lot of the bond type follow the IPCA.

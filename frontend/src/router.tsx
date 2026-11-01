@@ -8,9 +8,9 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { Bonds } from "@/pages/Bonds";
+import { Dashboard } from "@/pages/Dashboard";
 import { Decision } from "@/pages/Decision";
 import { EarlySale } from "@/pages/EarlySale";
-import { Home } from "@/pages/Home";
 import { Indexes } from "@/pages/Indexes";
 import { Lots } from "@/pages/Lots";
 import { Mortgage } from "@/pages/Mortgage";
@@ -53,7 +53,7 @@ const rootRoute = createRootRoute({
   notFoundComponent: () => <p>Página não encontrada.</p>,
 });
 
-const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: Home });
+const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: Dashboard });
 const indexesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/indices",

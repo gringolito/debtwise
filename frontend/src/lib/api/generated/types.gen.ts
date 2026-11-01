@@ -569,6 +569,10 @@ export type LotList = {
      * Every lot recorded, by purchase date, each valued on today.
      */
     lots: Array<LotValued>;
+    /**
+     * The total Market Value of the lots that have one. Absent when none has.
+     */
+    market_value?: MarketTotal;
 };
 
 export type LotValued = {
@@ -650,6 +654,17 @@ export type MarketDataStatus = {
      * Whether a refresh is in progress.
      */
     refreshing: boolean;
+};
+
+export type MarketTotal = {
+    /**
+     * The total before IOF, income tax and the custody fee, in reais, as a decimal string.
+     */
+    gross: string;
+    /**
+     * The total after IOF, income tax and the custody fee, in reais, as a decimal string.
+     */
+    net: string;
 };
 
 export type MonthlyRate = {
