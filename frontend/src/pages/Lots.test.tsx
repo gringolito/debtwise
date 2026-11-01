@@ -417,6 +417,7 @@ describe("importing lots from a CSV file", () => {
       { location: "body.lots[4].rate", message: "expected string to match pattern" },
       { location: "body.lots[5].type", message: 'expected value to be one of "ltn, ntn_f"' },
       { location: "body.lots[5].rate", message: "expected string to match pattern" },
+      { location: "body.lots[6].type", message: 'expected value to be one of "ltn, ntn_f"' },
     ]);
     renderAt("/lotes");
 
@@ -429,6 +430,7 @@ describe("importing lots from a CSV file", () => {
         "Tesouro Prefixado 2029;10/12/2026;12,76;771,26;10",
         "Tesouro Prefixado 2029;02/01/2026;127,6;771,26;10",
         'Tesouro Prefixado 2029;02/01/2026;12,76;771,26;1"0"',
+        'Tesouro Prefixado 2029;02/01/2026;12,76;771,26;"10',
       ].join("\n"),
     );
 
@@ -443,6 +445,7 @@ describe("importing lots from a CSV file", () => {
       "Linha 5: Informe a data da compra (dd/mm/aaaa), que não pode ser futura.",
       "Linha 6: Informe uma taxa de 0% a menos de 100% ao ano.",
       "Linha 7: Aspas sem par: a linha não pode ser lida.",
+      "Linha 8: Aspas sem par: a linha não pode ser lida.",
     ]);
     expect(requests.find((r) => r.method === "POST")?.body).toMatchObject({
       lots: [
@@ -451,6 +454,7 @@ describe("importing lots from a CSV file", () => {
         { type: "ntn_b_principal", maturity: "2035-05-15" },
         { type: "ltn", maturity: "2029-01-01", purchase_date: "2026-12-10" },
         { type: "ltn", maturity: "2029-01-01", rate: "1.276" },
+        { type: "", quantity: "" },
         { type: "", quantity: "" },
       ],
     });
