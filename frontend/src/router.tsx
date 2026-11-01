@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { Bonds } from "@/pages/Bonds";
 import { Decision } from "@/pages/Decision";
+import { EarlySale } from "@/pages/EarlySale";
 import { Home } from "@/pages/Home";
 import { Indexes } from "@/pages/Indexes";
 import { Lots } from "@/pages/Lots";
@@ -35,6 +36,9 @@ const rootRoute = createRootRoute({
           </Link>
           <Link to="/decisao" className="text-muted-foreground [&.active]:text-foreground">
             Decisão
+          </Link>
+          <Link to="/venda-antecipada" className="text-muted-foreground [&.active]:text-foreground">
+            Venda antecipada
           </Link>
           <Link to="/financiamento" className="text-muted-foreground [&.active]:text-foreground">
             Financiamento
@@ -74,6 +78,12 @@ const decisionRoute = createRoute({
   component: Decision,
 });
 
+const earlySaleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/venda-antecipada",
+  component: EarlySale,
+});
+
 const mortgageRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/financiamento",
@@ -92,6 +102,7 @@ const routeTree = rootRoute.addChildren([
   bondsRoute,
   lotsRoute,
   decisionRoute,
+  earlySaleRoute,
   mortgageRoute,
   mortgageFormRoute,
 ]);

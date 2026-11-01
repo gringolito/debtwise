@@ -144,6 +144,8 @@ func TestOpenAPIContractIsServed(t *testing.T) {
 	}{
 		"/bonds":                             {get: {OperationID: "list-bonds"}},
 		"/decisions":                         {"post": {OperationID: "decide"}},
+		"/early-sale-checks":                 {get: {OperationID: "check-early-sales"}},
+		"/early-sale-checks/{id}":            {get: {OperationID: "check-early-sale"}},
 		"/health":                            {get: {OperationID: "health"}},
 		"/indexes/{index}/history":           {get: {OperationID: "index-history"}},
 		"/indexes/projection-methods":        {get: {OperationID: "projection-methods"}},

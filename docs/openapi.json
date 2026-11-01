@@ -109,7 +109,7 @@
         "properties": {
           "coupon": {
             "$ref": "#/components/schemas/LotAmount",
-            "description": "The bond's coupon paid that day, gross and net of income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only in the invest scenario of an ntn_f or ntn_b."
+            "description": "The bond's coupon paid that day, gross and net of income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only for an ntn_f or ntn_b, in a decision's invest scenario and an early sale check's hold scenario."
           },
           "date": {
             "description": "The date of the flows.",
@@ -138,7 +138,11 @@
           },
           "redeemed": {
             "$ref": "#/components/schemas/LotAmount",
-            "description": "The bond's Maturity Value paid that day. Only on the horizon of the invest scenario."
+            "description": "The bond's Maturity Value paid that day. Only on the horizon of a decision's invest scenario and an early sale check's hold scenario."
+          },
+          "sold": {
+            "$ref": "#/components/schemas/LotAmount",
+            "description": "The Market Value the lot was sold for that day, gross and net of IOF, income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only on the first day of an early sale check's sell scenario."
           }
         },
         "required": [
@@ -394,6 +398,128 @@
         "required": [
           "amount",
           "effect"
+        ],
+        "type": "object"
+      },
+      "EarlySale": {
+        "additionalProperties": false,
+        "properties": {
+          "check": {
+            "$ref": "#/components/schemas/EarlySaleCheck",
+            "description": "The lot's early sale check."
+          },
+          "date": {
+            "description": "The date the lot is sold on: today.",
+            "format": "date",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What each prepayment changes.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "effect",
+          "check"
+        ],
+        "type": "object"
+      },
+      "EarlySaleCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "advantage": {
+            "description": "The hold scenario's net worth on the horizon, the bond's maturity, less the sell scenario's, in reais, as a decimal string. Positive favours holding, negative selling. Absent when the check is unavailable.",
+            "type": "string"
+          },
+          "hold": {
+            "$ref": "#/components/schemas/Scenario",
+            "description": "Holding the lot to maturity. Absent when the check is unavailable."
+          },
+          "lot": {
+            "$ref": "#/components/schemas/Lot",
+            "description": "The lot checked."
+          },
+          "market_data": {
+            "$ref": "#/components/schemas/VerdictMarketData",
+            "description": "How fresh the market data the check reads is."
+          },
+          "market_value": {
+            "$ref": "#/components/schemas/LotAmount",
+            "description": "The lot's Market Value today, gross and net of IOF, income tax and the custody fee: what selling it pays. Absent when the check is unavailable."
+          },
+          "projected_by": {
+            "description": "The projection method of each index a projected value of the check comes from. Empty when it reads published values only.",
+            "items": {
+              "$ref": "#/components/schemas/ProjectedBy"
+            },
+            "type": "array"
+          },
+          "sell": {
+            "$ref": "#/components/schemas/Scenario",
+            "description": "Selling the lot today and prepaying its Market Value. Absent when the check is unavailable."
+          },
+          "sell_price": {
+            "$ref": "#/components/schemas/BondPrice",
+            "description": "The rate and price Tesouro Direto buys the lot's bond back at. Absent when it quotes none."
+          },
+          "unavailable": {
+            "description": "Why the check has no scenarios. missing_ipca: the IPCA the lot's values follow is not available yet; no_market_value: Tesouro Direto quotes no sell price for the lot's bond; matured: the lot's bond has matured. Absent when it has them.",
+            "enum": [
+              "missing_ipca",
+              "no_market_value",
+              "matured"
+            ],
+            "type": "string"
+          },
+          "verdict": {
+            "description": "Which option the check favours. sell: selling the lot today and prepaying beats holding it; hold: holding it to maturity does at least as well. Absent when the check is unavailable.",
+            "enum": [
+              "sell",
+              "hold"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "lot",
+          "projected_by",
+          "market_data"
+        ],
+        "type": "object"
+      },
+      "EarlySaleCheckList": {
+        "additionalProperties": false,
+        "properties": {
+          "checks": {
+            "description": "An early sale check for every lot recorded, ranked by advantage, lowest first, so the lots selling favours most come first. The unavailable ones follow, by purchase date.",
+            "items": {
+              "$ref": "#/components/schemas/EarlySaleCheck"
+            },
+            "type": "array"
+          },
+          "date": {
+            "description": "The date each lot is sold on: today.",
+            "format": "date",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What each prepayment changes.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "effect",
+          "checks"
         ],
         "type": "object"
       },
@@ -1427,7 +1553,7 @@
         "properties": {
           "bond": {
             "$ref": "#/components/schemas/LotAmount",
-            "description": "The bond's Maturity Value, gross and net of IOF, income tax and the custody fee. Only in the invest scenario."
+            "description": "The bond's Maturity Value, gross and net of IOF, income tax and the custody fee. Only in a decision's invest scenario and an early sale check's hold scenario."
           },
           "cash": {
             "description": "The cash held at zero return on the horizon, in reais, as a decimal string.",
@@ -1847,6 +1973,115 @@
         "summary": "Compare prepaying an amount with buying a bond",
         "tags": [
           "Decisions"
+        ]
+      }
+    },
+    "/early-sale-checks": {
+      "get": {
+        "description": "Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.",
+        "operationId": "check-early-sales",
+        "parameters": [
+          {
+            "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "explode": false,
+            "in": "query",
+            "name": "effect",
+            "required": true,
+            "schema": {
+              "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+              "enum": [
+                "shorten_term",
+                "lower_installment"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EarlySaleCheckList"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Check every lot for an early sale",
+        "tags": [
+          "Early Sale Checks"
+        ]
+      }
+    },
+    "/early-sale-checks/{id}": {
+      "get": {
+        "description": "Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.",
+        "operationId": "check-early-sale",
+        "parameters": [
+          {
+            "description": "The ID the lot was recorded with.",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "The ID the lot was recorded with.",
+              "format": "int64",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "explode": false,
+            "in": "query",
+            "name": "effect",
+            "required": true,
+            "schema": {
+              "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+              "enum": [
+                "shorten_term",
+                "lower_installment"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EarlySale"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Check a lot for an early sale",
+        "tags": [
+          "Early Sale Checks"
         ]
       }
     },

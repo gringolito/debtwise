@@ -1,39 +1,16 @@
-import { useState } from "react";
 import { Section } from "@/components/mortgage/Section";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import type { Decision, Scenario, Verdict } from "@/lib/api";
+import type { Decision, Verdict } from "@/lib/api";
 import { bondKinds, bondRate } from "@/lib/bondKinds";
 import { advantageText, breakEvenText, noBreakEvenText, unavailableReasons } from "@/lib/decisions";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { projectedByText } from "@/lib/projectionMethods";
 import { MarketDataFreshness } from "@/pages/decision/MarketDataFreshness";
 import { ScenarioDetails } from "@/pages/decision/ScenarioDetails";
+import { Scenarios } from "@/pages/decision/Scenarios";
 
 function verdictTitle({ type, maturity }: Verdict): string {
   return `${bondKinds[type].name} ${maturity.slice(0, 4)}`;
-}
-
-function Scenarios({ invest, prepay }: { invest: Scenario; prepay: Scenario }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="flex flex-col items-start gap-4">
-        <CollapsibleTrigger asChild>
-          <Button variant="outline" size="sm">
-            {open ? "Ocultar cenários" : "Ver cenários"}
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="w-full">
-          <div className="flex flex-col gap-4">
-            <ScenarioDetails title="Investir" scenario={invest} />
-            <ScenarioDetails title="Amortizar" scenario={prepay} />
-          </div>
-        </CollapsibleContent>
-      </div>
-    </Collapsible>
-  );
 }
 
 function VerdictCard({ verdict }: { verdict: Verdict }) {
@@ -52,7 +29,9 @@ function VerdictCard({ verdict }: { verdict: Verdict }) {
           </Alert>
         )}
         {verdict.advantage && (
-          <p className="text-lg font-semibold">Vantagem: {advantageText(verdict.advantage)}</p>
+          <p className="text-lg font-semibold">
+            Vantagem: {advantageText(verdict.advantage, "investir", "amortizar")}
+          </p>
         )}
         {verdict.avoided_cost && (
           <p>Custo evitado ao amortizar: {formatMoney(verdict.avoided_cost)}</p>
@@ -68,7 +47,10 @@ function VerdictCard({ verdict }: { verdict: Verdict }) {
         </p>
         <MarketDataFreshness marketData={verdict.market_data} />
         {verdict.invest && verdict.prepay && (
-          <Scenarios invest={verdict.invest} prepay={verdict.prepay} />
+          <Scenarios>
+            <ScenarioDetails title="Investir" scenario={verdict.invest} />
+            <ScenarioDetails title="Amortizar" scenario={verdict.prepay} />
+          </Scenarios>
         )}
       </div>
     </Section>

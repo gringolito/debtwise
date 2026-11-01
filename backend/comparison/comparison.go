@@ -98,6 +98,8 @@ type CashFlow struct {
 	Installment *mortgage.Installment
 	// Invested is what the bond cost.
 	Invested decimal.Decimal
+	// Sold is the Market Value a lot was sold for that day, nil when none was.
+	Sold *bonds.Amount
 	// Coupon is the bond's coupon paid that day, nil when none is.
 	Coupon *bonds.Amount
 	// Prepaid is what the scenario's own prepayments that day took off the outstanding balance.
@@ -185,7 +187,7 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 	}
 
 	v.Invest = invest
-	v.Prepay = c.scenario(statusQuo, c.decision.Amount, zero, zero, nil, nil)
+	v.Prepay = c.scenario(statusQuo, c.decision.Amount, zero, zero, nil, nil, nil)
 	v.Advantage = v.Invest.NetWorth.Sub(v.Prepay.NetWorth)
 	v.AvoidedCost = statusQuo.Balance.Sub(v.Prepay.OutstandingBalance).Add(v.Prepay.Cash).Sub(c.decision.Amount)
 
@@ -222,7 +224,7 @@ func (c comparer) invest(statusQuo mortgage.Planned, rate, price, quantity decim
 
 	cost := price.Mul(quantity).RoundCents()
 
-	return c.scenario(statusQuo, zero, cost, c.decision.Amount.Sub(cost), valuation.Coupons, &valuation.Maturity), valuation, nil
+	return c.scenario(statusQuo, zero, cost, c.decision.Amount.Sub(cost), nil, valuation.Coupons, &valuation.Maturity), valuation, nil
 }
 
 // unavailable returns v marked as missing the IPCA when err says so, and err otherwise.
@@ -271,10 +273,11 @@ func (c comparer) plan(prepaid decimal.Decimal, prepayments []mortgage.Prepaymen
 }
 
 // scenario follows the decision's amount prepaid, invested in the bond, or held as cash on the
-// decision's date. Each net coupon the bond pays is prepaid on its date. Each month it pays what
-// the status quo would, prepaying what its own installment leaves of it, and holding what nothing
-// is owed for. The bond is redeemed on the horizon.
-func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash decimal.Decimal, coupons []bonds.CouponPayment, redeemed *bonds.Amount) Scenario {
+// decision's date, where sold is the Market Value of a lot sold for it. Each net coupon the bond
+// pays is prepaid on its date. Each month it pays what the status quo would, prepaying what its own
+// installment leaves of it, and holding what nothing is owed for. The bond is redeemed on the
+// horizon.
+func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash decimal.Decimal, sold *bonds.Amount, coupons []bonds.CouponPayment, redeemed *bonds.Amount) Scenario {
 	outflow := make(map[int]decimal.Decimal)
 
 	for _, i := range statusQuo.Installments {
@@ -313,7 +316,7 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 	}
 
 	start := on(c.decision.Date)
-	start.Invested, start.Prepaid, start.OutstandingBalance = invested, planned.Initial, planned.AtStart
+	start.Invested, start.Sold, start.Prepaid, start.OutstandingBalance = invested, sold, planned.Initial, planned.AtStart
 	hold(start, cash.Add(prepaid.Sub(planned.Initial)))
 
 	// A coupon on a due date is prepaid before that day's top-up, so the installment's balance is
