@@ -16,6 +16,11 @@ export const bondTypeOptions = (Object.entries(bondKinds) as [BondType, { name: 
   ([value, { name }]) => ({ value, label: name }),
 );
 
+/** bondLabel names a bond the way Tesouro Direto does: "Tesouro IPCA+ 2035". */
+export function bondLabel({ type, maturity }: Pick<BondQuote, "type" | "maturity">): string {
+  return `${bondKinds[type].name} ${maturity.slice(0, 4)}`;
+}
+
 /** bondRate writes a yearly rate the way Tesouro does: IPCA+ ones as a real rate over IPCA. */
 export function bondRate(type: BondType, rate: string): string {
   return bondKinds[type].ipcaLinked ? `IPCA + ${formatRate(rate)}` : formatRate(rate);

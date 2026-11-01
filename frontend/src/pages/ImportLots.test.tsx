@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { BondQuote, LotImport } from "@/lib/api";
+import type { BondQuote, LotImport, LotValued } from "@/lib/api";
 import { rowTexts } from "@/test/dom";
 import { renderAt } from "@/test/renderAt";
 import { problem, stubRoutes } from "@/test/stubServer";
@@ -15,6 +15,7 @@ const catalogue: BondQuote[] = (
     ["ntn_f", "2031-01-01"],
     ["ntn_b_principal", "2035-05-15"],
     ["ntn_b_principal", "2045-05-15"],
+    ["ntn_b", "2035-05-15"],
     ["ntn_b", "2037-05-15"],
   ] as const
 ).map(([type, maturity]) => ({
@@ -25,17 +26,18 @@ const catalogue: BondQuote[] = (
 }));
 
 function stubImport(rejections: { location: string; message: string }[] = []) {
+  let lots: LotValued[] = [];
   return stubRoutes({
     "GET /api/bonds": () => Response.json({ bonds: catalogue }),
+    "GET /api/lots": () => Response.json({ lots }),
     "POST /api/lots/import": (req) => {
       if (rejections.length > 0) {
         return problem(422, "Unprocessable Entity", "validation failed", rejections);
       }
       const body = req.body as LotImport;
-      return Response.json(
-        { lots: body.lots.map((l, i) => ({ id: i + 1, ...l })) },
-        { status: 201 },
-      );
+      const added = body.lots.map((l, i) => ({ id: i + 1, ...l }));
+      lots = added.map((l) => ({ ...l, values_unavailable: "missing_ipca" }));
+      return Response.json({ lots: added }, { status: 201 });
     },
   });
 }
@@ -73,6 +75,7 @@ describe("importing lots from a CSV file", () => {
         'Tesouro Prefixado 2029,02/01/2026,"12,76%","R$ 771,26",10',
         'Tesouro Prefixado com Juros Semestrais 2031,20/10/2026,"13,52","912,345678","1,25"',
         'Tesouro Prefixado 2029,15/06/2026,"13,1",780,3',
+        "",
         'Tesouro IPCA+ 2035,10/03/2026,"6,84%","R$ 2.256,93","0,5"',
         '"Tesouro IPCA+ com Juros Semestrais 2037",15/04/2026,"6,7","4.629,32",2',
       ].join("\r\n"),
@@ -85,18 +88,45 @@ describe("importing lots from a CSV file", () => {
 
       const preview = await chooseFile(contents);
 
-      expect(rowTexts(preview).map((row) => row.slice(0, 4))).toEqual([
-        ["Linha", "No arquivo", "Título", "Data da compra"],
-        ["2", "Tesouro Prefixado 2029", "Tesouro Prefixado 2029", "02/01/2026"],
+      expect(rowTexts(preview)).toEqual([
+        ["Linha", "No arquivo", "Título", "Data da compra", "Taxa", "Preço unitário", "Quantidade"],
+        [
+          "2",
+          "Tesouro Prefixado 2029",
+          "Tesouro Prefixado 2029",
+          "02/01/2026",
+          "12,76%",
+          "R$ 771,26",
+          "10",
+        ],
         [
           "3",
           "Tesouro Prefixado com Juros Semestrais 2031",
           "Tesouro Prefixado com Juros Semestrais 2031",
           "20/10/2026",
+          "13,52",
+          "912,345678",
+          "1,25",
         ],
-        ["4", "Tesouro Prefixado 2029", "Tesouro Prefixado 2029", "15/06/2026"],
-        expect.arrayContaining(["Tesouro IPCA+ 2035", "10/03/2026"]),
-        expect.arrayContaining(["Tesouro IPCA+ com Juros Semestrais 2037", "15/04/2026"]),
+        ["4", "Tesouro Prefixado 2029", "Tesouro Prefixado 2029", "15/06/2026", "13,1", "780", "3"],
+        [
+          "6",
+          "Tesouro IPCA+ 2035",
+          "Tesouro IPCA+ 2035",
+          "10/03/2026",
+          "6,84%",
+          "R$ 2.256,93",
+          "0,5",
+        ],
+        [
+          "7",
+          "Tesouro IPCA+ com Juros Semestrais 2037",
+          "Tesouro IPCA+ com Juros Semestrais 2037",
+          "15/04/2026",
+          "6,7",
+          "4.629,32",
+          "2",
+        ],
       ]);
       expect(posted(requests)).toEqual([]);
 
@@ -109,6 +139,10 @@ describe("importing lots from a CSV file", () => {
         "/lotes",
       );
       expect(screen.queryByRole("table", { name: "Lotes do arquivo" })).toBeNull();
+      fireEvent.click(within(status).getByRole("link", { name: "Ver lotes" }));
+      expect(
+        await screen.findByRole("region", { name: "Tesouro IPCA+ 2035 (compra em 10/03/2026)" }),
+      ).toBeInTheDocument();
       expect(posted(requests)).toEqual([
         {
           lots: [
@@ -158,8 +192,8 @@ describe("importing lots from a CSV file", () => {
     },
   );
 
-  it("suggests the closest bond for a name the catalogue lacks and imports the one the owner picks", async () => {
-    const requests = stubImport();
+  it("suggests the closest bond of the same year for a name the catalogue lacks", async () => {
+    stubImport();
     renderAt("/lotes/importar");
 
     await chooseFile(
@@ -167,22 +201,34 @@ describe("importing lots from a CSV file", () => {
         "Título;Data da compra;Taxa;Preço unitário;Quantidade",
         "tesouro ipca 2035;10/03/2026;6,84;2.256,93;0,5",
         "NTN-B Principal 2045;10/03/2026;6,9;1.100,00;1",
+        "NTN-B 2035;15/04/2026;6,7;4.629,32;2",
         "Tesouro Prefixado Juros Semestrais 2031;20/10/2026;13,52;912,345678;1,25",
+        "Tesouro Préfixdo 2029;02/01/2026;12,76;771,26;10",
         "Tesouro Selic 2029;02/01/2026;0,1;15.000,00;1",
         "Tesouro Prefixado 2028;02/01/2026;12,76;771,26;10",
         "Tesouro Educa+ 2035;02/01/2026;6,1;3.000,00;1",
+        "NTN-B 2031;02/01/2026;6,1;3.000,00;1",
+        "  tesouro prefixado 2029 ;02/01/2026;12,76;771,26;10",
       ].join("\n"),
     );
 
+    expect(
+      screen.getByText(
+        "9 linhas não correspondem exatamente a um título do catálogo. Confira o título sugerido ou escolha outro.",
+      ),
+    ).toBeInTheDocument();
     const bondOf = (line: number) => screen.getByLabelText(`Título da linha ${line}`);
     expect(bondOf(2)).toHaveDisplayValue("Tesouro IPCA+ 2035");
     expect(bondOf(3)).toHaveDisplayValue("Tesouro IPCA+ 2045");
-    expect(bondOf(4)).toHaveDisplayValue("Tesouro Prefixado com Juros Semestrais 2031");
-    expect(bondOf(5)).toHaveDisplayValue("Escolha um título");
-    expect(bondOf(6)).toHaveDisplayValue("Escolha um título");
-    expect(bondOf(7)).toHaveDisplayValue("Escolha um título");
+    expect(bondOf(4)).toHaveDisplayValue("Tesouro IPCA+ com Juros Semestrais 2035");
+    expect(bondOf(5)).toHaveDisplayValue("Tesouro Prefixado com Juros Semestrais 2031");
+    expect(bondOf(6)).toHaveDisplayValue("Tesouro Prefixado 2029");
+    for (const unmatched of [7, 8, 9, 10]) {
+      expect(bondOf(unmatched)).toHaveDisplayValue("Escolha um título");
+    }
+    expect(screen.queryByLabelText("Título da linha 11")).toBeNull();
     expect(
-      within(bondOf(5))
+      within(bondOf(7))
         .getAllByRole("option")
         .map((option) => option.textContent),
     ).toEqual([
@@ -191,25 +237,35 @@ describe("importing lots from a CSV file", () => {
       "Tesouro Prefixado com Juros Semestrais 2031",
       "Tesouro IPCA+ 2035",
       "Tesouro IPCA+ 2045",
+      "Tesouro IPCA+ com Juros Semestrais 2035",
       "Tesouro IPCA+ com Juros Semestrais 2037",
     ]);
+  });
 
-    fireEvent.change(bondOf(3), { target: { value: "ntn_b_principal 2035-05-15" } });
-    fireEvent.change(bondOf(5), { target: { value: "ltn 2029-01-01" } });
-    fireEvent.change(bondOf(6), { target: { value: "ltn 2029-01-01" } });
-    fireEvent.change(bondOf(7), { target: { value: "ntn_b_principal 2035-05-15" } });
-    fireEvent.click(screen.getByRole("button", { name: "Importar 6 lotes" }));
+  it("imports the bond the owner picks over the one suggested", async () => {
+    const requests = stubImport();
+    renderAt("/lotes/importar");
 
-    expect(await screen.findByRole("status")).toHaveTextContent("6 lotes importados.");
+    await chooseFile(
+      [
+        "Título;Data da compra;Taxa;Preço unitário;Quantidade",
+        "tesouro ipca 2035;10/03/2026;6,84;2.256,93;0,5",
+        "NTN-B Principal 2045;10/03/2026;6,9;1.100,00;1",
+        "Tesouro Selic 2029;02/01/2026;0,1;15.000,00;1",
+      ].join("\n"),
+    );
+    const bondOf = (line: number) => screen.getByLabelText(`Título da linha ${line}`);
+    fireEvent.change(bondOf(3), { target: { value: "ntn_b 2037-05-15" } });
+    fireEvent.change(bondOf(4), { target: { value: "ltn 2029-01-01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Importar 3 lotes" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("3 lotes importados.");
     expect(
       posted(requests).flatMap((body) => (body as LotImport).lots.map((l) => [l.type, l.maturity])),
     ).toEqual([
       ["ntn_b_principal", "2035-05-15"],
-      ["ntn_b_principal", "2035-05-15"],
-      ["ntn_f", "2031-01-01"],
+      ["ntn_b", "2037-05-15"],
       ["ltn", "2029-01-01"],
-      ["ltn", "2029-01-01"],
-      ["ntn_b_principal", "2035-05-15"],
     ]);
   });
 
@@ -226,7 +282,7 @@ describe("importing lots from a CSV file", () => {
     ]);
     renderAt("/lotes/importar");
 
-    await chooseFile(
+    const preview = await chooseFile(
       [
         "Título;Data da compra;Taxa;Preço unitário;Quantidade",
         "Tesouro Selic 2029;02/01/2026;0,1;15.000,00;1",
@@ -238,6 +294,10 @@ describe("importing lots from a CSV file", () => {
         'Tesouro Prefixado 2029;02/01/2026;12,76;771,26;"10',
       ].join("\n"),
     );
+    expect(rowTexts(preview).slice(-2)).toEqual([
+      ["7", "Aspas sem par: a linha não pode ser lida."],
+      ["8", "Aspas sem par: a linha não pode ser lida."],
+    ]);
     fireEvent.click(screen.getByRole("button", { name: "Importar 7 lotes" }));
 
     const invalidRows = await screen.findByRole("list", { name: "Linhas inválidas" });
@@ -268,5 +328,14 @@ describe("importing lots from a CSV file", () => {
     ]);
     expect(screen.queryByRole("status")).toBeNull();
     expect(screen.getByRole("table", { name: "Lotes do arquivo" })).toBeInTheDocument();
+
+    await chooseFile(
+      [
+        "Título;Data da compra;Taxa;Preço unitário;Quantidade",
+        "Tesouro Prefixado 2029;02/01/2026;12;771;1",
+      ].join("\n"),
+    );
+    expect(await screen.findByRole("button", { name: "Importar 1 lote" })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Linhas inválidas" })).toBeNull();
   });
 });

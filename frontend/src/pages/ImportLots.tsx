@@ -1,58 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { ImportPreview, type PreviewRow } from "@/components/lots/ImportPreview";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { type BondQuote, bondsKey, fetchBonds } from "@/lib/api";
+import { matchBond } from "@/lib/bondMatch";
 import { useImportLots } from "@/lib/lotQueries";
-import {
-  bondLabel,
-  type CsvRow,
-  type ImportedRow,
-  importErrors,
-  importedRow,
-  matchBond,
-  problemMessages,
-  readLotsCsv,
-} from "@/lib/lotsCsv";
-
-/** A row of the preview, with the catalogue bond the owner keeps for it, if any. */
-interface PreviewRow {
-  row: CsvRow;
-  exact: boolean;
-  bond: BondQuote | null;
-}
-
-/** bondKey tells the bonds of the catalogue apart as the value of an option. */
-const bondKey = ({ type, maturity }: BondQuote) => `${type} ${maturity}`;
+import { type ImportedRow, importErrors, importedRow, readLotsCsv } from "@/lib/lotsCsv";
 
 /**
- * ImportLots reads a lots file in the browser, previews its rows, lets the owner pick the bond of
- * each row whose name the catalogue lacks, suggesting the closest, and then records every lot of
- * the file, or none.
+ * ImportLots reads a lots file in the browser and previews its rows, letting the owner pick the
+ * bond of each row whose name the catalogue lacks, then records every lot of the file, or none.
  */
 export function ImportLots() {
   const fileId = useId();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const lastFile = useRef<File | null>(null);
   const catalogue = useQuery({ queryKey: bondsKey, queryFn: fetchBonds });
   const importLots = useImportLots();
   const [preview, setPreview] = useState<PreviewRow[] | null>(null);
   const [imported, setImported] = useState<ImportedRow[]>([]);
   const bonds = catalogue.data?.bonds ?? [];
   const invalidRows = importErrors(importLots.error, imported);
-  const inexact = preview?.filter((p) => !p.exact && !p.row.malformed).length ?? 0;
 
-  async function read(file: File | undefined) {
+  async function read(file: File | null) {
+    lastFile.current = file;
     importLots.reset();
     setImported([]);
     if (!file) {
@@ -60,11 +35,19 @@ export function ImportLots() {
       return;
     }
     const rows = readLotsCsv(await file.text());
-    setPreview(rows.map((row) => ({ row, ...matchBond(row.bond, bonds) })));
+    // A file picked while this one was being read replaces it.
+    if (lastFile.current !== file) return;
+    setPreview(
+      rows.map((row) => {
+        const match = matchBond(row.bond, bonds);
+        return "exact" in match
+          ? { row, exact: true, bond: match.exact }
+          : { row, exact: false, bond: match.suggested };
+      }),
+    );
   }
 
-  function pick(index: number, key: string) {
-    const bond = bonds.find((b) => bondKey(b) === key) ?? null;
+  function pick(index: number, bond: BondQuote | null) {
     setPreview((rows) => rows?.map((p, i) => (i === index ? { ...p, bond } : p)) ?? null);
   }
 
@@ -74,7 +57,12 @@ export function ImportLots() {
     setImported(rows);
     importLots.mutate(
       rows.map((r) => r.input),
-      { onSuccess: () => setPreview(null) },
+      {
+        onSuccess: () => {
+          setPreview(null);
+          if (fileInput.current) fileInput.current.value = "";
+        },
+      },
     );
   }
 
@@ -94,12 +82,13 @@ export function ImportLots() {
       <Field>
         <FieldLabel htmlFor={fileId}>Arquivo CSV</FieldLabel>
         <Input
+          ref={fileInput}
           id={fileId}
           type="file"
           accept=".csv,text/csv"
           disabled={!catalogue.data || importLots.isPending}
           aria-describedby={`${fileId}-hint`}
-          onChange={(event) => read(event.target.files?.[0])}
+          onChange={(event) => read(event.target.files?.[0] ?? null)}
         />
         <FieldDescription id={`${fileId}-hint`}>
           Uma linha de cabeçalho e, em cada linha, Título (como no Tesouro Direto, por exemplo
@@ -123,7 +112,10 @@ export function ImportLots() {
       {invalidRows.length > 0 && (
         <Alert variant="destructive">
           <AlertDescription>
-            <p>Nenhum lote foi importado. Corrija estas linhas e importe o arquivo de novo:</p>
+            <p>
+              Nenhum lote foi importado. Escolha o título das linhas abaixo ou corrija-as no arquivo
+              e importe de novo:
+            </p>
             <ul aria-label="Linhas inválidas" className="list-disc pl-5">
               {invalidRows.map(({ line, messages }) => (
                 <li key={line}>{`Linha ${line}: ${messages.join(" ")}`}</li>
@@ -135,65 +127,7 @@ export function ImportLots() {
       {preview?.length === 0 && <p>O arquivo não tem lotes.</p>}
       {preview && preview.length > 0 && (
         <>
-          {inexact > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {inexact === 1
-                ? "1 linha não corresponde exatamente a um título do catálogo."
-                : `${inexact} linhas não correspondem exatamente a um título do catálogo.`}{" "}
-              Confira o título sugerido ou escolha outro.
-            </p>
-          )}
-          <Table aria-label="Lotes do arquivo">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Linha</TableHead>
-                <TableHead>No arquivo</TableHead>
-                <TableHead>Título</TableHead>
-                <TableHead>Data da compra</TableHead>
-                <TableHead>Taxa</TableHead>
-                <TableHead>Preço unitário</TableHead>
-                <TableHead>Quantidade</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {preview.map((p, index) => (
-                <TableRow key={p.row.line}>
-                  <TableCell>{p.row.line}</TableCell>
-                  {p.row.malformed ? (
-                    <TableCell colSpan={6} className="text-destructive">
-                      {problemMessages.malformed}
-                    </TableCell>
-                  ) : (
-                    <>
-                      <TableCell>{p.row.bond.trim()}</TableCell>
-                      <TableCell>
-                        {p.exact && p.bond ? (
-                          bondLabel(p.bond)
-                        ) : (
-                          <NativeSelect
-                            aria-label={`Título da linha ${p.row.line}`}
-                            value={p.bond ? bondKey(p.bond) : ""}
-                            onChange={(event) => pick(index, event.target.value)}
-                          >
-                            <NativeSelectOption value="">Escolha um título</NativeSelectOption>
-                            {bonds.map((b) => (
-                              <NativeSelectOption key={bondKey(b)} value={bondKey(b)}>
-                                {bondLabel(b)}
-                              </NativeSelectOption>
-                            ))}
-                          </NativeSelect>
-                        )}
-                      </TableCell>
-                      <TableCell>{p.row.purchaseDate.trim()}</TableCell>
-                      <TableCell>{p.row.rate.trim()}</TableCell>
-                      <TableCell>{p.row.unitPrice.trim()}</TableCell>
-                      <TableCell>{p.row.quantity.trim()}</TableCell>
-                    </>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <ImportPreview rows={preview} catalogue={bonds} onPick={pick} />
           <div>
             <Button type="button" onClick={submit} disabled={importLots.isPending}>
               {preview.length === 1 ? "Importar 1 lote" : `Importar ${preview.length} lotes`}

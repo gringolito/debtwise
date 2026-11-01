@@ -1,5 +1,5 @@
 import { ApiError, type BondQuote, type LotInput } from "@/lib/api";
-import { type BondType, bondKinds } from "@/lib/bondKinds";
+import type { BondType } from "@/lib/bondKinds";
 import { inputToMoney, percentToFraction } from "@/lib/format";
 import { lotFieldMessages } from "@/lib/lots";
 
@@ -30,79 +30,6 @@ export function readLotsCsv(contents: string): CsvRow[] {
     const [bond = "", purchaseDate = "", rate = "", unitPrice = "", quantity = ""] = fields ?? [];
     return { line, malformed: !fields, bond, purchaseDate, rate, unitPrice, quantity };
   });
-}
-
-/** bondLabel names a bond of the catalogue the way Tesouro Direto does: "Tesouro IPCA+ 2035". */
-export function bondLabel({ type, maturity }: Pick<BondQuote, "type" | "maturity">): string {
-  return `${bondKinds[type].name} ${maturity.slice(0, 4)}`;
-}
-
-/** BondMatch is the catalogue bond a row's name names, or the closest one to suggest. */
-export interface BondMatch {
-  bond: BondQuote | null;
-  exact: boolean;
-}
-
-// Below this similarity, a kind of bond is too far from the name to suggest: "Educa+" is 0.4 from
-// "IPCA+", while "Prefixado Juros Semestrais" is 0.87 from "Prefixado com Juros Semestrais".
-const SUGGESTION_THRESHOLD = 0.75;
-
-/**
- * matchBond finds the catalogue bond named, case aside, by name. Failing that, it suggests the
- * bond maturing in the year name holds whose kind, by Tesouro Direto name or by code ("NTN-B
- * Principal"), is closest to the rest of name. It suggests none when name holds no year or when
- * even the closest kind is too far.
- */
-export function matchBond(name: string, catalogue: BondQuote[]): BondMatch {
-  const wanted = name.trim().toLowerCase();
-  const exact = catalogue.find((b) => bondLabel(b).toLowerCase() === wanted);
-  if (exact) return { bond: exact, exact: true };
-
-  const year = /\b(\d{4})\b/.exec(name)?.[1];
-  if (!year) return { bond: null, exact: false };
-  const kind = kindOf(name.replace(year, ""));
-  let best: { bond: BondQuote; score: number } | null = null;
-  for (const bond of catalogue) {
-    if (!bond.maturity.startsWith(year)) continue;
-    const { name: tesouroName, code } = bondKinds[bond.type];
-    const score = Math.max(similarity(kind, kindOf(tesouroName)), similarity(kind, kindOf(code)));
-    if (!best || score > best.score) best = { bond, score };
-  }
-  return {
-    bond: best && best.score >= SUGGESTION_THRESHOLD ? best.bond : null,
-    exact: false,
-  };
-}
-
-/**
- * kindOf reduces a bond's name to what tells its kind apart, without case, accents, punctuation
- * or the "Tesouro" every name starts with: "Tesouro IPCA+" is "ipca", "NTN-B" is "ntn b".
- */
-function kindOf(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\btesouro\b/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** similarity is 1 less the Levenshtein distance between a and b over the longer one's length. */
-function similarity(a: string, b: string): number {
-  const longest = Math.max(a.length, b.length);
-  if (longest === 0) return 1;
-  let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
-  for (let i = 1; i <= a.length; i++) {
-    const current = [i];
-    for (let j = 1; j <= b.length; j++) {
-      const substitution = previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1);
-      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, substitution);
-    }
-    previous = current;
-  }
-  return 1 - previous[b.length] / longest;
 }
 
 /**
