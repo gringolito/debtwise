@@ -28,7 +28,7 @@ export type BondQuote = {
      */
     buy?: BondPrice;
     /**
-     * When Tesouro Direto priced the quote, or, when its source does not say, when the quote was fetched from that source.
+     * When the quote was updated from its source.
      */
     fetched_at: string;
     /**
