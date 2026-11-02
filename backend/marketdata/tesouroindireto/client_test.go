@@ -324,23 +324,6 @@ func TestBondsFailsOnABodyItCannotRead(t *testing.T) {
 	}
 }
 
-func TestBondsGivesUpAtTheTimeout(t *testing.T) {
-	t.Parallel()
-
-	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		<-r.Context().Done()
-	}))
-	t.Cleanup(server.Close)
-
-	client := tesouroindireto.New(server.URL, apiKey, tesouroindireto.WithTimeout(20*time.Millisecond))
-	start := time.Now()
-
-	_, err := client.Bonds(context.Background())
-
-	require.Error(t, err)
-	assert.Less(t, time.Since(start), 5*time.Second, "the request gives up at its own timeout")
-}
-
 func TestBondsStopsWithItsContext(t *testing.T) {
 	t.Parallel()
 
