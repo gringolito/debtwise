@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import { Section } from "@/components/mortgage/Section";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ApiError } from "@/lib/api";
+import { ApiError, type ScheduledInstallment } from "@/lib/api";
 import { latestDue, today } from "@/lib/dashboard";
 import { formatDate, formatMoney } from "@/lib/format";
-import { useMortgageSchedule } from "@/lib/mortgageQueries";
+import { useMortgage, useMortgageSchedule } from "@/lib/mortgageQueries";
 import { Figure, Figures } from "@/pages/dashboard/Figures";
 
 function Position() {
@@ -28,17 +28,26 @@ function Position() {
   }
 
   const due = latestDue(data.installments, today());
+  const [first] = data.installments;
   const last = data.installments.at(-1);
   return (
     <Figures>
       <Figure name="Saldo devedor">
         {due
           ? `${formatMoney(due.outstanding_balance)} após a parcela ${due.number}, de ${formatDate(due.due_date)}`
-          : "Nenhuma parcela venceu ainda."}
+          : first && <BalanceBeforeFirst first={first} />}
       </Figure>
       {last && <Figure name="Quitação prevista">{formatDate(last.due_date)}</Figure>}
     </Figures>
   );
+}
+
+function BalanceBeforeFirst({ first }: { first: ScheduledInstallment }) {
+  const { data, error } = useMortgage();
+
+  if (error) return "Não foi possível carregar o valor financiado.";
+  if (!data) return null;
+  return `${formatMoney(data.original_amount)} antes da parcela ${first.number}, de ${formatDate(first.due_date)}`;
 }
 
 /** MortgagePosition is what is owed today and when the schedule pays it off. */
