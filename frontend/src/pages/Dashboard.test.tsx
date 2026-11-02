@@ -11,7 +11,7 @@ import type {
   Verdict,
 } from "@/lib/api";
 import { text } from "@/test/dom";
-import { schedule } from "@/test/mortgageFixtures";
+import { registeredMortgage, schedule } from "@/test/mortgageFixtures";
 import { renderAt } from "@/test/renderAt";
 import { problem, stubRoutes } from "@/test/stubServer";
 
@@ -147,14 +147,55 @@ describe("the mortgage on the dashboard", () => {
     ).toBeInTheDocument();
   });
 
-  it("says no installment is due yet before the first one", async () => {
+  it("shows the original amount as the balance before the first installment is due", async () => {
     vi.setSystemTime(new Date(2024, 0, 9, 23, 55));
-    stubDashboard({ "GET /api/mortgage/schedule": () => Response.json(schedule) });
+    stubDashboard({
+      "GET /api/mortgage": () => Response.json(registeredMortgage),
+      "GET /api/mortgage/schedule": () => Response.json(schedule),
+    });
     renderAt("/");
 
     const mortgage = await region("Financiamento");
-    expect(await within(mortgage).findByText("Nenhuma parcela venceu ainda.")).toBeInTheDocument();
+    await within(mortgage).findByText(/R\$ 60\.000,00/);
+    expect(
+      within(mortgage)
+        .getAllByRole("listitem")
+        .map((item) => text(item)),
+    ).toEqual([
+      "Saldo devedor R$ 60.000,00 antes da parcela 1, de 10/01/2024",
+      "Quitação prevista 10/06/2024",
+    ]);
+  });
+
+  it("says the original amount could not be loaded before the first installment is due", async () => {
+    vi.setSystemTime(new Date(2024, 0, 9, 23, 55));
+    stubDashboard({
+      "GET /api/mortgage": () => problem(500, "Internal Server Error", "boom"),
+      "GET /api/mortgage/schedule": () => Response.json(schedule),
+    });
+    renderAt("/");
+
+    const mortgage = await region("Financiamento");
+    expect(
+      await within(mortgage).findByText("Não foi possível carregar o valor financiado."),
+    ).toBeInTheDocument();
     expect(within(mortgage).getByText("10/06/2024")).toBeInTheDocument();
+  });
+
+  // A prepayment or statement before the first installment that settles the mortgage leaves no
+  // installment, so the original amount is no longer owed.
+  it("says no installment is due when the schedule has none", async () => {
+    stubDashboard({
+      "GET /api/mortgage": () => Response.json(registeredMortgage),
+      "GET /api/mortgage/schedule": () => Response.json({ installments: [] }),
+    });
+    renderAt("/");
+
+    const mortgage = await region("Financiamento");
+    const items = await within(mortgage).findAllByRole("listitem");
+    expect(items.map((item) => text(item))).toEqual([
+      "Saldo devedor Nenhuma parcela venceu ainda.",
+    ]);
   });
 
   it("links to registering a mortgage while none is", async () => {
