@@ -8,6 +8,8 @@ services:
       DB_PATH: /data/debtwise.db
       LOG_LEVEL: ${LOG_LEVEL:-info}
       RADAR_TOKEN: ${RADAR_TOKEN:-}
+      TESOURO_INDIRETO_URL: ${TESOURO_INDIRETO_URL:-}
+      TESOURO_INDIRETO_API_KEY: ${TESOURO_INDIRETO_API_KEY:-}
     volumes:
       - debtwise-data:/data
 

@@ -14,9 +14,15 @@ docker compose -f deploy/compose.yaml up -d
 All data lives in one SQLite file on the `debtwise-data` volume. The server applies pending
 database migrations when it starts. Set `DEBTWISE_PORT` to serve on another port.
 
-Current bond prices come from the [Radar Opções](https://radaropcoes.com) API. Generate a token
-on your Radar Opções profile and set `RADAR_TOKEN` to it before starting; without one, every
-refresh of the bond prices fails.
+Current bond prices come from one of two APIs. The server picks the one whose credential is set:
+
+- [Radar Opções](https://radaropcoes.com): generate a token on your Radar Opções profile and set
+  `RADAR_TOKEN` to it.
+- Tesouro Indireto: set `TESOURO_INDIRETO_URL` to the API's base URL and `TESOURO_INDIRETO_API_KEY`
+  to your API key. The URL has no default.
+
+Set exactly one of `RADAR_TOKEN` and `TESOURO_INDIRETO_API_KEY`. The server refuses to start with
+both or neither, or with only one of the two Tesouro Indireto settings.
 
 The compose file runs the `ghcr.io/gringolito/debtwise/server:edge` and
 `ghcr.io/gringolito/debtwise/web:edge` images. `mise run build:image:all` builds both from source
@@ -80,7 +86,7 @@ place, so reinstalling picks up the same data; set `persistence.keepOnUninstall=
 with the release. Set `ingress.enabled=true` and `ingress.hosts` to expose the service, or follow
 the port-forward printed after the install.
 
-Pass the Radar Opções token from a Secret through `server.extraEnv`:
+Pass the bond price credentials from a Secret through `server.extraEnv`. For Radar Opções:
 
 ```yaml
 server:
@@ -92,9 +98,24 @@ server:
           key: token
 ```
 
+For Tesouro Indireto:
+
+```yaml
+server:
+  extraEnv:
+    - name: TESOURO_INDIRETO_URL
+      value: https://tesouro-indireto.example.com
+    - name: TESOURO_INDIRETO_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: debtwise-tesouro-indireto
+          key: api-key
+```
+
 `values.yaml` lists the rest of the settings.
 
 ## Development
 
 `mise install` provisions the toolchain and `mise tasks` lists the tasks. `mise run local:up` runs
-the API and the frontend host-native, and `mise run check` runs the pull request checks.
+the API and the frontend host-native, and `mise run check` runs the pull request checks. mise loads
+`.env`, so set the bond price settings there; the server doesn't start without them.

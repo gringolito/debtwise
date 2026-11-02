@@ -73,7 +73,7 @@ func (f *fakeSource) MonthlyValues(ctx context.Context, _, variable int, from, t
 
 // sources wires the fakes, with a Focus that answers nothing. Tests of the expectations set Focus.
 func sources(indexes *fakeSource, quotes *fakeQuoteSource) marketdata.Sources {
-	return marketdata.Sources{SGS: indexes, SIDRA: indexes, Radar: quotes, Focus: &fakeFocus{}}
+	return marketdata.Sources{SGS: indexes, SIDRA: indexes, Quotes: marketdata.RadarQuotes{Client: quotes}, Focus: &fakeFocus{}}
 }
 
 func (f *fakeSource) requested() []request {
@@ -271,14 +271,20 @@ func (f *fakeQuoteSource) Bond(_ context.Context, name string) (radar.Bond, erro
 	}, nil
 }
 
-// fakeQuoteStore counts the failures it saves, or fails every call with err.
+// fakeQuoteStore records the quotes it saves and counts the failures, or fails every call with err.
 type fakeQuoteStore struct {
 	mu       sync.Mutex
+	saved    []bonds.Quote
 	failures int
 	err      error
 }
 
-func (f *fakeQuoteStore) SaveQuotes(context.Context, []bonds.Quote, time.Time) error {
+func (f *fakeQuoteStore) SaveQuotes(_ context.Context, quotes []bonds.Quote, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.saved = quotes
+
 	return f.err
 }
 
@@ -300,6 +306,13 @@ func (f *fakeQuoteStore) savedFailures() int {
 	defer f.mu.Unlock()
 
 	return f.failures
+}
+
+func (f *fakeQuoteStore) savedQuotes() []bonds.Quote {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	return slices.Clone(f.saved)
 }
 
 // runJob runs job until the test ends.

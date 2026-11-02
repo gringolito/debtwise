@@ -36,6 +36,8 @@ server:
     pullPolicy: Always
   # debug, info, warn or error.
   logLevel: info
+  # Extra environment variables. Set the bond price API here, as the README shows: RADAR_TOKEN, or
+  # TESOURO_INDIRETO_URL and TESOURO_INDIRETO_API_KEY. The server doesn't start without one of them.
   extraEnv: []
   resources: {}
 

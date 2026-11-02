@@ -23,6 +23,7 @@ import (
 	"github.com/gringolito/debtwise/backend/marketdata/radar"
 	"github.com/gringolito/debtwise/backend/marketdata/sgs"
 	"github.com/gringolito/debtwise/backend/marketdata/sidra"
+	"github.com/gringolito/debtwise/backend/marketdata/tesouroindireto"
 	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
@@ -66,10 +67,10 @@ func run(logger *slog.Logger, level *slog.LevelVar) error {
 	store := indexes.NewStore(conn)
 	bondStore := bonds.NewStore(conn)
 	sources := marketdata.Sources{
-		SGS:   sgs.New(),
-		SIDRA: sidra.New(),
-		Radar: radar.New(cfg.RadarToken),
-		Focus: focus.New(),
+		SGS:    sgs.New(),
+		SIDRA:  sidra.New(),
+		Quotes: quoteSource(cfg),
+		Focus:  focus.New(),
 	}
 	job := marketdata.New(sources, store, bondStore, marketdata.WithLogger(logger))
 
@@ -104,9 +105,20 @@ func run(logger *slog.Logger, level *slog.LevelVar) error {
 		IdleTimeout:       2 * time.Minute,
 	}
 
-	logger.InfoContext(ctx, "starting server", "port", cfg.Port)
+	logger.InfoContext(ctx, "starting server", "port", cfg.Port, "quote_provider", cfg.QuoteProvider)
 
 	return serve(ctx, srv)
+}
+
+// quoteSource is the source current bond prices load from, as cfg chooses it.
+func quoteSource(cfg config.Config) marketdata.QuoteSource {
+	if cfg.QuoteProvider == config.TesouroIndireto {
+		return marketdata.TesouroIndiretoQuotes{
+			Client: tesouroindireto.New(cfg.TesouroIndiretoURL, cfg.TesouroIndiretoAPIKey),
+		}
+	}
+
+	return marketdata.RadarQuotes{Client: radar.New(cfg.RadarToken)}
 }
 
 func serve(ctx context.Context, srv *http.Server) error {

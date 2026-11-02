@@ -38,10 +38,10 @@ type NumberSource interface {
 
 // Sources are the external sources the job reads.
 type Sources struct {
-	SGS   IndexSource
-	SIDRA NumberSource
-	Radar QuoteSource
-	Focus ExpectationSource
+	SGS    IndexSource
+	SIDRA  NumberSource
+	Quotes QuoteSource
+	Focus  ExpectationSource
 }
 
 // IndexStore is the subset of *indexes.Store the job reads and writes.
