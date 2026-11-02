@@ -167,6 +167,37 @@ describe("the mortgage on the dashboard", () => {
     ]);
   });
 
+  it("says the original amount could not be loaded before the first installment is due", async () => {
+    vi.setSystemTime(new Date(2024, 0, 9, 23, 55));
+    stubDashboard({
+      "GET /api/mortgage": () => problem(500, "Internal Server Error", "boom"),
+      "GET /api/mortgage/schedule": () => Response.json(schedule),
+    });
+    renderAt("/");
+
+    const mortgage = await region("Financiamento");
+    expect(
+      await within(mortgage).findByText("Não foi possível carregar o valor financiado."),
+    ).toBeInTheDocument();
+    expect(within(mortgage).getByText("10/06/2024")).toBeInTheDocument();
+  });
+
+  // A prepayment or statement before the first installment that settles the mortgage leaves no
+  // installment, so the original amount is no longer owed.
+  it("says no installment is due when the schedule has none", async () => {
+    stubDashboard({
+      "GET /api/mortgage": () => Response.json(registeredMortgage),
+      "GET /api/mortgage/schedule": () => Response.json({ installments: [] }),
+    });
+    renderAt("/");
+
+    const mortgage = await region("Financiamento");
+    const items = await within(mortgage).findAllByRole("listitem");
+    expect(items.map((item) => text(item))).toEqual([
+      "Saldo devedor Nenhuma parcela venceu ainda.",
+    ]);
+  });
+
   it("links to registering a mortgage while none is", async () => {
     stubDashboard();
     renderAt("/");

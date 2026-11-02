@@ -33,9 +33,13 @@ function Position() {
   return (
     <Figures>
       <Figure name="Saldo devedor">
-        {due
-          ? `${formatMoney(due.outstanding_balance)} após a parcela ${due.number}, de ${formatDate(due.due_date)}`
-          : first && <BalanceBeforeFirst first={first} />}
+        {due ? (
+          `${formatMoney(due.outstanding_balance)} após a parcela ${due.number}, de ${formatDate(due.due_date)}`
+        ) : first ? (
+          <BalanceBeforeFirst first={first} />
+        ) : (
+          "Nenhuma parcela venceu ainda."
+        )}
       </Figure>
       {last && <Figure name="Quitação prevista">{formatDate(last.due_date)}</Figure>}
     </Figures>
