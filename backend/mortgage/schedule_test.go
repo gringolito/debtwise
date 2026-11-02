@@ -226,14 +226,15 @@ func TestRateAndFeeChangesApplyFromTheirEffectiveDate(t *testing.T) {
 	}, schedule(terms))
 }
 
-// MIP is 0.03% of the outstanding balance until the age band changes on April 1, and 0.05% from
-// the 4th installment on. DFI is 0.012% of the 100,000.00 appraisal however low the balance gets.
+// MIP is 0.03% of the outstanding balance until the age band changes on April 10, the 4th
+// installment's due date, and 0.05% from that installment on. DFI is 0.012% of the 100,000.00
+// appraisal however low the balance gets.
 func TestMIPFollowsTheBalanceAndAgeBandWhileDFIFollowsTheAppraisal(t *testing.T) {
 	t.Parallel()
 
 	terms := sacTerms(t)
 	terms.MIPRates = []mortgage.MonthlyRate{
-		{EffectiveFrom: date(t, "2024-04-01"), Rate: dec(t, "0.0005")},
+		{EffectiveFrom: date(t, "2024-04-10"), Rate: dec(t, "0.0005")},
 		{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0.0003")},
 	}
 	terms.DFIRates = []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0.00012")}}
@@ -245,6 +246,27 @@ func TestMIPFollowsTheBalanceAndAgeBandWhileDFIFollowsTheAppraisal(t *testing.T)
 		{4, "2024-04-10", "300.00", "10000.00", "15.00", "12.00", "10.00", "10337.00", "20000.00"},
 		{5, "2024-05-10", "200.00", "10000.00", "10.00", "12.00", "10.00", "10232.00", "10000.00"},
 		{6, "2024-06-10", "100.00", "10000.00", "5.00", "12.00", "10.00", "10127.00", "0.00"},
+	}, schedule(terms))
+}
+
+// DFI is 0.01% of the 100,000.00 appraisal until it rises to 0.025% on April 10, the 4th
+// installment's due date, which already pays it.
+func TestDFIRateChangeAppliesFromItsEffectiveDate(t *testing.T) {
+	t.Parallel()
+
+	terms := sacTerms(t)
+	terms.DFIRates = []mortgage.MonthlyRate{
+		{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0.0001")},
+		{EffectiveFrom: date(t, "2024-04-10"), Rate: dec(t, "0.00025")},
+	}
+
+	assert.Equal(t, []row{
+		{1, "2024-01-10", "600.00", "10000.00", "0.00", "10.00", "10.00", "10620.00", "50000.00"},
+		{2, "2024-02-10", "500.00", "10000.00", "0.00", "10.00", "10.00", "10520.00", "40000.00"},
+		{3, "2024-03-10", "400.00", "10000.00", "0.00", "10.00", "10.00", "10420.00", "30000.00"},
+		{4, "2024-04-10", "300.00", "10000.00", "0.00", "25.00", "10.00", "10335.00", "20000.00"},
+		{5, "2024-05-10", "200.00", "10000.00", "0.00", "25.00", "10.00", "10235.00", "10000.00"},
+		{6, "2024-06-10", "100.00", "10000.00", "0.00", "25.00", "10.00", "10135.00", "0.00"},
 	}, schedule(terms))
 }
 
