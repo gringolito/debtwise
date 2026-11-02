@@ -28,7 +28,7 @@ export type BondQuote = {
      */
     buy?: BondPrice;
     /**
-     * When the quote was fetched from its source.
+     * When the quote was updated from its source.
      */
     fetched_at: string;
     /**

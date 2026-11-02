@@ -43,7 +43,7 @@
             "description": "The rate and price the bond is bought at. Absent when Tesouro Direto does not sell it."
           },
           "fetched_at": {
-            "description": "When the quote was fetched from its source.",
+            "description": "When the quote was updated from its source.",
             "format": "date-time",
             "type": "string"
           },

@@ -32,7 +32,7 @@ type bondQuote struct {
 	Maturity  string     `json:"maturity" format:"date" doc:"The date the bond matures."`
 	Buy       *bondPrice `json:"buy,omitempty" doc:"The rate and price the bond is bought at. Absent when Tesouro Direto does not sell it."`
 	Sell      bondPrice  `json:"sell" doc:"The rate and price the bond is sold back at."`
-	FetchedAt time.Time  `json:"fetched_at" doc:"When the quote was fetched from its source."`
+	FetchedAt time.Time  `json:"fetched_at" doc:"When the quote was updated from its source."`
 }
 
 type bondCatalogue struct {

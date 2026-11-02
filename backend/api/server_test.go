@@ -243,9 +243,9 @@ func onDay(day time.Time) serverOption {
 }
 
 // newServer serves the API over a migrated database, with the market-data refresh job running
-// against indexSource, for SGS and SIDRA, and quoteSource until the test ends. It returns once the
-// job's first refresh is over.
-func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteSource, opts ...serverOption) server {
+// against indexSource, for SGS and SIDRA, and quoteSource, for Radar, until the test ends. It
+// returns once the job's first refresh is over.
+func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.RadarClient, opts ...serverOption) server {
 	t.Helper()
 
 	config := serverConfig{focus: fakeFocus{}}
@@ -257,7 +257,9 @@ func newServer(t *testing.T, indexSource *fakeSGS, quoteSource marketdata.QuoteS
 	store := indexes.NewStore(conn)
 	quotes := bonds.NewStore(conn)
 	logger := slog.New(slog.DiscardHandler)
-	sources := marketdata.Sources{SGS: indexSource, SIDRA: indexSource, Radar: quoteSource, Focus: config.focus}
+	sources := marketdata.Sources{
+		SGS: indexSource, SIDRA: indexSource, Quotes: marketdata.RadarQuotes{Client: quoteSource}, Focus: config.focus,
+	}
 	job := marketdata.New(sources, store, quotes, marketdata.WithLogger(logger))
 
 	ctx, cancel := context.WithCancel(context.Background())

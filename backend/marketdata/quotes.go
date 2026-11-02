@@ -1,6 +1,7 @@
 package marketdata
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -9,13 +10,30 @@ import (
 
 	"github.com/gringolito/debtwise/backend/bonds"
 	"github.com/gringolito/debtwise/backend/decimal"
-	"github.com/gringolito/debtwise/backend/marketdata/radar"
 )
 
-// QuoteSource is the subset of *radar.Client the job reads.
+// SourceQuote is a bond's quote as a QuoteSource reports it, before the job checks it.
+type SourceQuote struct {
+	// Name is Tesouro Direto's name of the bond, such as "Tesouro Prefixado 2029".
+	Name     string
+	Maturity time.Time // calendar date of the maturity, midnight UTC
+	// BuyRate is the rate to buy the bond at, as a fraction, nil when the source quotes none.
+	BuyRate *decimal.Decimal
+	// BuyPrice is the unit price to buy the bond at, zero when the bond is not on offer.
+	BuyPrice decimal.Decimal
+	// SellRate is the rate Tesouro Direto buys the bond back at, as a fraction, nil when the
+	// source quotes none.
+	SellRate *decimal.Decimal
+	// SellPrice is the unit price Tesouro Direto buys the bond back at.
+	SellPrice decimal.Decimal
+	// PricedAt is when Tesouro Direto priced the bond, zero when the source does not say.
+	PricedAt time.Time
+}
+
+// QuoteSource is where the job reads the current bond quotes from.
 type QuoteSource interface {
-	Names(ctx context.Context) ([]string, error)
-	Bond(ctx context.Context, name string) (radar.Bond, error)
+	// Fetch returns the quotes of the bonds the source lists whose name wanted accepts.
+	Fetch(ctx context.Context, wanted func(name string) bool) ([]SourceQuote, error)
 }
 
 // QuoteStore is the subset of *bonds.Store the job reads and writes.
@@ -72,25 +90,20 @@ func (j *Job) refreshQuotes(ctx context.Context, now time.Time) error {
 }
 
 func (j *Job) fetchQuotes(ctx context.Context, now time.Time) ([]bonds.Quote, error) {
-	names, err := j.sources.Radar.Names(ctx)
+	sourced, err := j.sources.Quotes.Fetch(ctx, compared)
 	if err != nil {
 		return nil, err
 	}
 
-	var quotes []bonds.Quote
+	quotes := make([]bonds.Quote, 0, len(sourced))
 
-	for _, name := range names {
-		t, ok := bondType(name)
+	for _, s := range sourced {
+		t, ok := bondType(s.Name)
 		if !ok {
 			continue
 		}
 
-		b, err := j.sources.Radar.Bond(ctx, name)
-		if err != nil {
-			return nil, err
-		}
-
-		q, err := quote(t, b, now)
+		q, err := quote(t, s, now)
 		if err != nil {
 			return nil, err
 		}
@@ -99,36 +112,43 @@ func (j *Job) fetchQuotes(ctx context.Context, now time.Time) ([]bonds.Quote, er
 	}
 
 	if len(quotes) == 0 {
-		return nil, errors.New("radar lists no bond DebtWise compares")
+		return nil, errors.New("the quote source lists no bond DebtWise compares")
 	}
 
 	return quotes, nil
 }
 
-// quote is the quote of a bond of type t that b describes, fetched at now. Radar's investment side
-// is the buy side and its redemption side the sell side. A bond is on offer when its source quotes
-// a positive buy price, which then needs a buy rate.
-func quote(t bonds.Type, b radar.Bond, now time.Time) (bonds.Quote, error) {
+// compared reports whether DebtWise compares the bond Tesouro Direto names name.
+func compared(name string) bool {
+	_, ok := bondType(name)
+
+	return ok
+}
+
+// quote is the quote of a bond of type t that s describes. A bond is on offer when its source
+// quotes a positive buy price, which then needs a buy rate. The quote is timed by when Tesouro
+// Direto priced the bond, or by now when the source does not say.
+func quote(t bonds.Type, s SourceQuote, now time.Time) (bonds.Quote, error) {
 	var zero decimal.Decimal
-	if b.RedemptionRate == nil || b.RedemptionPrice.Cmp(zero) <= 0 {
-		return bonds.Quote{}, fmt.Errorf("%s quotes no sell price", b.Name)
+	if s.SellRate == nil || s.SellPrice.Cmp(zero) <= 0 {
+		return bonds.Quote{}, fmt.Errorf("%s quotes no sell price", s.Name)
 	}
 
 	q := bonds.Quote{
-		Bond:      bonds.Bond{Type: t, Maturity: b.Maturity},
-		Sell:      bonds.Price{Rate: *b.RedemptionRate, UnitPrice: b.RedemptionPrice},
-		FetchedAt: now,
+		Bond:      bonds.Bond{Type: t, Maturity: s.Maturity},
+		Sell:      bonds.Price{Rate: *s.SellRate, UnitPrice: s.SellPrice},
+		FetchedAt: cmp.Or(s.PricedAt, now),
 	}
 
-	if b.InvestmentPrice.Cmp(zero) <= 0 {
+	if s.BuyPrice.Cmp(zero) <= 0 {
 		return q, nil
 	}
 
-	if b.InvestmentRate == nil {
-		return bonds.Quote{}, fmt.Errorf("%s quotes a buy price but no buy rate", b.Name)
+	if s.BuyRate == nil {
+		return bonds.Quote{}, fmt.Errorf("%s quotes a buy price but no buy rate", s.Name)
 	}
 
-	q.Buy = &bonds.Price{Rate: *b.InvestmentRate, UnitPrice: b.InvestmentPrice}
+	q.Buy = &bonds.Price{Rate: *s.BuyRate, UnitPrice: s.BuyPrice}
 
 	return q, nil
 }
