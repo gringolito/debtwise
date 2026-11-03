@@ -55,6 +55,9 @@ type Planned struct {
 	Installments []PlannedInstallment
 	// Balance is the outstanding balance on Until.
 	Balance decimal.Decimal
+	// BalanceIndexValues are the index values behind the correction Balance includes for the
+	// installment due after Until, when it applied by Until, written as an installment's are.
+	BalanceIndexValues []IndexValue
 }
 
 // Plan replays the schedule of valid terms as Schedule does, with the plan's prepayments added to
@@ -106,6 +109,10 @@ func (t Terms) Plan(outlook indexes.Outlook, events Events, today time.Time, pla
 
 	p.apply(paid, p.until)
 	r.correctBy(paid, plan.Until)
+
+	if r.corrected.number > paid {
+		p.planned.BalanceIndexValues = r.corrected.values
+	}
 
 	p.planned.Initial = initial.Prepaid
 	p.planned.Prepayments = prepayments
