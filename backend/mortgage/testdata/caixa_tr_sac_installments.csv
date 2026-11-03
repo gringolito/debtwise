@@ -1,0 +1,9 @@
+# Caixa Econômica Federal, app records of a TR-indexed SAC mortgage signed 2024-11-18 ("Prestação"
+# tab), for the installments due from 2024-12-19 to 2025-05-19. Account and personal data left out.
+number,due_date,amortization,interest,insurance,fee,amount,outstanding_balance
+1,2024-12-19,1329.78,5213.91,190.86,25.00,6759.55,627819.34
+2,2025-01-19,1499.93,5040.28,190.82,25.00,6756.03,626971.67
+3,2025-02-19,1502.47,5036.76,190.91,25.00,6755.14,626531.49
+4,2025-03-19,1503.58,5028.44,190.81,25.00,6747.83,625491.97
+5,2025-04-19,1506.17,5025.02,190.90,25.00,6747.09,625062.82
+6,2025-05-19,1507.85,5018.53,190.90,25.00,6742.28,624251.92
