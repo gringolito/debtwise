@@ -182,17 +182,29 @@ export function firstChargeOf(values: FormValues, insurance: Insurance): FirstCh
   };
 }
 
-/** withFirstChargeRate fills the rate in force at the first installment with the one its charge gives. */
-export function withFirstChargeRate(values: FormValues, insurance: Insurance): FormValues {
-  const { rates } = insuranceFields[insurance];
-  const { row, rate } = firstChargeOf(values, insurance);
-  if (row === undefined || rate === undefined) return values;
+function withFirstChargeRate(current: FormValues, next: FormValues, insurance: Insurance) {
+  const { rates, charge } = insuranceFields[insurance];
+  const { row, rate } = firstChargeOf(next, insurance);
+  if (row === undefined) return next;
+  const typedOver = current[rates].find((r) => r.id === row.id && r.rate !== row.rate);
+  if (typedOver) return { ...next, [charge]: "" };
+  if (rate === undefined) return next;
   return {
-    ...values,
-    [rates]: values[rates].map((r) =>
+    ...next,
+    [rates]: next[rates].map((r) =>
       r.id === row.id ? { ...r, rate: fractionToPercent(rate) } : r,
     ),
   };
+}
+
+/**
+ * withFirstChargeRates applies a change to the form, from current to next, and fills each rate in
+ * force at the first installment with the one its charge gives, whatever moved: the charge, the
+ * amount it is charged on, or the dates that pick the row. A rate the owner types into that row
+ * drops the charge instead, which no longer gives it.
+ */
+export function withFirstChargeRates(current: FormValues, next: FormValues): FormValues {
+  return withFirstChargeRate(current, withFirstChargeRate(current, next, "MIP"), "DFI");
 }
 
 const monthlyTerms = (rows: MonthlyRateRow[]) =>

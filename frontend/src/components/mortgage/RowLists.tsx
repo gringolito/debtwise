@@ -163,36 +163,29 @@ export function MonthlyRateRows({ insurance, firstCharge, ...props }: MonthlyRat
       validityOf={`do ${insurance}`}
       blank={blankMonthlyRate}
     >
-      {(row, { n, invalid, update }) => {
-        const chargesFirst = row.id === firstCharge.rowId;
-        return (
-          <>
+      {(row, { n, invalid, update }) => (
+        <>
+          <TextField
+            label="Taxa (% a.m.)"
+            accessibleName={`Taxa do ${insurance} ${n} (% a.m.)`}
+            inputMode="decimal"
+            value={row.rate}
+            onChange={(rate) => update({ rate })}
+            invalid={invalid("rate")}
+          />
+          {row.id === firstCharge.rowId && (
             <TextField
-              label="Taxa (% a.m.)"
-              accessibleName={`Taxa do ${insurance} ${n} (% a.m.)`}
+              label="Valor na 1ª prestação (R$)"
+              accessibleName={`Valor do ${insurance} na primeira prestação (R$)`}
               inputMode="decimal"
-              value={row.rate}
-              onChange={(rate) => {
-                update({ rate });
-                // A rate typed over the derived one no longer charges the value next to it.
-                if (chargesFirst) firstCharge.onChange("");
-              }}
-              invalid={invalid("rate")}
+              value={firstCharge.value}
+              onChange={firstCharge.onChange}
+              invalid={firstCharge.invalid}
+              hint={firstCharge.hint}
             />
-            {chargesFirst && (
-              <TextField
-                label="Valor na 1ª prestação (R$)"
-                accessibleName={`Valor do ${insurance} na primeira prestação (R$)`}
-                inputMode="decimal"
-                value={firstCharge.value}
-                onChange={firstCharge.onChange}
-                invalid={firstCharge.invalid}
-                hint={firstCharge.hint}
-              />
-            )}
-          </>
-        );
-      }}
+          )}
+        </>
+      )}
     </RowList>
   );
 }

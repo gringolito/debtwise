@@ -841,22 +841,39 @@ describe("the rates of the insurances charged on the first installment", () => {
     ]);
   });
 
-  it("offers the value next to the row that a later first installment falls in", async () => {
-    stubMortgageApi({ mortgage: registeredMortgage });
+  it("moves the value and its rate to the row that a later first installment falls in", async () => {
+    const requests = stubMortgageApi({
+      mortgage: registeredMortgage,
+      onSave: () => registeredMortgage,
+    });
     renderAt("/financiamento/editar");
 
     await screen.findByRole("heading", { name: "Editar financiamento" });
+    fill("Valor do MIP na primeira prestação (R$)", "15,48");
     fill("Primeira prestação", "2024-04-10");
+
     expect(
       within(group("MIP 1")).queryByLabelText("Valor do MIP na primeira prestação (R$)"),
     ).not.toBeInTheDocument();
-    fireEvent.change(
-      within(group("MIP 2")).getByLabelText("Valor do MIP na primeira prestação (R$)"),
-      { target: { value: "25,80" } },
-    );
+    const value = within(group("MIP 2")).getByLabelText("Valor do MIP na primeira prestação (R$)");
+    expect(value).toHaveValue("15,48");
+    expect(screen.getByLabelText("Taxa do MIP 2 (% a.m.)")).toHaveValue("0,0258");
 
-    expect(screen.getByLabelText("Taxa do MIP 1 (% a.m.)")).toHaveValue("0,03");
+    fireEvent.change(value, { target: { value: "25,80" } });
+    expect(screen.getByLabelText("Taxa do MIP 1 (% a.m.)")).toHaveValue("0,0258");
     expect(screen.getByLabelText("Taxa do MIP 2 (% a.m.)")).toHaveValue("0,043");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await savedPage();
+    expect(putBodies(requests)).toEqual([
+      expect.objectContaining({
+        first_installment_date: "2024-04-10",
+        mip_rates: [
+          { effective_from: "2023-12-10", rate: "0.000258" },
+          { effective_from: "2024-04-01", rate: "0.00043" },
+        ],
+      }),
+    ]);
   });
 
   it.each([

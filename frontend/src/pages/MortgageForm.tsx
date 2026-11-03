@@ -23,7 +23,7 @@ import {
   invalidLocations,
   termsFromValues,
   valuesFromMortgage,
-  withFirstChargeRate,
+  withFirstChargeRates,
 } from "@/lib/mortgageForm";
 import { useMortgage, useSaveMortgage } from "@/lib/mortgageQueries";
 
@@ -52,13 +52,7 @@ function MortgageFormFields({ mortgage }: { mortgage: RegisteredMortgage | null 
   const isInvalid = (location: string) => invalid.has(location);
 
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) =>
-    setValues((current) => ({ ...current, [key]: value }));
-  // A value the insurance's rate is derived from gives the rate again whenever it changes.
-  const setDeriving = <K extends keyof FormValues>(
-    insurance: Insurance,
-    key: K,
-    value: FormValues[K],
-  ) => setValues((current) => withFirstChargeRate({ ...current, [key]: value }, insurance));
+    setValues((current) => withFirstChargeRates(current, { ...current, [key]: value }));
   // The API names rows by position, so once a row is added or removed its answer is out of date.
   const setRows = <L extends ListName>(list: L, rows: FormValues[L]) => {
     if (rows.length !== values[list].length) save.reset();
@@ -71,7 +65,7 @@ function MortgageFormFields({ mortgage }: { mortgage: RegisteredMortgage | null 
     return {
       rowId: row?.id,
       value: values[charge],
-      onChange: (value) => setDeriving(insurance, charge, value),
+      onChange: (value) => set(charge, value),
       invalid: !needsBase && values[charge].trim() !== "" && rate === undefined,
       hint: needsBase ? needsBaseHints[insurance] : undefined,
     };
@@ -109,7 +103,7 @@ function MortgageFormFields({ mortgage }: { mortgage: RegisteredMortgage | null 
           label="Valor financiado"
           inputMode="decimal"
           value={values.originalAmount}
-          onChange={(value) => setDeriving("MIP", "originalAmount", value)}
+          onChange={(value) => set("originalAmount", value)}
           invalid={isInvalid("original_amount")}
         />
         <TextField
@@ -145,7 +139,7 @@ function MortgageFormFields({ mortgage }: { mortgage: RegisteredMortgage | null 
           label="Valor de avaliação"
           inputMode="decimal"
           value={values.appraisalValue}
-          onChange={(value) => setDeriving("DFI", "appraisalValue", value)}
+          onChange={(value) => set("appraisalValue", value)}
           invalid={isInvalid("appraisal_value")}
         />
       </div>
