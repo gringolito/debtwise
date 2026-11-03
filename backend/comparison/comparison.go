@@ -171,7 +171,7 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 
 	v.UnitPrice = price
 	v.Quantity = c.quantity(price)
-	v.ProjectedBy = projectedBy(nil, priceBy)
+	v.ProjectedBy = projectedBy(mortgage.Planned{}, priceBy)
 
 	if v.Quantity.Cmp(smallestFraction) < 0 {
 		v.Unavailable = AmountTooSmall
@@ -196,7 +196,7 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 		methods = append(methods, coupon.ProjectedBy)
 	}
 
-	v.ProjectedBy = projectedBy(statusQuo.Installments, methods...)
+	v.ProjectedBy = projectedBy(statusQuo, methods...)
 
 	v.BreakEvenRate, v.NoBreakEven, err = c.breakEven(statusQuo, v.Prepay, point{rate: rate, quantity: v.Quantity, advantage: v.Advantage})
 	if err != nil {
@@ -366,11 +366,11 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 	return s
 }
 
-// projectedBy returns the projection methods of the index values that corrected the installments
-// up to the horizon or set their contract rates, and of methods, those of the bond's price and
-// payments, each index once, in the order of indexes.All. The status quo's installments are those
-// every scenario's balance is built on.
-func projectedBy(installments []mortgage.PlannedInstallment, methods ...[]indexes.ProjectionMethod) []indexes.ProjectionMethod {
+// projectedBy returns the projection methods of the index values that corrected the status quo's
+// balance up to the horizon or set its installments' contract rates, and of methods, those of the
+// bond's price and payments, each index once, in the order of indexes.All. The status quo's
+// balance is the one every scenario's is built on.
+func projectedBy(statusQuo mortgage.Planned, methods ...[]indexes.ProjectionMethod) []indexes.ProjectionMethod {
 	byIndex := make(map[indexes.Index]indexes.ProjectionMethod)
 
 	note := func(methods []indexes.ProjectionMethod) {
@@ -383,7 +383,7 @@ func projectedBy(installments []mortgage.PlannedInstallment, methods ...[]indexe
 		note(m)
 	}
 
-	for _, i := range installments {
+	for _, i := range statusQuo.Installments {
 		for _, v := range i.IndexValues {
 			note(v.Methods)
 		}
@@ -391,6 +391,10 @@ func projectedBy(installments []mortgage.PlannedInstallment, methods ...[]indexe
 		for _, v := range i.RateIndexValues {
 			note(v.Methods)
 		}
+	}
+
+	for _, v := range statusQuo.BalanceIndexValues {
+		note(v.Methods)
 	}
 
 	var out []indexes.ProjectionMethod
