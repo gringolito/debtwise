@@ -6,6 +6,7 @@ import {
 } from "@/lib/api";
 import { fractionToPercent, inputToMoney, moneyToInput, percentToFraction } from "@/lib/format";
 import { indexNames } from "@/lib/indexNames";
+import { rateFromCharge } from "@/lib/insuranceRate";
 
 export type Basis = ContractRate["basis"];
 export type AmortizationSystem = MortgageTerms["amortization_system"];
@@ -56,6 +57,10 @@ export interface FormValues {
   mipRates: MonthlyRateRow[];
   dfiRates: MonthlyRateRow[];
   fees: FeeRow[];
+  /** The MIP the bank charged on the first installment, which the MIP rate can be derived from. */
+  firstInstallmentMip: string;
+  /** The DFI the bank charged on the first installment, which the DFI rate can be derived from. */
+  firstInstallmentDfi: string;
 }
 
 let lastRowId = 0;
@@ -88,6 +93,8 @@ export function emptyValues(): FormValues {
     mipRates: [blankMonthlyRate()],
     dfiRates: [blankMonthlyRate()],
     fees: [blankFee()],
+    firstInstallmentMip: "",
+    firstInstallmentDfi: "",
   };
 }
 
@@ -122,7 +129,82 @@ export function valuesFromMortgage(mortgage: RegisteredMortgage): FormValues {
       effectiveFrom: f.effective_from,
       amount: moneyToInput(f.amount),
     })),
+    firstInstallmentMip: "",
+    firstInstallmentDfi: "",
   };
+}
+
+export type Insurance = "MIP" | "DFI";
+
+/**
+ * The form values behind each insurance: its rate rows, what the owner typed it charged on the
+ * first installment, and the amount the schedule charges it on there. MIP is charged on the
+ * outstanding balance, which on the first installment is the original amount.
+ */
+export const insuranceFields = {
+  MIP: { rates: "mipRates", charge: "firstInstallmentMip", base: "originalAmount" },
+  DFI: { rates: "dfiRates", charge: "firstInstallmentDfi", base: "appraisalValue" },
+} as const satisfies Record<
+  Insurance,
+  { rates: "mipRates" | "dfiRates"; charge: keyof FormValues; base: keyof FormValues }
+>;
+
+const POSITIVE_AMOUNT = /^(?=.*[1-9])\d+(\.\d+)?$/;
+
+// The latest row effective on or before the first installment, as the schedule picks it. Until the
+// dates tell, the list's first row.
+function firstInstallmentRow(rows: MonthlyRateRow[], firstInstallmentDate: string) {
+  let inForce: MonthlyRateRow | undefined;
+  for (const row of rows) {
+    if (row.effectiveFrom === "" || row.effectiveFrom > firstInstallmentDate) continue;
+    if (!inForce || row.effectiveFrom > inForce.effectiveFrom) inForce = row;
+  }
+  return inForce ?? rows[0];
+}
+
+/** FirstCharge is what the form makes of the insurance the owner typed for the first installment. */
+export interface FirstCharge {
+  /** The row in force at the first installment, whose rate the charge gives. */
+  row: MonthlyRateRow | undefined;
+  /** The rate, as a fraction, that charges it; undefined while none can be told. */
+  rate: string | undefined;
+  /** Whether the amount the insurance is charged on is still missing. */
+  needsBase: boolean;
+}
+
+export function firstChargeOf(values: FormValues, insurance: Insurance): FirstCharge {
+  const { rates, charge, base } = insuranceFields[insurance];
+  const baseAmount = inputToMoney(values[base]);
+  return {
+    row: firstInstallmentRow(values[rates], values.firstInstallmentDate),
+    rate: rateFromCharge(inputToMoney(values[charge]), baseAmount),
+    needsBase: !POSITIVE_AMOUNT.test(baseAmount),
+  };
+}
+
+function withFirstChargeRate(current: FormValues, next: FormValues, insurance: Insurance) {
+  const { rates, charge } = insuranceFields[insurance];
+  const { row, rate } = firstChargeOf(next, insurance);
+  if (row === undefined) return next;
+  const typedOver = current[rates].find((r) => r.id === row.id && r.rate !== row.rate);
+  if (typedOver) return { ...next, [charge]: "" };
+  if (rate === undefined) return next;
+  return {
+    ...next,
+    [rates]: next[rates].map((r) =>
+      r.id === row.id ? { ...r, rate: fractionToPercent(rate) } : r,
+    ),
+  };
+}
+
+/**
+ * withFirstChargeRates applies a change to the form, from current to next, and fills each rate in
+ * force at the first installment with the one its charge gives, whatever moved: the charge, the
+ * amount it is charged on, or the dates that pick the row. A rate the owner types into that row
+ * drops the charge instead, which no longer gives it.
+ */
+export function withFirstChargeRates(current: FormValues, next: FormValues): FormValues {
+  return withFirstChargeRate(current, withFirstChargeRate(current, next, "MIP"), "DFI");
 }
 
 const monthlyTerms = (rows: MonthlyRateRow[]) =>

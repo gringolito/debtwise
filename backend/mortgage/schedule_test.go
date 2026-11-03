@@ -270,6 +270,27 @@ func TestDFIRateChangeAppliesFromItsEffectiveDate(t *testing.T) {
 	}, schedule(terms))
 }
 
+// The mortgage form derives a rate from what the first installment charged on the assumption that
+// the schedule rounds each charge half up. MIP is 0.030075% of the balance, so 18.045 on the first
+// installment's 60,000.00 rounds up to 18.05, where half to even would give 18.04. DFI is
+// 0.010125% of the 100,000.00 appraisal: 10.125 rounds up to 10.13.
+func TestMIPAndDFIRoundHalfACentavoUp(t *testing.T) {
+	t.Parallel()
+
+	terms := sacTerms(t)
+	terms.MIPRates = []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0.00030075")}}
+	terms.DFIRates = []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0.00010125")}}
+
+	assert.Equal(t, []row{
+		{1, "2024-01-10", "600.00", "10000.00", "18.05", "10.13", "10.00", "10638.18", "50000.00"},
+		{2, "2024-02-10", "500.00", "10000.00", "15.04", "10.13", "10.00", "10535.17", "40000.00"},
+		{3, "2024-03-10", "400.00", "10000.00", "12.03", "10.13", "10.00", "10432.16", "30000.00"},
+		{4, "2024-04-10", "300.00", "10000.00", "9.02", "10.13", "10.00", "10329.15", "20000.00"},
+		{5, "2024-05-10", "200.00", "10000.00", "6.02", "10.13", "10.00", "10226.15", "10000.00"},
+		{6, "2024-06-10", "100.00", "10000.00", "3.01", "10.13", "10.00", "10123.14", "0.00"},
+	}, schedule(terms))
+}
+
 // SAC amortizes the balance over the months left: 66,666.67 / 2 = 33,333.335 rounds up, so the
 // 2nd installment amortizes a centavo more than the 1st and the 3rd.
 func TestSACAmortizesTheBalanceOverTheMonthsLeft(t *testing.T) {
