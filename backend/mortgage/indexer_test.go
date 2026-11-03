@@ -908,12 +908,12 @@ func TestScheduleWithoutIndexerIsNotCorrected(t *testing.T) {
 	}, indexedSchedule(terms, history, date(t, "2026-10-25")))
 }
 
-// dfiCharged is the DFI each installment of the schedule charges.
-func dfiCharged(t *testing.T, terms mortgage.Terms, outlook indexes.Outlook) []string {
+// dfiCharged is the DFI each installment of the schedule charges on today.
+func dfiCharged(t *testing.T, terms mortgage.Terms, outlook indexes.Outlook, today string) []string {
 	t.Helper()
 
 	var dfi []string
-	for m := range terms.Schedule(outlook, mortgage.Events{}, date(t, "2026-10-25")) {
+	for m := range terms.Schedule(outlook, mortgage.Events{}, date(t, today)) {
 		dfi = append(dfi, m.DFI.String())
 	}
 
@@ -943,7 +943,22 @@ func TestTRIndexedDFIFollowsTheAppraisalValueCorrectedByTR(t *testing.T) {
 	terms := withDFIRaisedOnTheThirdInstallment(t, indexedSAC(t, mortgage.TR, "120000.00", 3))
 
 	assert.Equal(t, []string{"200.00", "200.14", "400.55"},
-		dfiCharged(t, terms, outlookOf(publishedValues{indexes.TR: publishedTR2024(t)})))
+		dfiCharged(t, terms, outlookOf(publishedValues{indexes.TR: publishedTR2024(t)}), "2026-10-25"))
+}
+
+// On 2024-03-20, with the TR of TestPastMonthsKeepPublishedValuesWhileFutureMonthsAreProjected,
+// DFI at 0.1% follows the appraisal value as the balance's corrections do: the 2nd installment's
+// missing month leaves it at 200,000.00, the 3rd's published 0.0665% makes it 200,133.00, and the
+// projected 0.0635% of the 4th and 5th, not due yet, makes it 200,260.08 and then 200,387.25.
+// Figures worked out independently.
+func TestTRIndexedDFIFollowsTheAppraisalValueCorrectedByProjectedTR(t *testing.T) {
+	t.Parallel()
+
+	terms := indexedSAC(t, mortgage.TR, "50000.00", 5)
+	terms.DFIRates = []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-15"), Rate: dec(t, "0.001")}}
+
+	assert.Equal(t, []string{"200.00", "200.00", "200.13", "200.26", "200.39"},
+		dfiCharged(t, terms, indexes.NewOutlook(projectedTRHistory(t), indexes.Expectations{}, nil), "2024-03-20"))
 }
 
 // Without TR, DFI is charged on the appraisal value as signed, whatever corrects the balance.
@@ -964,7 +979,7 @@ func TestDFIFollowsTheSignedAppraisalValueWithoutTR(t *testing.T) {
 
 			terms := withDFIRaisedOnTheThirdInstallment(t, indexedSAC(t, indexer, "120000.00", 3))
 
-			assert.Equal(t, []string{"200.00", "200.00", "400.00"}, dfiCharged(t, terms, history))
+			assert.Equal(t, []string{"200.00", "200.00", "400.00"}, dfiCharged(t, terms, history, "2026-10-25"))
 		})
 	}
 }
