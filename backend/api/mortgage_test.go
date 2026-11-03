@@ -78,27 +78,28 @@ func serve(t *testing.T, handler http.Handler, method, path, body string) *httpt
 }
 
 // sacMortgage lends 60,000.00 over 6 months under SAC at 12% a year nominal, without an indexer.
-// MIP moves to a new age band on April 1.
+// The contract is signed 30 days before the 1st installment, so that installment charges a full
+// month's interest. MIP moves to a new age band on April 1.
 const sacMortgage = `{
-	"contract_date": "2023-12-10",
+	"contract_date": "2023-12-11",
 	"original_amount": "60000.00",
 	"term_months": 6,
 	"first_installment_date": "2024-01-10",
 	"amortization_system": "sac",
 	"indexer": "none",
 	"appraisal_value": "100000.00",
-	"contract_rates": [{"effective_from": "2023-12-10", "rate": "0.12", "basis": "nominal"}],
+	"contract_rates": [{"effective_from": "2023-12-11", "rate": "0.12", "basis": "nominal"}],
 	"mip_rates": [
-		{"effective_from": "2023-12-10", "rate": "0.0003"},
+		{"effective_from": "2023-12-11", "rate": "0.0003"},
 		{"effective_from": "2024-04-01", "rate": "0.0005"}
 	],
-	"dfi_rates": [{"effective_from": "2023-12-10", "rate": "0.0001"}],
-	"fees": [{"effective_from": "2023-12-10", "amount": "12.50"}]
+	"dfi_rates": [{"effective_from": "2023-12-11", "rate": "0.0001"}],
+	"fees": [{"effective_from": "2023-12-11", "amount": "12.50"}]
 }`
 
 // sacMortgageRead is sacMortgage as the API answers it, with the effective rate derived.
 const sacMortgageRead = `{
-	"contract_date": "2023-12-10",
+	"contract_date": "2023-12-11",
 	"original_amount": "60000.00",
 	"term_months": 6,
 	"first_installment_date": "2024-01-10",
@@ -106,18 +107,18 @@ const sacMortgageRead = `{
 	"indexer": "none",
 	"appraisal_value": "100000.00",
 	"contract_rates": [{
-		"effective_from": "2023-12-10",
+		"effective_from": "2023-12-11",
 		"basis": "nominal",
 		"nominal": "0.12",
 		"effective": "0.126825030131969720661201",
 		"poupanca_additional": false
 	}],
 	"mip_rates": [
-		{"effective_from": "2023-12-10", "rate": "0.0003"},
+		{"effective_from": "2023-12-11", "rate": "0.0003"},
 		{"effective_from": "2024-04-01", "rate": "0.0005"}
 	],
-	"dfi_rates": [{"effective_from": "2023-12-10", "rate": "0.0001"}],
-	"fees": [{"effective_from": "2023-12-10", "amount": "12.50"}]
+	"dfi_rates": [{"effective_from": "2023-12-11", "rate": "0.0001"}],
+	"fees": [{"effective_from": "2023-12-11", "amount": "12.50"}]
 }`
 
 // sacRate is the rate every installment of sacMortgage is charged at, as the schedule answers it.
@@ -192,7 +193,7 @@ func TestIndexedMortgageScheduleIsCorrectedByPublishedValues(t *testing.T) {
 		publishedValue("2024-05-10", "2024-06-10", "0.0488"),
 	}, time.Now()))
 
-	saved := serve(t, handler, http.MethodPut, "/mortgage", withField(t, "indexer", `"tr"`))
+	saved := serve(t, handler, http.MethodPut, "/mortgage", withFieldOf(t, signedOnDecember10(), "indexer", `"tr"`))
 	require.Equal(t, http.StatusOK, saved.Code, saved.Body.String())
 
 	rec := serve(t, handler, http.MethodGet, "/mortgage/schedule", "")
@@ -200,33 +201,33 @@ func TestIndexedMortgageScheduleIsCorrectedByPublishedValues(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.JSONEq(t, `{"installments": [
 		{"number": 1, "due_date": "2024-01-10", "correction": "0.00", "index_values": [], `+sacRate+`,
-		 "interest": "600.00", "amortization": "10000.00", "mip": "18.00", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10640.50", "prepaid": "0.00", "outstanding_balance": "50000.00"},
-		{"number": 2, "due_date": "2024-02-10", "correction": "62.50",
+		 "interest": "620.00", "amortization": "9980.00", "mip": "18.00", "dfi": "10.00", "fee": "12.50",
+		 "amount": "10640.50", "prepaid": "0.00", "outstanding_balance": "50020.00"},
+		{"number": 2, "due_date": "2024-02-10", "correction": "62.53",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.1250",
 		                   "period_start": "2024-01-10", "period_end": "2024-02-10", "methods": []}], `+sacRate+`,
-		 "interest": "500.63", "amortization": "10012.50", "mip": "15.02", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10550.65", "prepaid": "0.00", "outstanding_balance": "40050.00"},
+		 "interest": "500.83", "amortization": "10016.51", "mip": "15.02", "dfi": "10.00", "fee": "12.50",
+		 "amount": "10554.86", "prepaid": "0.00", "outstanding_balance": "40066.02"},
 		{"number": 3, "due_date": "2024-03-10", "correction": "0.00",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0000",
 		                   "period_start": "2024-02-10", "period_end": "2024-03-10", "methods": []}], `+sacRate+`,
-		 "interest": "400.50", "amortization": "10012.50", "mip": "12.02", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10447.52", "prepaid": "0.00", "outstanding_balance": "30037.50"},
+		 "interest": "400.66", "amortization": "10016.51", "mip": "12.02", "dfi": "10.00", "fee": "12.50",
+		 "amount": "10451.69", "prepaid": "0.00", "outstanding_balance": "30049.51"},
 		{"number": 4, "due_date": "2024-04-10", "correction": "0.00",
 		 "index_values": [{"index": "tr", "status": "missing", "period_start": "2024-03-10", "period_end": "2024-04-10",
 		                   "methods": []}], `+sacRate+`,
-		 "interest": "300.38", "amortization": "10012.50", "mip": "15.02", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10350.40", "prepaid": "0.00", "outstanding_balance": "20025.00"},
-		{"number": 5, "due_date": "2024-05-10", "correction": "16.74",
+		 "interest": "300.50", "amortization": "10016.50", "mip": "15.02", "dfi": "10.00", "fee": "12.50",
+		 "amount": "10354.52", "prepaid": "0.00", "outstanding_balance": "20033.01"},
+		{"number": 5, "due_date": "2024-05-10", "correction": "16.75",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0836",
 		                   "period_start": "2024-04-10", "period_end": "2024-05-10", "methods": []}], `+sacRate+`,
-		 "interest": "200.42", "amortization": "10020.87", "mip": "10.02", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10253.81", "prepaid": "0.00", "outstanding_balance": "10020.87"},
+		 "interest": "200.50", "amortization": "10024.88", "mip": "10.02", "dfi": "10.00", "fee": "12.50",
+		 "amount": "10257.90", "prepaid": "0.00", "outstanding_balance": "10024.88"},
 		{"number": 6, "due_date": "2024-06-10", "correction": "4.89",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0488",
 		                   "period_start": "2024-05-10", "period_end": "2024-06-10", "methods": []}], `+sacRate+`,
-		 "interest": "100.26", "amortization": "10025.76", "mip": "5.01", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10153.53", "prepaid": "0.00", "outstanding_balance": "0.00"}
+		 "interest": "100.30", "amortization": "10029.77", "mip": "5.01", "dfi": "10.00", "fee": "12.50",
+		 "amount": "10157.58", "prepaid": "0.00", "outstanding_balance": "0.00"}
 	]}`, rec.Body.String())
 }
 
@@ -261,16 +262,16 @@ func TestScheduleReadsTheIndexesItsTermsNeed(t *testing.T) {
 				"rate": "0.1005778118644995687897076174316406",
 				"rate_index_values": [{"index": "selic_target", "status": "published", "value": "11.75",
 				                       "period_start": "2023-12-10", "period_end": "2023-12-10", "methods": []}],
-				"interest": "481.10", "amortization": "30000.00", "mip": "18.00", "dfi": "10.00", "fee": "12.50",
-				"amount": "30521.60", "prepaid": "0.00", "outstanding_balance": "30000.00"},
-				{"number": 2, "due_date": "2024-02-10", "correction": "37.50",
+				"interest": "497.13", "amortization": "29983.97", "mip": "18.00", "dfi": "10.00", "fee": "12.50",
+				"amount": "30521.60", "prepaid": "0.00", "outstanding_balance": "30016.03"},
+				{"number": 2, "due_date": "2024-02-10", "correction": "37.52",
 				"index_values": [{"index": "tr", "status": "published", "value": "0.1250",
 				                  "period_start": "2024-01-10", "period_end": "2024-02-10", "methods": []}],
 				"rate": "0.1005778118644995687897076174316406",
 				"rate_index_values": [{"index": "selic_target", "status": "published", "value": "11.75",
 				                       "period_start": "2024-01-10", "period_end": "2024-01-10", "methods": []}],
-				"interest": "240.85", "amortization": "30037.50", "mip": "9.01", "dfi": "10.00", "fee": "12.50",
-				"amount": "30309.86", "prepaid": "0.00", "outstanding_balance": "0.00"}`,
+				"interest": "240.98", "amortization": "30053.55", "mip": "9.02", "dfi": "10.00", "fee": "12.50",
+				"amount": "30326.05", "prepaid": "0.00", "outstanding_balance": "0.00"}`,
 		},
 		{
 			name:    "IPCA",
@@ -280,13 +281,13 @@ func TestScheduleReadsTheIndexesItsTermsNeed(t *testing.T) {
 				indexes.IPCA: {publishedValue("2023-12-01", "2023-12-01", "0.56")},
 			},
 			want: `{"number": 1, "due_date": "2024-01-10", "correction": "0.00", "index_values": [], ` + sacRate + `,
-				"interest": "600.00", "amortization": "30000.00", "mip": "18.00", "dfi": "10.00", "fee": "12.50",
-				"amount": "30640.50", "prepaid": "0.00", "outstanding_balance": "30000.00"},
-				{"number": 2, "due_date": "2024-02-10", "correction": "168.00",
+				"interest": "620.00", "amortization": "29980.00", "mip": "18.00", "dfi": "10.00", "fee": "12.50",
+				"amount": "30640.50", "prepaid": "0.00", "outstanding_balance": "30020.00"},
+				{"number": 2, "due_date": "2024-02-10", "correction": "168.11",
 				"index_values": [{"index": "ipca", "status": "published", "value": "0.56",
 				                  "period_start": "2023-12-01", "period_end": "2023-12-01", "methods": []}], ` + sacRate + `,
-				"interest": "301.68", "amortization": "30168.00", "mip": "9.05", "dfi": "10.00", "fee": "12.50",
-				"amount": "30501.23", "prepaid": "0.00", "outstanding_balance": "0.00"}`,
+				"interest": "301.88", "amortization": "30188.11", "mip": "9.06", "dfi": "10.00", "fee": "12.50",
+				"amount": "30521.55", "prepaid": "0.00", "outstanding_balance": "0.00"}`,
 		},
 	}
 
@@ -302,7 +303,7 @@ func TestScheduleReadsTheIndexesItsTermsNeed(t *testing.T) {
 			}
 
 			var body map[string]json.RawMessage
-			require.NoError(t, json.Unmarshal([]byte(withField(t, "indexer", `"`+tt.indexer+`"`)), &body))
+			require.NoError(t, json.Unmarshal([]byte(withFieldOf(t, signedOnDecember10(), "indexer", `"`+tt.indexer+`"`)), &body))
 			body["term_months"] = json.RawMessage("2")
 			body["contract_rates"] = json.RawMessage(tt.rate)
 			terms, err := json.Marshal(body)
@@ -473,12 +474,26 @@ type errorDetail struct {
 func withField(t *testing.T, field, raw string) string {
 	t.Helper()
 
-	var body map[string]json.RawMessage
-	require.NoError(t, json.Unmarshal([]byte(sacMortgage), &body))
+	return withFieldOf(t, sacMortgage, field, raw)
+}
 
-	body[field] = json.RawMessage(raw)
+// signedOnDecember10 is sacMortgage signed on 2023-12-10, 31 days before its 1st installment, with
+// every row effective from that date. An indexed mortgage takes its anniversaries from the day it
+// is signed.
+func signedOnDecember10() string {
+	return strings.ReplaceAll(sacMortgage, "2023-12-11", "2023-12-10")
+}
 
-	out, err := json.Marshal(body)
+// withFieldOf returns the terms in body with one field replaced by raw JSON.
+func withFieldOf(t *testing.T, body, field, raw string) string {
+	t.Helper()
+
+	var terms map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal([]byte(body), &terms))
+
+	terms[field] = json.RawMessage(raw)
+
+	out, err := json.Marshal(terms)
 	require.NoError(t, err)
 
 	return string(out)
@@ -519,7 +534,7 @@ func TestInvalidMortgageIsRejected(t *testing.T) {
 		},
 		{
 			name: "contract rate over 12 places",
-			body: withField(t, "contract_rates", `[{"effective_from": "2023-12-10", "rate": "0.1234567890123", "basis": "nominal"}]`),
+			body: withField(t, "contract_rates", `[{"effective_from": "2023-12-11", "rate": "0.1234567890123", "basis": "nominal"}]`),
 			want: []errorDetail{{"body.contract_rates[0].rate", ratePattern}},
 		},
 		{
@@ -529,17 +544,17 @@ func TestInvalidMortgageIsRejected(t *testing.T) {
 		},
 		{
 			name: "fee below a centavo",
-			body: withField(t, "fees", `[{"effective_from": "2023-12-10", "amount": "12.505"}]`),
+			body: withField(t, "fees", `[{"effective_from": "2023-12-11", "amount": "12.505"}]`),
 			want: []errorDetail{{"body.fees[0].amount", moneyPattern}},
 		},
 		{
 			name: "MIP rate over 12 places",
-			body: withField(t, "mip_rates", `[{"effective_from": "2023-12-10", "rate": "0.0003000000001"}]`),
+			body: withField(t, "mip_rates", `[{"effective_from": "2023-12-11", "rate": "0.0003000000001"}]`),
 			want: []errorDetail{{"body.mip_rates[0].rate", ratePattern}},
 		},
 		{
 			name: "contract rate of 1000 times",
-			body: withField(t, "contract_rates", `[{"effective_from": "2023-12-10", "rate": "1000", "basis": "nominal"}]`),
+			body: withField(t, "contract_rates", `[{"effective_from": "2023-12-11", "rate": "1000", "basis": "nominal"}]`),
 			want: []errorDetail{{"body.contract_rates[0].rate", ratePattern}},
 		},
 		{
@@ -554,12 +569,12 @@ func TestInvalidMortgageIsRejected(t *testing.T) {
 		},
 		{
 			name: "negative MIP rate",
-			body: withField(t, "mip_rates", `[{"effective_from": "2023-12-10", "rate": "-0.0003"}]`),
+			body: withField(t, "mip_rates", `[{"effective_from": "2023-12-11", "rate": "-0.0003"}]`),
 			want: []errorDetail{{"body.mip_rates[0].rate", ratePattern}},
 		},
 		{
 			name: "unknown rate basis",
-			body: withField(t, "contract_rates", `[{"effective_from": "2023-12-10", "rate": "0.12", "basis": "annual"}]`),
+			body: withField(t, "contract_rates", `[{"effective_from": "2023-12-11", "rate": "0.12", "basis": "annual"}]`),
 			want: []errorDetail{{"body.contract_rates[0].basis", `expected value to be one of "nominal, effective"`}},
 		},
 		{
@@ -574,12 +589,12 @@ func TestInvalidMortgageIsRejected(t *testing.T) {
 		},
 		{
 			name: "negative fee",
-			body: withField(t, "fees", `[{"effective_from": "2023-12-10", "amount": "-10.00"}]`),
+			body: withField(t, "fees", `[{"effective_from": "2023-12-11", "amount": "-10.00"}]`),
 			want: []errorDetail{{"body.fees[0].amount", moneyPattern}},
 		},
 		{
 			name: "negative contract rate",
-			body: withField(t, "contract_rates", `[{"effective_from": "2023-12-10", "rate": "-0.12", "basis": "nominal"}]`),
+			body: withField(t, "contract_rates", `[{"effective_from": "2023-12-11", "rate": "-0.12", "basis": "nominal"}]`),
 			want: []errorDetail{{"body.contract_rates[0].rate", ratePattern}},
 		},
 		{
@@ -600,9 +615,9 @@ func TestInvalidMortgageIsRejected(t *testing.T) {
 		{
 			name: "two MIP rates on one date",
 			body: withField(t, "mip_rates", `[
-				{"effective_from": "2023-12-10", "rate": "0.0003"},
+				{"effective_from": "2023-12-11", "rate": "0.0003"},
 				{"effective_from": "2024-04-01", "rate": "0.0005"},
-				{"effective_from": "2023-12-10", "rate": "0.0004"}
+				{"effective_from": "2023-12-11", "rate": "0.0004"}
 			]`),
 			want: []errorDetail{{"body.mip_rates[2].effective_from", "repeats the date of another row"}},
 		},
@@ -666,7 +681,7 @@ func TestMortgageOnTheLimitsIsAccepted(t *testing.T) {
 		field string
 		raw   string
 	}{
-		{name: "first installment on the contract date", field: "first_installment_date", raw: `"2023-12-10"`},
+		{name: "first installment on the contract date", field: "first_installment_date", raw: `"2023-12-11"`},
 		{name: "fee effective on the first installment date", field: "fees", raw: `[{"effective_from": "2024-01-10", "amount": "12.50"}]`},
 		{name: "term of 50 years", field: "term_months", raw: "600"},
 		{name: "original amount of 15 digits", field: "original_amount", raw: `"999999999999999.99"`},
@@ -674,17 +689,17 @@ func TestMortgageOnTheLimitsIsAccepted(t *testing.T) {
 		{
 			name:  "contract rate of 999 times",
 			field: "contract_rates",
-			raw:   `[{"effective_from": "2023-12-10", "rate": "999", "basis": "nominal"}]`,
+			raw:   `[{"effective_from": "2023-12-11", "rate": "999", "basis": "nominal"}]`,
 		},
 		{
 			name:  "MIP rate of 12 places",
 			field: "mip_rates",
-			raw:   `[{"effective_from": "2023-12-10", "rate": "0.000300000001"}]`,
+			raw:   `[{"effective_from": "2023-12-11", "rate": "0.000300000001"}]`,
 		},
 		{
 			name:  "contract rate of 12 places",
 			field: "contract_rates",
-			raw:   `[{"effective_from": "2023-12-10", "rate": "0.123456789012", "basis": "nominal"}]`,
+			raw:   `[{"effective_from": "2023-12-11", "rate": "0.123456789012", "basis": "nominal"}]`,
 		},
 	}
 

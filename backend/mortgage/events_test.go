@@ -299,10 +299,13 @@ type correctedRow struct {
 	OutstandingBalance string
 }
 
-// A prepayment or a statement on February 20 leaves 35,000.00 owed. The TR of 1% for the month to
-// March 10 corrects that balance, 350.00, and the 3rd installment charges 1% interest on the
-// corrected 35,350.00, 353.50, then amortizes it over the 4 months left, 8,837.50 a month. The
-// months without a published TR are not corrected.
+// A prepayment or a statement on February 20 leaves 35,000.00 owed, the prepayment taking 5,016.00
+// off the 40,016.00 left by the 2nd installment. The contract is dated the 10th, 31 days before the
+// 1st installment, which charges 620.00 interest, amortizes 9,980.00 and leaves 50,020.00 owed; the
+// 2nd amortizes 10,004.00. The TR of 1% for the month to March 10 corrects that balance, 350.00,
+// and the 3rd installment charges 1% interest on the corrected 35,350.00, 353.50, then amortizes
+// it over the 4 months left, 8,837.50 a month. The months without a published TR are not
+// corrected.
 func TestIndexCorrectionAfterAnEventAppliesToTheBalanceItLeft(t *testing.T) {
 	t.Parallel()
 
@@ -314,9 +317,9 @@ func TestIndexCorrectionAfterAnEventAppliesToTheBalanceItLeft(t *testing.T) {
 		{
 			name: "prepayment",
 			events: mortgage.Events{Prepayments: []mortgage.Prepayment{
-				prepayment(t, "2024-02-20", "5000.00", mortgage.LowerInstallment),
+				prepayment(t, "2024-02-20", "5016.00", mortgage.LowerInstallment),
 			}},
-			prepaid: "5000.00",
+			prepaid: "5016.00",
 		},
 		{
 			name:    "statement",
@@ -331,6 +334,12 @@ func TestIndexCorrectionAfterAnEventAppliesToTheBalanceItLeft(t *testing.T) {
 
 			terms := sacTerms(t)
 			terms.Indexer = mortgage.TR
+			terms.ContractDate = date(t, "2023-12-10")
+			terms.ContractRates[0].EffectiveFrom = terms.ContractDate
+			terms.MIPRates[0].EffectiveFrom = terms.ContractDate
+			terms.DFIRates[0].EffectiveFrom = terms.ContractDate
+			terms.Fees[0].EffectiveFrom = terms.ContractDate
+
 			outlook := indexes.NewOutlook(map[indexes.Index][]indexes.Value{
 				indexes.TR: {published(t, "2024-02-10", "2024-03-10", "1.0000")},
 			}, indexes.Expectations{}, nil)
@@ -349,8 +358,8 @@ func TestIndexCorrectionAfterAnEventAppliesToTheBalanceItLeft(t *testing.T) {
 			}
 
 			assert.Equal(t, []correctedRow{
-				{1, "0.00", "600.00", "10000.00", "10610.00", "0.00", "50000.00"},
-				{2, "0.00", "500.00", "10000.00", "10510.00", tt.prepaid, "35000.00"},
+				{1, "0.00", "620.00", "9980.00", "10610.00", "0.00", "50020.00"},
+				{2, "0.00", "500.20", "10004.00", "10514.20", tt.prepaid, "35000.00"},
 				{3, "350.00", "353.50", "8837.50", "9201.00", "0.00", "26512.50"},
 				{4, "0.00", "265.13", "8837.50", "9112.63", "0.00", "17675.00"},
 				{5, "0.00", "176.75", "8837.50", "9024.25", "0.00", "8837.50"},

@@ -69,18 +69,18 @@ func TestSACSchedule(t *testing.T) {
 	t.Parallel()
 
 	terms := mortgage.Terms{
-		ContractDate:         date(t, "2023-12-31"),
+		ContractDate:         date(t, "2024-01-01"),
 		OriginalAmount:       dec(t, "120000.00"),
 		TermMonths:           12,
 		FirstInstallmentDate: date(t, "2024-01-31"),
 		AmortizationSystem:   mortgage.SAC,
 		AppraisalValue:       dec(t, "200000.00"),
 		ContractRates: []mortgage.ContractRate{
-			{EffectiveFrom: date(t, "2023-12-31"), Rate: dec(t, "0.12"), Basis: mortgage.Nominal},
+			{EffectiveFrom: date(t, "2024-01-01"), Rate: dec(t, "0.12"), Basis: mortgage.Nominal},
 		},
-		MIPRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-31"), Rate: dec(t, "0.0003")}},
-		DFIRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-31"), Rate: dec(t, "0.0001")}},
-		Fees:     []mortgage.Fee{{EffectiveFrom: date(t, "2023-12-31"), Amount: dec(t, "25.00")}},
+		MIPRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2024-01-01"), Rate: dec(t, "0.0003")}},
+		DFIRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2024-01-01"), Rate: dec(t, "0.0001")}},
+		Fees:     []mortgage.Fee{{EffectiveFrom: date(t, "2024-01-01"), Amount: dec(t, "25.00")}},
 	}
 
 	assert.Equal(t, []row{
@@ -185,24 +185,25 @@ func TestPriceInstallmentIsRecalculatedWhenTheRateChanges(t *testing.T) {
 }
 
 // sacTerms lends 60,000.00 over 6 months under SAC, amortizing 10,000.00 a month, installments on
-// the 10th from January 2024. The rows apply from the contract date unless the test adds later
+// the 10th from January 2024. The contract is dated 30 days before the first installment, so it
+// charges a month's interest. The rows apply from the contract date unless the test adds later
 // ones.
 func sacTerms(t *testing.T) mortgage.Terms {
 	t.Helper()
 
 	return mortgage.Terms{
-		ContractDate:         date(t, "2023-12-10"),
+		ContractDate:         date(t, "2023-12-11"),
 		OriginalAmount:       dec(t, "60000.00"),
 		TermMonths:           6,
 		FirstInstallmentDate: date(t, "2024-01-10"),
 		AmortizationSystem:   mortgage.SAC,
 		AppraisalValue:       dec(t, "100000.00"),
 		ContractRates: []mortgage.ContractRate{
-			{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0.12"), Basis: mortgage.Nominal},
+			{EffectiveFrom: date(t, "2023-12-11"), Rate: dec(t, "0.12"), Basis: mortgage.Nominal},
 		},
-		MIPRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0")}},
-		DFIRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0")}},
-		Fees:     []mortgage.Fee{{EffectiveFrom: date(t, "2023-12-10"), Amount: dec(t, "10.00")}},
+		MIPRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-11"), Rate: dec(t, "0")}},
+		DFIRates: []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-11"), Rate: dec(t, "0")}},
+		Fees:     []mortgage.Fee{{EffectiveFrom: date(t, "2023-12-11"), Amount: dec(t, "10.00")}},
 	}
 }
 
@@ -235,9 +236,9 @@ func TestMIPFollowsTheBalanceAndAgeBandWhileDFIFollowsTheAppraisal(t *testing.T)
 	terms := sacTerms(t)
 	terms.MIPRates = []mortgage.MonthlyRate{
 		{EffectiveFrom: date(t, "2024-04-10"), Rate: dec(t, "0.0005")},
-		{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0.0003")},
+		{EffectiveFrom: date(t, "2023-12-11"), Rate: dec(t, "0.0003")},
 	}
-	terms.DFIRates = []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0.00012")}}
+	terms.DFIRates = []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-11"), Rate: dec(t, "0.00012")}}
 
 	assert.Equal(t, []row{
 		{1, "2024-01-10", "600.00", "10000.00", "18.00", "12.00", "10.00", "10640.00", "50000.00"},
@@ -256,7 +257,7 @@ func TestDFIRateChangeAppliesFromItsEffectiveDate(t *testing.T) {
 
 	terms := sacTerms(t)
 	terms.DFIRates = []mortgage.MonthlyRate{
-		{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0.0001")},
+		{EffectiveFrom: date(t, "2023-12-11"), Rate: dec(t, "0.0001")},
 		{EffectiveFrom: date(t, "2024-04-10"), Rate: dec(t, "0.00025")},
 	}
 
@@ -278,8 +279,8 @@ func TestMIPAndDFIRoundHalfACentavoUp(t *testing.T) {
 	t.Parallel()
 
 	terms := sacTerms(t)
-	terms.MIPRates = []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0.00030075")}}
-	terms.DFIRates = []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0.00010125")}}
+	terms.MIPRates = []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-11"), Rate: dec(t, "0.00030075")}}
+	terms.DFIRates = []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-11"), Rate: dec(t, "0.00010125")}}
 
 	assert.Equal(t, []row{
 		{1, "2024-01-10", "600.00", "10000.00", "18.05", "10.13", "10.00", "10638.18", "50000.00"},
@@ -300,7 +301,7 @@ func TestSACAmortizesTheBalanceOverTheMonthsLeft(t *testing.T) {
 	terms.OriginalAmount = dec(t, "100000.00")
 	terms.TermMonths = 3
 	terms.ContractRates = []mortgage.ContractRate{
-		{EffectiveFrom: date(t, "2023-12-10"), Rate: dec(t, "0"), Basis: mortgage.Nominal},
+		{EffectiveFrom: date(t, "2023-12-11"), Rate: dec(t, "0"), Basis: mortgage.Nominal},
 	}
 
 	assert.Equal(t, []row{
@@ -308,6 +309,87 @@ func TestSACAmortizesTheBalanceOverTheMonthsLeft(t *testing.T) {
 		{2, "2024-02-10", "0.00", "33333.34", "0.00", "0.00", "10.00", "33343.34", "33333.33"},
 		{3, "2024-03-10", "0.00", "33333.33", "0.00", "0.00", "10.00", "33343.33", "0.00"},
 	}, schedule(terms))
+}
+
+// Under SAC the first installment charges interest for the days since the contract date, at 1% for
+// 30 days, on the balance it starts from, but still costs a month's interest plus that balance over
+// the months left, so its amortization absorbs the difference: 600.00 + 60,000.00 / 6 less 320.00
+// for 16 days, or less 620.00 for 31. After a 6,000.00 prepayment, 31 days on 54,000.00 is 558.00
+// against a month's 540.00. A single installment amortizes the whole balance. The later
+// installments amortize the balance left over the months left.
+func TestSACFirstInstallmentChargesInterestForTheDaysSinceTheContractDate(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		contract string
+		months   int
+		events   mortgage.Events
+		want     []replayed
+	}{
+		{
+			name:     "16 days",
+			contract: "2023-12-25",
+			months:   6,
+			want: []replayed{
+				{1, "2024-01-10", "320.00", "10280.00", "10610.00", "0.00", "49720.00"},
+				{2, "2024-02-10", "497.20", "9944.00", "10451.20", "0.00", "39776.00"},
+				{3, "2024-03-10", "397.76", "9944.00", "10351.76", "0.00", "29832.00"},
+				{4, "2024-04-10", "298.32", "9944.00", "10252.32", "0.00", "19888.00"},
+				{5, "2024-05-10", "198.88", "9944.00", "10152.88", "0.00", "9944.00"},
+				{6, "2024-06-10", "99.44", "9944.00", "10053.44", "0.00", "0.00"},
+			},
+		},
+		{
+			name:     "31 days",
+			contract: "2023-12-10",
+			months:   6,
+			want: []replayed{
+				{1, "2024-01-10", "620.00", "9980.00", "10610.00", "0.00", "50020.00"},
+				{2, "2024-02-10", "500.20", "10004.00", "10514.20", "0.00", "40016.00"},
+				{3, "2024-03-10", "400.16", "10004.00", "10414.16", "0.00", "30012.00"},
+				{4, "2024-04-10", "300.12", "10004.00", "10314.12", "0.00", "20008.00"},
+				{5, "2024-05-10", "200.08", "10004.00", "10214.08", "0.00", "10004.00"},
+				{6, "2024-06-10", "100.04", "10004.00", "10114.04", "0.00", "0.00"},
+			},
+		},
+		{
+			name:     "31 days after a prepayment",
+			contract: "2023-12-10",
+			months:   6,
+			events: mortgage.Events{Prepayments: []mortgage.Prepayment{
+				prepayment(t, "2023-12-20", "6000.00", mortgage.LowerInstallment),
+			}},
+			want: []replayed{
+				{1, "2024-01-10", "558.00", "8982.00", "9550.00", "0.00", "45018.00"},
+				{2, "2024-02-10", "450.18", "9003.60", "9463.78", "0.00", "36014.40"},
+				{3, "2024-03-10", "360.14", "9003.60", "9373.74", "0.00", "27010.80"},
+				{4, "2024-04-10", "270.11", "9003.60", "9283.71", "0.00", "18007.20"},
+				{5, "2024-05-10", "180.07", "9003.60", "9193.67", "0.00", "9003.60"},
+				{6, "2024-06-10", "90.04", "9003.60", "9103.64", "0.00", "0.00"},
+			},
+		},
+		{
+			name:     "31 days in a single installment",
+			contract: "2023-12-10",
+			months:   1,
+			want: []replayed{
+				{1, "2024-01-10", "620.00", "60000.00", "60630.00", "0.00", "0.00"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			terms := sacTerms(t)
+			terms.ContractDate = date(t, tt.contract)
+			terms.TermMonths = tt.months
+
+			assert.Equal(t, tt.want, replay(terms, tt.events))
+		})
+	}
 }
 
 // At 0% Price splits the balance evenly, 8,333.33 a month, and the last installment pays the
