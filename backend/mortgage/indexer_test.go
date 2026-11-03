@@ -907,3 +907,64 @@ func TestScheduleWithoutIndexerIsNotCorrected(t *testing.T) {
 		{3, "0.00", "100.00", "10000.00", "0.00", "10100.00", "0.00", ""},
 	}, indexedSchedule(terms, history, date(t, "2026-10-25")))
 }
+
+// dfiCharged is the DFI each installment of the schedule charges.
+func dfiCharged(t *testing.T, terms mortgage.Terms, outlook indexes.Outlook) []string {
+	t.Helper()
+
+	var dfi []string
+	for m := range terms.Schedule(outlook, mortgage.Events{}, date(t, "2026-10-25")) {
+		dfi = append(dfi, m.DFI.String())
+	}
+
+	return dfi
+}
+
+// withDFIRaisedOnTheThirdInstallment charges DFI at 0.1% of the appraisal value, and at 0.2% from
+// 2024-03-15, the 3rd installment's due date.
+func withDFIRaisedOnTheThirdInstallment(t *testing.T, terms mortgage.Terms) mortgage.Terms {
+	t.Helper()
+
+	terms.DFIRates = []mortgage.MonthlyRate{
+		{EffectiveFrom: date(t, "2023-12-15"), Rate: dec(t, "0.001")},
+		{EffectiveFrom: date(t, "2024-03-15"), Rate: dec(t, "0.002")},
+	}
+
+	return terms
+}
+
+// Under TR, the 200,000.00 appraisal value is corrected by each TR that corrects the balance, and
+// DFI is charged on it at the rate in force on the due date: 0.0717% makes it 200,143.40 for the
+// 2nd installment, and 0.0665% (133.10) makes it 200,276.50 for the 3rd, charged at 0.2%. Figures
+// worked out independently from the published TR.
+func TestTRIndexedDFIFollowsTheAppraisalValueCorrectedByTR(t *testing.T) {
+	t.Parallel()
+
+	terms := withDFIRaisedOnTheThirdInstallment(t, indexedSAC(t, mortgage.TR, "120000.00", 3))
+
+	assert.Equal(t, []string{"200.00", "200.14", "400.55"},
+		dfiCharged(t, terms, outlookOf(publishedValues{indexes.TR: publishedTR2024(t)})))
+}
+
+// Without TR, DFI is charged on the appraisal value as signed, whatever corrects the balance.
+func TestDFIFollowsTheSignedAppraisalValueWithoutTR(t *testing.T) {
+	t.Parallel()
+
+	history := outlookOf(publishedValues{
+		indexes.TR: publishedTR2024(t),
+		indexes.IPCA: {
+			published(t, "2023-12-01", "2023-12-01", "0.56"),
+			published(t, "2024-01-01", "2024-01-01", "0.42"),
+		},
+	})
+
+	for _, indexer := range []mortgage.Indexer{mortgage.NoIndexer, mortgage.IPCA} {
+		t.Run(string(indexer), func(t *testing.T) {
+			t.Parallel()
+
+			terms := withDFIRaisedOnTheThirdInstallment(t, indexedSAC(t, indexer, "120000.00", 3))
+
+			assert.Equal(t, []string{"200.00", "200.00", "400.00"}, dfiCharged(t, terms, history))
+		})
+	}
+}
