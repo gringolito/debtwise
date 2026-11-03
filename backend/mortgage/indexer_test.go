@@ -490,6 +490,27 @@ func TestTRCorrectionAppliesOnTheAnniversaryBeforeTheDueDate(t *testing.T) {
 	}
 }
 
+// Installments due on the contract's day are corrected on their due dates, as they were, though the
+// anniversaries of a contract signed on the 31st fall on the 1st: a prepayment on 2024-04-15 comes
+// off before the 2024-04-30 installment's correction of 0.0331%, which applies to the 5,000.00
+// left. Figures worked out independently.
+func TestTRCorrectionOfInstallmentsDueOnTheContractDayAppliesOnTheDueDate(t *testing.T) {
+	t.Parallel()
+
+	terms := indexedSAC(t, mortgage.TR, "20000.00", 2)
+	terms.ContractDate = date(t, "2023-12-31")
+	terms.FirstInstallmentDate = date(t, "2024-03-31")
+	outlook := outlookOf(publishedValues{indexes.TR: {published(t, "2024-03-01", "2024-04-01", "0.0331")}})
+	events := mortgage.Events{Prepayments: []mortgage.Prepayment{
+		prepayment(t, "2024-04-15", "5000.00", mortgage.LowerInstallment),
+	}}
+
+	assert.Equal(t, []indexedRow{
+		{1, "0.00", "200.00", "10000.00", "0.00", "10200.00", "5000.00", ""},
+		{2, "1.66", "50.02", "5001.66", "0.00", "5051.68", "0.00", "tr 0.0331 2024-03-01..2024-04-01"},
+	}, indexedRows(terms.Schedule(outlook, events, date(t, "2026-10-25"))))
+}
+
 // A statement is compared with the balance corrected for the next installment from the day that
 // correction applies: under TR the anniversary before the due date, in the month before it when the
 // due day comes before the contract's, and under IPCA the due date itself.

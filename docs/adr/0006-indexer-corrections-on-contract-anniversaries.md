@@ -21,7 +21,9 @@ previous installment, before interest is charged on the corrected balance.
   signed on the 18th with installments due on the 19th match these months to SGS's four decimals
   (#38). For example, the installment due 2025-01-19 is corrected by the TR of 2024-12-19 to
   2025-01-19, applied on 2025-01-18. When installments fall due on the contract's day, the months
-  are those between anniversaries.
+  are those between anniversaries, and their corrections apply on the installment's due date. The
+  two only differ for a contract signed on the 29th to the 31st, whose anniversaries fall on the
+  1st.
 - **IPCA:** each anniversary since the previous installment corrects it, by the IPCA of the second
   calendar month before the anniversary (SGS 433), a fixed two-month lag. The corrections apply on
   the installment's due date.

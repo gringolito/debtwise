@@ -47,11 +47,12 @@ type Installment struct {
 // in effect on its due date, with events replayed between them.
 //
 // From the second installment on, each installment first corrects the outstanding balance by the
-// indexer's values since the previous installment, unless they are missing. Under TR they are the
-// TR of the months since the previous installment's due date that end by its own, applied on the
-// last contract anniversary on or before its due date; under IPCA, the value of each contract
-// anniversary since the previous installment, applied on its due date. The first installment is
-// never corrected, and the months up to the first anniversary correct no installment (ADR-0006).
+// indexer's values since the previous installment, unless they are missing. Under TR, for
+// installments due on another day than the contract's, they are the TR of the months since the
+// previous installment's due date that end by its own, applied on the last contract anniversary on
+// or before its due date. Otherwise they are the values of each contract anniversary since the
+// previous installment, applied on its due date. The first installment is never corrected, and the
+// months up to the first anniversary correct no installment (ADR-0006).
 // An installment due by today is corrected by published values only, so a month whose value is
 // only projected is missing. An installment due after today is corrected by the Outlook's
 // estimate, published or projected, and a month with no estimate is missing (ADR-0009).

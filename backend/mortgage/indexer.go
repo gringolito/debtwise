@@ -51,17 +51,20 @@ type period struct {
 
 // corrections finds the index values that correct the outstanding balance, one for each month.
 // Months run from one day to the same day of the next month, or to the 1st of the month after when
-// the next month is too short, as SGS dates TR; from then on they start on the 1st. TR months start
-// on the first installment's due date, unless installments fall due on the contract's day, and the
-// month is corrected by its TR. Other months start on the contract's first anniversary and, under a
-// fixed two-month lag, an IPCA month is corrected by the IPCA of the second calendar month before
-// it ends. Each value is read through the Outlook: the published one where there is one, else the
+// the next month is too short, as SGS dates TR; from then on they start on the 1st. TR months of
+// installments due on another day than the contract's start on the first installment's due date,
+// and are corrected by their TR from the anniversary before each due date. Other months start on
+// the contract's first anniversary and are corrected on the due date: TR months by their TR, and
+// IPCA months, under a fixed two-month lag, by the IPCA of the second calendar month before they
+// end. Each value is read through the Outlook: the published one where there is one, else the
 // projected one (ADR-0009).
 type corrections struct {
 	indexer Indexer
 	outlook indexes.Outlook
 	// month is the next month to correct for.
 	month period
+	// byDueDate is set when TR months run between due dates.
+	byDueDate bool
 	// anniversary is the latest contract anniversary appliesOn reached.
 	anniversary time.Time
 }
@@ -71,9 +74,10 @@ type corrections struct {
 // anniversary are corrected by no installment.
 func newCorrections(terms Terms, outlook indexes.Outlook) *corrections {
 	firstAnniversary := monthAfter(terms.ContractDate)
+	byDueDate := terms.Indexer == TR && terms.FirstInstallmentDate.Day() != terms.ContractDate.Day()
 
 	start, after := firstAnniversary, terms.FirstInstallmentDate
-	if terms.Indexer == TR && terms.FirstInstallmentDate.Day() != terms.ContractDate.Day() {
+	if byDueDate {
 		start, after = terms.FirstInstallmentDate, firstAnniversary
 	}
 
@@ -82,7 +86,13 @@ func newCorrections(terms Terms, outlook indexes.Outlook) *corrections {
 		month = period{month.end, monthAfter(month.end)}
 	}
 
-	return &corrections{indexer: terms.Indexer, outlook: outlook, month: month, anniversary: terms.ContractDate}
+	return &corrections{
+		indexer:     terms.Indexer,
+		outlook:     outlook,
+		month:       month,
+		byDueDate:   byDueDate,
+		anniversary: terms.ContractDate,
+	}
 }
 
 // through returns the index values of the months that end on or before day that it has not
@@ -104,10 +114,10 @@ func (c *corrections) through(day time.Time, publishedOnly bool) []IndexValue {
 }
 
 // appliesOn returns the day the balance is corrected for the installment due on due: the last
-// contract anniversary on or before it under TR, and the due date itself otherwise. Due dates come
-// in order.
+// contract anniversary on or before it when TR months run between due dates, and the due date
+// itself otherwise. Due dates come in order.
 func (c *corrections) appliesOn(due time.Time) time.Time {
-	if c.indexer != TR {
+	if !c.byDueDate {
 		return due
 	}
 

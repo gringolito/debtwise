@@ -679,6 +679,47 @@ func TestAVerdictNamesTheProjectionsTheBalancesBeforeTheDecisionRead(t *testing.
 	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}}, verdicts[0].ProjectedBy)
 }
 
+// A horizon between a TR anniversary and the next due date includes the correction applied on the
+// anniversary, so a verdict names its projection even when every installment due by the horizon
+// read a published TR. Signed on 2024-01-05 with installments on the 10th, the mortgage has TR
+// published from 2024-02-10 to 2025-02-10; the LTN matures on 2025-03-07, after the 2025-03-05
+// anniversary, which corrects the 2025-03-10 installment by the trailing 12-month average.
+func TestAVerdictNamesTheProjectionOfACorrectionAppliedBeforeTheHorizon(t *testing.T) {
+	t.Parallel()
+
+	terms := interestFreeTerms(t)
+	terms.ContractDate = date(t, "2024-01-05")
+	terms.Indexer = mortgage.TR
+
+	var tr []indexes.Value
+
+	for month := date(t, "2024-01-01"); month.Year() == 2024; month = month.AddDate(0, 1, 0) {
+		tr = append(tr, indexes.Value{PeriodStart: month, PeriodEnd: month.AddDate(0, 1, 0), Value: dec(t, "0.1488")})
+	}
+
+	for due := date(t, "2024-02-10"); due.Before(date(t, "2025-02-10")); due = due.AddDate(0, 1, 0) {
+		tr = append(tr, indexes.Value{PeriodStart: due, PeriodEnd: due.AddDate(0, 1, 0), Value: dec(t, "0.1000")})
+	}
+
+	m := comparison.Mortgage{
+		Terms:   terms,
+		Outlook: indexes.NewOutlook(map[indexes.Index][]indexes.Value{indexes.TR: tr}, indexes.Expectations{}, nil),
+	}
+
+	verdicts, err := comparison.Decide(m,
+		comparison.Market{Quotes: []bonds.Quote{{
+			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2025-03-07")},
+			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")},
+		}}},
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, "2025-02-15"), Effect: mortgage.ShortenTerm},
+		date(t, "2025-01-08"),
+	)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}}, verdicts[0].ProjectedBy)
+}
+
 // A poupança-linked contract rate reads the Selic target of each month, so a verdict names the
 // Selic target's method once an installment's rate reads a projected one, and the Selic target is
 // among the indexes it reads. Today is 2025-01-08; the installment of 2025-01-10 reads the target of
