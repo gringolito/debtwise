@@ -198,14 +198,14 @@ type ratedRow struct {
 
 // A TR-indexed mortgage signed on 2017-03-01 with its installments on the 1st charges 3.89% a year
 // plus the poupança yield's additional part of the month before each installment, set by the Selic
-// target on the month's 1st. Today is 2017-06-30. Up to the 5th installment, due 2017-08-01, the
-// rate reads a Selic target SGS has published, the 5th's because SGS has published it up to
-// 2017-07-26. From the 6th on, it reads the Focus median of the latest meeting in effect: R5/2017's
-// 9.50 from 2017-07-27, R6's 8.75 from 2017-09-08 and R7's 8.50 from 2017-10-26. While the target
-// is above 8.5 the part is 0.5% a month, 6.1678% a year, so the rate is 10.0578%; at 8.5 it is 70%
-// of the target, 0.4828% a month, so the rate is 9.8399%. TR alone corrects the balance, projected
-// past June by its trailing 12 months average (0.1287). The figures were worked out independently
-// with python's decimal.
+// target on the month's 1st. The first installment charges 31 days of interest. Today is
+// 2017-06-30. Up to the 5th installment, due 2017-08-01, the rate reads a Selic target SGS has
+// published, the 5th's because SGS has published it up to 2017-07-26. From the 6th on, it reads
+// the Focus median of the latest meeting in effect: R5/2017's 9.50 from 2017-07-27, R6's 8.75 from
+// 2017-09-08 and R7's 8.50 from 2017-10-26. While the target is above 8.5 the part is 0.5% a month,
+// 6.1678% a year, so the rate is 10.0578%; at 8.5 it is 70% of the target, 0.4828% a month, so the
+// rate is 9.8399%. TR alone corrects the balance, projected past June by its trailing 12 months
+// average (0.1287). The figures were worked out independently with python's decimal.
 func TestPoupancaLinkedRateFollowsTheFocusSelicPath(t *testing.T) {
 	t.Parallel()
 
@@ -237,16 +237,16 @@ func TestPoupancaLinkedRateFollowsTheFocusSelicPath(t *testing.T) {
 	}
 
 	assert.Equal(t, []ratedRow{
-		{1, "0.00", "400.91", "45000.00", above, selic("12.25", "2017-03-01")},
-		{2, "0.00", "360.82", "40000.00", above, selic("12.25", "2017-04-01")},
-		{3, "30.56", "320.98", "35026.74", above, selic("11.25", "2017-05-01")},
-		{4, "18.77", "281.00", "30039.01", above, selic("10.25", "2017-06-01")},
-		{5, "38.66", "241.17", "25064.72", above, selic("10.25", "2017-07-01")},
-		{6, "32.26", "201.23", "20077.58", above, focus("9.5000", "2017-08-01")},
-		{7, "25.84", "161.19", "15077.56", above, focus("9.5000", "2017-09-01")},
-		{8, "19.40", "121.05", "10064.64", above, focus("8.7500", "2017-10-01")},
-		{9, "12.95", "79.13", "5038.79", atSwitch, focus("8.5000", "2017-11-01")},
-		{10, "6.48", "39.61", "0.00", atSwitch, focus("8.5000", "2017-12-01")},
+		{1, "0.00", "414.28", "45013.37", above, selic("12.25", "2017-03-01")},
+		{2, "0.00", "360.93", "40011.88", above, selic("12.25", "2017-04-01")},
+		{3, "30.57", "321.07", "35037.14", above, selic("11.25", "2017-05-01")},
+		{4, "18.78", "281.09", "30047.93", above, selic("10.25", "2017-06-01")},
+		{5, "38.67", "241.24", "25072.17", above, selic("10.25", "2017-07-01")},
+		{6, "32.27", "201.29", "20083.55", above, focus("9.5000", "2017-08-01")},
+		{7, "25.85", "161.24", "15082.05", above, focus("9.5000", "2017-09-01")},
+		{8, "19.41", "121.09", "10067.64", above, focus("8.7500", "2017-10-01")},
+		{9, "12.96", "79.15", "5040.30", atSwitch, focus("8.5000", "2017-11-01")},
+		{10, "6.49", "39.63", "0.00", atSwitch, focus("8.5000", "2017-12-01")},
 	}, got.Installments)
 }
 
@@ -267,43 +267,43 @@ func TestIPCAIndexedScheduleFollowsTheFocusIPCAPath(t *testing.T) {
 		indexedMortgage("ipca", "100000.00", "2017-01-10", "2017-02-10", 38), http.StatusOK)
 
 	assert.Equal(t, []scheduleRow{
-		{1, "2017-02-10", "0.00", "97368.42", []scheduleIndex{}},
-		{2, "2017-03-10", "370.00", "95096.84", []scheduleIndex{publishedIndex("ipca", "0.38", "2017-01-01", "2017-01-01")}},
-		{3, "2017-04-10", "313.82", "92760.36", []scheduleIndex{publishedIndex("ipca", "0.33", "2017-02-01", "2017-02-01")}},
-		{4, "2017-05-10", "231.90", "90335.34", []scheduleIndex{publishedIndex("ipca", "0.25", "2017-03-01", "2017-03-01")}},
-		{5, "2017-06-10", "126.47", "87801.17", []scheduleIndex{publishedIndex("ipca", "0.14", "2017-04-01", "2017-04-01")}},
-		{6, "2017-07-10", "272.18", "85404.46", []scheduleIndex{publishedIndex("ipca", "0.31", "2017-05-01", "2017-05-01")}},
-		{7, "2017-08-10", "-128.11", "82611.46", []scheduleIndex{projectedIndex("ipca", "-0.1500", "2017-06-01", "2017-06-01", by("ipca", "focus"))}},
-		{8, "2017-09-10", "148.70", "80090.48", []scheduleIndex{projectedIndex("ipca", "0.1800", "2017-07-01", "2017-07-01", by("ipca", "focus"))}},
-		{9, "2017-10-10", "200.23", "77614.35", []scheduleIndex{projectedIndex("ipca", "0.2500", "2017-08-01", "2017-08-01", by("ipca", "focus"))}},
-		{10, "2017-11-10", "256.13", "75185.29", []scheduleIndex{projectedIndex("ipca", "0.3300", "2017-09-01", "2017-09-01", by("ipca", "focus"))}},
-		{11, "2017-12-10", "300.74", "72790.10", []scheduleIndex{projectedIndex("ipca", "0.4000", "2017-10-01", "2017-10-01", by("ipca", "focus"))}},
-		{12, "2018-01-10", "320.28", "70402.59", []scheduleIndex{projectedIndex("ipca", "0.4400", "2017-11-01", "2017-11-01", by("ipca", "focus"))}},
-		{13, "2018-02-10", "366.09", "68046.81", []scheduleIndex{projectedIndex("ipca", "0.5200", "2017-12-01", "2017-12-01", by("ipca", "focus"))}},
-		{14, "2018-03-10", "360.65", "65671.16", []scheduleIndex{projectedIndex("ipca", "0.5300", "2018-01-01", "2018-01-01", by("ipca", "focus"))}},
-		{15, "2018-04-10", "315.22", "63236.95", []scheduleIndex{projectedIndex("ipca", "0.4800", "2018-02-01", "2018-02-01", by("ipca", "focus"))}},
-		{16, "2018-05-10", "233.98", "60711.32", []scheduleIndex{projectedIndex("ipca", "0.3700", "2018-03-01", "2018-03-01", by("ipca", "focus"))}},
-		{17, "2018-06-10", "242.85", "58183.53", []scheduleIndex{projectedIndex("ipca", "0.4000", "2018-04-01", "2018-04-01", by("ipca", "focus"))}},
-		{18, "2018-07-10", "180.37", "55584.67", []scheduleIndex{projectedIndex("ipca", "0.3100", "2018-05-01", "2018-05-01", by("ipca", "focus"))}},
-		{19, "2018-08-10", "111.17", "52911.05", []scheduleIndex{projectedIndex("ipca", "0.2000", "2018-06-01", "2018-06-01", by("ipca", "focus"))}},
-		{20, "2018-09-10", "100.53", "50221.50", []scheduleIndex{projectedIndex("ipca", "0.1900", "2018-07-01", "2018-07-01", by("ipca", "focus"))}},
-		{21, "2018-10-10", "100.44", "47526.28", []scheduleIndex{projectedIndex("ipca", "0.2000", "2018-08-01", "2018-08-01", by("ipca", "focus"))}},
-		{22, "2018-11-10", "133.07", "44855.86", []scheduleIndex{projectedIndex("ipca", "0.2800", "2018-09-01", "2018-09-01", by("ipca", "focus"))}},
-		{23, "2018-12-10", "165.97", "42207.97", []scheduleIndex{projectedIndex("ipca", "0.3700", "2018-10-01", "2018-10-01", by("ipca", "focus"))}},
-		{24, "2019-01-10", "168.83", "39551.68", []scheduleIndex{projectedIndex("ipca", "0.4000", "2018-11-01", "2018-11-01", by("ipca", "focus"))}},
-		{25, "2019-02-10", "137.40", "36854.15", []scheduleIndex{projectedIndex("ipca", "0.3474", "2018-12-01", "2018-12-01", by("ipca", "focus"))}},
-		{26, "2019-03-10", "128.03", "34137.40", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-01-01", "2019-01-01", by("ipca", "focus"))}},
-		{27, "2019-04-10", "118.59", "31401.32", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-02-01", "2019-02-01", by("ipca", "focus"))}},
-		{28, "2019-05-10", "109.09", "28645.83", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-03-01", "2019-03-01", by("ipca", "focus"))}},
-		{29, "2019-06-10", "99.52", "25870.81", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-04-01", "2019-04-01", by("ipca", "focus"))}},
-		{30, "2019-07-10", "89.88", "23076.17", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-05-01", "2019-05-01", by("ipca", "focus"))}},
-		{31, "2019-08-10", "80.17", "20261.80", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-06-01", "2019-06-01", by("ipca", "focus"))}},
-		{32, "2019-09-10", "70.39", "17427.59", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-07-01", "2019-07-01", by("ipca", "focus"))}},
-		{33, "2019-10-10", "60.54", "14573.44", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-08-01", "2019-08-01", by("ipca", "focus"))}},
-		{34, "2019-11-10", "50.63", "11699.26", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-09-01", "2019-09-01", by("ipca", "focus"))}},
-		{35, "2019-12-10", "40.64", "8804.92", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-10-01", "2019-10-01", by("ipca", "focus"))}},
-		{36, "2020-01-10", "30.59", "5890.34", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-11-01", "2019-11-01", by("ipca", "focus"))}},
-		{37, "2020-02-10", "20.46", "2955.40", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-12-01", "2019-12-01", by("ipca", "focus"))}},
+		{1, "2017-02-10", "0.00", "97401.75", []scheduleIndex{}},
+		{2, "2017-03-10", "370.13", "95129.40", []scheduleIndex{publishedIndex("ipca", "0.38", "2017-01-01", "2017-01-01")}},
+		{3, "2017-04-10", "313.93", "92792.13", []scheduleIndex{publishedIndex("ipca", "0.33", "2017-02-01", "2017-02-01")}},
+		{4, "2017-05-10", "231.98", "90366.28", []scheduleIndex{publishedIndex("ipca", "0.25", "2017-03-01", "2017-03-01")}},
+		{5, "2017-06-10", "126.51", "87831.24", []scheduleIndex{publishedIndex("ipca", "0.14", "2017-04-01", "2017-04-01")}},
+		{6, "2017-07-10", "272.28", "85433.72", []scheduleIndex{publishedIndex("ipca", "0.31", "2017-05-01", "2017-05-01")}},
+		{7, "2017-08-10", "-128.15", "82639.77", []scheduleIndex{projectedIndex("ipca", "-0.1500", "2017-06-01", "2017-06-01", by("ipca", "focus"))}},
+		{8, "2017-09-10", "148.75", "80117.92", []scheduleIndex{projectedIndex("ipca", "0.1800", "2017-07-01", "2017-07-01", by("ipca", "focus"))}},
+		{9, "2017-10-10", "200.29", "77640.94", []scheduleIndex{projectedIndex("ipca", "0.2500", "2017-08-01", "2017-08-01", by("ipca", "focus"))}},
+		{10, "2017-11-10", "256.22", "75211.05", []scheduleIndex{projectedIndex("ipca", "0.3300", "2017-09-01", "2017-09-01", by("ipca", "focus"))}},
+		{11, "2017-12-10", "300.84", "72815.04", []scheduleIndex{projectedIndex("ipca", "0.4000", "2017-10-01", "2017-10-01", by("ipca", "focus"))}},
+		{12, "2018-01-10", "320.39", "70426.71", []scheduleIndex{projectedIndex("ipca", "0.4400", "2017-11-01", "2017-11-01", by("ipca", "focus"))}},
+		{13, "2018-02-10", "366.22", "68070.12", []scheduleIndex{projectedIndex("ipca", "0.5200", "2017-12-01", "2017-12-01", by("ipca", "focus"))}},
+		{14, "2018-03-10", "360.77", "65693.65", []scheduleIndex{projectedIndex("ipca", "0.5300", "2018-01-01", "2018-01-01", by("ipca", "focus"))}},
+		{15, "2018-04-10", "315.33", "63258.61", []scheduleIndex{projectedIndex("ipca", "0.4800", "2018-02-01", "2018-02-01", by("ipca", "focus"))}},
+		{16, "2018-05-10", "234.06", "60732.12", []scheduleIndex{projectedIndex("ipca", "0.3700", "2018-03-01", "2018-03-01", by("ipca", "focus"))}},
+		{17, "2018-06-10", "242.93", "58203.46", []scheduleIndex{projectedIndex("ipca", "0.4000", "2018-04-01", "2018-04-01", by("ipca", "focus"))}},
+		{18, "2018-07-10", "180.43", "55603.70", []scheduleIndex{projectedIndex("ipca", "0.3100", "2018-05-01", "2018-05-01", by("ipca", "focus"))}},
+		{19, "2018-08-10", "111.21", "52929.16", []scheduleIndex{projectedIndex("ipca", "0.2000", "2018-06-01", "2018-06-01", by("ipca", "focus"))}},
+		{20, "2018-09-10", "100.57", "50238.69", []scheduleIndex{projectedIndex("ipca", "0.1900", "2018-07-01", "2018-07-01", by("ipca", "focus"))}},
+		{21, "2018-10-10", "100.48", "47542.55", []scheduleIndex{projectedIndex("ipca", "0.2000", "2018-08-01", "2018-08-01", by("ipca", "focus"))}},
+		{22, "2018-11-10", "133.12", "44871.22", []scheduleIndex{projectedIndex("ipca", "0.2800", "2018-09-01", "2018-09-01", by("ipca", "focus"))}},
+		{23, "2018-12-10", "166.02", "42222.41", []scheduleIndex{projectedIndex("ipca", "0.3700", "2018-10-01", "2018-10-01", by("ipca", "focus"))}},
+		{24, "2019-01-10", "168.89", "39565.21", []scheduleIndex{projectedIndex("ipca", "0.4000", "2018-11-01", "2018-11-01", by("ipca", "focus"))}},
+		{25, "2019-02-10", "137.45", "36866.76", []scheduleIndex{projectedIndex("ipca", "0.3474", "2018-12-01", "2018-12-01", by("ipca", "focus"))}},
+		{26, "2019-03-10", "128.08", "34149.08", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-01-01", "2019-01-01", by("ipca", "focus"))}},
+		{27, "2019-04-10", "118.63", "31412.07", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-02-01", "2019-02-01", by("ipca", "focus"))}},
+		{28, "2019-05-10", "109.13", "28655.64", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-03-01", "2019-03-01", by("ipca", "focus"))}},
+		{29, "2019-06-10", "99.55", "25879.67", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-04-01", "2019-04-01", by("ipca", "focus"))}},
+		{30, "2019-07-10", "89.91", "23084.07", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-05-01", "2019-05-01", by("ipca", "focus"))}},
+		{31, "2019-08-10", "80.19", "20268.73", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-06-01", "2019-06-01", by("ipca", "focus"))}},
+		{32, "2019-09-10", "70.41", "17433.55", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-07-01", "2019-07-01", by("ipca", "focus"))}},
+		{33, "2019-10-10", "60.56", "14578.42", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-08-01", "2019-08-01", by("ipca", "focus"))}},
+		{34, "2019-11-10", "50.65", "11703.26", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-09-01", "2019-09-01", by("ipca", "focus"))}},
+		{35, "2019-12-10", "40.66", "8807.94", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-10-01", "2019-10-01", by("ipca", "focus"))}},
+		{36, "2020-01-10", "30.60", "5892.36", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-11-01", "2019-11-01", by("ipca", "focus"))}},
+		{37, "2020-02-10", "20.47", "2956.41", []scheduleIndex{projectedIndex("ipca", "0.3474", "2019-12-01", "2019-12-01", by("ipca", "focus"))}},
 		{38, "2020-03-10", "9.68", "0.00", []scheduleIndex{projectedIndex("ipca", "0.3274", "2020-01-01", "2020-01-01", by("ipca", "focus"))}},
 	}, s.schedule(t))
 }

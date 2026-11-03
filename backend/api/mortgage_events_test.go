@@ -196,8 +196,8 @@ func TestStatementIsEdited(t *testing.T) {
 }
 
 // The schedule a statement is compared with is corrected by the published TR, but not on the 1st
-// installment: after the 2nd installment it owes 40,050.00, as
-// TestIndexedMortgageScheduleIsCorrectedByPublishedValues works out.
+// installment: after the 2nd installment, signed on 2023-12-10 so the 1st charges 31 days of
+// interest, it owes 40,066.02, as TestIndexedMortgageScheduleIsCorrectedByPublishedValues works out.
 func TestStatementDriftFollowsIndexCorrections(t *testing.T) {
 	t.Parallel()
 
@@ -208,13 +208,13 @@ func TestStatementDriftFollowsIndexCorrections(t *testing.T) {
 		publishedValue("2023-12-10", "2024-01-10", "0.0539"),
 		publishedValue("2024-01-10", "2024-02-10", "0.1250"),
 	}, time.Now()))
-	do(t, handler, http.MethodPut, "/mortgage", withField(t, "indexer", `"tr"`), http.StatusOK)
+	do(t, handler, http.MethodPut, "/mortgage", withFieldOf(t, signedOnDecember10(), "indexer", `"tr"`), http.StatusOK)
 	do(t, handler, http.MethodPost, "/mortgage/statements",
 		`{"date": "2024-02-20", "outstanding_balance": "40100.00"}`, http.StatusCreated)
 
 	assert.JSONEq(t, `{"statements": [
-		{"id": 1, "date": "2024-02-20", "outstanding_balance": "40100.00", "computed_balance": "40050.00",
-		 "drift": "50.00"}
+		{"id": 1, "date": "2024-02-20", "outstanding_balance": "40100.00", "computed_balance": "40066.02",
+		 "drift": "33.98"}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 }
 
@@ -298,15 +298,15 @@ func TestEventOnTheContractDateIsRecorded(t *testing.T) {
 	handler := registered(t)
 
 	do(t, handler, http.MethodPost, "/mortgage/prepayments",
-		`{"date": "2023-12-10", "amount": "5000.00", "effect": "lower_installment"}`, http.StatusCreated)
+		`{"date": "2023-12-11", "amount": "5000.00", "effect": "lower_installment"}`, http.StatusCreated)
 	do(t, handler, http.MethodPost, "/mortgage/statements",
-		`{"date": "2023-12-10", "outstanding_balance": "55000.00"}`, http.StatusCreated)
+		`{"date": "2023-12-11", "outstanding_balance": "55000.00"}`, http.StatusCreated)
 
 	assert.JSONEq(t, `{"prepayments": [
-		{"id": 1, "date": "2023-12-10", "amount": "5000.00", "effect": "lower_installment"}
+		{"id": 1, "date": "2023-12-11", "amount": "5000.00", "effect": "lower_installment"}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 	assert.JSONEq(t, `{"statements": [
-		{"id": 1, "date": "2023-12-10", "outstanding_balance": "55000.00", "computed_balance": "55000.00",
+		{"id": 1, "date": "2023-12-11", "outstanding_balance": "55000.00", "computed_balance": "55000.00",
 		 "drift": "0.00"}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 }
@@ -337,14 +337,14 @@ func TestInvalidEventIsRejected(t *testing.T) {
 			name:   "prepayment before the contract and below a centavo",
 			method: http.MethodPost,
 			path:   "/mortgage/prepayments",
-			body:   `{"date": "2023-12-09", "amount": "10.001", "effect": "shorten_term"}`,
+			body:   `{"date": "2023-12-10", "amount": "10.001", "effect": "shorten_term"}`,
 			want:   []errorDetail{{"body.amount", moneyPattern}},
 		},
 		{
 			name:   "prepayment before the contract",
 			method: http.MethodPut,
 			path:   "/mortgage/prepayments/1",
-			body:   `{"date": "2023-12-09", "amount": "0", "effect": "shorten_term"}`,
+			body:   `{"date": "2023-12-10", "amount": "0", "effect": "shorten_term"}`,
 			want: []errorDetail{
 				{"body.date", "must not be before the contract date"},
 				{"body.amount", "must be greater than zero"},
@@ -354,14 +354,14 @@ func TestInvalidEventIsRejected(t *testing.T) {
 			name:   "prepayment recorded before the contract",
 			method: http.MethodPost,
 			path:   "/mortgage/prepayments",
-			body:   `{"date": "2023-12-09", "amount": "10.00", "effect": "shorten_term"}`,
+			body:   `{"date": "2023-12-10", "amount": "10.00", "effect": "shorten_term"}`,
 			want:   []errorDetail{{"body.date", "must not be before the contract date"}},
 		},
 		{
 			name:   "statement recorded before the contract",
 			method: http.MethodPost,
 			path:   "/mortgage/statements",
-			body:   `{"date": "2023-12-09", "outstanding_balance": "60000.00"}`,
+			body:   `{"date": "2023-12-10", "outstanding_balance": "60000.00"}`,
 			want:   []errorDetail{{"body.date", "must not be before the contract date"}},
 		},
 		{
@@ -382,7 +382,7 @@ func TestInvalidEventIsRejected(t *testing.T) {
 			name:   "statement before the contract",
 			method: http.MethodPut,
 			path:   "/mortgage/statements/1",
-			body:   `{"date": "2023-12-09", "outstanding_balance": "60000.00"}`,
+			body:   `{"date": "2023-12-10", "outstanding_balance": "60000.00"}`,
 			want:   []errorDetail{{"body.date", "must not be before the contract date"}},
 		},
 	}

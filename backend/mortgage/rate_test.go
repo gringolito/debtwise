@@ -80,13 +80,28 @@ func poupancaLinkedSAC(t *testing.T, indexer mortgage.Indexer, amount string, mo
 	}
 }
 
+// thirtyDaysBeforeFirstInstallment moves the contract date, and the rows that apply from it, to 30
+// days before the first installment, so that it charges a month's interest. It suits terms whose
+// rate and correction do not depend on the contract day.
+func thirtyDaysBeforeFirstInstallment(terms mortgage.Terms) mortgage.Terms {
+	terms.ContractDate = terms.FirstInstallmentDate.AddDate(0, 0, -30)
+	terms.ContractRates[0].EffectiveFrom = terms.ContractDate
+	terms.MIPRates[0].EffectiveFrom = terms.ContractDate
+	terms.DFIRates[0].EffectiveFrom = terms.ContractDate
+	terms.Fees[0].EffectiveFrom = terms.ContractDate
+
+	return terms
+}
+
 // Each installment's rate adds to the fixed 3.89% the poupança yield's additional part of the
 // month that ends on its due date, set by the Selic target on the month's first day and turned
 // into an effective annual rate. With the target at 11.75%, above 8.5%, the part is 0.5% a month,
 // 6.1678% a year, so the rate is 10.0578%. At 8.5% and at 7.75% the part is 70% of the target as a
 // monthly rate, rounded at 4 places: 0.4828% and 0.4412% a month. TR alone corrects the balance:
-// the 2nd installment's correction is 0.05% of 20,000.00. Figures worked out independently with
-// python's decimal.
+// the 2nd installment's correction is 0.05% of 20,000.00. The 1st installment, 31 days after the
+// contract date, charges 31/30 of its month's interest, 240.55 × 31/30 = 248.57, and amortizes a
+// month's interest plus 10,000.00 less that, so the 2nd starts from 20,008.02. Figures worked out
+// independently with python's decimal.
 func TestPoupancaLinkedRateAddsTheAdditionalPartOfEachMonth(t *testing.T) {
 	t.Parallel()
 
@@ -105,15 +120,15 @@ func TestPoupancaLinkedRateAddsTheAdditionalPartOfEachMonth(t *testing.T) {
 
 	assert.Equal(t, []ratedRow{
 		{
-			1, "0.00", "240.55", "0.1005778118644995687897076174316406",
+			1, "0.00", "248.57", "0.1005778118644995687897076174316406",
 			"", "selic_target 11.75 2024-01-10..2024-01-10",
 		},
 		{
-			2, "10.00", "157.12", "0.09839946209275988313680493669517718",
+			2, "10.00", "157.18", "0.09839946209275988313680493669517718",
 			"tr 0.0500 2024-02-10..2024-03-10", "selic_target 8.50 2024-02-10..2024-02-10",
 		},
 		{
-			3, "0.00", "74.53", "0.09314782222766095662103739171089309",
+			3, "0.00", "74.56", "0.09314782222766095662103739171089309",
 			"tr 0.0000 2024-03-10..2024-04-10", "selic_target 7.75 2024-03-10..2024-03-10",
 		},
 	}, ratedSchedule(poupancaLinkedSAC(t, mortgage.TR, "30000.00", 3), history, date(t, "2026-10-25")))
@@ -207,6 +222,7 @@ func TestFixedRateReadsNoIndex(t *testing.T) {
 
 	terms := poupancaLinkedSAC(t, mortgage.NoIndexer, "20000.00", 2)
 	terms.ContractRates[0].PoupancaAdditional = false
+	terms = thirtyDaysBeforeFirstInstallment(terms)
 
 	history := outlookOf(publishedValues{indexes.SelicTarget: {published(t, "2024-01-10", "2024-01-10", "11.75")}})
 
@@ -252,7 +268,10 @@ func TestFuturePoupancaLinkedRateRecordsTheSelicTargetMethod(t *testing.T) {
 			3, "0.00", "80.18", "0.1005778118644995687897076174316406",
 			"", "selic_target 13.0833 2024-03-10..2024-03-10 (selic_target trailing_12)",
 		},
-	}, ratedSchedule(poupancaLinkedSAC(t, mortgage.NoIndexer, "30000.00", 3), outlook, date(t, "2024-02-20")))
+	}, ratedSchedule(
+		thirtyDaysBeforeFirstInstallment(poupancaLinkedSAC(t, mortgage.NoIndexer, "30000.00", 3)),
+		outlook, date(t, "2024-02-20"),
+	))
 }
 
 // A month whose Selic target is missing, or only projected for an installment that is due, leaves
@@ -298,7 +317,10 @@ func TestPoupancaLinkedRateWithoutTheSelicTargetChargesTheFixedPart(t *testing.T
 					"", "selic_target 11.75 2024-01-10..2024-01-10",
 				},
 				{2, "0.00", "31.85", "0.0389", "", "selic_target missing 2024-02-10..2024-02-10"},
-			}, ratedSchedule(poupancaLinkedSAC(t, mortgage.NoIndexer, "20000.00", 2), tt.outlook, date(t, "2026-10-25")))
+			}, ratedSchedule(
+				thirtyDaysBeforeFirstInstallment(poupancaLinkedSAC(t, mortgage.NoIndexer, "20000.00", 2)),
+				tt.outlook, date(t, "2026-10-25"),
+			))
 		})
 	}
 }

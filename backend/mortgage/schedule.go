@@ -57,9 +57,11 @@ type Installment struct {
 // only projected is missing. An installment due after today is corrected by the Outlook's
 // estimate, published or projected, and a month with no estimate is missing (ADR-0009).
 // Each charge and correction is rounded to centavos. The last installment amortizes whatever is
-// still owed, so the balance ends at zero. Under Price the amortization plus interest is set from
-// the balance, rate and months left on the first installment, whenever the rate changes and
-// whenever the balance is corrected, prepaid or stated.
+// still owed, so the balance ends at zero. Under SAC the first installment charges interest for the
+// days since the contract date, at the monthly rate for each 30, and amortizes what a month's
+// interest plus the balance over the months left leaves of it (ADR-0014). Under Price the
+// amortization plus interest is set from the balance, rate and months left on the first
+// installment, whenever the rate changes and whenever the balance is corrected, prepaid or stated.
 //
 // Events apply in date order after the installments due on or before their date, and after the
 // next installment's correction when they are dated on or after the day it applies. A prepayment
@@ -153,6 +155,11 @@ func (r *replayer) charge(number int) Installment {
 	correction := r.correct(number)
 
 	interest := r.balance.Mul(rate.monthly).RoundCents()
+	monthsInterest := interest
+
+	if number == 1 && t.AmortizationSystem == SAC {
+		interest = r.balance.Mul(rate.monthly).Mul(decimal.FromInt(int64(days(t.ContractDate, due)))).Quo(decimal.FromInt(30)).RoundCents()
+	}
 
 	var amortization decimal.Decimal
 
@@ -160,7 +167,7 @@ func (r *replayer) charge(number int) Installment {
 	case left == 1:
 		amortization = r.balance
 	case t.AmortizationSystem == SAC:
-		amortization = level(SAC, r.balance, rate.monthly, left)
+		amortization = level(SAC, r.balance, rate.monthly, left).Add(monthsInterest).Sub(interest)
 	default:
 		if number == 1 || r.relevel || rate.monthly.Cmp(r.paymentRate) != 0 || correction.amount.Cmp(decimal.Decimal{}) != 0 {
 			r.payment, r.paymentRate = pricePayment(r.balance, rate.monthly, left), rate.monthly
@@ -343,4 +350,9 @@ func addMonths(day time.Time, months int) time.Time {
 	lastDay := first.AddDate(0, 1, -1).Day()
 
 	return first.AddDate(0, 0, min(day.Day(), lastDay)-1)
+}
+
+// days counts the days from start to end, both at midnight UTC.
+func days(start, end time.Time) int {
+	return int(end.Sub(start) / (24 * time.Hour))
 }
