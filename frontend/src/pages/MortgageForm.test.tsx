@@ -789,3 +789,162 @@ describe("removing a middle row", () => {
     });
   });
 });
+
+describe("the rates of the insurances charged on the first installment", () => {
+  it("fills the DFI rate with the one that charges the value typed on the appraisal value", async () => {
+    const requests = stubMortgageApi({
+      mortgage: registeredMortgage,
+      onSave: () => registeredMortgage,
+    });
+    renderAt("/financiamento/editar");
+
+    await screen.findByRole("heading", { name: "Editar financiamento" });
+    fill("Valor do DFI na primeira prestação (R$)", "33,50");
+
+    expect(screen.getByLabelText("Taxa do DFI 1 (% a.m.)")).toHaveValue("0,0335");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await savedPage();
+    expect(putBodies(requests)).toEqual([
+      expect.objectContaining({ dfi_rates: [{ effective_from: "2023-12-10", rate: "0.000335" }] }),
+    ]);
+  });
+
+  it("fills the MIP rate in force at the first installment from the value typed on the original amount", async () => {
+    const requests = stubMortgageApi({
+      mortgage: registeredMortgage,
+      onSave: () => registeredMortgage,
+    });
+    renderAt("/financiamento/editar");
+
+    await screen.findByRole("heading", { name: "Editar financiamento" });
+    expect(
+      within(group("MIP 2")).queryByLabelText("Valor do MIP na primeira prestação (R$)"),
+    ).not.toBeInTheDocument();
+    fireEvent.change(
+      within(group("MIP 1")).getByLabelText("Valor do MIP na primeira prestação (R$)"),
+      { target: { value: "15,48" } },
+    );
+
+    expect(screen.getByLabelText("Taxa do MIP 1 (% a.m.)")).toHaveValue("0,0258");
+    expect(screen.getByLabelText("Taxa do MIP 2 (% a.m.)")).toHaveValue("0,05");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await savedPage();
+    expect(putBodies(requests)).toEqual([
+      expect.objectContaining({
+        mip_rates: [
+          { effective_from: "2023-12-10", rate: "0.000258" },
+          { effective_from: "2024-04-01", rate: "0.0005" },
+        ],
+      }),
+    ]);
+  });
+
+  it("offers the value next to the row that a later first installment falls in", async () => {
+    stubMortgageApi({ mortgage: registeredMortgage });
+    renderAt("/financiamento/editar");
+
+    await screen.findByRole("heading", { name: "Editar financiamento" });
+    fill("Primeira prestação", "2024-04-10");
+    expect(
+      within(group("MIP 1")).queryByLabelText("Valor do MIP na primeira prestação (R$)"),
+    ).not.toBeInTheDocument();
+    fireEvent.change(
+      within(group("MIP 2")).getByLabelText("Valor do MIP na primeira prestação (R$)"),
+      { target: { value: "25,80" } },
+    );
+
+    expect(screen.getByLabelText("Taxa do MIP 1 (% a.m.)")).toHaveValue("0,03");
+    expect(screen.getByLabelText("Taxa do MIP 2 (% a.m.)")).toHaveValue("0,043");
+  });
+
+  it.each([
+    [
+      "has the fewest decimal places, though another is nearer value / base",
+      "123.456,78",
+      "37,04",
+      "0,03",
+    ],
+    [
+      "is the nearest value / base of several with as few places",
+      "250.000,00",
+      "52,49",
+      "0,020996",
+    ],
+    ["may charge half a centavo less, which rounds up", "135.000,00", "10,13", "0,0075"],
+    [
+      "never charges half a centavo more, which rounds up past it",
+      "135.000,00",
+      "10,12",
+      "0,007496",
+    ],
+  ])("fills a rate that %s", async (_, appraisal, charge, rate) => {
+    stubMortgageApi({ mortgage: registeredMortgage });
+    renderAt("/financiamento/editar");
+
+    await screen.findByRole("heading", { name: "Editar financiamento" });
+    fill("Valor de avaliação", appraisal);
+    fill("Valor do DFI na primeira prestação (R$)", charge);
+
+    expect(screen.getByLabelText("Taxa do DFI 1 (% a.m.)")).toHaveValue(rate);
+  });
+
+  it("says each value needs the amount it is charged on, and fills the rate once it is there", async () => {
+    stubMortgageApi();
+    renderAt("/financiamento/editar");
+
+    await screen.findByRole("heading", { name: "Cadastrar financiamento" });
+    const mip = screen.getByLabelText("Valor do MIP na primeira prestação (R$)");
+    const dfi = screen.getByLabelText("Valor do DFI na primeira prestação (R$)");
+    expect(mip).toHaveAccessibleDescription("Preencha o valor financiado para calcular a taxa.");
+    expect(dfi).toHaveAccessibleDescription("Preencha o valor de avaliação para calcular a taxa.");
+
+    fill("Valor do MIP na primeira prestação (R$)", "15,48");
+    fill("Valor do DFI na primeira prestação (R$)", "33,50");
+    expect(screen.getByLabelText("Taxa do MIP 1 (% a.m.)")).toHaveValue("");
+    expect(screen.getByLabelText("Taxa do DFI 1 (% a.m.)")).toHaveValue("");
+
+    fill("Valor financiado", "60.000,00");
+    fill("Valor de avaliação", "100.000,00");
+    expect(mip).not.toHaveAccessibleDescription();
+    expect(dfi).not.toHaveAccessibleDescription();
+    expect(screen.getByLabelText("Taxa do MIP 1 (% a.m.)")).toHaveValue("0,0258");
+    expect(screen.getByLabelText("Taxa do DFI 1 (% a.m.)")).toHaveValue("0,0335");
+  });
+
+  it("saves the rate the owner types over the derived one, dropping the value it no longer charges", async () => {
+    const requests = stubMortgageApi({
+      mortgage: registeredMortgage,
+      onSave: () => registeredMortgage,
+    });
+    renderAt("/financiamento/editar");
+
+    await screen.findByRole("heading", { name: "Editar financiamento" });
+    fill("Valor do DFI na primeira prestação (R$)", "33,50");
+    fill("Taxa do DFI 1 (% a.m.)", "0,034");
+    fill("Valor de avaliação", "120.000,00");
+
+    expect(screen.getByLabelText("Valor do DFI na primeira prestação (R$)")).toHaveValue("");
+    expect(screen.getByLabelText("Taxa do DFI 1 (% a.m.)")).toHaveValue("0,034");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await savedPage();
+    expect(putBodies(requests)).toEqual([
+      expect.objectContaining({ dfi_rates: [{ effective_from: "2023-12-10", rate: "0.00034" }] }),
+    ]);
+  });
+
+  it("marks a value that isn't whole centavos and keeps the rate", async () => {
+    stubMortgageApi({ mortgage: registeredMortgage });
+    renderAt("/financiamento/editar");
+
+    await screen.findByRole("heading", { name: "Editar financiamento" });
+    fill("Valor do DFI na primeira prestação (R$)", "33,505");
+
+    const value = screen.getByLabelText("Valor do DFI na primeira prestação (R$)");
+    expect(value).toBeInvalid();
+    expect(value).toHaveAccessibleDescription("Valor inválido.");
+    expect(screen.getByLabelText("Taxa do DFI 1 (% a.m.)")).toHaveValue("0,01");
+  });
+});

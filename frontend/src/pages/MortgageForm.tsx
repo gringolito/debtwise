@@ -1,7 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { SelectField, TextField } from "@/components/mortgage/FormControls";
-import { ContractRateRows, FeeRows, MonthlyRateRows } from "@/components/mortgage/RowLists";
+import {
+  ContractRateRows,
+  FeeRows,
+  type FirstChargeField,
+  MonthlyRateRows,
+} from "@/components/mortgage/RowLists";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ApiError, type RegisteredMortgage } from "@/lib/api";
@@ -10,11 +15,15 @@ import {
   amortizationSystemLabels,
   emptyValues,
   type FormValues,
+  firstChargeOf,
   type Indexer,
+  type Insurance,
   indexerLabels,
+  insuranceFields,
   invalidLocations,
   termsFromValues,
   valuesFromMortgage,
+  withFirstChargeRate,
 } from "@/lib/mortgageForm";
 import { useMortgage, useSaveMortgage } from "@/lib/mortgageQueries";
 
@@ -28,6 +37,11 @@ const indexerOptions = (Object.entries(indexerLabels) as [Indexer, string][]).ma
 
 type ListName = "contractRates" | "mipRates" | "dfiRates" | "fees";
 
+const needsBaseHints: Record<Insurance, string> = {
+  MIP: "Preencha o valor financiado para calcular a taxa.",
+  DFI: "Preencha o valor de avaliação para calcular a taxa.",
+};
+
 function MortgageFormFields({ mortgage }: { mortgage: RegisteredMortgage | null }) {
   const [values, setValues] = useState<FormValues>(() =>
     mortgage ? valuesFromMortgage(mortgage) : emptyValues(),
@@ -39,10 +53,28 @@ function MortgageFormFields({ mortgage }: { mortgage: RegisteredMortgage | null 
 
   const set = <K extends keyof FormValues>(key: K, value: FormValues[K]) =>
     setValues((current) => ({ ...current, [key]: value }));
+  // A value the insurance's rate is derived from gives the rate again whenever it changes.
+  const setDeriving = <K extends keyof FormValues>(
+    insurance: Insurance,
+    key: K,
+    value: FormValues[K],
+  ) => setValues((current) => withFirstChargeRate({ ...current, [key]: value }, insurance));
   // The API names rows by position, so once a row is added or removed its answer is out of date.
   const setRows = <L extends ListName>(list: L, rows: FormValues[L]) => {
     if (rows.length !== values[list].length) save.reset();
     set(list, rows);
+  };
+
+  const firstCharge = (insurance: Insurance): FirstChargeField => {
+    const { charge } = insuranceFields[insurance];
+    const { row, rate, needsBase } = firstChargeOf(values, insurance);
+    return {
+      rowId: row?.id,
+      value: values[charge],
+      onChange: (value) => setDeriving(insurance, charge, value),
+      invalid: !needsBase && values[charge].trim() !== "" && rate === undefined,
+      hint: needsBase ? needsBaseHints[insurance] : undefined,
+    };
   };
 
   function submit(event: FormEvent) {
@@ -77,7 +109,7 @@ function MortgageFormFields({ mortgage }: { mortgage: RegisteredMortgage | null 
           label="Valor financiado"
           inputMode="decimal"
           value={values.originalAmount}
-          onChange={(value) => set("originalAmount", value)}
+          onChange={(value) => setDeriving("MIP", "originalAmount", value)}
           invalid={isInvalid("original_amount")}
         />
         <TextField
@@ -113,7 +145,7 @@ function MortgageFormFields({ mortgage }: { mortgage: RegisteredMortgage | null 
           label="Valor de avaliação"
           inputMode="decimal"
           value={values.appraisalValue}
-          onChange={(value) => set("appraisalValue", value)}
+          onChange={(value) => setDeriving("DFI", "appraisalValue", value)}
           invalid={isInvalid("appraisal_value")}
         />
       </div>
@@ -128,12 +160,14 @@ function MortgageFormFields({ mortgage }: { mortgage: RegisteredMortgage | null 
         rows={values.mipRates}
         onChange={(rows) => setRows("mipRates", rows)}
         isInvalid={isInvalid}
+        firstCharge={firstCharge("MIP")}
       />
       <MonthlyRateRows
         insurance="DFI"
         rows={values.dfiRates}
         onChange={(rows) => setRows("dfiRates", rows)}
         isInvalid={isInvalid}
+        firstCharge={firstCharge("DFI")}
       />
       <FeeRows
         rows={values.fees}

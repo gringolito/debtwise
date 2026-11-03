@@ -8,6 +8,7 @@ import {
   type ContractRateRow,
   type EffectiveRow,
   type FeeRow,
+  type Insurance,
   type MonthlyRateRow,
   rowLocation,
 } from "@/lib/mortgageForm";
@@ -138,11 +139,22 @@ export function ContractRateRows(props: RowsProps<ContractRateRow>) {
   );
 }
 
-interface MonthlyRateRowsProps extends RowsProps<MonthlyRateRow> {
-  insurance: "MIP" | "DFI";
+/** The input for what the bank charged for the insurance on the first installment. */
+export interface FirstChargeField {
+  /** The row in force at the first installment, which shows the input next to its rate. */
+  rowId: number | undefined;
+  value: string;
+  onChange: (value: string) => void;
+  invalid: boolean;
+  hint?: string;
 }
 
-export function MonthlyRateRows({ insurance, ...props }: MonthlyRateRowsProps) {
+interface MonthlyRateRowsProps extends RowsProps<MonthlyRateRow> {
+  insurance: Insurance;
+  firstCharge: FirstChargeField;
+}
+
+export function MonthlyRateRows({ insurance, firstCharge, ...props }: MonthlyRateRowsProps) {
   return (
     <RowList
       {...props}
@@ -151,16 +163,36 @@ export function MonthlyRateRows({ insurance, ...props }: MonthlyRateRowsProps) {
       validityOf={`do ${insurance}`}
       blank={blankMonthlyRate}
     >
-      {(row, { n, invalid, update }) => (
-        <TextField
-          label="Taxa (% a.m.)"
-          accessibleName={`Taxa do ${insurance} ${n} (% a.m.)`}
-          inputMode="decimal"
-          value={row.rate}
-          onChange={(rate) => update({ rate })}
-          invalid={invalid("rate")}
-        />
-      )}
+      {(row, { n, invalid, update }) => {
+        const chargesFirst = row.id === firstCharge.rowId;
+        return (
+          <>
+            <TextField
+              label="Taxa (% a.m.)"
+              accessibleName={`Taxa do ${insurance} ${n} (% a.m.)`}
+              inputMode="decimal"
+              value={row.rate}
+              onChange={(rate) => {
+                update({ rate });
+                // A rate typed over the derived one no longer charges the value next to it.
+                if (chargesFirst) firstCharge.onChange("");
+              }}
+              invalid={invalid("rate")}
+            />
+            {chargesFirst && (
+              <TextField
+                label="Valor na 1ª prestação (R$)"
+                accessibleName={`Valor do ${insurance} na primeira prestação (R$)`}
+                inputMode="decimal"
+                value={firstCharge.value}
+                onChange={firstCharge.onChange}
+                invalid={firstCharge.invalid}
+                hint={firstCharge.hint}
+              />
+            )}
+          </>
+        );
+      }}
     </RowList>
   );
 }
