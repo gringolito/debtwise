@@ -56,6 +56,9 @@ type Installment struct {
 // An installment due by today is corrected by published values only, so a month whose value is
 // only projected is missing. An installment due after today is corrected by the Outlook's
 // estimate, published or projected, and a month with no estimate is missing (ADR-0009).
+// MIP is charged on the corrected balance, and DFI on the appraisal value, which under TR is
+// corrected by every value that corrects the balance (ADR-0015). Both are charged at the rates in
+// effect on the due date.
 // Each charge and correction is rounded to centavos. The last installment amortizes whatever is
 // still owed, so the balance ends at zero. Under SAC the first installment charges interest for the
 // days since the contract date, at the monthly rate for each 30, and amortizes what a month's
@@ -90,6 +93,8 @@ type replayer struct {
 	today       time.Time
 	events      []event
 	balance     decimal.Decimal
+	// appraisal is the appraisal value DFI is charged on, corrected along with the balance under TR.
+	appraisal decimal.Decimal
 	// term is the number of the last installment.
 	term int
 	// payment is the Price installment's amortization plus interest, levelled at paymentRate.
@@ -121,6 +126,7 @@ func (t Terms) replayer(outlook indexes.Outlook, events Events, today time.Time)
 		today:       today,
 		events:      events.inOrder(),
 		balance:     t.OriginalAmount.RoundCents(),
+		appraisal:   t.AppraisalValue,
 		term:        t.TermMonths,
 		rates:       chargedRates(t.ContractRates),
 	}
@@ -178,7 +184,7 @@ func (r *replayer) charge(number int) Installment {
 
 	r.relevel = false
 	mip := r.balance.Mul(inEffect(t.MIPRates, due).Rate).RoundCents()
-	dfi := t.AppraisalValue.Mul(inEffect(t.DFIRates, due).Rate).RoundCents()
+	dfi := r.appraisal.Mul(inEffect(t.DFIRates, due).Rate).RoundCents()
 	fee := inEffect(t.Fees, due).Amount.RoundCents()
 	r.balance = r.balance.Sub(amortization)
 
@@ -198,8 +204,8 @@ func (r *replayer) charge(number int) Installment {
 	}
 }
 
-// correct corrects the balance for installment number, unless it was already, and returns the
-// correction.
+// correct corrects the balance for installment number, and the appraisal value along with it under
+// TR, unless it was already, and returns the balance's correction.
 func (r *replayer) correct(number int) correction {
 	if r.corrected.number == number {
 		return r.corrected
@@ -220,6 +226,10 @@ func (r *replayer) correct(number int) correction {
 		corrected := r.balance.Mul(v.Value).Quo(decimal.FromInt(100)).RoundCents()
 		c.amount = c.amount.Add(corrected)
 		r.balance = r.balance.Add(corrected)
+
+		if r.terms.Indexer == TR {
+			r.appraisal = r.appraisal.Add(r.appraisal.Mul(v.Value).Quo(decimal.FromInt(100)).RoundCents())
+		}
 	}
 
 	r.corrected = c

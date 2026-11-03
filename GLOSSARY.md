@@ -89,12 +89,13 @@ DFI together)
 
 **DFI** (Danos Físicos ao Imóvel):
 The mortgage's property damage insurance premium, charged with each installment on the appraisal
-value. Unlike MIP, it doesn't fall as the outstanding balance does.
+value, corrected by TR on a TR-indexed mortgage. Unlike MIP, it doesn't fall as the outstanding
+balance does.
 _Avoid_: Property insurance (the policy, not the premium charged), home insurance (an optional
 policy the owner may hold apart from the mortgage)
 
 **Appraisal Value** (valor de avaliação):
-The bank's valuation of the property behind a mortgage. DFI is charged on it.
+The bank's valuation of the property behind a mortgage, as signed. DFI is charged on it.
 _Avoid_: Property value (what the property would sell for), market value (a lot's sale value in
 DebtWise), purchase price (what the owner paid)
 

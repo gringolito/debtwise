@@ -49,7 +49,8 @@ type Terms struct {
 	AmortizationSystem   AmortizationSystem
 	// Indexer corrects the outstanding balance once a month, on the contract's anniversary.
 	Indexer Indexer
-	// AppraisalValue is the property's appraisal, which DFI is charged on.
+	// AppraisalValue is the property's appraisal as signed, which DFI is charged on, corrected by
+	// TR along with the outstanding balance on a TR-indexed mortgage.
 	AppraisalValue decimal.Decimal
 	ContractRates  []ContractRate
 	// MIPRates are charged on the outstanding balance; their dates are the owner's age-band

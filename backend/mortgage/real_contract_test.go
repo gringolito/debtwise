@@ -20,7 +20,6 @@ import (
 type recordedInstallment struct {
 	number             int
 	dueDate            string
-	insurance          decimal.Decimal
 	amount             decimal.Decimal
 	outstandingBalance decimal.Decimal
 }
@@ -53,7 +52,6 @@ func loadRecordedInstallments(t *testing.T, name string) []recordedInstallment {
 		installments = append(installments, recordedInstallment{
 			number:             number,
 			dueDate:            record[1],
-			insurance:          dec(t, record[4]),
 			amount:             dec(t, record[6]),
 			outstandingBalance: dec(t, record[7]),
 		})
@@ -80,7 +78,9 @@ func assertWithinTolerance(t *testing.T, what string, want, got decimal.Decimal)
 // bank's: its records leave out how much of the 2024-12-17 prepayment reached the principal and
 // what corrected installment 1 (#38), so a statement on 2024-12-18 pins it to installment 1's
 // amortization plus the balance after it. TR is SGS 226 for each period between due dates.
-// Insurance is left out of the amount: the bank's doesn't follow the balance (#70).
+// The bank records MIP and DFI as one figure, so their rates are the pair that best fits it on
+// installments 1 to 6, MIP on the corrected balance and DFI on the appraisal value corrected by TR
+// (#70).
 func TestScheduleMatchesARealContractsInstallments(t *testing.T) {
 	t.Parallel()
 
@@ -94,8 +94,8 @@ func TestScheduleMatchesARealContractsInstallments(t *testing.T) {
 		Indexer:              mortgage.TR,
 		AppraisalValue:       dec(t, "1426000.00"),
 		ContractRates:        []mortgage.ContractRate{{EffectiveFrom: signed, Rate: dec(t, "0.1006"), Basis: mortgage.Effective}},
-		MIPRates:             []mortgage.MonthlyRate{{EffectiveFrom: signed, Rate: dec(t, "0")}},
-		DFIRates:             []mortgage.MonthlyRate{{EffectiveFrom: signed, Rate: dec(t, "0")}},
+		MIPRates:             []mortgage.MonthlyRate{{EffectiveFrom: signed, Rate: dec(t, "0.0001584")}},
+		DFIRates:             []mortgage.MonthlyRate{{EffectiveFrom: signed, Rate: dec(t, "0.00006394")}},
 		Fees:                 []mortgage.Fee{{EffectiveFrom: signed, Amount: dec(t, "25.00")}},
 	}
 	outlook := indexes.NewOutlook(map[indexes.Index][]indexes.Value{indexes.TR: {
@@ -125,8 +125,7 @@ func TestScheduleMatchesARealContractsInstallments(t *testing.T) {
 		require.True(t, ok, "installment %d", want.number)
 
 		assert.Equal(t, want.dueDate, got.DueDate.Format(time.DateOnly), "installment %d due date", want.number)
-		assertWithinTolerance(t, fmt.Sprintf("installment %d amount without insurance", want.number),
-			want.amount.Sub(want.insurance), got.Amount)
+		assertWithinTolerance(t, fmt.Sprintf("installment %d amount", want.number), want.amount, got.Amount)
 		assertWithinTolerance(t, fmt.Sprintf("installment %d outstanding balance", want.number),
 			want.outstandingBalance, got.OutstandingBalance)
 	}

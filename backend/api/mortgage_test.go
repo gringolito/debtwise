@@ -177,7 +177,8 @@ func publishedValue(start, end, value string) indexes.Value {
 // The TR of each period is stored as SGS published it, except for the period starting on
 // 2024-03-10, which is reported missing and leaves the 4th installment uncorrected. A TR of zero
 // is published, not missing. The 1st installment is never corrected, so the TR of the period up to
-// the first anniversary, which is published, corrects no installment. Figures worked out
+// the first anniversary, which is published, corrects no installment. Each TR that corrects the
+// balance also corrects the 100,000.00 appraisal value DFI is charged on. Figures worked out
 // independently from the published TR.
 func TestIndexedMortgageScheduleIsCorrectedByPublishedValues(t *testing.T) {
 	t.Parallel()
@@ -206,28 +207,28 @@ func TestIndexedMortgageScheduleIsCorrectedByPublishedValues(t *testing.T) {
 		{"number": 2, "due_date": "2024-02-10", "correction": "62.53",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.1250",
 		                   "period_start": "2024-01-10", "period_end": "2024-02-10", "methods": []}], `+sacRate+`,
-		 "interest": "500.83", "amortization": "10016.51", "mip": "15.02", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10554.86", "prepaid": "0.00", "outstanding_balance": "40066.02"},
+		 "interest": "500.83", "amortization": "10016.51", "mip": "15.02", "dfi": "10.01", "fee": "12.50",
+		 "amount": "10554.87", "prepaid": "0.00", "outstanding_balance": "40066.02"},
 		{"number": 3, "due_date": "2024-03-10", "correction": "0.00",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0000",
 		                   "period_start": "2024-02-10", "period_end": "2024-03-10", "methods": []}], `+sacRate+`,
-		 "interest": "400.66", "amortization": "10016.51", "mip": "12.02", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10451.69", "prepaid": "0.00", "outstanding_balance": "30049.51"},
+		 "interest": "400.66", "amortization": "10016.51", "mip": "12.02", "dfi": "10.01", "fee": "12.50",
+		 "amount": "10451.70", "prepaid": "0.00", "outstanding_balance": "30049.51"},
 		{"number": 4, "due_date": "2024-04-10", "correction": "0.00",
 		 "index_values": [{"index": "tr", "status": "missing", "period_start": "2024-03-10", "period_end": "2024-04-10",
 		                   "methods": []}], `+sacRate+`,
-		 "interest": "300.50", "amortization": "10016.50", "mip": "15.02", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10354.52", "prepaid": "0.00", "outstanding_balance": "20033.01"},
+		 "interest": "300.50", "amortization": "10016.50", "mip": "15.02", "dfi": "10.01", "fee": "12.50",
+		 "amount": "10354.53", "prepaid": "0.00", "outstanding_balance": "20033.01"},
 		{"number": 5, "due_date": "2024-05-10", "correction": "16.75",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0836",
 		                   "period_start": "2024-04-10", "period_end": "2024-05-10", "methods": []}], `+sacRate+`,
-		 "interest": "200.50", "amortization": "10024.88", "mip": "10.02", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10257.90", "prepaid": "0.00", "outstanding_balance": "10024.88"},
+		 "interest": "200.50", "amortization": "10024.88", "mip": "10.02", "dfi": "10.02", "fee": "12.50",
+		 "amount": "10257.92", "prepaid": "0.00", "outstanding_balance": "10024.88"},
 		{"number": 6, "due_date": "2024-06-10", "correction": "4.89",
 		 "index_values": [{"index": "tr", "status": "published", "value": "0.0488",
 		                   "period_start": "2024-05-10", "period_end": "2024-06-10", "methods": []}], `+sacRate+`,
-		 "interest": "100.30", "amortization": "10029.77", "mip": "5.01", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10157.58", "prepaid": "0.00", "outstanding_balance": "0.00"}
+		 "interest": "100.30", "amortization": "10029.77", "mip": "5.01", "dfi": "10.03", "fee": "12.50",
+		 "amount": "10157.61", "prepaid": "0.00", "outstanding_balance": "0.00"}
 	]}`, rec.Body.String())
 }
 
@@ -236,7 +237,8 @@ func TestIndexedMortgageScheduleIsCorrectedByPublishedValues(t *testing.T) {
 // for the month that ends on its due date. A rate of 3.89% effective plus the poupança yield's
 // additional part reads the Selic target on the first day of the month that ends on each due date:
 // at 11.75%, above 8.5%, the part is 0.5% a month and the rate 10.0578%, and TR alone corrects the
-// balance. Figures worked out independently with python's decimal.
+// balance and the appraisal value DFI is charged on. Figures worked out independently with
+// python's decimal.
 func TestScheduleReadsTheIndexesItsTermsNeed(t *testing.T) {
 	t.Parallel()
 
@@ -270,8 +272,8 @@ func TestScheduleReadsTheIndexesItsTermsNeed(t *testing.T) {
 				"rate": "0.1005778118644995687897076174316406",
 				"rate_index_values": [{"index": "selic_target", "status": "published", "value": "11.75",
 				                       "period_start": "2024-01-10", "period_end": "2024-01-10", "methods": []}],
-				"interest": "240.98", "amortization": "30053.55", "mip": "9.02", "dfi": "10.00", "fee": "12.50",
-				"amount": "30326.05", "prepaid": "0.00", "outstanding_balance": "0.00"}`,
+				"interest": "240.98", "amortization": "30053.55", "mip": "9.02", "dfi": "10.01", "fee": "12.50",
+				"amount": "30326.06", "prepaid": "0.00", "outstanding_balance": "0.00"}`,
 		},
 		{
 			name:    "IPCA",
