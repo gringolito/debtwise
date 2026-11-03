@@ -2,12 +2,14 @@ package mortgage_test
 
 import (
 	"fmt"
+	"iter"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/mortgage"
@@ -53,9 +55,13 @@ func methodsText(methods []indexes.ProjectionMethod) string {
 }
 
 func indexedSchedule(terms mortgage.Terms, outlook indexes.Outlook, today time.Time) []indexedRow {
+	return indexedRows(terms.Schedule(outlook, mortgage.Events{}, today))
+}
+
+func indexedRows(installments iter.Seq[mortgage.Installment]) []indexedRow {
 	var rows []indexedRow
 
-	for m := range terms.Schedule(outlook, mortgage.Events{}, today) {
+	for m := range installments {
 		values := make([]string, 0, len(m.IndexValues))
 
 		for _, v := range m.IndexValues {
@@ -254,22 +260,30 @@ func TestPastMonthWithoutPublishedIndexIsMarkedMissing(t *testing.T) {
 	}, indexedSchedule(indexedSAC(t, mortgage.TR, "30000.00", 3), history, date(t, "2026-10-25")))
 }
 
-// From the 2nd installment on, each installment is corrected for the contract anniversaries since
-// the one before it, on the contract's day of the month whatever day installments fall due. The
-// 1st installment is never corrected, whenever it falls due, and the first anniversary's month
-// corrects no installment: an installment due on the contract date leaves the 2nd uncorrected, and
-// one deferred by a month leaves the second anniversary's month uncorrected too. The TR of periods
-// starting on installment due dates is published too, and must not be read. A contract signed on a
-// day some months lack has its anniversaries on the 1st from the first one on, as SGS dates those
-// periods.
-func TestCorrectionsFollowTheContractAnniversaries(t *testing.T) {
+// From the 2nd installment on, a TR-indexed installment is corrected by the TR of the month from
+// the previous installment's due date to its own, whatever the contract's day of the month: the TR
+// of the months between contract anniversaries is published too, and must not be read. The 1st
+// installment is never corrected, whenever it falls due, and a month that ends on or before the
+// first anniversary corrects no installment: an installment due on the contract date leaves the
+// 2nd uncorrected. Months counted from a due date some months lack start on the 1st from the first
+// short month on, as SGS dates those periods, and an installment is corrected by the months that
+// end by its due date: with installments due on the contract's 31st, the corrections are those of
+// the contract anniversaries. Figures worked out independently.
+func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 	t.Parallel()
 
 	history := outlookOf(publishedValues{indexes.TR: append(publishedTR2024(t),
 		published(t, "2024-01-20", "2024-02-20", "0.5000"),
+		published(t, "2024-02-20", "2024-03-20", "0.0400"),
+		published(t, "2024-01-31", "2024-03-01", "0.0300"),
 		published(t, "2024-02-29", "2024-03-29", "0.0620"),
 		published(t, "2024-03-01", "2024-03-31", "0.0331"),
 		published(t, "2024-03-01", "2024-04-01", "0.0331"),
+		published(t, "2024-03-29", "2024-04-29", "0.0500"),
+		published(t, "2024-12-18", "2025-01-18", "0.1289"),
+		published(t, "2024-12-19", "2025-01-19", "0.1039"),
+		published(t, "2025-01-18", "2025-02-18", "0.1523"),
+		published(t, "2025-01-19", "2025-02-19", "0.1694"),
 	)})
 
 	tests := []struct {
@@ -281,6 +295,42 @@ func TestCorrectionsFollowTheContractAnniversaries(t *testing.T) {
 		want             []indexedRow
 	}{
 		{
+			name:             "installments due the day after each anniversary",
+			contract:         "2024-11-18",
+			firstInstallment: "2024-12-19",
+			amount:           "30000.00",
+			months:           3,
+			want: []indexedRow{
+				{1, "0.00", "300.00", "10000.00", "0.00", "10300.00", "20000.00", ""},
+				{2, "20.78", "200.21", "10010.39", "0.00", "10210.60", "10010.39", "tr 0.1039 2024-12-19..2025-01-19"},
+				{3, "16.96", "100.27", "10027.35", "0.00", "10127.62", "0.00", "tr 0.1694 2025-01-19..2025-02-19"},
+			},
+		},
+		{
+			name:             "installments due five days after each anniversary",
+			contract:         "2023-12-15",
+			firstInstallment: "2024-01-20",
+			amount:           "30000.00",
+			months:           3,
+			want: []indexedRow{
+				{1, "0.00", "300.00", "10000.00", "0.00", "10300.00", "20000.00", ""},
+				{2, "100.00", "201.00", "10050.00", "0.00", "10251.00", "10050.00", "tr 0.5000 2024-01-20..2024-02-20"},
+				{3, "4.02", "100.54", "10054.02", "0.00", "10154.56", "0.00", "tr 0.0400 2024-02-20..2024-03-20"},
+			},
+		},
+		{
+			name:             "installments due five days before each anniversary",
+			contract:         "2023-12-20",
+			firstInstallment: "2024-01-15",
+			amount:           "30000.00",
+			months:           3,
+			want: []indexedRow{
+				{1, "0.00", "300.00", "10000.00", "0.00", "10300.00", "20000.00", ""},
+				{2, "14.34", "200.14", "10007.17", "0.00", "10207.31", "10007.17", "tr 0.0717 2024-01-15..2024-02-15"},
+				{3, "6.65", "100.14", "10013.82", "0.00", "10113.96", "0.00", "tr 0.0665 2024-02-15..2024-03-15"},
+			},
+		},
+		{
 			name:             "contract on the 31st",
 			contract:         "2024-01-31",
 			firstInstallment: "2024-02-29",
@@ -288,8 +338,8 @@ func TestCorrectionsFollowTheContractAnniversaries(t *testing.T) {
 			months:           3,
 			want: []indexedRow{
 				{1, "0.00", "300.00", "10000.00", "0.00", "10300.00", "20000.00", ""},
-				{2, "0.00", "200.00", "10000.00", "0.00", "10200.00", "10000.00", ""},
-				{3, "3.31", "100.03", "10003.31", "0.00", "10103.34", "0.00", "tr 0.0331 2024-03-01..2024-04-01"},
+				{2, "12.40", "200.12", "10006.20", "0.00", "10206.32", "10006.20", "tr 0.0620 2024-02-29..2024-03-29"},
+				{3, "5.00", "100.11", "10011.20", "0.00", "10111.31", "0.00", "tr 0.0500 2024-03-29..2024-04-29"},
 			},
 		},
 		{
@@ -304,15 +354,15 @@ func TestCorrectionsFollowTheContractAnniversaries(t *testing.T) {
 			},
 		},
 		{
-			name:             "installments due five days after each anniversary",
-			contract:         "2023-12-15",
-			firstInstallment: "2024-01-20",
+			name:             "installments due on the 31st",
+			contract:         "2023-12-31",
+			firstInstallment: "2024-01-31",
 			amount:           "30000.00",
 			months:           3,
 			want: []indexedRow{
 				{1, "0.00", "300.00", "10000.00", "0.00", "10300.00", "20000.00", ""},
-				{2, "14.34", "200.14", "10007.17", "0.00", "10207.31", "10007.17", "tr 0.0717 2024-01-15..2024-02-15"},
-				{3, "6.65", "100.14", "10013.82", "0.00", "10113.96", "0.00", "tr 0.0665 2024-02-15..2024-03-15"},
+				{2, "0.00", "200.00", "10000.00", "0.00", "10200.00", "10000.00", ""},
+				{3, "3.00", "100.03", "10003.00", "0.00", "10103.03", "0.00", "tr 0.0300 2024-01-31..2024-03-01"},
 			},
 		},
 		{
@@ -349,6 +399,143 @@ func TestCorrectionsFollowTheContractAnniversaries(t *testing.T) {
 			terms.FirstInstallmentDate = date(t, tt.firstInstallment)
 
 			assert.Equal(t, tt.want, indexedSchedule(terms, history, date(t, "2026-10-25")))
+		})
+	}
+}
+
+// A projected TR follows the months between due dates too: signed on 2024-03-10 with installments
+// on the 15th, the 2nd installment is corrected by the projection for 2024-04-15 to 2024-05-15.
+func TestProjectedTRFollowsTheDueDates(t *testing.T) {
+	t.Parallel()
+
+	terms := indexedSAC(t, mortgage.TR, "20000.00", 2)
+	terms.ContractDate = date(t, "2024-03-10")
+	terms.FirstInstallmentDate = date(t, "2024-04-15")
+
+	assert.Equal(t, []indexedRow{
+		{1, "0.00", "200.00", "10000.00", "0.00", "10200.00", "10000.00", ""},
+		{
+			2, "6.35", "100.06", "10006.35", "0.00", "10106.41", "0.00",
+			"tr 0.0635 2024-04-15..2024-05-15 (tr trailing_12)",
+		},
+	}, indexedSchedule(terms, outlookOf(projectedTRHistory(t)), date(t, "2024-03-20")))
+}
+
+// fiveDaysAfterTheAnniversary lends 30,000.00 under TR signed on 2023-12-15 with installments on
+// the 20th, so the 2nd installment, due 2024-02-20, is corrected by 0.5000% on the 2024-02-15
+// anniversary, and the 3rd by 0.0400%.
+func fiveDaysAfterTheAnniversary(t *testing.T) (mortgage.Terms, indexes.Outlook) {
+	t.Helper()
+
+	terms := indexedSAC(t, mortgage.TR, "30000.00", 3)
+	terms.FirstInstallmentDate = date(t, "2024-01-20")
+
+	return terms, outlookOf(publishedValues{indexes.TR: {
+		published(t, "2024-01-20", "2024-02-20", "0.5000"),
+		published(t, "2024-02-20", "2024-03-20", "0.0400"),
+	}})
+}
+
+// A prepayment dated on the anniversary before the 2nd installment or later comes off the corrected
+// balance, and one dated before it comes off the balance the correction then applies to:
+// 0.5000% of 20,000.00 or of 15,000.00. The 1st installment's outstanding balance is what the
+// prepayment left, so it includes the 2nd's correction when that applied first. Figures worked out
+// independently.
+func TestTRCorrectionAppliesOnTheAnniversaryBeforeTheDueDate(t *testing.T) {
+	t.Parallel()
+
+	before := []indexedRow{
+		{1, "0.00", "300.00", "10000.00", "0.00", "10300.00", "15000.00", ""},
+		{2, "75.00", "150.75", "7537.50", "0.00", "7688.25", "7537.50", "tr 0.5000 2024-01-20..2024-02-20"},
+		{3, "3.02", "75.41", "7540.52", "0.00", "7615.93", "0.00", "tr 0.0400 2024-02-20..2024-03-20"},
+	}
+	after := []indexedRow{
+		{1, "0.00", "300.00", "10000.00", "0.00", "10300.00", "15100.00", ""},
+		{2, "100.00", "151.00", "7550.00", "0.00", "7701.00", "7550.00", "tr 0.5000 2024-01-20..2024-02-20"},
+		{3, "3.02", "75.53", "7553.02", "0.00", "7628.55", "0.00", "tr 0.0400 2024-02-20..2024-03-20"},
+	}
+
+	tests := []struct {
+		name string
+		day  string
+		want []indexedRow
+	}{
+		{name: "the day before the anniversary", day: "2024-02-14", want: before},
+		{name: "on the anniversary", day: "2024-02-15", want: after},
+		{name: "the day before the due date", day: "2024-02-19", want: after},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			terms, outlook := fiveDaysAfterTheAnniversary(t)
+			events := mortgage.Events{Prepayments: []mortgage.Prepayment{
+				prepayment(t, tt.day, "5000.00", mortgage.LowerInstallment),
+			}}
+
+			assert.Equal(t, tt.want, indexedRows(terms.Schedule(outlook, events, date(t, "2026-10-25"))))
+		})
+	}
+}
+
+// A statement dated on the anniversary before the 2nd installment or later is compared with the
+// balance corrected by 0.5000%, and one dated before it with the balance the 1st installment left.
+func TestStatementAfterTheAnniversarySeesTheTRCorrection(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		day      string
+		computed string
+	}{
+		{name: "the day before the anniversary", day: "2024-02-14", computed: "20000.00"},
+		{name: "on the anniversary", day: "2024-02-15", computed: "20100.00"},
+		{name: "the day before the due date", day: "2024-02-19", computed: "20100.00"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			terms, outlook := fiveDaysAfterTheAnniversary(t)
+			events := mortgage.Events{Statements: []mortgage.Statement{statement(t, tt.day, "20000.00")}}
+
+			drifts := terms.Drifts(outlook, events, date(t, "2026-10-25"))
+
+			require.Len(t, drifts, 1)
+			assert.Equal(t, tt.computed, drifts[0].ComputedBalance.String())
+		})
+	}
+}
+
+// A plan's balances on its start and on its end include the TR correction of the anniversary before
+// the 2nd installment once that anniversary has come, with no event to see it.
+func TestPlanBalancesIncludeTheTRCorrectionFromTheAnniversary(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name             string
+		start, until     string
+		atStart, balance string
+	}{
+		{name: "both before the anniversary", start: "2024-02-14", until: "2024-02-14", atStart: "20000.00", balance: "20000.00"},
+		{name: "both on the anniversary", start: "2024-02-15", until: "2024-02-15", atStart: "20100.00", balance: "20100.00"},
+		{name: "across the anniversary", start: "2024-02-10", until: "2024-02-19", atStart: "20000.00", balance: "20100.00"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			terms, outlook := fiveDaysAfterTheAnniversary(t)
+			planned := terms.Plan(outlook, mortgage.Events{}, date(t, "2026-10-25"), mortgage.Plan{
+				Start: date(t, tt.start),
+				Until: date(t, tt.until),
+			})
+
+			assert.Equal(t, tt.atStart, planned.AtStart.String())
+			assert.Equal(t, tt.balance, planned.Balance.String())
 		})
 	}
 }

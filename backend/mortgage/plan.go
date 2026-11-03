@@ -44,7 +44,8 @@ type PlannedPrepayment struct {
 type Planned struct {
 	// Initial is what the plan's prepayment on Start took off the outstanding balance.
 	Initial decimal.Decimal
-	// AtStart is the outstanding balance once the events dated on or before Start have applied.
+	// AtStart is the outstanding balance once the events and corrections dated on or before Start
+	// have applied.
 	AtStart decimal.Decimal
 	// Prepayments are what the plan's Prepayments took, in the plan's order.
 	Prepayments []PlannedPrepayment
@@ -104,6 +105,8 @@ func (t Terms) Plan(outlook indexes.Outlook, events Events, today time.Time, pla
 	}
 
 	p.apply(paid, p.until)
+	r.correctBy(paid, plan.Until)
+
 	p.planned.Initial = initial.Prepaid
 	p.planned.Prepayments = prepayments
 	p.planned.Balance = r.balance
@@ -133,6 +136,7 @@ func (p *planner) apply(paid int, next time.Time) decimal.Decimal {
 	}
 
 	prepaid := p.r.applyBefore(paid, p.afterStart)
+	p.r.correctBy(paid, p.plan.Start)
 	p.started, p.planned.AtStart = true, p.r.balance
 
 	return prepaid.Add(p.r.applyBefore(paid, next))

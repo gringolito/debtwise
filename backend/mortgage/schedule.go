@@ -16,9 +16,10 @@ type Installment struct {
 	DueDate time.Time
 	// Correction is what the indexer added to the outstanding balance before this installment.
 	Correction decimal.Decimal
-	// IndexValues are the index values Correction applied, one for each contract anniversary since
-	// the previous installment, each marked missing, published or projected by its Methods. There
-	// are none on the first installment or without an indexer.
+	// IndexValues are the index values Correction applied, each marked missing, published or
+	// projected by its Methods: under TR, the TR of the months since the previous installment's due
+	// date that end by this one's; under IPCA, one for each contract anniversary since the previous
+	// installment. There are none on the first installment or without an indexer.
 	IndexValues []IndexValue
 	// Rate is the effective annual contract rate Interest was charged at.
 	Rate decimal.Decimal
@@ -37,7 +38,8 @@ type Installment struct {
 	// took off the outstanding balance.
 	Prepaid decimal.Decimal
 	// OutstandingBalance is what is still owed after this installment and the prepayments and
-	// statements dated before the next one.
+	// statements dated before the next one. It includes the next installment's correction when one
+	// of them is dated on or after the day that correction applies.
 	OutstandingBalance decimal.Decimal
 }
 
@@ -45,18 +47,21 @@ type Installment struct {
 // in effect on its due date, with events replayed between them.
 //
 // From the second installment on, each installment first corrects the outstanding balance by the
-// indexer's value on each contract anniversary since the previous installment, unless that value
-// is missing. The first installment is never corrected, and the anniversaries up to it, the first
-// one's included, correct no installment (ADR-0006). An installment due by today is corrected by
-// published values only, so a month whose value is only projected is missing. An installment due
-// after today is corrected by the Outlook's estimate, published or projected, and a month with no
-// estimate is missing (ADR-0009).
+// indexer's values since the previous installment, unless they are missing. Under TR they are the
+// TR of the months since the previous installment's due date that end by its own, applied on the
+// last contract anniversary on or before its due date; under IPCA, the value of each contract
+// anniversary since the previous installment, applied on its due date. The first installment is
+// never corrected, and the months up to the first anniversary correct no installment (ADR-0006).
+// An installment due by today is corrected by published values only, so a month whose value is
+// only projected is missing. An installment due after today is corrected by the Outlook's
+// estimate, published or projected, and a month with no estimate is missing (ADR-0009).
 // Each charge and correction is rounded to centavos. The last installment amortizes whatever is
 // still owed, so the balance ends at zero. Under Price the amortization plus interest is set from
 // the balance, rate and months left on the first installment, whenever the rate changes and
 // whenever the balance is corrected, prepaid or stated.
 //
-// Events apply in date order after the installments due on or before their date. A prepayment
+// Events apply in date order after the installments due on or before their date, and after the
+// next installment's correction when they are dated on or after the day it applies. A prepayment
 // takes off at most what is owed. Shortening the term keeps the months left to the fewest whose
 // installment, under the amortization system's rule, is no higher than before the prepayment;
 // lowering the installment keeps the months left. A statement replaces the computed balance. Once
@@ -93,6 +98,16 @@ type replayer struct {
 	drifts []Drift
 	// rates are the contract rates with their fixed parts converted once.
 	rates []chargedRate
+	// corrected is the latest installment the balance was corrected for.
+	corrected correction
+}
+
+// correction is what the indexer added to the balance for an installment, and the index values
+// behind it.
+type correction struct {
+	number int
+	amount decimal.Decimal
+	values []IndexValue
 }
 
 func (t Terms) replayer(outlook indexes.Outlook, events Events, today time.Time) *replayer {
@@ -134,20 +149,7 @@ func (r *replayer) charge(number int) Installment {
 	due := addMonths(t.FirstInstallmentDate, number-1)
 	rate := r.rateOf(number)
 	left := r.term - number + 1
-
-	values := r.corrections.through(due, !due.After(r.today))
-
-	correction := decimal.Decimal{}.RoundCents()
-
-	for _, v := range values {
-		if v.Missing {
-			continue
-		}
-
-		corrected := r.balance.Mul(v.Value).Quo(decimal.FromInt(100)).RoundCents()
-		correction = correction.Add(corrected)
-		r.balance = r.balance.Add(corrected)
-	}
+	correction := r.correct(number)
 
 	interest := r.balance.Mul(rate.monthly).RoundCents()
 
@@ -159,7 +161,7 @@ func (r *replayer) charge(number int) Installment {
 	case t.AmortizationSystem == SAC:
 		amortization = level(SAC, r.balance, rate.monthly, left)
 	default:
-		if number == 1 || r.relevel || rate.monthly.Cmp(r.paymentRate) != 0 || correction.Cmp(decimal.Decimal{}) != 0 {
+		if number == 1 || r.relevel || rate.monthly.Cmp(r.paymentRate) != 0 || correction.amount.Cmp(decimal.Decimal{}) != 0 {
 			r.payment, r.paymentRate = pricePayment(r.balance, rate.monthly, left), rate.monthly
 		}
 
@@ -175,8 +177,8 @@ func (r *replayer) charge(number int) Installment {
 	return Installment{
 		Number:          number,
 		DueDate:         due,
-		Correction:      correction,
-		IndexValues:     values,
+		Correction:      correction.amount,
+		IndexValues:     correction.values,
 		Rate:            rate.effective,
 		RateIndexValues: rate.values,
 		Interest:        interest,
@@ -188,16 +190,62 @@ func (r *replayer) charge(number int) Installment {
 	}
 }
 
+// correct corrects the balance for installment number, unless it was already, and returns the
+// correction.
+func (r *replayer) correct(number int) correction {
+	if r.corrected.number == number {
+		return r.corrected
+	}
+
+	due := addMonths(r.terms.FirstInstallmentDate, number-1)
+	c := correction{
+		number: number,
+		amount: decimal.Decimal{}.RoundCents(),
+		values: r.corrections.through(due, !due.After(r.today)),
+	}
+
+	for _, v := range c.values {
+		if v.Missing {
+			continue
+		}
+
+		corrected := r.balance.Mul(v.Value).Quo(decimal.FromInt(100)).RoundCents()
+		c.amount = c.amount.Add(corrected)
+		r.balance = r.balance.Add(corrected)
+	}
+
+	r.corrected = c
+
+	return c
+}
+
 // applyBefore applies the events dated before until, after paid installments, and returns what
-// their prepayments took off the balance.
+// their prepayments took off the balance. An event dated on or after the day the next installment's
+// correction applies sees the corrected balance.
 func (r *replayer) applyBefore(paid int, until time.Time) decimal.Decimal {
 	prepaid := decimal.Decimal{}.RoundCents()
 
 	for len(r.events) > 0 && r.events[0].date.Before(until) {
+		r.correctBy(paid, r.events[0].date)
 		prepaid = prepaid.Add(r.applyNext(paid))
 	}
 
 	return prepaid
+}
+
+// correctBy corrects the balance for the installment after paid ones when that correction applies
+// on or before day.
+func (r *replayer) correctBy(paid int, day time.Time) {
+	next := paid + 1
+	if next > r.term || r.corrected.number >= next {
+		return
+	}
+
+	if r.corrections.appliesOn(addMonths(r.terms.FirstInstallmentDate, paid)).After(day) {
+		return
+	}
+
+	r.correct(next)
 }
 
 // applyNext applies the next event after paid installments, ends the schedule there if nothing is
