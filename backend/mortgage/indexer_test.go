@@ -378,6 +378,17 @@ func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 			},
 		},
 		{
+			name:             "installments due on the 31st, the first deferred past a short month",
+			contract:         "2023-12-31",
+			firstInstallment: "2024-03-31",
+			amount:           "20000.00",
+			months:           2,
+			want: []indexedRow{
+				{1, "0.00", "200.00", "10000.00", "0.00", "10200.00", "10000.00", ""},
+				{2, "3.31", "100.03", "10003.31", "0.00", "10103.34", "0.00", "tr 0.0331 2024-03-01..2024-04-01"},
+			},
+		},
+		{
 			name:             "first installment deferred by a month",
 			contract:         "2023-12-15",
 			firstInstallment: "2024-02-15",

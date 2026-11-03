@@ -52,10 +52,11 @@ type period struct {
 // corrections finds the index values that correct the outstanding balance, one for each month.
 // Months run from one day to the same day of the next month, or to the 1st of the month after when
 // the next month is too short, as SGS dates TR; from then on they start on the 1st. TR months start
-// on the first installment's due date and the month is corrected by its TR. IPCA months start on
-// the contract's first anniversary and, under a fixed two-month lag, the month is corrected by the
-// IPCA of the second calendar month before it ends. Each value is read through the Outlook: the
-// published one where there is one, else the projected one (ADR-0009).
+// on the first installment's due date, unless installments fall due on the contract's day, and the
+// month is corrected by its TR. Other months start on the contract's first anniversary and, under a
+// fixed two-month lag, an IPCA month is corrected by the IPCA of the second calendar month before
+// it ends. Each value is read through the Outlook: the published one where there is one, else the
+// projected one (ADR-0009).
 type corrections struct {
 	indexer Indexer
 	outlook indexes.Outlook
@@ -72,7 +73,7 @@ func newCorrections(terms Terms, outlook indexes.Outlook) *corrections {
 	firstAnniversary := monthAfter(terms.ContractDate)
 
 	start, after := firstAnniversary, terms.FirstInstallmentDate
-	if terms.Indexer == TR {
+	if terms.Indexer == TR && terms.FirstInstallmentDate.Day() != terms.ContractDate.Day() {
 		start, after = terms.FirstInstallmentDate, firstAnniversary
 	}
 
