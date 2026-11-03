@@ -1,14 +1,14 @@
 # First installment interest for the days since signing
 
 Under SAC, the first installment charges interest for the days from the contract date to its due
-date, as a fraction of a 30-day month at the monthly contract rate: the balance it starts from, times
-the monthly rate, times the days, divided by 30. The installment still costs one month's interest
-plus the usual SAC amortization, the balance divided by the months left, so its amortization absorbs
-the difference: it amortizes less when the first period is longer than 30 days and more when it is
-shorter. Each figure is rounded to centavos, and the amortization is what the rounded month's
-interest plus the rounded SAC amortization leave after the rounded interest. From the second
-installment on, interest is a month's at the monthly rate, on the balance the first installment
-left.
+date, as a fraction of a 30-day month at the monthly contract rate: the balance it starts from,
+times the monthly rate, times the days, divided by 30. The installment still costs one month's
+interest plus the usual SAC amortization, the balance divided by the months left, so its
+amortization absorbs the difference: it amortizes less when the first period is longer than 30 days
+and more when it is shorter. Each figure is rounded to centavos, and the amortization is what the
+rounded month's interest plus the rounded SAC amortization leave after the rounded interest. From
+the second installment on, interest is a month's at the monthly rate, on the balance the first
+installment left.
 
 On the #37 contract, signed 2024-11-18 with its first installment due 2024-12-19, the first
 installment is charged 31/30 of a month's interest, and its amortization is the SAC amortization

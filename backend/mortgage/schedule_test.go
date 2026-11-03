@@ -312,31 +312,69 @@ func TestSACAmortizesTheBalanceOverTheMonthsLeft(t *testing.T) {
 }
 
 // Under SAC the first installment charges interest for the days since the contract date, at 1% for
-// 30 days, but still costs a month's 600.00 interest plus 60,000.00 / 6 amortized, so its
-// amortization absorbs the difference. The second installment amortizes the balance left over the
-// five months left.
+// 30 days, on the balance it starts from, but still costs a month's interest plus that balance over
+// the months left, so its amortization absorbs the difference: 600.00 + 60,000.00 / 6 less 320.00
+// for 16 days, or less 620.00 for 31. After a 6,000.00 prepayment, 31 days on 54,000.00 is 558.00
+// against a month's 540.00. A single installment amortizes the whole balance. The later
+// installments amortize the balance left over the months left.
 func TestSACFirstInstallmentChargesInterestForTheDaysSinceTheContractDate(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name     string
 		contract string
-		want     []row
+		months   int
+		events   mortgage.Events
+		want     []replayed
 	}{
 		{
 			name:     "16 days",
 			contract: "2023-12-25",
-			want: []row{
-				{1, "2024-01-10", "320.00", "10280.00", "0.00", "0.00", "10.00", "10610.00", "49720.00"},
-				{2, "2024-02-10", "497.20", "9944.00", "0.00", "0.00", "10.00", "10451.20", "39776.00"},
+			months:   6,
+			want: []replayed{
+				{1, "2024-01-10", "320.00", "10280.00", "10610.00", "0.00", "49720.00"},
+				{2, "2024-02-10", "497.20", "9944.00", "10451.20", "0.00", "39776.00"},
+				{3, "2024-03-10", "397.76", "9944.00", "10351.76", "0.00", "29832.00"},
+				{4, "2024-04-10", "298.32", "9944.00", "10252.32", "0.00", "19888.00"},
+				{5, "2024-05-10", "198.88", "9944.00", "10152.88", "0.00", "9944.00"},
+				{6, "2024-06-10", "99.44", "9944.00", "10053.44", "0.00", "0.00"},
 			},
 		},
 		{
 			name:     "31 days",
 			contract: "2023-12-10",
-			want: []row{
-				{1, "2024-01-10", "620.00", "9980.00", "0.00", "0.00", "10.00", "10610.00", "50020.00"},
-				{2, "2024-02-10", "500.20", "10004.00", "0.00", "0.00", "10.00", "10514.20", "40016.00"},
+			months:   6,
+			want: []replayed{
+				{1, "2024-01-10", "620.00", "9980.00", "10610.00", "0.00", "50020.00"},
+				{2, "2024-02-10", "500.20", "10004.00", "10514.20", "0.00", "40016.00"},
+				{3, "2024-03-10", "400.16", "10004.00", "10414.16", "0.00", "30012.00"},
+				{4, "2024-04-10", "300.12", "10004.00", "10314.12", "0.00", "20008.00"},
+				{5, "2024-05-10", "200.08", "10004.00", "10214.08", "0.00", "10004.00"},
+				{6, "2024-06-10", "100.04", "10004.00", "10114.04", "0.00", "0.00"},
+			},
+		},
+		{
+			name:     "31 days after a prepayment",
+			contract: "2023-12-10",
+			months:   6,
+			events: mortgage.Events{Prepayments: []mortgage.Prepayment{
+				prepayment(t, "2023-12-20", "6000.00", mortgage.LowerInstallment),
+			}},
+			want: []replayed{
+				{1, "2024-01-10", "558.00", "8982.00", "9550.00", "0.00", "45018.00"},
+				{2, "2024-02-10", "450.18", "9003.60", "9463.78", "0.00", "36014.40"},
+				{3, "2024-03-10", "360.14", "9003.60", "9373.74", "0.00", "27010.80"},
+				{4, "2024-04-10", "270.11", "9003.60", "9283.71", "0.00", "18007.20"},
+				{5, "2024-05-10", "180.07", "9003.60", "9193.67", "0.00", "9003.60"},
+				{6, "2024-06-10", "90.04", "9003.60", "9103.64", "0.00", "0.00"},
+			},
+		},
+		{
+			name:     "31 days in a single installment",
+			contract: "2023-12-10",
+			months:   1,
+			want: []replayed{
+				{1, "2024-01-10", "620.00", "60000.00", "60630.00", "0.00", "0.00"},
 			},
 		},
 	}
@@ -347,8 +385,9 @@ func TestSACFirstInstallmentChargesInterestForTheDaysSinceTheContractDate(t *tes
 
 			terms := sacTerms(t)
 			terms.ContractDate = date(t, tt.contract)
+			terms.TermMonths = tt.months
 
-			assert.Equal(t, tt.want, schedule(terms)[:2])
+			assert.Equal(t, tt.want, replay(terms, tt.events))
 		})
 	}
 }
