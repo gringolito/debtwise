@@ -19,7 +19,7 @@ import { MortgageForm } from "@/pages/MortgageForm";
 
 const rootRoute = createRootRoute({
   component: () => (
-    <div className="mx-auto flex min-h-svh max-w-screen-lg flex-col gap-6 p-6">
+    <div className="flex min-h-svh flex-col gap-6 p-6">
       <header className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">DebtWise</h1>
         <nav className="flex gap-4 text-sm">
