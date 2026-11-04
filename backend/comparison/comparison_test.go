@@ -679,12 +679,12 @@ func TestAVerdictNamesTheProjectionsTheBalancesBeforeTheDecisionRead(t *testing.
 	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}}, verdicts[0].ProjectedBy)
 }
 
-// A horizon between a TR anniversary and the next due date includes the correction applied on the
-// anniversary, so a verdict names its projection even when every installment due by the horizon
-// read a published TR. Signed on 2024-01-05 with installments on the 10th, the mortgage has TR
-// published from 2024-02-10 to 2025-02-10; the LTN matures on 2025-03-07, after the 2025-03-05
-// anniversary, which corrects the 2025-03-10 installment by the trailing 12-month average.
-func TestAVerdictNamesTheProjectionOfACorrectionAppliedBeforeTheHorizon(t *testing.T) {
+// A horizon between a TR anniversary and the next due date includes no correction for that
+// installment, so a verdict doesn't name the projection it reads. Signed on 2024-01-05 with
+// installments on the 10th, the mortgage has TR published from 2024-02-10 to 2025-02-10; the LTN
+// matures on 2025-03-07, after the 2025-03-05 anniversary and before the 2025-03-10 installment,
+// whose correction reads the trailing 12-month average.
+func TestAVerdictLeavesOutTheProjectionOfACorrectionDueAfterTheHorizon(t *testing.T) {
 	t.Parallel()
 
 	terms := interestFreeTerms(t)
@@ -717,7 +717,7 @@ func TestAVerdictNamesTheProjectionOfACorrectionAppliedBeforeTheHorizon(t *testi
 	require.NoError(t, err)
 	require.Len(t, verdicts, 1)
 
-	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}}, verdicts[0].ProjectedBy)
+	assert.Empty(t, verdicts[0].ProjectedBy)
 }
 
 // A poupança-linked contract rate reads the Selic target of each month, so a verdict names the

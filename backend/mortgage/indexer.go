@@ -49,24 +49,19 @@ type period struct {
 	start, end time.Time
 }
 
-// corrections finds the index values that correct the outstanding balance, one for each month.
-// Months run from one day to the same day of the next month, or to the 1st of the month after when
-// the next month is too short, as SGS dates TR; from then on they start on the 1st. TR months of
-// installments due on another day than the contract's start on the first installment's due date,
-// and are corrected by their TR from the anniversary before each due date. Other months start on
-// the contract's first anniversary and are corrected on the due date: TR months by their TR, and
-// IPCA months, under a fixed two-month lag, by the IPCA of the second calendar month before they
-// end. Each value is read through the Outlook: the published one where there is one, else the
-// projected one (ADR-0009).
+// corrections finds the index values that correct the outstanding balance, one for each month, on
+// the due date of the installment they correct. Months run from one day to the same day of the next
+// month, or to the 1st of the month after when the next month is too short, as SGS dates TR; from
+// then on they start on the 1st. TR months of installments due on another day than the contract's
+// start on the first installment's due date. Other months start on the contract's first
+// anniversary: TR months are corrected by their TR, and IPCA months, under a fixed two-month lag,
+// by the IPCA of the second calendar month before they end. Each value is read through the
+// Outlook: the published one where there is one, else the projected one (ADR-0009).
 type corrections struct {
 	indexer Indexer
 	outlook indexes.Outlook
 	// month is the next month to correct for.
 	month period
-	// byDueDate is set when TR months run between due dates.
-	byDueDate bool
-	// anniversary is the latest contract anniversary appliesOn reached.
-	anniversary time.Time
 }
 
 // newCorrections starts at the first month that ends after both the first anniversary and the
@@ -87,11 +82,9 @@ func newCorrections(terms Terms, outlook indexes.Outlook) *corrections {
 	}
 
 	return &corrections{
-		indexer:     terms.Indexer,
-		outlook:     outlook,
-		month:       month,
-		byDueDate:   byDueDate,
-		anniversary: terms.ContractDate,
+		indexer: terms.Indexer,
+		outlook: outlook,
+		month:   month,
 	}
 }
 
@@ -111,21 +104,6 @@ func (c *corrections) through(day time.Time, publishedOnly bool) []IndexValue {
 	}
 
 	return values
-}
-
-// appliesOn returns the day the balance is corrected for the installment due on due: the last
-// contract anniversary on or before it when TR months run between due dates, and the due date
-// itself otherwise. Due dates come in order.
-func (c *corrections) appliesOn(due time.Time) time.Time {
-	if !c.byDueDate {
-		return due
-	}
-
-	for next := monthAfter(c.anniversary); !next.After(due); next = monthAfter(next) {
-		c.anniversary = next
-	}
-
-	return c.anniversary
 }
 
 // value returns the index value that corrects the balance for month, or false when the indexer

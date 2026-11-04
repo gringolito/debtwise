@@ -434,8 +434,8 @@ func TestProjectedTRFollowsTheDueDates(t *testing.T) {
 }
 
 // fiveDaysAfterTheAnniversary lends 30,000.00 under TR signed on 2023-12-15 with installments on
-// the 20th, so the 2nd installment, due 2024-02-20, is corrected by 0.5000% on the 2024-02-15
-// anniversary, and the 3rd by 0.0400%.
+// the 20th, so the 2nd installment, due 2024-02-20, is corrected by 0.5000% on its due date, and
+// the 3rd by 0.0400%.
 func fiveDaysAfterTheAnniversary(t *testing.T) (mortgage.Terms, indexes.Outlook) {
 	t.Helper()
 
@@ -448,33 +448,24 @@ func fiveDaysAfterTheAnniversary(t *testing.T) (mortgage.Terms, indexes.Outlook)
 	}})
 }
 
-// A prepayment dated on the anniversary before the 2nd installment or later comes off the corrected
-// balance, and one dated before it comes off the balance the correction then applies to:
-// 0.5000% of 20,000.00 or of 15,000.00. The 1st installment's outstanding balance is what the
-// prepayment left, so it includes the 2nd's correction when that applied first. Figures worked out
-// independently.
-func TestTRCorrectionAppliesOnTheAnniversaryBeforeTheDueDate(t *testing.T) {
+// A prepayment dated from the anniversary before the 2nd installment up to the day before its due
+// date comes off the balance the correction then applies to: 0.5000% of 15,000.00. Figures worked
+// out independently.
+func TestTRCorrectionAppliesOnTheDueDate(t *testing.T) {
 	t.Parallel()
 
-	before := []indexedRow{
+	want := []indexedRow{
 		{1, "0.00", "360.00", "9940.00", "0.00", "10300.00", "15060.00", ""},
 		{2, "75.30", "151.35", "7567.65", "0.00", "7719.00", "7567.65", "tr 0.5000 2024-01-20..2024-02-20"},
 		{3, "3.03", "75.71", "7570.68", "0.00", "7646.39", "0.00", "tr 0.0400 2024-02-20..2024-03-20"},
-	}
-	after := []indexedRow{
-		{1, "0.00", "360.00", "9940.00", "0.00", "10300.00", "15160.30", ""},
-		{2, "100.30", "151.60", "7580.15", "0.00", "7731.75", "7580.15", "tr 0.5000 2024-01-20..2024-02-20"},
-		{3, "3.03", "75.83", "7583.18", "0.00", "7659.01", "0.00", "tr 0.0400 2024-02-20..2024-03-20"},
 	}
 
 	tests := []struct {
 		name string
 		day  string
-		want []indexedRow
 	}{
-		{name: "the day before the anniversary", day: "2024-02-14", want: before},
-		{name: "on the anniversary", day: "2024-02-15", want: after},
-		{name: "the day before the due date", day: "2024-02-19", want: after},
+		{name: "on the anniversary", day: "2024-02-15"},
+		{name: "the day before the due date", day: "2024-02-19"},
 	}
 
 	for _, tt := range tests {
@@ -486,7 +477,7 @@ func TestTRCorrectionAppliesOnTheAnniversaryBeforeTheDueDate(t *testing.T) {
 				prepayment(t, tt.day, "5000.00", mortgage.LowerInstallment),
 			}}
 
-			assert.Equal(t, tt.want, indexedRows(terms.Schedule(outlook, events, date(t, "2026-10-25"))))
+			assert.Equal(t, want, indexedRows(terms.Schedule(outlook, events, date(t, "2026-10-25"))))
 		})
 	}
 }
@@ -512,10 +503,10 @@ func TestTRCorrectionOfInstallmentsDueOnTheContractDayAppliesOnTheDueDate(t *tes
 	}, indexedRows(terms.Schedule(outlook, events, date(t, "2026-10-25"))))
 }
 
-// A statement is compared with the balance corrected for the next installment from the day that
-// correction applies: under TR the anniversary before the due date, in the month before it when the
-// due day comes before the contract's, and under IPCA the due date itself.
-func TestStatementSeesTheCorrectionFromTheDayItApplies(t *testing.T) {
+// A statement dated before the next installment's due date is compared with the balance before
+// that installment's correction, whether the due day comes after the contract's or before it, under
+// TR and IPCA alike.
+func TestStatementSeesTheBalanceBeforeTheNextCorrection(t *testing.T) {
 	t.Parallel()
 
 	dueBeforeTheAnniversary := func(t *testing.T) (mortgage.Terms, indexes.Outlook) {
@@ -541,11 +532,9 @@ func TestStatementSeesTheCorrectionFromTheDayItApplies(t *testing.T) {
 		day      string
 		computed string
 	}{
-		{name: "TR the day before the anniversary", mortgage: fiveDaysAfterTheAnniversary, day: "2024-02-14", computed: "20060.00"},
-		{name: "TR on the anniversary", mortgage: fiveDaysAfterTheAnniversary, day: "2024-02-15", computed: "20160.30"},
-		{name: "TR the day before the due date", mortgage: fiveDaysAfterTheAnniversary, day: "2024-02-19", computed: "20160.30"},
-		{name: "TR due before the anniversary, the day before it", mortgage: dueBeforeTheAnniversary, day: "2024-01-19", computed: "19960.00"},
-		{name: "TR due before the anniversary, on it", mortgage: dueBeforeTheAnniversary, day: "2024-01-20", computed: "19974.31"},
+		{name: "TR on the anniversary", mortgage: fiveDaysAfterTheAnniversary, day: "2024-02-15", computed: "20060.00"},
+		{name: "TR the day before the due date", mortgage: fiveDaysAfterTheAnniversary, day: "2024-02-19", computed: "20060.00"},
+		{name: "TR due before the anniversary, on it", mortgage: dueBeforeTheAnniversary, day: "2024-01-20", computed: "19960.00"},
 		{name: "IPCA after the anniversary", mortgage: ipca, day: "2024-02-16", computed: "20060.00"},
 	}
 
@@ -564,30 +553,17 @@ func TestStatementSeesTheCorrectionFromTheDayItApplies(t *testing.T) {
 	}
 }
 
-// A plan's balances on its start and on its end include the TR correction of the anniversary before
-// the 2nd installment once that anniversary has come, with no event to see it, and the plan reports
-// the index values behind a correction its end balance includes for an installment due after it.
-func TestPlanBalancesIncludeTheTRCorrectionFromTheAnniversary(t *testing.T) {
+// A plan's balances on its start and on its end, from the anniversary before the 2nd installment up
+// to the day before its due date, are those before that installment's TR correction.
+func TestPlanBalancesExcludeTheTRCorrectionBeforeTheDueDate(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name             string
-		start, until     string
-		atStart, balance string
-		indexValues      string
+		name         string
+		start, until string
 	}{
-		{
-			name: "both before the anniversary", start: "2024-02-14", until: "2024-02-14",
-			atStart: "20060.00", balance: "20060.00",
-		},
-		{
-			name: "both on the anniversary", start: "2024-02-15", until: "2024-02-15",
-			atStart: "20160.30", balance: "20160.30", indexValues: "tr 0.5000 2024-01-20..2024-02-20",
-		},
-		{
-			name: "across the anniversary", start: "2024-02-10", until: "2024-02-19",
-			atStart: "20060.00", balance: "20160.30", indexValues: "tr 0.5000 2024-01-20..2024-02-20",
-		},
+		{name: "both on the anniversary", start: "2024-02-15", until: "2024-02-15"},
+		{name: "across the anniversary", start: "2024-02-10", until: "2024-02-19"},
 	}
 
 	for _, tt := range tests {
@@ -600,9 +576,8 @@ func TestPlanBalancesIncludeTheTRCorrectionFromTheAnniversary(t *testing.T) {
 				Until: date(t, tt.until),
 			})
 
-			assert.Equal(t, tt.atStart, planned.AtStart.String())
-			assert.Equal(t, tt.balance, planned.Balance.String())
-			assert.Equal(t, tt.indexValues, indexValuesText(planned.BalanceIndexValues))
+			assert.Equal(t, "20060.00", planned.AtStart.String())
+			assert.Equal(t, "20060.00", planned.Balance.String())
 		})
 	}
 }
