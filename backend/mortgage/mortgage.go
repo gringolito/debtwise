@@ -47,7 +47,7 @@ type Terms struct {
 	TermMonths           int
 	FirstInstallmentDate time.Time
 	AmortizationSystem   AmortizationSystem
-	// Indexer corrects the outstanding balance once a month, on the contract's anniversary.
+	// Indexer corrects the outstanding balance once a month, on each installment's due date.
 	Indexer Indexer
 	// AppraisalValue is the property's appraisal as signed, which DFI is charged on, corrected by
 	// TR along with the outstanding balance on a TR-indexed mortgage.

@@ -393,10 +393,6 @@ func projectedBy(statusQuo mortgage.Planned, methods ...[]indexes.ProjectionMeth
 		}
 	}
 
-	for _, v := range statusQuo.BalanceIndexValues {
-		note(v.Methods)
-	}
-
 	var out []indexes.ProjectionMethod
 
 	for _, index := range indexes.All() {

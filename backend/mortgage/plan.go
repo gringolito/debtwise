@@ -44,8 +44,7 @@ type PlannedPrepayment struct {
 type Planned struct {
 	// Initial is what the plan's prepayment on Start took off the outstanding balance.
 	Initial decimal.Decimal
-	// AtStart is the outstanding balance once the events and corrections dated on or before Start
-	// have applied.
+	// AtStart is the outstanding balance once the events dated on or before Start have applied.
 	AtStart decimal.Decimal
 	// Prepayments are what the plan's Prepayments took, in the plan's order.
 	Prepayments []PlannedPrepayment
@@ -55,9 +54,6 @@ type Planned struct {
 	Installments []PlannedInstallment
 	// Balance is the outstanding balance on Until.
 	Balance decimal.Decimal
-	// BalanceIndexValues are the index values behind the correction Balance includes for the
-	// installment due after Until, when it applied by Until, written as an installment's are.
-	BalanceIndexValues []IndexValue
 }
 
 // Plan replays the schedule of valid terms as Schedule does, with the plan's prepayments added to
@@ -108,12 +104,6 @@ func (t Terms) Plan(outlook indexes.Outlook, events Events, today time.Time, pla
 	}
 
 	p.apply(paid, p.until)
-	r.correctBy(paid, plan.Until)
-
-	if r.corrected.number > paid {
-		p.planned.BalanceIndexValues = r.corrected.values
-	}
-
 	p.planned.Initial = initial.Prepaid
 	p.planned.Prepayments = prepayments
 	p.planned.Balance = r.balance
@@ -143,7 +133,6 @@ func (p *planner) apply(paid int, next time.Time) decimal.Decimal {
 	}
 
 	prepaid := p.r.applyBefore(paid, p.afterStart)
-	p.r.correctBy(paid, p.plan.Start)
 	p.started, p.planned.AtStart = true, p.r.balance
 
 	return prepaid.Add(p.r.applyBefore(paid, next))
