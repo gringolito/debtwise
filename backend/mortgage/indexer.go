@@ -49,13 +49,15 @@ type period struct {
 	start, end time.Time
 }
 
-// corrections finds the IPCA values that correct an IPCA-indexed mortgage's outstanding balance,
-// one for each month, on the due date of the installment they correct. Months start on the
-// contract's first anniversary and run from one day to the same day of the next month, or to the
-// 1st of the month after when the next month is too short; from then on they start on the 1st.
-// Under a fixed two-month lag, each month is corrected by the IPCA of the second calendar month
-// before it ends, read through the Outlook: the published one where there is one, else the
-// projected one (ADR-0009).
+// corrections finds the index values that correct a mortgage once a month, one for each month, on
+// the due date of the installment they correct: an IPCA-indexed mortgage's outstanding balance,
+// and a TR-indexed mortgage's appraisal value (ADR-0015). Months run from one day to the same day
+// of the next month, or to the 1st of the month after when the next month is too short, as SGS
+// dates TR; from then on they start on the 1st. TR months of installments due on another day than
+// the contract's start on the first installment's due date. Other months start on the contract's
+// first anniversary: TR months are corrected by their TR, and IPCA months, under a fixed two-month
+// lag, by the IPCA of the second calendar month before they end. Each value is read through the
+// Outlook: the published one where there is one, else the projected one (ADR-0009).
 type corrections struct {
 	indexer Indexer
 	outlook indexes.Outlook
@@ -67,10 +69,16 @@ type corrections struct {
 // first installment: the first installment is never corrected, and the months up to the first
 // anniversary are corrected by no installment.
 func newCorrections(terms Terms, outlook indexes.Outlook) *corrections {
-	start := monthAfter(terms.ContractDate)
+	firstAnniversary := monthAfter(terms.ContractDate)
+	byDueDate := terms.Indexer == TR && terms.FirstInstallmentDate.Day() != terms.ContractDate.Day()
+
+	start, after := firstAnniversary, terms.FirstInstallmentDate
+	if byDueDate {
+		start, after = terms.FirstInstallmentDate, firstAnniversary
+	}
 
 	month := period{start, monthAfter(start)}
-	for !month.end.After(terms.FirstInstallmentDate) {
+	for !month.end.After(after) {
 		month = period{month.end, monthAfter(month.end)}
 	}
 
@@ -83,28 +91,44 @@ func newCorrections(terms Terms, outlook indexes.Outlook) *corrections {
 
 // through returns the index values of the months that end on or before day that it has not
 // returned yet, in order. With publishedOnly, as for an installment due by today, a projected value
-// is missing; otherwise it is returned with its methods. Only IPCA-indexed mortgages have any.
+// is missing; otherwise it is returned with its methods. A mortgage without an indexer has none.
 func (c *corrections) through(day time.Time, publishedOnly bool) []IndexValue {
-	if c.indexer != IPCA {
-		return nil
-	}
-
 	var values []IndexValue
 
 	for ; !c.month.end.After(day); c.month = (period{c.month.end, monthAfter(c.month.end)}) {
-		first := time.Date(c.month.end.Year(), c.month.end.Month()-2, 1, 0, 0, 0, 0, time.UTC)
-		estimate, found := c.outlook.IPCA(first)
-		values = append(values, estimated(IndexValue{Index: indexes.IPCA, PeriodStart: first, PeriodEnd: first},
-			estimate, found, publishedOnly))
+		value, ok := c.value(c.month, publishedOnly)
+		if !ok {
+			return nil
+		}
+
+		values = append(values, value)
 	}
 
 	return values
 }
 
-// updates finds the TR values that update an amount pro rata die, from the last update, inclusive,
-// to the date of the next one, exclusive (ADR-0006): a TR-indexed mortgage's outstanding balance
-// from the contract date on, on prepayments' dates and installments' due dates, and its appraisal
-// value from the first installment's due date on, on due dates only (ADR-0015).
+// value returns the index value that corrects month, or false when the indexer corrects nothing.
+func (c *corrections) value(month period, publishedOnly bool) (IndexValue, bool) {
+	switch c.indexer {
+	case TR:
+		estimate, found := c.outlook.TR(month.start, month.end)
+
+		return estimated(IndexValue{Index: indexes.TR, PeriodStart: month.start, PeriodEnd: month.end},
+			estimate, found, publishedOnly), true
+	case IPCA:
+		first := time.Date(month.end.Year(), month.end.Month()-2, 1, 0, 0, 0, 0, time.UTC)
+		estimate, found := c.outlook.IPCA(first)
+
+		return estimated(IndexValue{Index: indexes.IPCA, PeriodStart: first, PeriodEnd: first},
+			estimate, found, publishedOnly), true
+	default:
+		return IndexValue{}, false
+	}
+}
+
+// updates finds the TR values that update a TR-indexed mortgage's outstanding balance pro rata
+// die, from the last update, inclusive, to the date of the next one, exclusive: a prepayment's
+// date or an installment's due date (ADR-0006). The first update starts on the contract date.
 // An update reads the TR of the period that starts on the first due day on or after its start, and
 // of each period after it that starts before its date. A period it covers whole applies its TR in
 // full; otherwise the TR applies for the update's calendar days up to the period's end over 30.
@@ -128,13 +152,12 @@ type trPart struct {
 	whole bool
 }
 
-// newUpdates starts the updates on since.
-func newUpdates(terms Terms, outlook indexes.Outlook, since time.Time) *updates {
+func newUpdates(terms Terms, outlook indexes.Outlook) *updates {
 	start := dueDayFrom(terms.ContractDate, terms.FirstInstallmentDate.Day())
 
 	return &updates{
 		outlook: outlook,
-		since:   since,
+		since:   terms.ContractDate,
 		month:   period{start, monthAfter(start)},
 	}
 }

@@ -685,7 +685,9 @@ func TestAVerdictNamesTheProjectionsTheBalancesBeforeTheDecisionRead(t *testing.
 // installment, so a verdict doesn't name the projection it reads. Signed on 2024-01-05 with
 // installments on the 10th, the mortgage has TR published from 2024-02-10 to 2025-02-10; the LTN
 // matures on 2025-03-07, after the 2025-03-05 anniversary and before the 2025-03-10 installment,
-// whose correction reads the trailing 12-month average.
+// whose correction reads the trailing 12-month average. A prepayment dated after the 2025-02-10
+// installment first updates the balance by that projection pro rata die, so a verdict on it names
+// it.
 func TestAVerdictLeavesOutTheProjectionOfACorrectionDueAfterTheHorizon(t *testing.T) {
 	t.Parallel()
 
@@ -708,18 +710,36 @@ func TestAVerdictLeavesOutTheProjectionOfACorrectionDueAfterTheHorizon(t *testin
 		Outlook: indexes.NewOutlook(map[indexes.Index][]indexes.Value{indexes.TR: tr}, indexes.Expectations{}, nil),
 	}
 
-	verdicts, err := comparison.Decide(m,
-		comparison.Market{Quotes: []bonds.Quote{{
-			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2025-03-07")},
-			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")},
-		}}},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, "2025-02-15"), Effect: mortgage.ShortenTerm},
-		date(t, "2025-01-08"),
-	)
-	require.NoError(t, err)
-	require.Len(t, verdicts, 1)
+	tests := []struct {
+		name     string
+		decision string
+		want     []indexes.ProjectionMethod
+	}{
+		{name: "decided on the due date", decision: "2025-02-10"},
+		{
+			name: "decided after the due date", decision: "2025-02-15",
+			want: []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}},
+		},
+	}
 
-	assert.Empty(t, verdicts[0].ProjectedBy)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			verdicts, err := comparison.Decide(m,
+				comparison.Market{Quotes: []bonds.Quote{{
+					Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2025-03-07")},
+					Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")},
+				}}},
+				comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, tt.decision), Effect: mortgage.ShortenTerm},
+				date(t, "2025-01-08"),
+			)
+			require.NoError(t, err)
+			require.Len(t, verdicts, 1)
+
+			assert.Equal(t, tt.want, verdicts[0].ProjectedBy)
+		})
+	}
 }
 
 // A poupança-linked contract rate reads the Selic target of each month, so a verdict names the

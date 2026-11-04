@@ -57,8 +57,8 @@ type Installment struct {
 // only projected is missing. An installment due after today is corrected by the Outlook's
 // estimate, published or projected, and a month with no estimate is missing (ADR-0009).
 // MIP is charged on the corrected balance, and DFI on the appraisal value, which under TR is
-// corrected on each due date from the first installment's on by the TR of the periods since the
-// previous one (ADR-0015). Both are charged at the rates in effect on the due date.
+// corrected from the second installment on by the TR of the months between due dates that end by
+// each due date (ADR-0015). Both are charged at the rates in effect on the due date.
 // Each charge and correction is rounded to centavos. The last installment amortizes whatever is
 // still owed, so the balance ends at zero. Under SAC the first installment charges interest for the
 // days since the contract date, at the monthly rate for each 30, and amortizes what a month's
@@ -87,16 +87,16 @@ func (t Terms) Drifts(outlook indexes.Outlook, events Events, today time.Time) [
 
 // replayer replays a schedule once, keeping its state between installments.
 type replayer struct {
-	terms       Terms
-	outlook     indexes.Outlook
+	terms   Terms
+	outlook indexes.Outlook
+	// corrections correct the balance under IPCA and the appraisal value DFI is charged on under
+	// TR, and updates update the balance under TR.
 	corrections *corrections
-	// updates update the balance under TR, and appraisalUpdates the appraisal value DFI is charged
-	// on, from the first installment's due date on and on due dates only.
-	updates, appraisalUpdates *updates
-	today                     time.Time
-	events                    []event
-	balance                   decimal.Decimal
-	appraisal                 decimal.Decimal
+	updates     *updates
+	today       time.Time
+	events      []event
+	balance     decimal.Decimal
+	appraisal   decimal.Decimal
 	// term is the number of the last installment.
 	term int
 	// payment is the Price installment's amortization plus interest, levelled at paymentRate.
@@ -106,6 +106,8 @@ type replayer struct {
 	relevel bool
 	// drifts are those of the statements applied so far.
 	drifts []Drift
+	// prepaymentValues are the index values the updates at the prepayments applied so far read.
+	prepaymentValues []IndexValue
 	// rates are the contract rates with their fixed parts converted once.
 	rates []chargedRate
 }
@@ -119,17 +121,16 @@ type correction struct {
 
 func (t Terms) replayer(outlook indexes.Outlook, events Events, today time.Time) *replayer {
 	return &replayer{
-		terms:            t,
-		outlook:          outlook,
-		corrections:      newCorrections(t, outlook),
-		updates:          newUpdates(t, outlook, t.ContractDate),
-		appraisalUpdates: newUpdates(t, outlook, t.FirstInstallmentDate),
-		today:            today,
-		events:           events.inOrder(),
-		balance:          t.OriginalAmount.RoundCents(),
-		appraisal:        t.AppraisalValue,
-		term:             t.TermMonths,
-		rates:            chargedRates(t.ContractRates),
+		terms:       t,
+		outlook:     outlook,
+		corrections: newCorrections(t, outlook),
+		updates:     newUpdates(t, outlook),
+		today:       today,
+		events:      events.inOrder(),
+		balance:     t.OriginalAmount.RoundCents(),
+		appraisal:   t.AppraisalValue,
+		term:        t.TermMonths,
+		rates:       chargedRates(t.ContractRates),
 	}
 }
 
@@ -206,23 +207,22 @@ func (r *replayer) charge(number int) Installment {
 }
 
 // correct corrects the balance for installment number, and returns its correction: under TR, the
-// update to its due date. Under TR it updates the appraisal value to its due date too.
+// update to its due date. Under TR it corrects the appraisal value by the month's TR too.
 func (r *replayer) correct(number int) correction {
 	due := addMonths(r.terms.FirstInstallmentDate, number-1)
+	values := r.corrections.through(due, !due.After(r.today))
+
 	if r.terms.Indexer == TR {
-		for _, part := range r.appraisalUpdates.to(due, !due.After(r.today)) {
-			if !part.value.Missing {
-				r.appraisal = r.appraisal.Add(part.of(r.appraisal))
+		for _, v := range values {
+			if !v.Missing {
+				r.appraisal = r.appraisal.Add(r.appraisal.Mul(v.Value).Quo(decimal.FromInt(100)).RoundCents())
 			}
 		}
 
 		return r.update(due)
 	}
 
-	c := correction{
-		amount: decimal.Decimal{}.RoundCents(),
-		values: r.corrections.through(due, !due.After(r.today)),
-	}
+	c := correction{amount: decimal.Decimal{}.RoundCents(), values: values}
 
 	for _, v := range c.values {
 		if v.Missing {
@@ -298,7 +298,7 @@ func (r *replayer) applyNext(paid int) decimal.Decimal {
 // updated to its date, and returns how much it took.
 func (r *replayer) prepay(paid int, p Prepayment) decimal.Decimal {
 	if r.terms.Indexer == TR {
-		r.update(p.Date)
+		r.prepaymentValues = append(r.prepaymentValues, r.update(p.Date).values...)
 	}
 
 	amount := p.Amount

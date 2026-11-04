@@ -45,8 +45,9 @@ from it investing does. When investing wins even at 0% or prepaying even at 100%
 so instead of naming a rate.
 
 A verdict names the projection method of each index a projected value it read comes from: the
-mortgage's corrections and contract rates in either scenario, and the VNA of the purchase, of each
-coupon and of the maturity.
+mortgage's corrections and contract rates in any of the three replays, the updates of a TR-indexed
+balance at their prepayments (ADR-0006), and the VNA of the purchase, of each coupon and of the
+maturity.
 
 ## Considered Options
 

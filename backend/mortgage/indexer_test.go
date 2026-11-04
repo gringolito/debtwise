@@ -415,6 +415,28 @@ func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 	}
 }
 
+// An update across more than one TR period compounds them: a 1st installment deferred by a month
+// is updated by 1% of 30,000.00 for the month to 2024-01-15, 300.00, and then by 2% of the
+// 30,300.00 that leaves, 606.00. Figures worked out independently.
+func TestTRUpdateAcrossPeriodsCompoundsThem(t *testing.T) {
+	t.Parallel()
+
+	terms := indexedSAC(t, mortgage.TR, "30000.00", 2)
+	terms.FirstInstallmentDate = date(t, "2024-02-15")
+	history := outlookOf(publishedValues{indexes.TR: {
+		published(t, "2023-12-15", "2024-01-15", "1.0000"),
+		published(t, "2024-01-15", "2024-02-15", "2.0000"),
+	}})
+
+	assert.Equal(t, []indexedRow{
+		{
+			1, "906.00", "638.72", "15123.34", "0.00", "15762.06", "15782.66",
+			"tr 1.0000 2023-12-15..2024-01-15; tr 2.0000 2024-01-15..2024-02-15",
+		},
+		{2, "0.00", "157.83", "15782.66", "0.00", "15940.49", "0.00", "tr missing 2024-02-15..2024-03-15"},
+	}, indexedSchedule(terms, history, date(t, "2026-10-25")))
+}
+
 // A projected TR follows the periods between due days too: signed on 2024-03-10 with installments
 // on the 15th, the 1st installment is updated by 36/30 of the projection for 2024-03-15 to
 // 2024-04-15, and the 2nd by the projection for 2024-04-15 to 2024-05-15. Figures worked out
@@ -910,36 +932,61 @@ func withDFIRaisedOnTheThirdInstallment(t *testing.T, terms mortgage.Terms) mort
 	return terms
 }
 
-// Under TR, the 200,000.00 appraisal value is updated on each due date from the 1st installment's
-// on, by the TR of the periods since the previous due date, and DFI is charged on it at the rate in
-// force on the due date: 0.0717% makes it 200,143.40 for the 2nd installment, and 0.0665% (133.10)
-// 200,276.50 for the 3rd, charged at 0.2%. A prepayment, which updates the balance pro rata die,
-// leaves it as it is. Figures worked out independently from the published TR.
+// Under TR, the 200,000.00 appraisal value is corrected on each due date from the 2nd installment's
+// on, by the TR of the months that end by it, and DFI is charged on it at the rate in force on the
+// due date: 0.0717% makes it 200,143.40 for the 2nd installment, and 0.0665% (133.10) 200,276.50 for
+// the 3rd, charged at 0.2%. A prepayment, which updates the balance pro rata die, leaves it as it
+// is. With installments due on the 31st, the month from 2024-01-31 ends on 2024-03-01, after the
+// 2nd installment, so its 0.0300% only corrects it for the 3rd: 200,060.00 at 0.1%. Figures worked
+// out independently from the published TR.
 func TestTRIndexedDFIFollowsTheAppraisalValueCorrectedByTR(t *testing.T) {
 	t.Parallel()
 
+	dueOnThe31st := indexedSAC(t, mortgage.TR, "30000.00", 3)
+	dueOnThe31st.ContractDate = date(t, "2023-12-31")
+	dueOnThe31st.FirstInstallmentDate = date(t, "2024-01-31")
+	dueOnThe31st.DFIRates = []mortgage.MonthlyRate{{EffectiveFrom: date(t, "2023-12-31"), Rate: dec(t, "0.001")}}
+
 	tests := []struct {
-		name   string
-		events mortgage.Events
+		name    string
+		terms   mortgage.Terms
+		history []indexes.Value
+		events  mortgage.Events
+		want    []string
 	}{
-		{name: "without events"},
-		{name: "with a prepayment", events: mortgage.Events{Prepayments: []mortgage.Prepayment{
-			prepayment(t, "2024-02-01", "1000.00", mortgage.LowerInstallment),
-		}}},
+		{
+			name:    "without events",
+			terms:   withDFIRaisedOnTheThirdInstallment(t, indexedSAC(t, mortgage.TR, "120000.00", 3)),
+			history: publishedTR2024(t),
+			want:    []string{"200.00", "200.14", "400.55"},
+		},
+		{
+			name:    "with a prepayment",
+			terms:   withDFIRaisedOnTheThirdInstallment(t, indexedSAC(t, mortgage.TR, "120000.00", 3)),
+			history: publishedTR2024(t),
+			events: mortgage.Events{Prepayments: []mortgage.Prepayment{
+				prepayment(t, "2024-02-01", "1000.00", mortgage.LowerInstallment),
+			}},
+			want: []string{"200.00", "200.14", "400.55"},
+		},
+		{
+			name:    "installments due on the 31st",
+			terms:   dueOnThe31st,
+			history: []indexes.Value{published(t, "2024-01-31", "2024-03-01", "0.0300")},
+			want:    []string{"200.00", "200.00", "200.06"},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			terms := withDFIRaisedOnTheThirdInstallment(t, indexedSAC(t, mortgage.TR, "120000.00", 3))
-
 			var dfi []string
-			for m := range terms.Schedule(outlookOf(publishedValues{indexes.TR: publishedTR2024(t)}), tt.events, date(t, "2026-10-25")) {
+			for m := range tt.terms.Schedule(outlookOf(publishedValues{indexes.TR: tt.history}), tt.events, date(t, "2026-10-25")) {
 				dfi = append(dfi, m.DFI.String())
 			}
 
-			assert.Equal(t, []string{"200.00", "200.14", "400.55"}, dfi)
+			assert.Equal(t, tt.want, dfi)
 		})
 	}
 }
