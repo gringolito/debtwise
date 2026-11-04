@@ -141,9 +141,10 @@ func publishedTR2024(t *testing.T) []indexes.Value {
 	}
 }
 
-// From the 2nd installment on, the balance grows by the period's TR before interest, amortization
-// and MIP (0.03%) are charged on it. The 1st installment charges 31 days of interest, from the
-// contract date to its due date. Figures worked out independently from the published TR.
+// Each installment, the 1st included, grows the balance by the TR of the month up to its due date
+// before interest, amortization and MIP (0.03%) are charged on it. The 1st installment charges 31
+// days of interest, from the contract date to its due date. Figures worked out independently from
+// the published TR.
 func TestTRIndexedScheduleCorrectsTheBalanceWithPublishedTR(t *testing.T) {
 	t.Parallel()
 
@@ -153,18 +154,18 @@ func TestTRIndexedScheduleCorrectsTheBalanceWithPublishedTR(t *testing.T) {
 	rows := indexedSchedule(terms, outlookOf(publishedValues{indexes.TR: publishedTR2024(t)}), date(t, "2026-10-25"))
 
 	assert.Equal(t, []indexedRow{
-		{1, "0.00", "1240.00", "9960.00", "36.00", "11236.00", "110040.00", ""},
-		{2, "78.90", "1101.19", "10010.81", "33.04", "11145.04", "100108.09", "tr 0.0717 2024-01-15..2024-02-15"},
-		{3, "66.57", "1001.75", "10017.47", "30.05", "11049.27", "90157.19", "tr 0.0665 2024-02-15..2024-03-15"},
-		{4, "46.79", "902.04", "10022.66", "27.06", "10951.76", "80181.32", "tr 0.0519 2024-03-15..2024-04-15"},
-		{5, "66.07", "802.47", "10030.92", "24.07", "10857.46", "70216.47", "tr 0.0824 2024-04-15..2024-05-15"},
-		{6, "80.26", "702.97", "10042.39", "21.09", "10766.45", "60254.34", "tr 0.1143 2024-05-15..2024-06-15"},
-		{7, "24.04", "602.78", "10046.40", "18.08", "10667.26", "50231.98", "tr 0.0399 2024-06-15..2024-07-15"},
-		{8, "37.37", "502.69", "10053.87", "15.08", "10571.64", "40215.48", "tr 0.0744 2024-07-15..2024-08-15"},
-		{9, "28.47", "402.44", "10060.99", "12.07", "10475.50", "30182.96", "tr 0.0708 2024-08-15..2024-09-15"},
-		{10, "20.95", "302.04", "10067.97", "9.06", "10379.07", "20135.94", "tr 0.0694 2024-09-15..2024-10-15"},
-		{11, "21.67", "201.58", "10078.81", "6.05", "10286.44", "10078.80", "tr 0.1076 2024-10-15..2024-11-15"},
-		{12, "6.65", "100.85", "10085.45", "3.03", "10189.33", "0.00", "tr 0.0660 2024-11-15..2024-12-15"},
+		{1, "26.16", "1240.27", "9962.17", "36.01", "11238.45", "110063.99", "tr 0.0218 2023-12-15..2024-01-15"},
+		{2, "78.92", "1101.43", "10012.99", "33.04", "11147.46", "100129.92", "tr 0.0717 2024-01-15..2024-02-15"},
+		{3, "66.59", "1001.97", "10019.65", "30.06", "11051.68", "90176.86", "tr 0.0665 2024-02-15..2024-03-15"},
+		{4, "46.80", "902.24", "10024.85", "27.07", "10954.16", "80198.81", "tr 0.0519 2024-03-15..2024-04-15"},
+		{5, "66.08", "802.65", "10033.11", "24.08", "10859.84", "70231.78", "tr 0.0824 2024-04-15..2024-05-15"},
+		{6, "80.27", "703.12", "10044.58", "21.09", "10768.79", "60267.47", "tr 0.1143 2024-05-15..2024-06-15"},
+		{7, "24.05", "602.92", "10048.59", "18.09", "10669.60", "50242.93", "tr 0.0399 2024-06-15..2024-07-15"},
+		{8, "37.38", "502.80", "10056.06", "15.08", "10573.94", "40224.25", "tr 0.0744 2024-07-15..2024-08-15"},
+		{9, "28.48", "402.53", "10063.18", "12.08", "10477.79", "30189.55", "tr 0.0708 2024-08-15..2024-09-15"},
+		{10, "20.95", "302.11", "10070.17", "9.06", "10381.34", "20140.33", "tr 0.0694 2024-09-15..2024-10-15"},
+		{11, "21.67", "201.62", "10081.00", "6.05", "10288.67", "10081.00", "tr 0.1076 2024-10-15..2024-11-15"},
+		{12, "6.65", "100.88", "10087.65", "3.03", "10191.56", "0.00", "tr 0.0660 2024-11-15..2024-12-15"},
 	}, rows)
 }
 
@@ -190,62 +191,52 @@ func TestIPCAIndexedScheduleReadsTheIPCAOfTwoMonthsBefore(t *testing.T) {
 	}, indexedSchedule(terms, history, date(t, "2026-10-25")))
 }
 
-// The first installment is never corrected, even when it isn't due yet and its month's value is
-// projected, and the month that ends on the first anniversary corrects no later installment
-// either: the 2nd installment is corrected for the second anniversary only. Figures worked out
-// independently.
-func TestFirstInstallmentIsNeverCorrected(t *testing.T) {
+// Under IPCA the first installment is never corrected, even when it isn't due yet and its month's
+// value is projected, and the month that ends on the first anniversary corrects no later
+// installment either: the 2nd installment is corrected for the second anniversary only. Figures
+// worked out independently.
+func TestFirstIPCAInstallmentIsNeverCorrected(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		indexer  mortgage.Indexer
-		contract string
-		outlook  indexes.Outlook
-		want     indexedRow
-	}{
+	terms := indexedSAC(t, mortgage.IPCA, "20000.00", 2)
+	terms.ContractDate = date(t, "2024-03-10")
+	terms.FirstInstallmentDate = date(t, "2024-04-10")
+	outlook := indexes.NewOutlook(publishedValues{indexes.IPCA: {
+		published(t, "2024-01-01", "2024-01-01", "0.42"),
+	}}, indexes.Expectations{MonthlyIPCA: []indexes.MonthMedian{
+		{Month: date(t, "2024-02-01"), Median: dec(t, "0.83")},
+		{Month: date(t, "2024-03-01"), Median: dec(t, "0.45")},
+	}}, nil)
+
+	assert.Equal(t, []indexedRow{
+		{1, "0.00", "206.67", "9993.33", "0.00", "10200.00", "10006.67", ""},
+		{2, "45.03", "100.52", "10051.70", "0.00", "10152.22", "0.00", "ipca 0.45 2024-03-01..2024-03-01 (ipca focus)"},
+	}, indexedSchedule(terms, outlook, date(t, "2024-03-20")))
+}
+
+// Under TR the first installment is updated as any other, by the TR of the month from the contract
+// date to its due date, projected here as it isn't due yet. Figures worked out independently.
+func TestFirstTRInstallmentIsUpdatedAsAnyOther(t *testing.T) {
+	t.Parallel()
+
+	terms := indexedSAC(t, mortgage.TR, "20000.00", 2)
+	terms.ContractDate = date(t, "2024-03-15")
+	terms.FirstInstallmentDate = date(t, "2024-04-15")
+
+	assert.Equal(t, []indexedRow{
 		{
-			name:     "projected TR",
-			indexer:  mortgage.TR,
-			contract: "2024-03-15",
-			outlook:  outlookOf(projectedTRHistory(t)),
-			want: indexedRow{
-				2, "6.35", "100.13", "10013.02", "0.00", "10113.15", "0.00",
-				"tr 0.0635 2024-04-15..2024-05-15 (tr trailing_12)",
-			},
+			1, "12.70", "206.80", "9999.68", "0.00", "10206.48", "10013.02",
+			"tr 0.0635 2024-03-15..2024-04-15 (tr trailing_12)",
 		},
 		{
-			name:     "projected IPCA",
-			indexer:  mortgage.IPCA,
-			contract: "2024-03-10",
-			outlook: indexes.NewOutlook(publishedValues{indexes.IPCA: {
-				published(t, "2024-01-01", "2024-01-01", "0.42"),
-			}}, indexes.Expectations{MonthlyIPCA: []indexes.MonthMedian{
-				{Month: date(t, "2024-02-01"), Median: dec(t, "0.83")},
-				{Month: date(t, "2024-03-01"), Median: dec(t, "0.45")},
-			}}, nil),
-			want: indexedRow{2, "45.03", "100.52", "10051.70", "0.00", "10152.22", "0.00", "ipca 0.45 2024-03-01..2024-03-01 (ipca focus)"},
+			2, "6.36", "100.19", "10019.38", "0.00", "10119.57", "0.00",
+			"tr 0.0635 2024-04-15..2024-05-15 (tr trailing_12)",
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			terms := indexedSAC(t, tt.indexer, "20000.00", 2)
-			terms.ContractDate = date(t, tt.contract)
-			terms.FirstInstallmentDate = date(t, tt.contract).AddDate(0, 1, 0)
-
-			assert.Equal(t, []indexedRow{
-				{1, "0.00", "206.67", "9993.33", "0.00", "10200.00", "10006.67", ""},
-				tt.want,
-			}, indexedSchedule(terms, tt.outlook, date(t, "2024-03-20")))
-		})
-	}
+	}, indexedSchedule(terms, outlookOf(projectedTRHistory(t)), date(t, "2024-03-20")))
 }
 
 // The TR of the period that started on 2024-01-15 was never stored, so the 2nd installment is
-// left uncorrected and marked; the month after it is still corrected.
+// left uncorrected and marked; the months before and after it still correct theirs.
 func TestPastMonthWithoutPublishedIndexIsMarkedMissing(t *testing.T) {
 	t.Parallel()
 
@@ -255,21 +246,24 @@ func TestPastMonthWithoutPublishedIndexIsMarkedMissing(t *testing.T) {
 	}})
 
 	assert.Equal(t, []indexedRow{
-		{1, "0.00", "310.00", "9990.00", "0.00", "10300.00", "20010.00", ""},
-		{2, "0.00", "200.10", "10005.00", "0.00", "10205.10", "10005.00", "tr missing 2024-01-15..2024-02-15"},
-		{3, "6.65", "100.12", "10011.65", "0.00", "10111.77", "0.00", "tr 0.0665 2024-02-15..2024-03-15"},
+		{1, "6.54", "310.07", "9992.18", "0.00", "10302.25", "20014.36", "tr 0.0218 2023-12-15..2024-01-15"},
+		{2, "0.00", "200.14", "10007.18", "0.00", "10207.32", "10007.18", "tr missing 2024-01-15..2024-02-15"},
+		{3, "6.65", "100.14", "10013.83", "0.00", "10113.97", "0.00", "tr 0.0665 2024-02-15..2024-03-15"},
 	}, indexedSchedule(indexedSAC(t, mortgage.TR, "30000.00", 3), history, date(t, "2026-10-25")))
 }
 
-// From the 2nd installment on, a TR-indexed installment is corrected by the TR of the month from
-// the previous installment's due date to its own, whatever the contract's day of the month: the TR
-// of the months between contract anniversaries is published too, and must not be read. The 1st
-// installment is never corrected, whenever it falls due, and a month that ends on or before the
-// first anniversary corrects no installment: an installment due on the contract date leaves the
-// 2nd uncorrected. Months counted from a due date some months lack start on the 1st from the first
-// short month on, as SGS dates those periods, and an installment is corrected by the months that
-// end by its due date: with installments due on the contract's 31st, the corrections are those of
-// the contract anniversaries. Figures worked out independently.
+// A TR-indexed installment is updated from the previous installment's due date, or from the
+// contract date for the 1st, to its own, by the TR of the periods that start on the due day,
+// whatever the contract's day of the month: the TR of the months between contract anniversaries is
+// published too, and must not be read. An update reads the period that starts on the first due day
+// on or after its start, in full when it covers it whole and for its days over 30, rounded down,
+// otherwise: signed five days before the due day, the 1st installment is updated by 26/30 of the TR
+// of the month after its due date, and signed on the 31st with installments on the 29th, by 29/30
+// of it. A 1st installment due on the contract date isn't updated at all, and one deferred by a
+// month is updated by both months since the contract date. Periods counted from a due day some
+// months lack start on the 1st from the first short month on, as SGS dates those periods: with
+// installments due on the 31st, they are those of the contract anniversaries. Figures worked out
+// independently.
 func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 	t.Parallel()
 
@@ -302,7 +296,7 @@ func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 			amount:           "30000.00",
 			months:           3,
 			want: []indexedRow{
-				{1, "0.00", "310.00", "9990.00", "0.00", "10300.00", "20010.00", ""},
+				{1, "0.00", "310.00", "9990.00", "0.00", "10300.00", "20010.00", "tr missing 2024-11-19..2024-12-19"},
 				{2, "20.79", "200.31", "10015.40", "0.00", "10215.71", "10015.39", "tr 0.1039 2024-12-19..2025-01-19"},
 				{3, "16.97", "100.32", "10032.36", "0.00", "10132.68", "0.00", "tr 0.1694 2025-01-19..2025-02-19"},
 			},
@@ -314,7 +308,7 @@ func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 			amount:           "30000.00",
 			months:           3,
 			want: []indexedRow{
-				{1, "0.00", "360.00", "9940.00", "0.00", "10300.00", "20060.00", ""},
+				{1, "0.00", "360.00", "9940.00", "0.00", "10300.00", "20060.00", "tr missing 2023-12-20..2024-01-20"},
 				{2, "100.30", "201.60", "10080.15", "0.00", "10281.75", "10080.15", "tr 0.5000 2024-01-20..2024-02-20"},
 				{3, "4.03", "100.84", "10084.18", "0.00", "10185.02", "0.00", "tr 0.0400 2024-02-20..2024-03-20"},
 			},
@@ -326,9 +320,9 @@ func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 			amount:           "30000.00",
 			months:           3,
 			want: []indexedRow{
-				{1, "0.00", "260.00", "10040.00", "0.00", "10300.00", "19960.00", ""},
-				{2, "14.31", "199.74", "9987.16", "0.00", "10186.90", "9987.15", "tr 0.0717 2024-01-15..2024-02-15"},
-				{3, "6.64", "99.94", "9993.79", "0.00", "10093.73", "0.00", "tr 0.0665 2024-02-15..2024-03-15"},
+				{1, "18.64", "260.16", "10046.24", "0.00", "10306.40", "19972.40", "tr 0.0717 2024-01-15..2024-02-15"},
+				{2, "14.32", "199.87", "9993.36", "0.00", "10193.23", "9993.36", "tr 0.0717 2024-01-15..2024-02-15"},
+				{3, "6.65", "100.00", "10000.01", "0.00", "10100.01", "0.00", "tr 0.0665 2024-02-15..2024-03-15"},
 			},
 		},
 		{
@@ -338,9 +332,9 @@ func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 			amount:           "30000.00",
 			months:           3,
 			want: []indexedRow{
-				{1, "0.00", "290.00", "10010.00", "0.00", "10300.00", "19990.00", ""},
-				{2, "12.39", "200.02", "10001.20", "0.00", "10201.22", "10001.19", "tr 0.0620 2024-02-29..2024-03-29"},
-				{3, "5.00", "100.06", "10006.19", "0.00", "10106.25", "0.00", "tr 0.0500 2024-03-29..2024-04-29"},
+				{1, "17.98", "290.17", "10016.00", "0.00", "10306.17", "20001.98", "tr 0.0620 2024-02-29..2024-03-29"},
+				{2, "12.40", "200.14", "10007.19", "0.00", "10207.33", "10007.19", "tr 0.0620 2024-02-29..2024-03-29"},
+				{3, "5.00", "100.12", "10012.19", "0.00", "10112.31", "0.00", "tr 0.0500 2024-03-29..2024-04-29"},
 			},
 		},
 		{
@@ -350,7 +344,7 @@ func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 			amount:           "20000.00",
 			months:           2,
 			want: []indexedRow{
-				{1, "0.00", "206.67", "9993.33", "0.00", "10200.00", "10006.67", ""},
+				{1, "0.00", "206.67", "9993.33", "0.00", "10200.00", "10006.67", "tr missing 2024-01-29..2024-02-29"},
 				{2, "6.20", "100.13", "10012.87", "0.00", "10113.00", "0.00", "tr 0.0620 2024-02-29..2024-03-29"},
 			},
 		},
@@ -361,9 +355,9 @@ func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 			amount:           "30000.00",
 			months:           3,
 			want: []indexedRow{
-				{1, "0.00", "310.00", "9990.00", "0.00", "10300.00", "20010.00", ""},
-				{2, "0.00", "200.10", "10005.00", "0.00", "10205.10", "10005.00", ""},
-				{3, "3.00", "100.08", "10008.00", "0.00", "10108.08", "0.00", "tr 0.0300 2024-01-31..2024-03-01"},
+				{1, "0.00", "310.00", "9990.00", "0.00", "10300.00", "20010.00", "tr missing 2023-12-31..2024-01-31"},
+				{2, "5.80", "200.16", "10007.90", "0.00", "10208.06", "10007.90", "tr 0.0300 2024-01-31..2024-03-01"},
+				{3, "3.42", "100.11", "10011.32", "0.00", "10111.43", "0.00", "tr 0.0331 2024-03-01..2024-04-01"},
 			},
 		},
 		{
@@ -374,8 +368,8 @@ func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 			months:           3,
 			want: []indexedRow{
 				{1, "0.00", "0.00", "10300.00", "0.00", "10300.00", "19700.00", ""},
-				{2, "0.00", "197.00", "9850.00", "0.00", "10047.00", "9850.00", ""},
-				{3, "7.06", "98.57", "9857.06", "0.00", "9955.63", "0.00", "tr 0.0717 2024-01-15..2024-02-15"},
+				{2, "4.29", "197.04", "9852.15", "0.00", "10049.19", "9852.14", "tr 0.0218 2023-12-15..2024-01-15"},
+				{3, "7.06", "98.59", "9859.20", "0.00", "9957.79", "0.00", "tr 0.0717 2024-01-15..2024-02-15"},
 			},
 		},
 		{
@@ -385,8 +379,11 @@ func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 			amount:           "20000.00",
 			months:           2,
 			want: []indexedRow{
-				{1, "0.00", "606.67", "9593.33", "0.00", "10200.00", "10406.67", ""},
-				{2, "3.44", "104.10", "10410.11", "0.00", "10514.21", "0.00", "tr 0.0331 2024-03-01..2024-04-01"},
+				{
+					1, "12.62", "607.05", "9599.39", "0.00", "10206.44", "10413.23",
+					"tr missing 2023-12-31..2024-01-31; tr 0.0300 2024-01-31..2024-03-01; tr 0.0331 2024-03-01..2024-04-01",
+				},
+				{2, "0.00", "104.13", "10413.23", "0.00", "10517.36", "0.00", "tr missing 2024-04-01..2024-05-01"},
 			},
 		},
 		{
@@ -396,8 +393,11 @@ func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 			amount:           "30000.00",
 			months:           2,
 			want: []indexedRow{
-				{1, "0.00", "620.00", "14680.00", "0.00", "15300.00", "15320.00", ""},
-				{2, "10.19", "153.30", "15330.19", "0.00", "15483.49", "0.00", "tr 0.0665 2024-02-15..2024-03-15"},
+				{
+					1, "28.05", "620.58", "14693.73", "0.00", "15314.31", "15334.32",
+					"tr 0.0218 2023-12-15..2024-01-15; tr 0.0717 2024-01-15..2024-02-15",
+				},
+				{2, "10.20", "153.45", "15344.52", "0.00", "15497.97", "0.00", "tr 0.0665 2024-02-15..2024-03-15"},
 			},
 		},
 	}
@@ -415,8 +415,10 @@ func TestTRCorrectionsFollowTheDueDates(t *testing.T) {
 	}
 }
 
-// A projected TR follows the months between due dates too: signed on 2024-03-10 with installments
-// on the 15th, the 2nd installment is corrected by the projection for 2024-04-15 to 2024-05-15.
+// A projected TR follows the periods between due days too: signed on 2024-03-10 with installments
+// on the 15th, the 1st installment is updated by 36/30 of the projection for 2024-03-15 to
+// 2024-04-15, and the 2nd by the projection for 2024-04-15 to 2024-05-15. Figures worked out
+// independently.
 func TestProjectedTRFollowsTheDueDates(t *testing.T) {
 	t.Parallel()
 
@@ -425,9 +427,12 @@ func TestProjectedTRFollowsTheDueDates(t *testing.T) {
 	terms.FirstInstallmentDate = date(t, "2024-04-15")
 
 	assert.Equal(t, []indexedRow{
-		{1, "0.00", "240.00", "9960.00", "0.00", "10200.00", "10040.00", ""},
 		{
-			2, "6.38", "100.46", "10046.38", "0.00", "10146.84", "0.00",
+			1, "15.24", "240.18", "9967.59", "0.00", "10207.77", "10047.65",
+			"tr 0.0635 2024-03-15..2024-04-15 (tr trailing_12)",
+		},
+		{
+			2, "6.38", "100.54", "10054.03", "0.00", "10154.57", "0.00",
 			"tr 0.0635 2024-04-15..2024-05-15 (tr trailing_12)",
 		},
 	}, indexedSchedule(terms, outlookOf(projectedTRHistory(t)), date(t, "2024-03-20")))
@@ -448,24 +453,37 @@ func fiveDaysAfterTheAnniversary(t *testing.T) (mortgage.Terms, indexes.Outlook)
 	}})
 }
 
-// A prepayment dated from the anniversary before the 2nd installment up to the day before its due
-// date comes off the balance the correction then applies to: 0.5000% of 15,000.00. Figures worked
-// out independently.
-func TestTRCorrectionAppliesOnTheDueDate(t *testing.T) {
+// A prepayment first updates the balance pro rata die since the 1st installment's due date by the
+// TR of 2024-01-20 to 2024-02-20 (0.5000%), for 26 or 30 of its days, rounded down, and then comes
+// off it. The 2nd installment is updated from the prepayment's date by the TR of the period that
+// starts on its due date (0.0400%), for 5 or 1 days, and the 3rd by that period whole. Figures
+// worked out independently.
+func TestPrepaymentFirstUpdatesTheTRBalanceProRataDie(t *testing.T) {
 	t.Parallel()
-
-	want := []indexedRow{
-		{1, "0.00", "360.00", "9940.00", "0.00", "10300.00", "15060.00", ""},
-		{2, "75.30", "151.35", "7567.65", "0.00", "7719.00", "7567.65", "tr 0.5000 2024-01-20..2024-02-20"},
-		{3, "3.03", "75.71", "7570.68", "0.00", "7646.39", "0.00", "tr 0.0400 2024-02-20..2024-03-20"},
-	}
 
 	tests := []struct {
 		name string
 		day  string
+		want []indexedRow
 	}{
-		{name: "on the anniversary", day: "2024-02-15"},
-		{name: "the day before the due date", day: "2024-02-19"},
+		{
+			name: "on the anniversary",
+			day:  "2024-02-15",
+			want: []indexedRow{
+				{1, "0.00", "360.00", "9940.00", "0.00", "10300.00", "15146.92", "tr missing 2023-12-20..2024-01-20"},
+				{2, "1.00", "151.48", "7573.96", "0.00", "7725.44", "7573.96", "tr 0.0400 2024-02-20..2024-03-20"},
+				{3, "3.03", "75.77", "7576.99", "0.00", "7652.76", "0.00", "tr 0.0400 2024-02-20..2024-03-20"},
+			},
+		},
+		{
+			name: "the day before the due date",
+			day:  "2024-02-19",
+			want: []indexedRow{
+				{1, "0.00", "360.00", "9940.00", "0.00", "10300.00", "15160.30", "tr missing 2023-12-20..2024-01-20"},
+				{2, "0.20", "151.61", "7580.25", "0.00", "7731.86", "7580.25", "tr 0.0400 2024-02-20..2024-03-20"},
+				{3, "3.03", "75.83", "7583.28", "0.00", "7659.11", "0.00", "tr 0.0400 2024-02-20..2024-03-20"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -477,35 +495,14 @@ func TestTRCorrectionAppliesOnTheDueDate(t *testing.T) {
 				prepayment(t, tt.day, "5000.00", mortgage.LowerInstallment),
 			}}
 
-			assert.Equal(t, want, indexedRows(terms.Schedule(outlook, events, date(t, "2026-10-25"))))
+			assert.Equal(t, tt.want, indexedRows(terms.Schedule(outlook, events, date(t, "2026-10-25"))))
 		})
 	}
 }
 
-// Installments due on the contract's day are corrected on their due dates, as they were, though the
-// anniversaries of a contract signed on the 31st fall on the 1st: a prepayment on 2024-04-15 comes
-// off before the 2024-04-30 installment's correction of 0.0331%, which applies to the 5,000.00
-// left. Figures worked out independently.
-func TestTRCorrectionOfInstallmentsDueOnTheContractDayAppliesOnTheDueDate(t *testing.T) {
-	t.Parallel()
-
-	terms := indexedSAC(t, mortgage.TR, "20000.00", 2)
-	terms.ContractDate = date(t, "2023-12-31")
-	terms.FirstInstallmentDate = date(t, "2024-03-31")
-	outlook := outlookOf(publishedValues{indexes.TR: {published(t, "2024-03-01", "2024-04-01", "0.0331")}})
-	events := mortgage.Events{Prepayments: []mortgage.Prepayment{
-		prepayment(t, "2024-04-15", "5000.00", mortgage.LowerInstallment),
-	}}
-
-	assert.Equal(t, []indexedRow{
-		{1, "0.00", "606.67", "9593.33", "0.00", "10200.00", "5406.67", ""},
-		{2, "1.79", "54.08", "5408.46", "0.00", "5462.54", "0.00", "tr 0.0331 2024-03-01..2024-04-01"},
-	}, indexedRows(terms.Schedule(outlook, events, date(t, "2026-10-25"))))
-}
-
 // A statement dated before the next installment's due date is compared with the balance before
 // that installment's correction, whether the due day comes after the contract's or before it, under
-// TR and IPCA alike.
+// TR and IPCA alike. A statement doesn't update a TR balance pro rata die to its date.
 func TestStatementSeesTheBalanceBeforeTheNextCorrection(t *testing.T) {
 	t.Parallel()
 
@@ -534,7 +531,7 @@ func TestStatementSeesTheBalanceBeforeTheNextCorrection(t *testing.T) {
 	}{
 		{name: "TR on the anniversary", mortgage: fiveDaysAfterTheAnniversary, day: "2024-02-15", computed: "20060.00"},
 		{name: "TR the day before the due date", mortgage: fiveDaysAfterTheAnniversary, day: "2024-02-19", computed: "20060.00"},
-		{name: "TR due before the anniversary, on it", mortgage: dueBeforeTheAnniversary, day: "2024-01-20", computed: "19960.00"},
+		{name: "TR due before the anniversary, on it", mortgage: dueBeforeTheAnniversary, day: "2024-01-20", computed: "19972.40"},
 		{name: "IPCA after the anniversary", mortgage: ipca, day: "2024-02-16", computed: "20060.00"},
 	}
 
@@ -583,7 +580,8 @@ func TestPlanBalancesExcludeTheTRCorrectionBeforeTheDueDate(t *testing.T) {
 }
 
 // A month whose correction lacks any published value it needs is left uncorrected and marked
-// missing for the period it needed. The 2nd installment falls due on the 2024-02-15 anniversary.
+// missing for the period it needed. The 2nd installment falls due on the 2024-02-15 anniversary;
+// under TR the 1st reads the month before it, which isn't published either.
 func TestMissingIndexInputsAreMarkedMissing(t *testing.T) {
 	t.Parallel()
 
@@ -591,12 +589,14 @@ func TestMissingIndexInputsAreMarkedMissing(t *testing.T) {
 		name    string
 		indexer mortgage.Indexer
 		history publishedValues
+		first   string
 		want    string
 	}{
 		{
 			name:    "TR published only for a shorter period starting the same day",
 			indexer: mortgage.TR,
 			history: publishedValues{indexes.TR: {published(t, "2024-01-15", "2024-02-14", "0.0717")}},
+			first:   "tr missing 2023-12-15..2024-01-15",
 			want:    "tr missing 2024-01-15..2024-02-15",
 		},
 		{
@@ -612,26 +612,26 @@ func TestMissingIndexInputsAreMarkedMissing(t *testing.T) {
 			t.Parallel()
 
 			assert.Equal(t, []indexedRow{
-				{1, "0.00", "206.67", "9993.33", "0.00", "10200.00", "10006.67", ""},
+				{1, "0.00", "206.67", "9993.33", "0.00", "10200.00", "10006.67", tt.first},
 				{2, "0.00", "100.07", "10006.67", "0.00", "10106.74", "0.00", tt.want},
 			}, indexedSchedule(indexedSAC(t, tt.indexer, "20000.00", 2), outlookOf(tt.history), date(t, "2026-10-25")))
 		})
 	}
 }
 
-// On 2024-02-15 the 2nd installment falls due and is corrected, and the 3rd, not due yet, is
+// On 2024-02-15 the first two installments are due and corrected, and the 3rd, not due yet, is
 // corrected too: the TR of its month, published already, is a published value, so it records no
 // projection method (ADR-0009 replaces ADR-0006's rule that only installments due by today are
-// corrected).
+// corrected). Figures worked out independently.
 func TestFutureMonthWithPublishedIndexIsCorrectedByIt(t *testing.T) {
 	t.Parallel()
 
 	history := outlookOf(publishedValues{indexes.TR: publishedTR2024(t)})
 
 	assert.Equal(t, []indexedRow{
-		{1, "0.00", "310.00", "9990.00", "0.00", "10300.00", "20010.00", ""},
-		{2, "14.35", "200.24", "10012.18", "0.00", "10212.42", "10012.17", "tr 0.0717 2024-01-15..2024-02-15"},
-		{3, "6.66", "100.19", "10018.83", "0.00", "10119.02", "0.00", "tr 0.0665 2024-02-15..2024-03-15"},
+		{1, "6.54", "310.07", "9992.18", "0.00", "10302.25", "20014.36", "tr 0.0218 2023-12-15..2024-01-15"},
+		{2, "14.35", "200.29", "10014.36", "0.00", "10214.65", "10014.35", "tr 0.0717 2024-01-15..2024-02-15"},
+		{3, "6.66", "100.21", "10021.01", "0.00", "10121.22", "0.00", "tr 0.0665 2024-02-15..2024-03-15"},
 	}, indexedSchedule(indexedSAC(t, mortgage.TR, "30000.00", 3), history, date(t, "2024-02-15")))
 }
 
@@ -664,18 +664,17 @@ func projectedTRHistory(t *testing.T) publishedValues {
 	)}
 }
 
-// On 2024-03-20 the first three installments are due and the last two are not. The 1st is never
-// corrected. The others due keep the published TR: the 3rd is corrected by it, and the 2nd stays
-// missing, though the trailing 12 months average (0.0635%) could be projected for its period. The
-// two later ones are corrected by that projection, with its method. Figures worked out
-// independently.
+// On 2024-03-20 the first three installments are due and the last two are not. Those due keep the
+// published TR: the 3rd is corrected by it, and the 1st and 2nd stay missing, though the trailing
+// 12 months average (0.0635%) could be projected for their periods. The two later ones are
+// corrected by that projection, with its method. Figures worked out independently.
 func TestPastMonthsKeepPublishedValuesWhileFutureMonthsAreProjected(t *testing.T) {
 	t.Parallel()
 
 	outlook := indexes.NewOutlook(projectedTRHistory(t), indexes.Expectations{}, nil)
 
 	assert.Equal(t, []indexedRow{
-		{1, "0.00", "516.67", "9983.33", "0.00", "10500.00", "40016.67", ""},
+		{1, "0.00", "516.67", "9983.33", "0.00", "10500.00", "40016.67", "tr missing 2023-12-15..2024-01-15"},
 		{2, "0.00", "400.17", "10004.17", "0.00", "10404.34", "30012.50", "tr missing 2024-01-15..2024-02-15"},
 		{3, "19.96", "300.32", "10010.82", "0.00", "10311.14", "20021.64", "tr 0.0665 2024-02-15..2024-03-15"},
 		{
@@ -711,7 +710,7 @@ func TestInstallmentDueTodayIsCorrectedByPublishedValuesOnly(t *testing.T) {
 			outlook := indexes.NewOutlook(projectedTRHistory(t), indexes.Expectations{}, nil)
 
 			assert.Equal(t, []indexedRow{
-				{1, "0.00", "516.67", "9983.33", "0.00", "10500.00", "40016.67", ""},
+				{1, "0.00", "516.67", "9983.33", "0.00", "10500.00", "40016.67", "tr missing 2023-12-15..2024-01-15"},
 				{2, "0.00", "400.17", "10004.17", "0.00", "10404.34", "30012.50", "tr missing 2024-01-15..2024-02-15"},
 				{3, "19.96", "300.32", "10010.82", "0.00", "10311.14", "20021.64", "tr 0.0665 2024-02-15..2024-03-15"},
 				{
@@ -734,7 +733,7 @@ func TestChangingTheProjectionMethodChangesTheFutureMonths(t *testing.T) {
 	t.Parallel()
 
 	due := []indexedRow{
-		{1, "0.00", "516.67", "9983.33", "0.00", "10500.00", "40016.67", ""},
+		{1, "0.00", "516.67", "9983.33", "0.00", "10500.00", "40016.67", "tr missing 2023-12-15..2024-01-15"},
 		{2, "0.00", "400.17", "10004.17", "0.00", "10404.34", "30012.50", "tr missing 2024-01-15..2024-02-15"},
 		{3, "19.96", "300.32", "10010.82", "0.00", "10311.14", "20021.64", "tr 0.0665 2024-02-15..2024-03-15"},
 	}
@@ -826,7 +825,8 @@ func TestFutureIPCAMonthsReadTheProjectedIPCAOfTwoMonthsBefore(t *testing.T) {
 }
 
 // A future month with neither a published value nor a projection is reported missing, and the
-// balance is not corrected by it. The 2nd installment falls due on 2024-02-15, after today.
+// balance is not corrected by it. Both installments fall due after today; under TR the 1st reads
+// the month before the 2nd's, which has no estimate either.
 func TestFutureMonthWithoutAnEstimateIsMarkedMissing(t *testing.T) {
 	t.Parallel()
 
@@ -834,12 +834,14 @@ func TestFutureMonthWithoutAnEstimateIsMarkedMissing(t *testing.T) {
 		name    string
 		indexer mortgage.Indexer
 		history publishedValues
+		first   string
 		want    string
 	}{
 		{
 			name:    "TR without a published period or enough months to average",
 			indexer: mortgage.TR,
 			history: publishedValues{indexes.TR: {published(t, "2024-01-15", "2024-02-14", "0.0717")}},
+			first:   "tr missing 2023-12-15..2024-01-15",
 			want:    "tr missing 2024-01-15..2024-02-15",
 		},
 		{
@@ -855,7 +857,7 @@ func TestFutureMonthWithoutAnEstimateIsMarkedMissing(t *testing.T) {
 			t.Parallel()
 
 			assert.Equal(t, []indexedRow{
-				{1, "0.00", "206.67", "9993.33", "0.00", "10200.00", "10006.67", ""},
+				{1, "0.00", "206.67", "9993.33", "0.00", "10200.00", "10006.67", tt.first},
 				{2, "0.00", "100.07", "10006.67", "0.00", "10106.74", "0.00", tt.want},
 			}, indexedSchedule(indexedSAC(t, tt.indexer, "20000.00", 2), outlookOf(tt.history), date(t, "2024-01-01")))
 		})
@@ -908,17 +910,38 @@ func withDFIRaisedOnTheThirdInstallment(t *testing.T, terms mortgage.Terms) mort
 	return terms
 }
 
-// Under TR, the 200,000.00 appraisal value is corrected by each TR that corrects the balance, and
-// DFI is charged on it at the rate in force on the due date: 0.0717% makes it 200,143.40 for the
-// 2nd installment, and 0.0665% (133.10) makes it 200,276.50 for the 3rd, charged at 0.2%. Figures
-// worked out independently from the published TR.
+// Under TR, the 200,000.00 appraisal value is updated on each due date from the 1st installment's
+// on, by the TR of the periods since the previous due date, and DFI is charged on it at the rate in
+// force on the due date: 0.0717% makes it 200,143.40 for the 2nd installment, and 0.0665% (133.10)
+// 200,276.50 for the 3rd, charged at 0.2%. A prepayment, which updates the balance pro rata die,
+// leaves it as it is. Figures worked out independently from the published TR.
 func TestTRIndexedDFIFollowsTheAppraisalValueCorrectedByTR(t *testing.T) {
 	t.Parallel()
 
-	terms := withDFIRaisedOnTheThirdInstallment(t, indexedSAC(t, mortgage.TR, "120000.00", 3))
+	tests := []struct {
+		name   string
+		events mortgage.Events
+	}{
+		{name: "without events"},
+		{name: "with a prepayment", events: mortgage.Events{Prepayments: []mortgage.Prepayment{
+			prepayment(t, "2024-02-01", "1000.00", mortgage.LowerInstallment),
+		}}},
+	}
 
-	assert.Equal(t, []string{"200.00", "200.14", "400.55"},
-		dfiCharged(t, terms, outlookOf(publishedValues{indexes.TR: publishedTR2024(t)}), "2026-10-25"))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			terms := withDFIRaisedOnTheThirdInstallment(t, indexedSAC(t, mortgage.TR, "120000.00", 3))
+
+			var dfi []string
+			for m := range terms.Schedule(outlookOf(publishedValues{indexes.TR: publishedTR2024(t)}), tt.events, date(t, "2026-10-25")) {
+				dfi = append(dfi, m.DFI.String())
+			}
+
+			assert.Equal(t, []string{"200.00", "200.14", "400.55"}, dfi)
+		})
+	}
 }
 
 // On 2024-03-20, with the TR of TestPastMonthsKeepPublishedValuesWhileFutureMonthsAreProjected,

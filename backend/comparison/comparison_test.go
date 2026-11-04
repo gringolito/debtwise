@@ -309,8 +309,10 @@ func TestInvestingHoldsRemainderWithoutChangingMortgage(t *testing.T) {
 // counted 26,260 as the cost prepaying it would have avoided by then: the contract rate compounded
 // on it, corrected by TR, but not the TR correction of the prepaid amount itself. Prepaying it
 // avoids both, (((1 + 10.06%)(1 + 1.8%))^(2,184/365) − 1) × 30,034.32, about 29,268 in the
-// spreadsheet's calendar days. The schedule counts the 72 months whose installments fall due by
-// the horizon, so it lands a little above.
+// spreadsheet's calendar days. The schedule counts the 72 months whose installments fall due by the
+// horizon, and updates the balance pro rata die. January's TR is only projected on the decision
+// date, so the 7 days up to the prepayment update nothing, and the 24 days after it update by
+// 24/30 of it, which lands a little above: 29,511.73.
 func TestAvoidedCostOfTheSpreadsheetsFirstLotIncludesTheCorrectionOfThePrepaidAmount(t *testing.T) {
 	t.Parallel()
 
@@ -326,7 +328,7 @@ func TestAvoidedCostOfTheSpreadsheetsFirstLotIncludesTheCorrectionOfThePrepaidAm
 	require.NoError(t, err)
 	require.Len(t, verdicts, 1)
 
-	assertNear(t, "29268", verdicts[0].AvoidedCost, "150")
+	assertNear(t, "29511.73", verdicts[0].AvoidedCost, "0.01")
 }
 
 // assertNear asserts got is within tolerance of want.

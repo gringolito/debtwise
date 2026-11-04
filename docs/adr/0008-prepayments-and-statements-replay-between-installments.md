@@ -6,7 +6,9 @@ or statement dated on a due date follows that day's installment. On the same dat
 apply before statements, since a statement reports the balance a prepayment that day left. The
 next installment's indexer correction and interest are then charged on the balance they leave.
 
-- **Prepayment:** takes its amount off the outstanding balance, or what is still owed when it is
+- **Prepayment:** on a TR-indexed mortgage, first updates the outstanding balance pro rata die from
+  the last update to its date (ADR-0006), and the next installment's update starts from its date.
+  It then takes its amount off the outstanding balance, or what is still owed when it is
   more. Shortening the term keeps the amortization system's installment: the months left become
   the fewest whose installment, under SAC its amortization and under Price its amortization plus
   interest, at the rate of the next installment, is no higher than before the prepayment. Lowering
@@ -16,8 +18,10 @@ next installment's indexer correction and interest are then charged on the balan
 - **Statement:** replaces the computed outstanding balance with the stated one, and the schedule
   continues from it. Its drift is the stated balance minus the one the schedule shows on its date:
   after the installments due by then and the prepayments and statements before it, without
-  interest accrued since the last installment. A mortgage has at most one statement per date, so
-  each date has one balance to continue from; prepayments on one date add up.
+  interest accrued since the last installment nor a TR update since the last update. A statement
+  doesn't update the balance, so the next update still starts from the last one. A mortgage has at
+  most one statement per date, so each date has one balance to continue from; prepayments on one
+  date add up.
 
 Once nothing is owed, the schedule ends. It doesn't add installments the contract no longer has:
 later prepayments take nothing off, and later statements only report their drift against a

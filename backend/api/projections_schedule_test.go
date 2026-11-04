@@ -204,8 +204,9 @@ type ratedRow struct {
 // the Focus median of the latest meeting in effect: R5/2017's 9.50 from 2017-07-27, R6's 8.75 from
 // 2017-09-08 and R7's 8.50 from 2017-10-26. While the target is above 8.5 the part is 0.5% a month,
 // 6.1678% a year, so the rate is 10.0578%; at 8.5 it is 70% of the target, 0.4828% a month, so the
-// rate is 9.8399%. TR alone corrects the balance, projected past June by its trailing 12 months
-// average (0.1287). The figures were worked out independently with python's decimal.
+// rate is 9.8399%. TR alone updates the balance, the 1st's from the contract date, projected past
+// June by its trailing 12 months average (0.1287). The figures were worked out independently with
+// python's decimal.
 func TestPoupancaLinkedRateFollowsTheFocusSelicPath(t *testing.T) {
 	t.Parallel()
 
@@ -237,16 +238,16 @@ func TestPoupancaLinkedRateFollowsTheFocusSelicPath(t *testing.T) {
 	}
 
 	assert.Equal(t, []ratedRow{
-		{1, "0.00", "414.28", "45013.37", above, selic("12.25", "2017-03-01")},
-		{2, "0.00", "360.93", "40011.88", above, selic("12.25", "2017-04-01")},
-		{3, "30.57", "321.07", "35037.14", above, selic("11.25", "2017-05-01")},
-		{4, "18.78", "281.09", "30047.93", above, selic("10.25", "2017-06-01")},
-		{5, "38.67", "241.24", "25072.17", above, selic("10.25", "2017-07-01")},
-		{6, "32.27", "201.29", "20083.55", above, focus("9.5000", "2017-08-01")},
-		{7, "25.85", "161.24", "15082.05", above, focus("9.5000", "2017-09-01")},
-		{8, "19.41", "121.09", "10067.64", above, focus("8.7500", "2017-10-01")},
-		{9, "12.96", "79.15", "5040.30", atSwitch, focus("8.5000", "2017-11-01")},
-		{10, "6.49", "39.63", "0.00", atSwitch, focus("8.5000", "2017-12-01")},
+		{1, "75.95", "414.91", "45081.74", above, selic("12.25", "2017-03-01")},
+		{2, "0.00", "361.48", "40072.66", above, selic("12.25", "2017-04-01")},
+		{3, "30.62", "321.56", "35090.37", above, selic("11.25", "2017-05-01")},
+		{4, "18.81", "281.51", "30093.58", above, selic("10.25", "2017-06-01")},
+		{5, "38.73", "241.61", "25110.26", above, selic("10.25", "2017-07-01")},
+		{6, "32.32", "201.60", "20114.06", above, focus("9.5000", "2017-08-01")},
+		{7, "25.89", "161.49", "15104.96", above, focus("9.5000", "2017-09-01")},
+		{8, "19.44", "121.27", "10082.93", above, focus("8.7500", "2017-10-01")},
+		{9, "12.98", "79.27", "5047.95", atSwitch, focus("8.5000", "2017-11-01")},
+		{10, "6.50", "39.69", "0.00", atSwitch, focus("8.5000", "2017-12-01")},
 	}, got.Installments)
 }
 
@@ -308,11 +309,11 @@ func TestIPCAIndexedScheduleFollowsTheFocusIPCAPath(t *testing.T) {
 	}, s.schedule(t))
 }
 
-// A TR-indexed mortgage signed on 2026-06-01 has its 4 first installments past on 2026-10-15. The
-// 1st is never corrected, and the other 3 are corrected by the published TR of their months
-// (0.0250). The other 4 are corrected by the TR of the months from October 2026, which no one has
-// published: the average of the latest 12 months published ((6 * 0.0150 + 6 * 0.0250) / 12 =
-// 0.0200) by default, or of the latest 60 months
+// A TR-indexed mortgage signed on 2026-06-01 has its 4 first installments past on 2026-10-15. All
+// 4 are updated by the published TR of their months (0.0250), the 1st's from the contract date.
+// The other 4 are updated by the TR of the months from October 2026, which no one has published:
+// the average of the latest 12 months published ((6 * 0.0150 + 6 * 0.0250) / 12 = 0.0200) by
+// default, or of the latest 60 months
 // ((48 * 0.0100 + 6 * 0.0150 + 6 * 0.0250) / 60 = 0.0120) once chosen. The figures were worked out
 // independently with python's decimal.
 func TestChangingTheProjectionMethodChangesTheFutureInstallments(t *testing.T) {
@@ -324,13 +325,13 @@ func TestChangingTheProjectionMethodChangesTheFutureInstallments(t *testing.T) {
 		indexedMortgage("tr", "60000.00", "2026-06-01", "2026-07-01", 8), http.StatusOK)
 
 	assert.Equal(t, []scheduleRow{
-		{1, "2026-07-01", "0.00", "52500.00", []scheduleIndex{}},
-		{2, "2026-08-01", "13.13", "45011.25", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-07-01", "2026-08-01")}},
-		{3, "2026-09-01", "11.25", "37518.75", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-08-01", "2026-09-01")}},
-		{4, "2026-10-01", "9.38", "30022.50", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-09-01", "2026-10-01")}},
-		{5, "2026-11-01", "6.00", "22521.37", []scheduleIndex{projectedIndex("tr", "0.0200", "2026-10-01", "2026-11-01", by("tr", "trailing_12"))}},
-		{6, "2026-12-01", "4.50", "15017.25", []scheduleIndex{projectedIndex("tr", "0.0200", "2026-11-01", "2026-12-01", by("tr", "trailing_12"))}},
-		{7, "2027-01-01", "3.00", "7510.12", []scheduleIndex{projectedIndex("tr", "0.0200", "2026-12-01", "2027-01-01", by("tr", "trailing_12"))}},
+		{1, "2026-07-01", "15.00", "52513.12", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-06-01", "2026-07-01")}},
+		{2, "2026-08-01", "13.13", "45022.50", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-07-01", "2026-08-01")}},
+		{3, "2026-09-01", "11.26", "37528.13", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-08-01", "2026-09-01")}},
+		{4, "2026-10-01", "9.38", "30030.01", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-09-01", "2026-10-01")}},
+		{5, "2026-11-01", "6.01", "22527.01", []scheduleIndex{projectedIndex("tr", "0.0200", "2026-10-01", "2026-11-01", by("tr", "trailing_12"))}},
+		{6, "2026-12-01", "4.51", "15021.01", []scheduleIndex{projectedIndex("tr", "0.0200", "2026-11-01", "2026-12-01", by("tr", "trailing_12"))}},
+		{7, "2027-01-01", "3.00", "7512.00", []scheduleIndex{projectedIndex("tr", "0.0200", "2026-12-01", "2027-01-01", by("tr", "trailing_12"))}},
 		{8, "2027-02-01", "1.50", "0.00", []scheduleIndex{projectedIndex("tr", "0.0200", "2027-01-01", "2027-02-01", by("tr", "trailing_12"))}},
 	}, s.schedule(t), "projected by the trailing 12 months, the default")
 
@@ -338,23 +339,23 @@ func TestChangingTheProjectionMethodChangesTheFutureInstallments(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 
 	assert.Equal(t, []scheduleRow{
-		{1, "2026-07-01", "0.00", "52500.00", []scheduleIndex{}},
-		{2, "2026-08-01", "13.13", "45011.25", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-07-01", "2026-08-01")}},
-		{3, "2026-09-01", "11.25", "37518.75", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-08-01", "2026-09-01")}},
-		{4, "2026-10-01", "9.38", "30022.50", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-09-01", "2026-10-01")}},
-		{5, "2026-11-01", "3.60", "22519.57", []scheduleIndex{projectedIndex("tr", "0.0120", "2026-10-01", "2026-11-01", by("tr", "trailing_60"))}},
-		{6, "2026-12-01", "2.70", "15014.85", []scheduleIndex{projectedIndex("tr", "0.0120", "2026-11-01", "2026-12-01", by("tr", "trailing_60"))}},
-		{7, "2027-01-01", "1.80", "7508.32", []scheduleIndex{projectedIndex("tr", "0.0120", "2026-12-01", "2027-01-01", by("tr", "trailing_60"))}},
+		{1, "2026-07-01", "15.00", "52513.12", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-06-01", "2026-07-01")}},
+		{2, "2026-08-01", "13.13", "45022.50", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-07-01", "2026-08-01")}},
+		{3, "2026-09-01", "11.26", "37528.13", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-08-01", "2026-09-01")}},
+		{4, "2026-10-01", "9.38", "30030.01", []scheduleIndex{publishedIndex("tr", "0.0250", "2026-09-01", "2026-10-01")}},
+		{5, "2026-11-01", "3.60", "22525.21", []scheduleIndex{projectedIndex("tr", "0.0120", "2026-10-01", "2026-11-01", by("tr", "trailing_60"))}},
+		{6, "2026-12-01", "2.70", "15018.61", []scheduleIndex{projectedIndex("tr", "0.0120", "2026-11-01", "2026-12-01", by("tr", "trailing_60"))}},
+		{7, "2027-01-01", "1.80", "7510.20", []scheduleIndex{projectedIndex("tr", "0.0120", "2026-12-01", "2027-01-01", by("tr", "trailing_60"))}},
 		{8, "2027-02-01", "0.90", "0.00", []scheduleIndex{projectedIndex("tr", "0.0120", "2027-01-01", "2027-02-01", by("tr", "trailing_60"))}},
 	}, s.schedule(t), "projected by the trailing 60 months")
 }
 
 // A statement is compared with the balance the schedule computes on the clock's today. An
-// installment that is due by it is corrected by published values only, so on 2026-12-15 the
-// installments of 2026-11-01 and 2026-12-01 are left uncorrected, as no TR is published for their
-// months, while on 2026-10-15 the projected TR corrects them. The mortgage is the one of
-// TestChangingTheProjectionMethodChangesTheFutureInstallments, with 15,017.25 owed after the
-// 6th installment when projected and 15,011.25 when uncorrected.
+// installment that is due by it is updated by published values only, so on 2026-12-15 the
+// installments of 2026-11-01 and 2026-12-01 are left without an update, as no TR is published for
+// their months, while on 2026-10-15 the projected TR updates them. The mortgage is the one of
+// TestChangingTheProjectionMethodChangesTheFutureInstallments, with 15,021.01 owed after the
+// 6th installment when projected and 15,015.01 when not updated.
 func TestStatementDriftsReadTheClock(t *testing.T) {
 	t.Parallel()
 
@@ -366,12 +367,12 @@ func TestStatementDriftsReadTheClock(t *testing.T) {
 		{
 			name:  "installments that are not due yet are projected",
 			today: date(2026, time.October, 15),
-			want:  `"computed_balance": "15017.25", "drift": "4982.75"`,
+			want:  `"computed_balance": "15021.01", "drift": "4978.99"`,
 		},
 		{
 			name:  "installments due by today are not",
 			today: date(2026, time.December, 15),
-			want:  `"computed_balance": "15011.25", "drift": "4988.75"`,
+			want:  `"computed_balance": "15015.01", "drift": "4984.99"`,
 		},
 	}
 

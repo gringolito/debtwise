@@ -90,7 +90,7 @@ func TestABreakEvenRateFedBackGivesAnAdvantageOfZero(t *testing.T) {
 		{
 			name: "LTN against a TR mortgage", m: trMortgage(t),
 			bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2031-01-01")},
-			rate: "0.1504", amount: "30034.32", decision: "2025-01-08",
+			rate: "0.1504", amount: "30000.00", decision: "2025-01-08",
 		},
 		{
 			name: "NTN-F against a TR mortgage", m: trMortgage(t),
@@ -117,8 +117,8 @@ func TestABreakEvenRateFedBackGivesAnAdvantageOfZero(t *testing.T) {
 }
 
 // Tesouro Direto sells hundredths of a bond, and what the amount can't buy is held as cash. Between
-// two rates one hundredth apart, 10,000.00 buys 21.76 or 21.77 LTN maturing on 2031-01-01, and the
-// advantage jumps from about -3.58 to 0.92 without passing through zero. Against a mortgage at no
+// two rates one hundredth apart, 10,500.00 buys 23.02 or 23.03 LTN maturing on 2031-01-01, and the
+// advantage jumps from about -3.00 to 1.52 without passing through zero. Against a mortgage at no
 // interest, 7.90 buys a hundredth of an LTN maturing on 2027-01-01 only above about 12.5%, far
 // above the rate whose gain would just pay its custody fee, so the advantage jumps from nothing
 // bought to that hundredth's gain. Either way the Break-even Rate is the lowest at which investing
@@ -130,7 +130,7 @@ func TestWhereTheAdvantageJumpsOverZeroTheBreakEvenRateIsTheLowestThatMakesItPos
 	tests := []breakEvenCase{
 		{
 			name: "one more hundredth", m: trMortgage(t), bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2031-01-01")},
-			rate: "0.1504", amount: "10000.00", decision: "2025-01-08",
+			rate: "0.1504", amount: "10500.00", decision: "2025-01-08",
 		},
 		{
 			name: "the first hundredth", m: comparison.Mortgage{Terms: interestFreeTerms(t)},
