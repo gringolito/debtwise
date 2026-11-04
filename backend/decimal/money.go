@@ -7,3 +7,9 @@ import "github.com/cockroachdb/apd/v3"
 func (x Decimal) RoundCents() Decimal {
 	return x.quantize(2, apd.RoundHalfUp)
 }
+
+// TruncateCents truncates money to centavos, as the mortgage's bank rounds down a pro rata die
+// update of the outstanding balance.
+func (x Decimal) TruncateCents() Decimal {
+	return x.quantize(2, apd.RoundDown)
+}

@@ -54,6 +54,9 @@ type Planned struct {
 	Installments []PlannedInstallment
 	// Balance is the outstanding balance on Until.
 	Balance decimal.Decimal
+	// PrepaymentIndexValues are the index values the updates of the balance at the prepayments dated
+	// on or before Until read, recorded and planned, in date order (ADR-0006).
+	PrepaymentIndexValues []IndexValue
 }
 
 // Plan replays the schedule of valid terms as Schedule does, with the plan's prepayments added to
@@ -107,6 +110,7 @@ func (t Terms) Plan(outlook indexes.Outlook, events Events, today time.Time, pla
 	p.planned.Initial = initial.Prepaid
 	p.planned.Prepayments = prepayments
 	p.planned.Balance = r.balance
+	p.planned.PrepaymentIndexValues = r.prepaymentValues
 
 	return p.planned
 }

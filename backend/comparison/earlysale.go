@@ -139,7 +139,7 @@ func (c comparer) earlySale(l bonds.Lot, sell *bonds.Price) (EarlySaleCheck, err
 	check.Hold = c.scenario(statusQuo, zero, zero, zero, nil, coupons, &valuation.Maturity)
 	check.Sell = c.scenario(statusQuo, c.decision.Amount, zero, zero, valuation.Market, nil, nil)
 	check.Advantage = check.Hold.NetWorth.Sub(check.Sell.NetWorth)
-	check.ProjectedBy = projectedBy(statusQuo, methods...)
+	check.ProjectedBy = projectedBy(append(methods, readBy(statusQuo), check.Hold.projectedBy, check.Sell.projectedBy)...)
 
 	return check, nil
 }

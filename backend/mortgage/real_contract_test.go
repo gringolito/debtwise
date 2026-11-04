@@ -74,10 +74,14 @@ func assertWithinTolerance(t *testing.T, what string, want, got decimal.Decimal)
 }
 
 // The contract is TR-indexed SAC, 630,000.00 over 420 months, signed on 2024-11-18 with
-// installments due on the 19th, at 10.06% effective a year. The installment 1 balance is the
-// bank's: its records leave out how much of the 2024-12-17 prepayment reached the principal and
-// what corrected installment 1 (#38), so a statement on 2024-12-18 pins it to installment 1's
-// amortization plus the balance after it. TR is SGS 226 for each period between due dates.
+// installments due on the 19th, at 10.06% effective a year. A "lower the installment" prepayment
+// on 2024-12-17 first updates the balance pro rata die for the 29 days since signing, by 29/30 of
+// the TR of 2024-11-19 to 2024-12-19 (0.0742%): 451.87, rounded down. Caixa's update was 455.55,
+// so the 1,350.00 prepayment left it 629,105.55, installment 1's amortization plus the balance
+// after it less its correction of 43.57, and 3.68 more than computed. A statement on 2024-12-18
+// pins Caixa's balance. Installment 1 is updated for the 2 days since the prepayment by 2/30 of
+// the TR of 2024-12-19 to 2025-01-19 (0.1039%), rounded down; the later ones by the TR of each
+// period between due dates, which is SGS 226.
 // The bank records MIP and DFI as one figure, so their rates are the pair that best fits it on
 // installments 1 to 6, MIP on the corrected balance and DFI on the appraisal value corrected by TR
 // (#70).
@@ -99,26 +103,36 @@ func TestScheduleMatchesARealContractsInstallments(t *testing.T) {
 		Fees:                 []mortgage.Fee{{EffectiveFrom: signed, Amount: dec(t, "25.00")}},
 	}
 	outlook := indexes.NewOutlook(map[indexes.Index][]indexes.Value{indexes.TR: {
+		published(t, "2024-11-19", "2024-12-19", "0.0742"),
 		published(t, "2024-12-19", "2025-01-19", "0.1039"),
 		published(t, "2025-01-19", "2025-02-19", "0.1694"),
 		published(t, "2025-02-19", "2025-03-19", "0.0741"),
 		published(t, "2025-03-19", "2025-04-19", "0.1722"),
 		published(t, "2025-04-19", "2025-05-19", "0.1115"),
 	}}, indexes.Expectations{}, nil)
-	events := mortgage.Events{Statements: []mortgage.Statement{
-		{Date: date(t, "2024-12-18"), OutstandingBalance: dec(t, "629149.12")},
-	}}
+	events := mortgage.Events{
+		Prepayments: []mortgage.Prepayment{prepayment(t, "2024-12-17", "1350.00", mortgage.LowerInstallment)},
+		Statements:  []mortgage.Statement{statement(t, "2024-12-18", "629105.55")},
+	}
+	today := date(t, "2025-05-19")
+
+	drifts := terms.Drifts(outlook, events, today)
+	require.Len(t, drifts, 1)
+	assert.Equal(t, "629101.87", drifts[0].ComputedBalance.String(), "balance the prepayment left")
+	assert.Equal(t, "3.68", drifts[0].Amount.String(), "drift from Caixa's balance")
 
 	recorded := loadRecordedInstallments(t, "caixa_tr_sac_installments.csv")
 
 	computed := make(map[int]mortgage.Installment, len(recorded))
-	for m := range terms.Schedule(outlook, events, date(t, "2025-05-19")) {
+	for m := range terms.Schedule(outlook, events, today) {
 		if m.Number > len(recorded) {
 			break
 		}
 
 		computed[m.Number] = m
 	}
+
+	assert.Equal(t, "43.57", computed[1].Correction.String(), "installment 1 correction")
 
 	for _, want := range recorded {
 		got, ok := computed[want.number]

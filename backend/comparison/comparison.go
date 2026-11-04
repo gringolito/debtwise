@@ -89,6 +89,8 @@ type Scenario struct {
 	OutstandingBalance decimal.Decimal
 	// NetWorth is the bond's net Maturity Value and Cash, less the OutstandingBalance.
 	NetWorth decimal.Decimal
+	// projectedBy are the projection methods of the index values the scenario's mortgage read.
+	projectedBy []indexes.ProjectionMethod
 }
 
 // CashFlow is what a scenario pays and receives on one date, in reais.
@@ -171,7 +173,7 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 
 	v.UnitPrice = price
 	v.Quantity = c.quantity(price)
-	v.ProjectedBy = projectedBy(mortgage.Planned{}, priceBy)
+	v.ProjectedBy = projectedBy(priceBy)
 
 	if v.Quantity.Cmp(smallestFraction) < 0 {
 		v.Unavailable = AmountTooSmall
@@ -191,12 +193,14 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 	v.Advantage = v.Invest.NetWorth.Sub(v.Prepay.NetWorth)
 	v.AvoidedCost = statusQuo.Balance.Sub(v.Prepay.OutstandingBalance).Add(v.Prepay.Cash).Sub(c.decision.Amount)
 
-	methods := [][]indexes.ProjectionMethod{priceBy, valuation.Maturity.ProjectedBy}
+	methods := [][]indexes.ProjectionMethod{
+		priceBy, valuation.Maturity.ProjectedBy, readBy(statusQuo), v.Invest.projectedBy, v.Prepay.projectedBy,
+	}
 	for _, coupon := range valuation.Coupons {
 		methods = append(methods, coupon.ProjectedBy)
 	}
 
-	v.ProjectedBy = projectedBy(statusQuo, methods...)
+	v.ProjectedBy = projectedBy(methods...)
 
 	v.BreakEvenRate, v.NoBreakEven, err = c.breakEven(statusQuo, v.Prepay, point{rate: rate, quantity: v.Quantity, advantage: v.Advantage})
 	if err != nil {
@@ -298,7 +302,7 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 		return freed[i.Number]
 	})
 
-	s := Scenario{Bond: redeemed}
+	s := Scenario{Bond: redeemed, projectedBy: readBy(planned)}
 	byDate := make(map[time.Time]int)
 	on := func(date time.Time) *CashFlow {
 		if i, ok := byDate[date]; ok {
@@ -366,30 +370,36 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 	return s
 }
 
-// projectedBy returns the projection methods of the index values that corrected the status quo's
-// balance up to the horizon or set its installments' contract rates, and of methods, those of the
-// bond's price and payments, each index once, in the order of indexes.All. The status quo's
-// balance is the one every scenario's is built on.
-func projectedBy(statusQuo mortgage.Planned, methods ...[]indexes.ProjectionMethod) []indexes.ProjectionMethod {
+// readBy returns the projection methods of the index values planned read up to the horizon: those
+// that corrected its installments' balances and appraisal values or set their contract rates, and
+// those that updated its balance at prepayments.
+func readBy(planned mortgage.Planned) []indexes.ProjectionMethod {
+	var methods []indexes.ProjectionMethod
+
+	note := func(values []mortgage.IndexValue) {
+		for _, v := range values {
+			methods = append(methods, v.Methods...)
+		}
+	}
+
+	for _, i := range planned.Installments {
+		note(i.IndexValues)
+		note(i.AppraisalIndexValues)
+		note(i.RateIndexValues)
+	}
+
+	note(planned.PrepaymentIndexValues)
+
+	return methods
+}
+
+// projectedBy returns the projection methods, each index once, in the order of indexes.All.
+func projectedBy(methods ...[]indexes.ProjectionMethod) []indexes.ProjectionMethod {
 	byIndex := make(map[indexes.Index]indexes.ProjectionMethod)
 
-	note := func(methods []indexes.ProjectionMethod) {
-		for _, m := range methods {
+	for _, ms := range methods {
+		for _, m := range ms {
 			byIndex[m.Index] = m
-		}
-	}
-
-	for _, m := range methods {
-		note(m)
-	}
-
-	for _, i := range statusQuo.Installments {
-		for _, v := range i.IndexValues {
-			note(v.Methods)
-		}
-
-		for _, v := range i.RateIndexValues {
-			note(v.Methods)
 		}
 	}
 

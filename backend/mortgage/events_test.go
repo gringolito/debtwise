@@ -299,8 +299,9 @@ type correctedRow struct {
 	OutstandingBalance string
 }
 
-// A prepayment or a statement on February 20 leaves 35,000.00 owed, the prepayment taking 5,016.00
-// off the 40,016.00 left by the 2nd installment. The contract is dated the 10th, 31 days before the
+// A prepayment on February 10, after the 2nd installment, or a statement on February 20 leaves
+// 35,000.00 owed, the prepayment taking 5,016.00 off the 40,016.00 left by the 2nd installment, with
+// no days since it to update the balance for. The contract is dated the 10th, 31 days before the
 // 1st installment, which charges 620.00 interest, amortizes 9,980.00 and leaves 50,020.00 owed; the
 // 2nd amortizes 10,004.00. The TR of 1% for the month to March 10 corrects that balance, 350.00,
 // and the 3rd installment charges 1% interest on the corrected 35,350.00, 353.50, then amortizes
@@ -317,7 +318,7 @@ func TestIndexCorrectionAfterAnEventAppliesToTheBalanceItLeft(t *testing.T) {
 		{
 			name: "prepayment",
 			events: mortgage.Events{Prepayments: []mortgage.Prepayment{
-				prepayment(t, "2024-02-20", "5016.00", mortgage.LowerInstallment),
+				prepayment(t, "2024-02-10", "5016.00", mortgage.LowerInstallment),
 			}},
 			prepaid: "5016.00",
 		},

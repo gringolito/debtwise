@@ -98,10 +98,10 @@ func thirtyDaysBeforeFirstInstallment(terms mortgage.Terms) mortgage.Terms {
 // into an effective annual rate. With the target at 11.75%, above 8.5%, the part is 0.5% a month,
 // 6.1678% a year, so the rate is 10.0578%. At 8.5% and at 7.75% the part is 70% of the target as a
 // monthly rate, rounded at 4 places: 0.4828% and 0.4412% a month. TR alone corrects the balance:
-// the 2nd installment's correction is 0.05% of 20,000.00. The 1st installment, 31 days after the
-// contract date, charges 31/30 of its month's interest, 240.55 × 31/30 = 248.57, and amortizes a
-// month's interest plus 10,000.00 less that, so the 2nd starts from 20,008.02. Figures worked out
-// independently with python's decimal.
+// the 1st installment's update is 0.03% of 30,000.00, and the 2nd's 0.05% of 20,014.02. The 1st
+// installment, 31 days after the contract date, charges 31/30 of its month's interest on 30,009.00,
+// 240.62 × 31/30 = 248.64, and amortizes a month's interest plus 10,003.00 less that, so the 2nd
+// starts from 20,014.02. Figures worked out independently with python's decimal.
 func TestPoupancaLinkedRateAddsTheAdditionalPartOfEachMonth(t *testing.T) {
 	t.Parallel()
 
@@ -120,15 +120,15 @@ func TestPoupancaLinkedRateAddsTheAdditionalPartOfEachMonth(t *testing.T) {
 
 	assert.Equal(t, []ratedRow{
 		{
-			1, "0.00", "248.57", "0.1005778118644995687897076174316406",
-			"", "selic_target 11.75 2024-01-10..2024-01-10",
+			1, "9.00", "248.64", "0.1005778118644995687897076174316406",
+			"tr 0.0300 2024-01-10..2024-02-10", "selic_target 11.75 2024-01-10..2024-01-10",
 		},
 		{
-			2, "10.00", "157.18", "0.09839946209275988313680493669517718",
+			2, "10.01", "157.23", "0.09839946209275988313680493669517718",
 			"tr 0.0500 2024-02-10..2024-03-10", "selic_target 8.50 2024-02-10..2024-02-10",
 		},
 		{
-			3, "0.00", "74.56", "0.09314782222766095662103739171089309",
+			3, "0.00", "74.58", "0.09314782222766095662103739171089309",
 			"tr 0.0000 2024-03-10..2024-04-10", "selic_target 7.75 2024-03-10..2024-03-10",
 		},
 	}, ratedSchedule(poupancaLinkedSAC(t, mortgage.TR, "30000.00", 3), history, date(t, "2026-10-25")))

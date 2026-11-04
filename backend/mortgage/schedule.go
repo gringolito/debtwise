@@ -17,10 +17,13 @@ type Installment struct {
 	// Correction is what the indexer added to the outstanding balance before this installment.
 	Correction decimal.Decimal
 	// IndexValues are the index values Correction applied, each marked missing, published or
-	// projected by its Methods: under TR, the TR of the months since the previous installment's due
-	// date that end by this one's; under IPCA, one for each contract anniversary since the previous
-	// installment. There are none on the first installment or without an indexer.
+	// projected by its Methods: under TR, the TR of the periods its update since the last update
+	// reads; under IPCA, one for each contract anniversary since the previous installment. There
+	// are none without an indexer, nor on the first installment under IPCA.
 	IndexValues []IndexValue
+	// AppraisalIndexValues are the TR values that corrected the appraisal value DFI is charged on,
+	// each marked missing, published or projected by its Methods. There are none without TR.
+	AppraisalIndexValues []IndexValue
 	// Rate is the effective annual contract rate Interest was charged at.
 	Rate decimal.Decimal
 	// RateIndexValues are the index values the rate's variable part follows, each marked missing,
@@ -45,18 +48,20 @@ type Installment struct {
 // Schedule returns the installments of valid terms in order, each priced with the rates and fee
 // in effect on its due date, with events replayed between them.
 //
-// From the second installment on, each installment first corrects the outstanding balance by the
-// indexer's values since the previous installment, unless they are missing, on its due date. Under
-// TR, for installments due on another day than the contract's, they are the TR of the months since
-// the previous installment's due date that end by its own. Otherwise they are the values of each
-// contract anniversary since the previous installment. The first installment is never corrected,
-// and the months up to the first anniversary correct no installment (ADR-0006).
+// Each installment first corrects the outstanding balance on its due date, unless the values it
+// needs are missing. Under TR it updates the balance pro rata die since the last update, the
+// contract date, a prepayment's date or the previous due date: by the TR of the period that starts
+// on the first due day on or after the update's start and of each later period that starts before
+// the due date, in full for a whole period and for the days in it over 30, rounded down, for a
+// part (ADR-0006). Under IPCA it corrects the balance by the values of each contract anniversary
+// since the previous installment; the first installment is never corrected, and the months up to
+// the first anniversary correct no installment.
 // An installment due by today is corrected by published values only, so a month whose value is
 // only projected is missing. An installment due after today is corrected by the Outlook's
 // estimate, published or projected, and a month with no estimate is missing (ADR-0009).
 // MIP is charged on the corrected balance, and DFI on the appraisal value, which under TR is
-// corrected by every value that corrects the balance (ADR-0015). Both are charged at the rates in
-// effect on the due date.
+// corrected from the second installment on by the TR of the months between due dates that end by
+// each due date (ADR-0015). Both are charged at the rates in effect on the due date.
 // Each charge and correction is rounded to centavos. The last installment amortizes whatever is
 // still owed, so the balance ends at zero. Under SAC the first installment charges interest for the
 // days since the contract date, at the monthly rate for each 30, and amortizes what a month's
@@ -65,7 +70,8 @@ type Installment struct {
 // installment, whenever the rate changes and whenever the balance is corrected, prepaid or stated.
 //
 // Events apply in date order after the installments due on or before their date. A prepayment
-// takes off at most what is owed. Shortening the term keeps the months left to the fewest whose
+// first updates a TR-indexed balance pro rata die to its date, as an installment does, and takes
+// off at most what is then owed. Shortening the term keeps the months left to the fewest whose
 // installment, under the amortization system's rule, is no higher than before the prepayment;
 // lowering the installment keeps the months left. A statement replaces the computed balance. Once
 // nothing is owed the schedule ends, and later statements only report their drift.
@@ -84,14 +90,16 @@ func (t Terms) Drifts(outlook indexes.Outlook, events Events, today time.Time) [
 
 // replayer replays a schedule once, keeping its state between installments.
 type replayer struct {
-	terms       Terms
-	outlook     indexes.Outlook
+	terms   Terms
+	outlook indexes.Outlook
+	// corrections correct the balance under IPCA and the appraisal value DFI is charged on under
+	// TR, and updates update the balance under TR.
 	corrections *corrections
+	updates     *updates
 	today       time.Time
 	events      []event
 	balance     decimal.Decimal
-	// appraisal is the appraisal value DFI is charged on, corrected along with the balance under TR.
-	appraisal decimal.Decimal
+	appraisal   decimal.Decimal
 	// term is the number of the last installment.
 	term int
 	// payment is the Price installment's amortization plus interest, levelled at paymentRate.
@@ -101,15 +109,18 @@ type replayer struct {
 	relevel bool
 	// drifts are those of the statements applied so far.
 	drifts []Drift
+	// prepaymentValues are the index values the updates at the prepayments applied so far read.
+	prepaymentValues []IndexValue
 	// rates are the contract rates with their fixed parts converted once.
 	rates []chargedRate
 }
 
 // correction is what the indexer added to the balance for an installment, and the index values
-// behind it.
+// behind it and behind the appraisal value's correction.
 type correction struct {
-	amount decimal.Decimal
-	values []IndexValue
+	amount          decimal.Decimal
+	values          []IndexValue
+	appraisalValues []IndexValue
 }
 
 func (t Terms) replayer(outlook indexes.Outlook, events Events, today time.Time) *replayer {
@@ -117,6 +128,7 @@ func (t Terms) replayer(outlook indexes.Outlook, events Events, today time.Time)
 		terms:       t,
 		outlook:     outlook,
 		corrections: newCorrections(t, outlook),
+		updates:     newUpdates(t, outlook),
 		today:       today,
 		events:      events.inOrder(),
 		balance:     t.OriginalAmount.RoundCents(),
@@ -183,29 +195,42 @@ func (r *replayer) charge(number int) Installment {
 	r.balance = r.balance.Sub(amortization)
 
 	return Installment{
-		Number:          number,
-		DueDate:         due,
-		Correction:      correction.amount,
-		IndexValues:     correction.values,
-		Rate:            rate.effective,
-		RateIndexValues: rate.values,
-		Interest:        interest,
-		Amortization:    amortization,
-		MIP:             mip,
-		DFI:             dfi,
-		Fee:             fee,
-		Amount:          amortization.Add(interest).Add(mip).Add(dfi).Add(fee),
+		Number:               number,
+		DueDate:              due,
+		Correction:           correction.amount,
+		IndexValues:          correction.values,
+		AppraisalIndexValues: correction.appraisalValues,
+		Rate:                 rate.effective,
+		RateIndexValues:      rate.values,
+		Interest:             interest,
+		Amortization:         amortization,
+		MIP:                  mip,
+		DFI:                  dfi,
+		Fee:                  fee,
+		Amount:               amortization.Add(interest).Add(mip).Add(dfi).Add(fee),
 	}
 }
 
-// correct corrects the balance for installment number, and the appraisal value along with it under
-// TR, and returns the balance's correction.
+// correct corrects the balance for installment number, and returns its correction: under TR, the
+// update to its due date. Under TR it corrects the appraisal value by the month's TR too.
 func (r *replayer) correct(number int) correction {
 	due := addMonths(r.terms.FirstInstallmentDate, number-1)
-	c := correction{
-		amount: decimal.Decimal{}.RoundCents(),
-		values: r.corrections.through(due, !due.After(r.today)),
+	values := r.corrections.through(due, !due.After(r.today))
+
+	if r.terms.Indexer == TR {
+		for _, v := range values {
+			if !v.Missing {
+				r.appraisal = r.appraisal.Add(r.appraisal.Mul(v.Value).Quo(decimal.FromInt(100)).RoundCents())
+			}
+		}
+
+		c := r.update(due)
+		c.appraisalValues = values
+
+		return c
 	}
+
+	c := correction{amount: decimal.Decimal{}.RoundCents(), values: values}
 
 	for _, v := range c.values {
 		if v.Missing {
@@ -215,10 +240,24 @@ func (r *replayer) correct(number int) correction {
 		corrected := r.balance.Mul(v.Value).Quo(decimal.FromInt(100)).RoundCents()
 		c.amount = c.amount.Add(corrected)
 		r.balance = r.balance.Add(corrected)
+	}
 
-		if r.terms.Indexer == TR {
-			r.appraisal = r.appraisal.Add(r.appraisal.Mul(v.Value).Quo(decimal.FromInt(100)).RoundCents())
+	return c
+}
+
+// update updates the balance of a TR-indexed mortgage pro rata die to day, and returns the update.
+func (r *replayer) update(day time.Time) correction {
+	c := correction{amount: decimal.Decimal{}.RoundCents()}
+
+	for _, part := range r.updates.to(day, !day.After(r.today)) {
+		c.values = append(c.values, part.value)
+		if part.value.Missing {
+			continue
 		}
+
+		updated := part.of(r.balance)
+		c.amount = c.amount.Add(updated)
+		r.balance = r.balance.Add(updated)
 	}
 
 	return c
@@ -263,8 +302,13 @@ func (r *replayer) applyNext(paid int) decimal.Decimal {
 	return prepaid
 }
 
-// prepay takes p off the balance after paid installments and returns how much it took.
+// prepay takes p off the balance after paid installments, once a TR-indexed mortgage's balance is
+// updated to its date, and returns how much it took.
 func (r *replayer) prepay(paid int, p Prepayment) decimal.Decimal {
+	if r.terms.Indexer == TR {
+		r.prepaymentValues = append(r.prepaymentValues, r.update(p.Date).values...)
+	}
+
 	amount := p.Amount
 	if amount.Cmp(r.balance) > 0 {
 		amount = r.balance

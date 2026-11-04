@@ -309,8 +309,10 @@ func TestInvestingHoldsRemainderWithoutChangingMortgage(t *testing.T) {
 // counted 26,260 as the cost prepaying it would have avoided by then: the contract rate compounded
 // on it, corrected by TR, but not the TR correction of the prepaid amount itself. Prepaying it
 // avoids both, (((1 + 10.06%)(1 + 1.8%))^(2,184/365) − 1) × 30,034.32, about 29,268 in the
-// spreadsheet's calendar days. The schedule counts the 72 months whose installments fall due by
-// the horizon, so it lands a little above.
+// spreadsheet's calendar days. The schedule counts the 72 months whose installments fall due by the
+// horizon, and updates the balance pro rata die. January's TR is only projected on the decision
+// date, so the 7 days up to the prepayment update nothing, and the 24 days after it update by
+// 24/30 of it, which lands a little above: 29,511.73.
 func TestAvoidedCostOfTheSpreadsheetsFirstLotIncludesTheCorrectionOfThePrepaidAmount(t *testing.T) {
 	t.Parallel()
 
@@ -326,7 +328,7 @@ func TestAvoidedCostOfTheSpreadsheetsFirstLotIncludesTheCorrectionOfThePrepaidAm
 	require.NoError(t, err)
 	require.Len(t, verdicts, 1)
 
-	assertNear(t, "29268", verdicts[0].AvoidedCost, "150")
+	assertNear(t, "29511.73", verdicts[0].AvoidedCost, "0.01")
 }
 
 // assertNear asserts got is within tolerance of want.
@@ -683,7 +685,9 @@ func TestAVerdictNamesTheProjectionsTheBalancesBeforeTheDecisionRead(t *testing.
 // installment, so a verdict doesn't name the projection it reads. Signed on 2024-01-05 with
 // installments on the 10th, the mortgage has TR published from 2024-02-10 to 2025-02-10; the LTN
 // matures on 2025-03-07, after the 2025-03-05 anniversary and before the 2025-03-10 installment,
-// whose correction reads the trailing 12-month average.
+// whose correction reads the trailing 12-month average. A prepayment dated after the 2025-02-10
+// installment first updates the balance by that projection pro rata die, so a verdict on it names
+// it.
 func TestAVerdictLeavesOutTheProjectionOfACorrectionDueAfterTheHorizon(t *testing.T) {
 	t.Parallel()
 
@@ -706,18 +710,74 @@ func TestAVerdictLeavesOutTheProjectionOfACorrectionDueAfterTheHorizon(t *testin
 		Outlook: indexes.NewOutlook(map[indexes.Index][]indexes.Value{indexes.TR: tr}, indexes.Expectations{}, nil),
 	}
 
-	verdicts, err := comparison.Decide(m,
+	tests := []struct {
+		name     string
+		decision string
+		want     []indexes.ProjectionMethod
+	}{
+		{name: "decided on the due date", decision: "2025-02-10"},
+		{
+			name: "decided after the due date", decision: "2025-02-15",
+			want: []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			verdicts, err := comparison.Decide(m,
+				comparison.Market{Quotes: []bonds.Quote{{
+					Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2025-03-07")},
+					Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")},
+				}}},
+				comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, tt.decision), Effect: mortgage.ShortenTerm},
+				date(t, "2025-01-08"),
+			)
+			require.NoError(t, err)
+			require.Len(t, verdicts, 1)
+
+			assert.Equal(t, tt.want, verdicts[0].ProjectedBy)
+		})
+	}
+}
+
+// Under TR the appraisal value DFI is charged on is corrected by whole months between due dates,
+// which installments on the 31st can read apart from the balance's updates. Signed on 2023-12-31
+// with installments on the 31st, the mortgage has TR published for each month from the 1st from
+// 2023-03-01 to 2024-04-01. Today and the decision are on 2024-03-01, and the LTN matures on
+// 2024-04-05. Every update of the balance after today reads the published month from 2024-03-01,
+// while the 2024-03-31 installment corrects the appraisal value by the month from 2024-01-31 to
+// 2024-03-01, projected by its trailing 12-month average, so the verdict names it.
+func TestAVerdictNamesTheProjectionsTheAppraisalValueRead(t *testing.T) {
+	t.Parallel()
+
+	terms := interestFreeTerms(t)
+	terms.ContractDate = date(t, "2023-12-31")
+	terms.FirstInstallmentDate = date(t, "2024-01-31")
+	terms.Indexer = mortgage.TR
+
+	var tr []indexes.Value
+
+	for month := date(t, "2023-03-01"); month.Before(date(t, "2024-04-01")); month = month.AddDate(0, 1, 0) {
+		tr = append(tr, indexes.Value{PeriodStart: month, PeriodEnd: month.AddDate(0, 1, 0), Value: dec(t, "0.1000")})
+	}
+
+	verdicts, err := comparison.Decide(comparison.Mortgage{
+		Terms:   terms,
+		Outlook: indexes.NewOutlook(map[indexes.Index][]indexes.Value{indexes.TR: tr}, indexes.Expectations{}, nil),
+	},
 		comparison.Market{Quotes: []bonds.Quote{{
-			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2025-03-07")},
+			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2024-04-05")},
 			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")},
 		}}},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, "2025-02-15"), Effect: mortgage.ShortenTerm},
-		date(t, "2025-01-08"),
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, "2024-03-01"), Effect: mortgage.ShortenTerm},
+		date(t, "2024-03-01"),
 	)
 	require.NoError(t, err)
 	require.Len(t, verdicts, 1)
 
-	assert.Empty(t, verdicts[0].ProjectedBy)
+	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}}, verdicts[0].ProjectedBy)
 }
 
 // A poupança-linked contract rate reads the Selic target of each month, so a verdict names the

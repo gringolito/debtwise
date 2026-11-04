@@ -35,9 +35,8 @@ projected correction does.
 - **Compounding the fixed part with the additional part:** rejected. The contract's 10.06% is their
   sum; compounding gives 10.30%.
 - **The Selic target of the month that ends on a contract anniversary, as corrections read:**
-  rejected. The first installment is charged interest though it is never corrected, and the interest
-  an installment charges is for the month before its due date. The two months are the same when
-  installments fall due on the contract's day.
+  rejected. The interest an installment charges is for the month before its due date. The two
+  months are the same when installments fall due on the contract's day.
 - **Reading SGS 195 for the poupança yield:** rejected. It has no rows for periods starting on the
   29th to the 31st, and projections derive the poupança yield from projected TR and Selic by the
   same rule.
