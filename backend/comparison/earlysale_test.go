@@ -125,6 +125,44 @@ func TestAnEarlySaleCheckPrepaysTheSaleWithTheEffectTheOwnerChose(t *testing.T) 
 	assert.Equal(t, "419.61", checks[0].Advantage.String())
 }
 
+// A sale prepays the mortgage today, 2025-02-15, so its next installment, on 2025-03-10, is updated
+// from today by the TR of the month from its due date, which only a projection gives, while
+// holding the lot leaves that installment updated by the published month to it. The mortgage has
+// TR published for each month from the 1st and from the 10th through 2025-03-01 and 2025-03-10,
+// and the LTN matures on 2025-03-15, so the check names the projection the sale's balance read.
+func TestAnEarlySaleCheckNamesTheProjectionsTheSaleRead(t *testing.T) {
+	t.Parallel()
+
+	terms := interestFreeTerms(t)
+	terms.Indexer = mortgage.TR
+
+	var tr []indexes.Value
+
+	for month := date(t, "2024-01-01"); month.Before(date(t, "2025-03-01")); month = month.AddDate(0, 1, 0) {
+		tr = append(tr, indexes.Value{PeriodStart: month, PeriodEnd: month.AddDate(0, 1, 0), Value: dec(t, "0.1000")})
+	}
+
+	for due := date(t, "2024-01-10"); due.Before(date(t, "2025-03-10")); due = due.AddDate(0, 1, 0) {
+		tr = append(tr, indexes.Value{PeriodStart: due, PeriodEnd: due.AddDate(0, 1, 0), Value: dec(t, "0.1000")})
+	}
+
+	ltn := bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2025-03-15")}
+
+	checks, err := comparison.CheckEarlySales(
+		comparison.Mortgage{
+			Terms:   terms,
+			Outlook: indexes.NewOutlook(map[indexes.Index][]indexes.Value{indexes.TR: tr}, indexes.Expectations{}, nil),
+		},
+		comparison.Market{Quotes: []bonds.Quote{{Bond: ltn, Sell: bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")}}}, Taxes: lotTaxes(t)},
+		[]bonds.Lot{{Bond: ltn, PurchaseDate: date(t, "2024-01-02"), Rate: dec(t, "0.11"), UnitPrice: dec(t, "800.00"), Quantity: dec(t, "5.00")}},
+		mortgage.ShortenTerm, date(t, "2025-02-15"),
+	)
+	require.NoError(t, err)
+	require.Len(t, checks, 1)
+
+	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}}, checks[0].ProjectedBy)
+}
+
 // IOF falls on the gain of a sale within 30 days of the purchase. 5.00 LTN maturing on 2027-01-01,
 // bought for 800.00 each and sold on 2025-01-10 at 810.00, gain 50.00. Bought on 2024-12-12, 29
 // days before, the sale pays 3% of IOF, 1.50, and income tax at 22.5% on what is left of the gain

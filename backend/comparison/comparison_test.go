@@ -742,6 +742,44 @@ func TestAVerdictLeavesOutTheProjectionOfACorrectionDueAfterTheHorizon(t *testin
 	}
 }
 
+// Under TR the appraisal value DFI is charged on is corrected by whole months between due dates,
+// which installments on the 31st can read apart from the balance's updates. Signed on 2023-12-31
+// with installments on the 31st, the mortgage has TR published for each month from the 1st from
+// 2023-03-01 to 2024-04-01. Today and the decision are on 2024-03-01, and the LTN matures on
+// 2024-04-05. Every update of the balance after today reads the published month from 2024-03-01,
+// while the 2024-03-31 installment corrects the appraisal value by the month from 2024-01-31 to
+// 2024-03-01, projected by its trailing 12-month average, so the verdict names it.
+func TestAVerdictNamesTheProjectionsTheAppraisalValueRead(t *testing.T) {
+	t.Parallel()
+
+	terms := interestFreeTerms(t)
+	terms.ContractDate = date(t, "2023-12-31")
+	terms.FirstInstallmentDate = date(t, "2024-01-31")
+	terms.Indexer = mortgage.TR
+
+	var tr []indexes.Value
+
+	for month := date(t, "2023-03-01"); month.Before(date(t, "2024-04-01")); month = month.AddDate(0, 1, 0) {
+		tr = append(tr, indexes.Value{PeriodStart: month, PeriodEnd: month.AddDate(0, 1, 0), Value: dec(t, "0.1000")})
+	}
+
+	verdicts, err := comparison.Decide(comparison.Mortgage{
+		Terms:   terms,
+		Outlook: indexes.NewOutlook(map[indexes.Index][]indexes.Value{indexes.TR: tr}, indexes.Expectations{}, nil),
+	},
+		comparison.Market{Quotes: []bonds.Quote{{
+			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2024-04-05")},
+			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")},
+		}}},
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, "2024-03-01"), Effect: mortgage.ShortenTerm},
+		date(t, "2024-03-01"),
+	)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}}, verdicts[0].ProjectedBy)
+}
+
 // A poupança-linked contract rate reads the Selic target of each month, so a verdict names the
 // Selic target's method once an installment's rate reads a projected one, and the Selic target is
 // among the indexes it reads. Today is 2025-01-08; the installment of 2025-01-10 reads the target of

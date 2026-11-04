@@ -21,6 +21,9 @@ type Installment struct {
 	// reads; under IPCA, one for each contract anniversary since the previous installment. There
 	// are none without an indexer, nor on the first installment under IPCA.
 	IndexValues []IndexValue
+	// AppraisalIndexValues are the TR values that corrected the appraisal value DFI is charged on,
+	// each marked missing, published or projected by its Methods. There are none without TR.
+	AppraisalIndexValues []IndexValue
 	// Rate is the effective annual contract rate Interest was charged at.
 	Rate decimal.Decimal
 	// RateIndexValues are the index values the rate's variable part follows, each marked missing,
@@ -113,10 +116,11 @@ type replayer struct {
 }
 
 // correction is what the indexer added to the balance for an installment, and the index values
-// behind it.
+// behind it and behind the appraisal value's correction.
 type correction struct {
-	amount decimal.Decimal
-	values []IndexValue
+	amount          decimal.Decimal
+	values          []IndexValue
+	appraisalValues []IndexValue
 }
 
 func (t Terms) replayer(outlook indexes.Outlook, events Events, today time.Time) *replayer {
@@ -191,18 +195,19 @@ func (r *replayer) charge(number int) Installment {
 	r.balance = r.balance.Sub(amortization)
 
 	return Installment{
-		Number:          number,
-		DueDate:         due,
-		Correction:      correction.amount,
-		IndexValues:     correction.values,
-		Rate:            rate.effective,
-		RateIndexValues: rate.values,
-		Interest:        interest,
-		Amortization:    amortization,
-		MIP:             mip,
-		DFI:             dfi,
-		Fee:             fee,
-		Amount:          amortization.Add(interest).Add(mip).Add(dfi).Add(fee),
+		Number:               number,
+		DueDate:              due,
+		Correction:           correction.amount,
+		IndexValues:          correction.values,
+		AppraisalIndexValues: correction.appraisalValues,
+		Rate:                 rate.effective,
+		RateIndexValues:      rate.values,
+		Interest:             interest,
+		Amortization:         amortization,
+		MIP:                  mip,
+		DFI:                  dfi,
+		Fee:                  fee,
+		Amount:               amortization.Add(interest).Add(mip).Add(dfi).Add(fee),
 	}
 }
 
@@ -219,7 +224,10 @@ func (r *replayer) correct(number int) correction {
 			}
 		}
 
-		return r.update(due)
+		c := r.update(due)
+		c.appraisalValues = values
+
+		return c
 	}
 
 	c := correction{amount: decimal.Decimal{}.RoundCents(), values: values}

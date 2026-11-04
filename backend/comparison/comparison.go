@@ -371,8 +371,8 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 }
 
 // readBy returns the projection methods of the index values planned read up to the horizon: those
-// that corrected its installments or set their contract rates, and those that updated its balance
-// at prepayments.
+// that corrected its installments' balances and appraisal values or set their contract rates, and
+// those that updated its balance at prepayments.
 func readBy(planned mortgage.Planned) []indexes.ProjectionMethod {
 	var methods []indexes.ProjectionMethod
 
@@ -384,6 +384,7 @@ func readBy(planned mortgage.Planned) []indexes.ProjectionMethod {
 
 	for _, i := range planned.Installments {
 		note(i.IndexValues)
+		note(i.AppraisalIndexValues)
 		note(i.RateIndexValues)
 	}
 
