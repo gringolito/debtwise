@@ -15,7 +15,7 @@
   "description": "PR limits are disabled so pending updates are never silently queued out of sight.",
   "prConcurrentLimit": 0,
   "prHourlyLimit": 0,
-  "minimumReleaseAge": null,
+  "minimumReleaseAge": "48 hours",
 
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
@@ -63,15 +63,43 @@
       "groupName": "minor-patch (toolchain)"
     },
     {
-      "description": "Bump the mise.toml go pin in the same PR as the go.mod go directive, so the two cannot drift.",
-      "matchManagers": ["gomod", "mise"],
+      "description": "Wait for Go updates in go.mod, mise.toml and Dockerfile.",
+      "matchManagers": ["gomod", "mise", "dockerfile"],
       "matchDepNames": ["go", "golang"],
-      "groupName": "go toolchain"
+      "groupName": "go toolchain",
+      "minimumGroupSize": 3
     },
     {
-      "description": "Node.js and npm are pinned in mise.toml, frontend/package.json devEngines and build/web.Dockerfile; bump every pin in one PR so they cannot drift.",
-      "matchDepNames": ["node", "npm"],
-      "groupName": "node toolchain"
+      "description": "Wait for Node updates in mise.toml, package.json devEngines and Dockerfile.",
+      "matchDepNames": ["node"],
+      "groupName": "node toolchain",
+      "minimumGroupSize": 3
+    },
+    {
+      "description": "Wait for npm updates in mise.toml, package.json devEngines and Dockerfile.",
+      "matchDepNames": ["npm"],
+      "groupName": "npm toolchain",
+      "minimumGroupSize": 3
+    },
+    {
+      "description": "Keep the goose library in go.mod and the goose CLI in mise.toml on one version, so the CLI that creates and rolls back migrations matches the library that applies them.",
+      "matchDepNames": [
+        "github.com/pressly/goose/v3",
+        "go:github.com/pressly/goose/v3/cmd/goose"
+      ],
+      "groupName": "goose",
+      "minimumGroupSize": 2
+    },
+    {
+      "description": "Review aid only, not a sync guarantee. mise.toml's go-test-coverage pin must match the version embedded in the go-covergrid action. No minimumGroupSize: it would hold a go-covergrid update back whenever the mise pin is already current.",
+      "matchDepNames": [
+        "gringolito/go-covergrid",
+        "go:github.com/vladopajic/go-test-coverage/v2"
+      ],
+      "groupName": "go-test-coverage",
+      "prBodyNotes": [
+        "Renovate cannot see the go-test-coverage version embedded in the go-covergrid action, so nothing in this PR guarantees mise.toml and CI agree."
+      ]
     }
   ]
 }

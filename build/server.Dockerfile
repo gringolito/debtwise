@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Built from backend/: docker build -f build/server.Dockerfile backend
-FROM --platform=${BUILDPLATFORM} golang:1.27-alpine AS build
+FROM --platform=${BUILDPLATFORM} golang:1.27.3-alpine AS build
 WORKDIR /src
 
 # Injected by buildx per target platform.
