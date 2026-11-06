@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Built from the repository root: docker build -f build/web.Dockerfile .
-FROM --platform=${BUILDPLATFORM} node:24.22.1-slim AS build
+FROM --platform=${BUILDPLATFORM} node:26.12.1-slim AS build
 WORKDIR /app
 
 # renovate: datasource=npm depName=pnpm

@@ -4,7 +4,7 @@
 
 [tools]
 go = "1.27.3"                   # Keep in sync with backend/go.mod
-node = "24.22.1"                # LTS; keep in sync with frontend/package.json devEngines
+node = "26.13.0"                # LTS; keep in sync with frontend/package.json devEngines
 "npm:pnpm" = "12.17.0"         # aqua has no darwin/amd64 build; keep in sync with frontend/package.json devEngines
 sqlc = "1.31.1"
 helm = "4.3.1"
