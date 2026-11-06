@@ -76,9 +76,9 @@
       "minimumGroupSize": 3
     },
     {
-      "description": "Wait for npm updates in mise.toml, package.json devEngines and Dockerfile.",
-      "matchDepNames": ["npm"],
-      "groupName": "npm toolchain",
+      "description": "Wait for pnpm updates in mise.toml, package.json devEngines and Dockerfile.",
+      "matchDepNames": ["pnpm"],
+      "groupName": "pnpm toolchain",
       "minimumGroupSize": 3
     },
     {

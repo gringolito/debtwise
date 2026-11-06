@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!src/lib/api/generated/**"]
+    "includes": ["**", "!src/lib/api/generated/**", "!pnpm-lock.yaml"]
   },
   "formatter": {
     "enabled": true,

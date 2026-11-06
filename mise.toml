@@ -5,7 +5,7 @@
 [tools]
 go = "1.27.3"                   # Keep in sync with backend/go.mod
 node = "24.22.1"                # LTS; keep in sync with frontend/package.json devEngines
-npm = "12.2.1"                  # Keep in sync with frontend/package.json devEngines
+"npm:pnpm" = "12.17.0"         # aqua has no darwin/amd64 build; keep in sync with frontend/package.json devEngines
 sqlc = "1.31.1"
 helm = "4.3.1"
 "go:github.com/pressly/goose/v3/cmd/goose" = "v3.29.0"
@@ -31,7 +31,7 @@ run = '''
 set -euo pipefail
 trap 'kill 0' EXIT
 (cd backend && go run ./cmd/server) &
-(cd frontend && npm run dev) &
+(cd frontend && pnpm run dev) &
 wait
 '''
 
@@ -85,8 +85,8 @@ set -euo pipefail
 (cd backend && go run ./cmd/openapi-gen)
 # Pin typescript@5.x so peer resolution does not pull TS7+, which breaks
 # internal compiler APIs. The generated SDK has no runtime deps.
-(cd frontend && npx --yes -p @hey-api/openapi-ts@0.90.0 -p typescript@5.9.3 \
-  openapi-ts -i ../docs/openapi.json -o src/lib/api/generated -c @hey-api/client-fetch)
+(cd frontend && pnpm --package=@hey-api/openapi-ts@0.90.0 --package=typescript@5.9.3 \
+  dlx openapi-ts -i ../docs/openapi.json -o src/lib/api/generated -c @hey-api/client-fetch)
 '''
 
 [tasks."verify:openapi"]
@@ -111,8 +111,8 @@ run = "golangci-lint run"
 description = "Lint and type-check the frontend (oxlint + tsc)"
 dir = "frontend"
 run = [
-  "npm run lint",
-  "npm run typecheck",
+  "pnpm run lint",
+  "pnpm run typecheck",
 ]
 
 [tasks."lint:helm"]
@@ -131,7 +131,7 @@ run = "golangci-lint fmt"
 [tasks."format:frontend"]
 description = "Format the frontend with Biome"
 dir = "frontend"
-run = "npm run format"
+run = "pnpm run format"
 
 [tasks."verify:format:all"]
 description = "Verify the formatting"
@@ -145,7 +145,7 @@ run = "golangci-lint fmt --diff"
 [tasks."verify:format:frontend"]
 description = "Verify the frontend formatting with Biome"
 dir = "frontend"
-run = "npm run format:check"
+run = "pnpm run format:check"
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -163,7 +163,7 @@ run = "go test -race ./... -coverprofile=cover.out -covermode=atomic -coverpkg=.
 [tasks."test:frontend"]
 description = "Run frontend tests"
 dir = "frontend"
-run = "npm test"
+run = "pnpm test"
 
 [tasks."verify:coverage:backend"]
 description = "Fail if cover.out from test:backend is under the .testcoverage.yml thresholds"
