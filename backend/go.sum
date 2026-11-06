@@ -2,6 +2,8 @@ github.com/cockroachdb/apd/v3 v3.2.3 h1:4Zx+I3R35bFXMnltzmjP79i2cravE4jTRL6ps9Au
 github.com/cockroachdb/apd/v3 v3.2.3/go.mod h1:klXJcjp+FffLTHlhIG69tezTDvdP065naDsHzKhYSqc=
 github.com/danielgtaylor/huma/v2 v2.39.1 h1:0kwF4ltQoYZ+IU55VPy+BcGekzgF44R64daTGde1H+g=
 github.com/danielgtaylor/huma/v2 v2.39.1/go.mod h1:zcnQ38duIJ3VUHwFaBoZ6x8T+KN/mr33oyqxcj0HTug=
+github.com/danielgtaylor/huma/v2 v2.40.0 h1:429ynr7/T9Iar+8P6NSsjcKwCRgaXvPKvqIFmbeL6vE=
+github.com/danielgtaylor/huma/v2 v2.40.0/go.mod h1:x+utAArLHnM93jq2Wy7nLYkVorUF1vYML2hoPVb/5yo=
 github.com/dustin/go-humanize v1.1.0 h1:dbKTrvD0klcbBV/h4AWJdMuZogJACoMlvWIWZ5b2xWg=
 github.com/dustin/go-humanize v1.1.0/go.mod h1:hc1CvRkJMsgxqjmjMQF3QNRAZBwY8AXBAzKYoSX9sFI=
 github.com/fxamacker/cbor/v2 v2.9.2 h1:X4Ksno9+x3cz0TZv69ec1hxP/+tymuR8PXQJyDwfh78=
@@ -68,6 +70,8 @@ modernc.org/sortutil v1.2.1 h1:+xyoGf15mM3NMlPDnFqrteY07klSFxLElE2PVuWIJ7w=
 modernc.org/sortutil v1.2.1/go.mod h1:7ZI3a3REbai7gzCLcotuw9AC4VZVpYMjDzETGsSMqJE=
 modernc.org/sqlite v1.61.0 h1:sQi63oLQ9uquAUA4CzOisH35Q3pEszkPBuHM0tFL8CY=
 modernc.org/sqlite v1.61.0/go.mod h1:f4gr5tbpx2umklaT/QVtbi/50hNdM+4ng+2zMo8KXJ0=
+modernc.org/sqlite v1.61.1 h1:TBEE49wz7VlxS+qXRXMQiPUZYOXHJ4ku83daYv1fe04=
+modernc.org/sqlite v1.61.1/go.mod h1:f4gr5tbpx2umklaT/QVtbi/50hNdM+4ng+2zMo8KXJ0=
 modernc.org/strutil v1.2.1 h1:UneZBkQA+DX2Rp35KcM69cSsNES9ly8mQWD71HKlOA0=
 modernc.org/strutil v1.2.1/go.mod h1:EHkiggD70koQxjVdSBM3JKM7k6L0FbGE5eymy9i3B9A=
 modernc.org/token v1.1.0 h1:Xl7Ap9dKaEs5kLoOQeQmPWevfnk/DM5qcLcYlA8ys6Y=
