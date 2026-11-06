@@ -63,11 +63,11 @@
       "groupName": "minor-patch (toolchain)"
     },
     {
-      "description": "Wait for Go updates in go.mod and mise.toml; the Dockerfile's golang tag is minor-only, so it joins the group on minor bumps.",
+      "description": "Wait for Go updates in go.mod, mise.toml and Dockerfile.",
       "matchManagers": ["gomod", "mise", "dockerfile"],
       "matchDepNames": ["go", "golang"],
       "groupName": "go toolchain",
-      "minimumGroupSize": 2
+      "minimumGroupSize": 3
     },
     {
       "description": "Wait for Node updates in mise.toml, package.json devEngines and Dockerfile.",
