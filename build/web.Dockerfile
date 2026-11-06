@@ -16,7 +16,7 @@ COPY frontend/ ./
 RUN pnpm run build
 
 # Builds the version named by the tag with the image's Go toolchain, for the target platform.
-FROM --platform=${BUILDPLATFORM} caddy:2.11.7-builder-alpine AS caddy
+FROM --platform=${BUILDPLATFORM} caddy:2.11.9-builder-alpine AS caddy
 
 ARG TARGETOS
 ARG TARGETARCH
