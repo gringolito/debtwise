@@ -77,7 +77,7 @@
     },
     {
       "description": "Wait for pnpm updates in mise.toml, package.json devEngines and Dockerfile.",
-      "matchDepNames": ["pnpm"],
+      "matchDepNames": ["pnpm", "npm:pnpm"],
       "groupName": "pnpm toolchain",
       "minimumGroupSize": 3
     },
