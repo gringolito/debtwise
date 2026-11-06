@@ -62,7 +62,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
       - run: mise run test:backend
-      - uses: gringolito/go-covergrid@787afedd436da0843ba7e582bafe7c9c3ca90eed # v1.0.0
+      - uses: gringolito/go-covergrid@77ea4a972efb40c128f9e1e533f38b4fcdef0d07 # v1.1.0
         with:
           profile: backend/cover.out
           config: ./backend/.testcoverage.yml
