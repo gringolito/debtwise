@@ -1,0 +1,7 @@
+saveExact: true
+
+# In minutes (48h); keep in sync with minimumReleaseAge in .github/renovate.json.
+minimumReleaseAge: 2880
+
+allowBuilds:
+  fsevents: false

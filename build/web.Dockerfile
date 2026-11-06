@@ -3,17 +3,17 @@
 FROM --platform=${BUILDPLATFORM} node:24.22.1-slim AS build
 WORKDIR /app
 
-# renovate: datasource=npm depName=npm
-ARG NPM_VERSION=12.2.1
+# renovate: datasource=npm depName=pnpm
+ARG PNPM_VERSION=12.17.0
 RUN --mount=type=cache,target=/root/.npm \
-    npm install --global npm@${NPM_VERSION}
+    npm install --global pnpm@${PNPM_VERSION}
 
-COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci
+COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
+RUN --mount=type=cache,target=/pnpm/store \
+    pnpm install --frozen-lockfile --store-dir=/pnpm/store
 
 COPY frontend/ ./
-RUN npm run build
+RUN pnpm run build
 
 # Builds the version named by the tag with the image's Go toolchain, for the target platform.
 FROM --platform=${BUILDPLATFORM} caddy:2.11.7-builder-alpine AS caddy

@@ -20,8 +20,8 @@
       "onFail": "error"
     },
     "packageManager": {
-      "name": "npm",
-      "version": "12.2.1",
+      "name": "pnpm",
+      "version": "12.17.0",
       "onFail": "error"
     }
   },
@@ -58,8 +58,5 @@
     "typescript": "~7.0.2",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
-  },
-  "allowScripts": {
-    "fsevents": false
   }
 }

@@ -448,7 +448,7 @@ change the component there. Keep the names shadcn gave it: the exported componen
 `data-slot` attributes and the `*Variants` function. Code written from shadcn's documentation then
 works here unchanged.
 
-`npx shadcn add <name> --overwrite` replaces the file with upstream's version. Diff the result
+`pnpm exec shadcn add <name> --overwrite` replaces the file with upstream's version. Diff the result
 against the committed file and carry the local changes over before committing. A local change that
 alters upstream behaviour, rather than adding a variant, gets a comment saying why, so whoever runs
 the next overwrite knows the difference is deliberate.
@@ -552,8 +552,8 @@ export function Page({ className, ...props }: React.ComponentProps<"main">) {
 
 Dialogs, popovers, menus, comboboxes and tooltips get focus trapping, keyboard navigation and ARIA
 state from the Radix primitives under the shadcn components. When a screen needs a widget that
-`components/ui/` does not have yet, add it with `npx shadcn add <name>` from `frontend/` instead of
-writing key handlers and `aria-*` bookkeeping by hand.
+`components/ui/` does not have yet, add it with `pnpm exec shadcn add <name>` from `frontend/`
+instead of writing key handlers and `aria-*` bookkeeping by hand.
 
 ## Documentation
 
