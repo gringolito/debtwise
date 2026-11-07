@@ -7,8 +7,11 @@ import type {
   LotAmount,
   LotValued,
   MarketDataStatus,
+  Prepayment,
   Scenario,
+  StatementDrift,
   Verdict,
+  VerdictMarketData,
 } from "@/lib/api";
 import { text } from "@/test/dom";
 import { registeredMortgage, schedule } from "@/test/mortgageFixtures";
@@ -19,51 +22,131 @@ type Routes = Parameters<typeof stubRoutes>[0];
 
 const FRESH_STATUS: MarketDataStatus = {
   refreshing: false,
-  indexes: [
-    { index: "tr", status: "fresh", refreshed_at: "2024-03-19T18:23:39Z" },
-    { index: "selic", status: "fresh", refreshed_at: "2024-03-19T18:23:42Z" },
-  ],
+  indexes: [{ index: "tr", status: "fresh", refreshed_at: "2024-03-19T18:23:39Z" }],
   bonds: { status: "fresh", refreshed_at: "2024-03-19T18:24:00Z" },
   focus: { status: "fresh", refreshed_at: "2024-03-19T18:24:30Z" },
 };
 
-const MATURED: LotAmount = {
-  gross: "1000.00",
+const freshMarketData: VerdictMarketData = {
+  bonds: FRESH_STATUS.bonds,
+  focus: FRESH_STATUS.focus,
+  indexes: FRESH_STATUS.indexes,
+};
+
+const flow = (date: string, outstanding_balance: string): CashFlow => ({
+  date,
+  invested: "0.00",
+  prepaid: "0.00",
+  held: "0.00",
+  outstanding_balance,
+});
+
+const scenario: Scenario = {
+  net_worth: "0.00",
+  cash: "0.00",
+  outstanding_balance: "0.00",
+  cash_flows: [flow("2024-03-20", "30000.00"), flow("2029-01-01", "0.00")],
+};
+
+const ltn: Verdict = {
+  type: "ltn",
+  maturity: "2029-01-01",
+  rate: "0.1276",
+  unit_price: "771.26",
+  quantity: "12.96",
+  advantage: "1234.56",
+  avoided_cost: "456.78",
+  break_even_rate: "0.1102",
+  invest: scenario,
+  prepay: scenario,
+  projected_by: [],
+  market_data: freshMarketData,
+};
+const ntnf: Verdict = { ...ltn, type: "ntn_f", maturity: "2035-01-01", advantage: "-250.30" };
+const unavailable: Verdict = {
+  type: "ntn_f",
+  maturity: "2031-01-01",
+  rate: "0.13",
+  unavailable: "amount_too_small",
+  projected_by: [],
+  market_data: freshMarketData,
+};
+
+const decisionOf = (verdicts: Verdict[]) => () =>
+  Response.json({ amount: "10000.00", date: "2024-03-20", effect: "shorten_term", verdicts });
+
+const MARKET: LotAmount = {
+  gross: "900.00",
   iof: "0.00",
-  income_tax: "35.00",
+  income_tax: "17.50",
   custody_fee: "0.00",
-  net: "965.00",
+  net: "882.50",
   projected_by: [],
 };
 
-const MARKET: LotAmount = { ...MATURED, gross: "900.00", income_tax: "17.50", net: "882.50" };
-
-const maturedLot: LotValued = {
+const quotedLot: LotValued = {
   id: 1,
   type: "ltn",
-  maturity: "2024-01-01",
+  maturity: "2026-01-01",
   purchase_date: "2022-01-03",
   rate: "0.1",
   unit_price: "800.00",
   quantity: "1",
-  values: { on: "2024-03-20", maturity: MATURED, coupons: [] },
+  values: { on: "2024-03-20", market: MARKET, maturity: MARKET, coupons: [] },
 };
 
-// Answers every endpoint the dashboard reads for an owner who registered nothing yet, with the market
-// data fresh, unless a test answers an endpoint itself.
-function stubDashboard(routes: Routes = {}) {
+const statement: StatementDrift = {
+  id: 4,
+  date: "2024-02-15",
+  outstanding_balance: "40000.42",
+  computed_balance: "40000.00",
+  drift: "0.42",
+};
+
+const prepayment: Prepayment = {
+  id: 9,
+  date: "2024-03-02",
+  amount: "15000.00",
+  effect: "shorten_term",
+};
+
+// Answers every endpoint Início reads for an owner who set up the mortgage and recorded nothing
+// else, with no bond to compare, unless a test answers an endpoint itself.
+function stubInicio(routes: Routes = {}) {
   return stubRoutes({
-    "GET /api/health": () => Response.json({ status: "ok" }),
-    "GET /api/mortgage/schedule": () => problem(404, "Not Found", "no mortgage is registered"),
+    "GET /api/mortgage": () => Response.json(registeredMortgage),
+    "GET /api/mortgage/schedule": () => Response.json(schedule),
+    "GET /api/mortgage/statements": () => Response.json({ statements: [] }),
+    "GET /api/mortgage/prepayments": () => Response.json({ prepayments: [] }),
     "GET /api/lots": () => Response.json({ lots: [] }),
     "GET /api/early-sale-checks": () =>
       Response.json({ date: "2024-03-20", effect: "shorten_term", checks: [] }),
     "GET /api/market-data/status": () => Response.json(FRESH_STATUS),
+    "POST /api/decisions": decisionOf([]),
     ...routes,
   });
 }
 
-const region = (name: string) => screen.findByRole("region", { name });
+const region = (name: string | RegExp) => screen.findByRole("region", { name });
+const answerCard = () => region(/rende mais|dá no mesmo|Amortizar ou investir\?/);
+
+/** paragraph finds the paragraph that reads content, across the elements it is split into. */
+const paragraph = (container: HTMLElement, content: string) =>
+  within(container).getByText(
+    (_, element) => element?.tagName === "P" && text(element) === content,
+  );
+
+/** words is what a row shows, a space between each of its texts as the layout sets them apart. */
+const words = (element: Element) =>
+  Array.from(element.querySelectorAll("*"))
+    .filter((child) => child.children.length === 0 && text(child) !== "")
+    .map(text)
+    .join(" ");
+
+const linkNamed = (container: HTMLElement, name: string) =>
+  within(container)
+    .getAllByRole("link")
+    .find((link) => text(link) === name);
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -76,421 +159,81 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("a market-data refresh running when the dashboard opens", () => {
-  it("reloads the figures that read market data once it ends", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.setSystemTime(new Date(2024, 2, 20, 9, 30));
-    const statuses = [{ ...FRESH_STATUS, refreshing: true }, FRESH_STATUS];
-    const requests = stubDashboard({
-      "GET /api/market-data/status": () => Response.json(statuses.shift() ?? FRESH_STATUS),
-      "GET /api/lots": () =>
-        Response.json(
-          statuses.length === 0
-            ? { lots: [maturedLot], market_value: { gross: "900.00", net: "882.50" } }
-            : { lots: [maturedLot] },
-        ),
+describe("Início", () => {
+  it("dates the page today and no longer shows the server health or a decision form", async () => {
+    const requests = stubInicio();
+    renderAt("/");
+
+    await answerCard();
+    expect(screen.getByRole("heading", { level: 1, name: "Início" })).toBeInTheDocument();
+    expect(screen.getByText("Quarta-feira, 20 de março")).toBeInTheDocument();
+    expect(screen.queryByRole("form")).not.toBeInTheDocument();
+    expect(requests.map((r) => new URL(r.url).pathname)).not.toContain("/api/health");
+  });
+
+  it("shows the skeleton while it loads", async () => {
+    stubInicio({ "GET /api/lots": () => new Promise<Response>(() => {}) });
+    renderAt("/");
+
+    expect(await screen.findByRole("status", { name: "Carregando início" })).toBeInTheDocument();
+    expect(screen.queryByRole("region")).not.toBeInTheDocument();
+  });
+
+  it("shows the error panel when something fails to load, and retries it", async () => {
+    let failing = true;
+    stubInicio({
+      "GET /api/mortgage/statements": () =>
+        failing
+          ? problem(500, "Internal Server Error", "boom")
+          : Response.json({ statements: [statement] }),
     });
     renderAt("/");
 
-    const lots = await region("Lotes");
-    expect(
-      await within(lots).findByText("Nenhum lote tem valor de mercado hoje."),
-    ).toBeInTheDocument();
-    await vi.advanceTimersByTimeAsync(2000);
+    const panel = await screen.findByRole("alert");
+    expect(panel).toHaveTextContent("Não foi possível carregar o início");
+    failing = false;
+    fireEvent.click(within(panel).getByRole("button", { name: "Tentar novamente" }));
 
-    expect(await within(lots).findByText("R$ 882,50")).toBeInTheDocument();
-    const reads = (path: string) => requests.filter((r) => new URL(r.url).pathname === path).length;
-    expect(["/api/mortgage/schedule", "/api/lots", "/api/early-sale-checks"].map(reads)).toEqual([
-      2, 2, 2,
-    ]);
+    expect(await region("Atividade recente")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
 
-describe("the mortgage on the dashboard", () => {
-  it("shows the balance after the latest installment due and the last installment's date", async () => {
-    stubDashboard({ "GET /api/mortgage/schedule": () => Response.json(schedule) });
+describe("the answer card", () => {
+  it("states the verdict of the highest advantage for R$ 10.000,00 prepaid today to shorten the term", async () => {
+    const requests = stubInicio({ "POST /api/decisions": decisionOf([ntnf, unavailable, ltn]) });
     renderAt("/");
 
-    const mortgage = await region("Financiamento");
-    await within(mortgage).findByText("Quitação prevista");
+    const card = await answerCard();
     expect(
-      within(mortgage)
-        .getAllByRole("listitem")
-        .map((item) => text(item)),
-    ).toEqual([
-      "Saldo devedor R$ 30.000,00 após a parcela 3, de 10/03/2024",
-      "Quitação prevista 10/06/2024",
-    ]);
-  });
-
-  it("counts an installment due today as paid", async () => {
-    vi.setSystemTime(new Date(2024, 3, 10, 0, 5));
-    stubDashboard({ "GET /api/mortgage/schedule": () => Response.json(schedule) });
-    renderAt("/");
-
-    const mortgage = await region("Financiamento");
-    expect(
-      await within(mortgage).findByText("R$ 20.000,00 após a parcela 4, de 10/04/2024"),
+      within(card).getByRole("heading", { name: "Investir em Tesouro Prefixado 2029 rende mais" }),
     ).toBeInTheDocument();
-  });
-
-  it("reads today in the owner's time zone", async () => {
-    vi.stubEnv("TZ", "America/Sao_Paulo");
-    // Already 2024-04-10 in UTC, but still the evening of 2024-04-09 in São Paulo.
-    vi.setSystemTime(new Date("2024-04-10T02:55:00Z"));
-    stubDashboard({ "GET /api/mortgage/schedule": () => Response.json(schedule) });
-    renderAt("/");
-
-    const mortgage = await region("Financiamento");
+    expect(within(card).getByText("Na projeção atual, para R$ 10.000,00 hoje")).toBeInTheDocument();
     expect(
-      await within(mortgage).findByText("R$ 30.000,00 após a parcela 3, de 10/03/2024"),
+      paragraph(card, "R$ 1.234,56 a mais do que amortizar, até 01/01/2029."),
     ).toBeInTheDocument();
-  });
-
-  it("shows the original amount as the balance before the first installment is due", async () => {
-    vi.setSystemTime(new Date(2024, 0, 9, 23, 55));
-    stubDashboard({
-      "GET /api/mortgage": () => Response.json(registeredMortgage),
-      "GET /api/mortgage/schedule": () => Response.json(schedule),
-    });
-    renderAt("/");
-
-    const mortgage = await region("Financiamento");
-    await within(mortgage).findByText(/R\$ 60\.000,00/);
-    expect(
-      within(mortgage)
-        .getAllByRole("listitem")
-        .map((item) => text(item)),
-    ).toEqual([
-      "Saldo devedor R$ 60.000,00 antes da parcela 1, de 10/01/2024",
-      "Quitação prevista 10/06/2024",
-    ]);
-  });
-
-  it("says the original amount could not be loaded before the first installment is due", async () => {
-    vi.setSystemTime(new Date(2024, 0, 9, 23, 55));
-    stubDashboard({
-      "GET /api/mortgage": () => problem(500, "Internal Server Error", "boom"),
-      "GET /api/mortgage/schedule": () => Response.json(schedule),
-    });
-    renderAt("/");
-
-    const mortgage = await region("Financiamento");
-    expect(
-      await within(mortgage).findByText("Não foi possível carregar o valor financiado."),
-    ).toBeInTheDocument();
-    expect(within(mortgage).getByText("10/06/2024")).toBeInTheDocument();
-  });
-
-  // A prepayment or statement before the first installment that settles the mortgage leaves no
-  // installment, so the original amount is no longer owed.
-  it("says no installment is due when the schedule has none", async () => {
-    stubDashboard({
-      "GET /api/mortgage": () => Response.json(registeredMortgage),
-      "GET /api/mortgage/schedule": () => Response.json({ installments: [] }),
-    });
-    renderAt("/");
-
-    const mortgage = await region("Financiamento");
-    const items = await within(mortgage).findAllByRole("listitem");
-    expect(items.map((item) => text(item))).toEqual([
-      "Saldo devedor Nenhuma parcela venceu ainda.",
-    ]);
-  });
-
-  it("links to registering a mortgage while none is", async () => {
-    stubDashboard();
-    renderAt("/");
-
-    const mortgage = await region("Financiamento");
-    expect(
-      await within(mortgage).findByRole("link", { name: "Cadastrar financiamento" }),
-    ).toHaveAttribute("href", "/financiamento/editar");
-  });
-
-  it("says the schedule could not be loaded", async () => {
-    stubDashboard({
-      "GET /api/mortgage/schedule": () => problem(500, "Internal Server Error", "boom"),
-    });
-    renderAt("/");
-
-    const mortgage = await region("Financiamento");
-    expect(await within(mortgage).findByRole("alert")).toHaveTextContent(
-      "Não foi possível carregar o financiamento.",
-    );
-  });
-});
-
-describe("the lots on the dashboard", () => {
-  it("shows the total Market Value of the lots, gross and net", async () => {
-    const quoted: LotValued = {
-      ...maturedLot,
-      id: 2,
-      maturity: "2026-01-01",
-      values: { on: "2024-03-20", market: MARKET, maturity: MATURED, coupons: [] },
-    };
-    stubDashboard({
-      "GET /api/lots": () =>
-        Response.json({
-          lots: [maturedLot, quoted],
-          market_value: { gross: "9120.00", net: "8958.00" },
-        }),
-    });
-    renderAt("/");
-
-    const lots = await region("Lotes");
-    await within(lots).findByText("Valor de mercado líquido");
-    expect(
-      within(lots)
-        .getAllByRole("listitem")
-        .map((item) => text(item)),
-    ).toEqual(["Valor de mercado líquido R$ 8.958,00", "Valor de mercado bruto R$ 9.120,00"]);
-  });
-
-  it("links to recording a lot while none is", async () => {
-    stubDashboard();
-    renderAt("/");
-
-    const lots = await region("Lotes");
-    expect(await within(lots).findByRole("link", { name: "Registrar lote" })).toHaveAttribute(
-      "href",
-      "/investimentos",
-    );
-  });
-
-  it("says no lot has a Market Value when the recorded ones have none", async () => {
-    stubDashboard({ "GET /api/lots": () => Response.json({ lots: [maturedLot] }) });
-    renderAt("/");
-
-    const lots = await region("Lotes");
-    expect(
-      await within(lots).findByText("Nenhum lote tem valor de mercado hoje."),
-    ).toBeInTheDocument();
-  });
-
-  it("says how many lots held to maturity the total leaves out for having no Market Value", async () => {
-    const quoted: LotValued = {
-      ...maturedLot,
-      id: 2,
-      maturity: "2026-01-01",
-      values: { on: "2024-03-20", market: MARKET, maturity: MATURED, coupons: [] },
-    };
-    const unquoted: LotValued = {
-      ...quoted,
-      id: 3,
-      values: { on: "2024-03-20", accrual: MARKET, maturity: MATURED, coupons: [] },
-    };
-    const missingIPCA: LotValued = {
-      ...maturedLot,
-      id: 4,
-      type: "ntn_b_principal",
-      maturity: "2035-05-15",
-      values: undefined,
-      values_unavailable: "missing_ipca",
-    };
-    stubDashboard({
-      "GET /api/lots": () =>
-        Response.json({
-          lots: [maturedLot, quoted, unquoted, missingIPCA],
-          market_value: { gross: "900.00", net: "882.50" },
-        }),
-    });
-    renderAt("/");
-
-    const lots = await region("Lotes");
-    expect(
-      await within(lots).findByText("2 lotes sem valor de mercado ficaram fora do total."),
-    ).toBeInTheDocument();
-  });
-
-  it("says the lots could not be loaded", async () => {
-    stubDashboard({ "GET /api/lots": () => problem(500, "Internal Server Error", "boom") });
-    renderAt("/");
-
-    const lots = await region("Lotes");
-    expect(await within(lots).findByRole("alert")).toHaveTextContent(
-      "Não foi possível carregar os lotes.",
-    );
-  });
-});
-
-describe("the best early sale check on the dashboard", () => {
-  const lot: Lot = {
-    id: 7,
-    type: "ltn",
-    maturity: "2029-01-01",
-    purchase_date: "2023-01-02",
-    rate: "0.11",
-    unit_price: "650.00",
-    quantity: "10.00",
-  };
-  const marketData = { bonds: FRESH_STATUS.bonds, focus: FRESH_STATUS.focus, indexes: [] };
-  const checksOf = (checks: EarlySaleCheck[]) => () =>
-    Response.json({ date: "2024-03-20", effect: "shorten_term", checks });
-
-  it("shows the check the API ranks first, with its verdict and advantage", async () => {
-    const requests = stubDashboard({
-      "GET /api/early-sale-checks": checksOf([
-        { lot, verdict: "sell", advantage: "-605.50", projected_by: [], market_data: marketData },
-        {
-          lot: { ...lot, id: 8, purchase_date: "2023-06-01" },
-          verdict: "hold",
-          advantage: "120.00",
-          projected_by: [],
-          market_data: marketData,
-        },
-      ]),
-    });
-    renderAt("/");
-
-    const check = await region("Melhor venda antecipada");
-    expect(await within(check).findByText("Vender agora")).toBeInTheDocument();
-    expect(
-      within(check).getByText("Tesouro Prefixado 2029 (compra em 02/01/2023)"),
-    ).toBeInTheDocument();
-    expect(within(check).getByText("Vantagem: -R$ 605,50, a favor de vender")).toBeInTheDocument();
-    expect(within(check).queryByText("Manter até o vencimento")).not.toBeInTheDocument();
-    expect(within(check).getByRole("link", { name: "Ver todos os lotes" })).toHaveAttribute(
-      "href",
-      "/investimentos/venda-antecipada",
-    );
-    expect(
-      requests
-        .filter((r) => new URL(r.url).pathname === "/api/early-sale-checks")
-        .map((r) => new URL(r.url).search),
-    ).toEqual(["?effect=shorten_term"]);
-  });
-
-  it("says no lot can be checked when none has a verdict", async () => {
-    stubDashboard({
-      "GET /api/early-sale-checks": checksOf([
-        { lot, unavailable: "matured", projected_by: [], market_data: marketData },
-      ]),
-    });
-    renderAt("/");
-
-    const check = await region("Melhor venda antecipada");
-    expect(
-      await within(check).findByText("Nenhum lote pode ser comparado hoje."),
-    ).toBeInTheDocument();
-  });
-
-  it("links to recording a lot while none is", async () => {
-    stubDashboard();
-    renderAt("/");
-
-    const check = await region("Melhor venda antecipada");
-    expect(await within(check).findByRole("link", { name: "Registrar lote" })).toHaveAttribute(
-      "href",
-      "/investimentos",
-    );
-  });
-
-  it("says the checks could not be run", async () => {
-    stubDashboard({
-      "GET /api/early-sale-checks": () => problem(500, "Internal Server Error", "boom"),
-    });
-    renderAt("/");
-
-    const check = await region("Melhor venda antecipada");
-    expect(await within(check).findByRole("alert")).toHaveTextContent(
-      "Não foi possível comparar os lotes.",
-    );
-  });
-
-  it("asks for the mortgage while none is registered", async () => {
-    stubDashboard({
-      "GET /api/early-sale-checks": () => problem(404, "Not Found", "no mortgage is registered"),
-    });
-    renderAt("/");
-
-    const check = await region("Melhor venda antecipada");
-    expect(
-      await within(check).findByText("Cadastre o financiamento para comparar os lotes."),
-    ).toBeInTheDocument();
-  });
-});
-
-describe("the best decision on the dashboard", () => {
-  const marketData = { bonds: FRESH_STATUS.bonds, focus: FRESH_STATUS.focus, indexes: [] };
-  const flow = (date: string, outstanding_balance: string): CashFlow => ({
-    date,
-    invested: "0.00",
-    prepaid: "0.00",
-    held: "0.00",
-    outstanding_balance,
-  });
-  const scenario = (flows: CashFlow[]): Scenario => ({
-    net_worth: "0.00",
-    cash: "0.00",
-    outstanding_balance: flows.at(-1)?.outstanding_balance ?? "0.00",
-    cash_flows: flows,
-  });
-  const ltn: Verdict = {
-    type: "ltn",
-    maturity: "2029-01-01",
-    rate: "0.1276",
-    unit_price: "771.26",
-    quantity: "12.96",
-    advantage: "1234.56",
-    avoided_cost: "456.78",
-    break_even_rate: "0.1102",
-    invest: scenario([flow("2024-03-20", "30000.00"), flow("2029-01-01", "0.00")]),
-    prepay: scenario([flow("2024-03-20", "20000.00"), flow("2029-01-01", "0.00")]),
-    projected_by: [],
-    market_data: marketData,
-  };
-  const ntnf: Verdict = { ...ltn, type: "ntn_f", maturity: "2035-01-01", advantage: "-250.30" };
-  const ntnfSmall: Verdict = {
-    type: "ntn_f",
-    maturity: "2031-01-01",
-    rate: "0.13",
-    unavailable: "amount_too_small",
-    projected_by: [],
-    market_data: marketData,
-  };
-  const decisionOf = (verdicts: Verdict[]) => () =>
-    Response.json({ amount: "10000.00", date: "2024-03-20", effect: "shorten_term", verdicts });
-
-  async function compare(amount: string) {
-    const form = await screen.findByRole("form", { name: "Simular decisão" });
-    fireEvent.change(within(form).getByLabelText("Valor"), { target: { value: amount } });
-    fireEvent.click(within(form).getByRole("button", { name: "Comparar" }));
-  }
-
-  it("compares the amount and shows the verdict of the highest advantage with its scenarios' balances", async () => {
-    const requests = stubDashboard({
-      "POST /api/decisions": decisionOf([ntnf, ntnfSmall, ltn]),
-    });
-    renderAt("/");
-
-    const best = await region("Melhor decisão");
-    expect(within(best).queryByRole("img")).not.toBeInTheDocument();
-    await compare("10.000,00");
-
-    expect(await within(best).findByText("Tesouro Prefixado 2029")).toBeInTheDocument();
     expect(
       requests.filter((r) => r.method === "POST").map((r) => [new URL(r.url).pathname, r.body]),
     ).toEqual([["/api/decisions", { amount: "10000.00", effect: "shorten_term" }]]);
-    expect(
-      within(best).getByText("Vantagem: +R$ 1.234,56, a favor de investir"),
-    ).toBeInTheDocument();
-    expect(
-      within(best).getByText(
-        "Taxa de equilíbrio: 11,02%. A taxa de hoje, 12,76%, está acima dela.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(best).getByRole("img", { name: "Saldo devedor ao investir e ao amortizar" }),
-    ).toBeInTheDocument();
-    expect(within(best).getByRole("link", { name: "Ver todos os títulos" })).toHaveAttribute(
+  });
+
+  it("links to Decidir with the amount prefilled, comparing it at once or to change it", async () => {
+    stubInicio({ "POST /api/decisions": decisionOf([ltn]) });
+    renderAt("/");
+
+    const card = await answerCard();
+    expect(within(card).getByRole("link", { name: "Ver comparação" })).toHaveAttribute(
       "href",
-      "/decidir",
+      "/decidir?valor=10000&comparar=true",
+    );
+    expect(within(card).getByRole("link", { name: "Mudar valor" })).toHaveAttribute(
+      "href",
+      "/decidir?valor=10000",
     );
   });
 
   it("tells apart advantages a cent apart however large", async () => {
-    stubDashboard({
+    stubInicio({
       "POST /api/decisions": decisionOf([
         { ...ltn, advantage: "100000000000000.01" },
         { ...ntnf, advantage: "100000000000000.02" },
@@ -498,143 +241,331 @@ describe("the best decision on the dashboard", () => {
     });
     renderAt("/");
 
-    await compare("10000");
-
-    const best = await region("Melhor decisão");
+    const card = await answerCard();
     expect(
-      await within(best).findByText("Tesouro Prefixado com Juros Semestrais 2035"),
+      within(card).getByRole("heading", {
+        name: "Investir em Tesouro Prefixado com Juros Semestrais 2035 rende mais",
+      }),
     ).toBeInTheDocument();
   });
 
-  it("shows prepaying as the best decision when every advantage favours it", async () => {
-    stubDashboard({
-      "POST /api/decisions": decisionOf([{ ...ltn, advantage: "-900.00" }, ntnf]),
-    });
+  it("states prepaying when every advantage favours it, against the bond it beats by least", async () => {
+    stubInicio({ "POST /api/decisions": decisionOf([{ ...ltn, advantage: "-900.00" }, ntnf]) });
     renderAt("/");
 
-    await compare("10000");
-
-    const best = await region("Melhor decisão");
+    const card = await answerCard();
+    expect(within(card).getByRole("heading", { name: "Amortizar rende mais" })).toBeInTheDocument();
     expect(
-      await within(best).findByText("Tesouro Prefixado com Juros Semestrais 2035"),
-    ).toBeInTheDocument();
-    expect(
-      within(best).getByText("Vantagem: -R$ 250,30, a favor de amortizar"),
-    ).toBeInTheDocument();
-  });
-
-  it("says no bond could be compared when every verdict is unavailable", async () => {
-    stubDashboard({ "POST /api/decisions": decisionOf([ntnfSmall]) });
-    renderAt("/");
-
-    await compare("10");
-
-    const best = await region("Melhor decisão");
-    expect(
-      await within(best).findByText("Nenhum título pôde ser comparado com esse valor."),
-    ).toBeInTheDocument();
-  });
-
-  it("says no bond on offer follows the mortgage's indexer", async () => {
-    stubDashboard({ "POST /api/decisions": decisionOf([]) });
-    renderAt("/");
-
-    await compare("10000");
-
-    const best = await region("Melhor decisão");
-    expect(
-      await within(best).findByText(
-        "Nenhum título à venda acompanha o indexador do financiamento.",
+      paragraph(
+        card,
+        "R$ 250,30 a mais do que investir em Tesouro Prefixado com Juros Semestrais 2035, até 01/01/2035.",
       ),
     ).toBeInTheDocument();
   });
 
-  it("shows what the API rejects next to the amount", async () => {
-    stubDashboard({
-      "POST /api/decisions": () =>
-        problem(422, "Unprocessable Entity", "validation failed", [
-          { location: "body.amount", message: "expected string to match pattern" },
-        ]),
-    });
+  it.each([
+    ["no bond follows the mortgage's indexer", []],
+    ["no verdict is available", [unavailable]],
+  ])("invites a comparison when %s", async (_, verdicts) => {
+    stubInicio({ "POST /api/decisions": decisionOf(verdicts) });
     renderAt("/");
 
-    await compare("abc");
-
-    const form = await screen.findByRole("form", { name: "Simular decisão" });
-    await waitFor(() => expect(within(form).getByLabelText("Valor")).toBeInvalid());
-  });
-
-  it("links to registering a mortgage while none is", async () => {
-    stubDashboard({
-      "POST /api/decisions": () => problem(404, "Not Found", "no mortgage is registered"),
-    });
-    renderAt("/");
-
-    await compare("10000");
-
-    const best = await region("Melhor decisão");
+    const card = await answerCard();
     expect(
-      await within(best).findByRole("link", { name: "Cadastrar financiamento" }),
-    ).toHaveAttribute("href", "/financiamento/editar");
+      within(card).getByRole("heading", { name: "Amortizar ou investir? Veja a comparação." }),
+    ).toBeInTheDocument();
+    expect(within(card).getByRole("link", { name: "Comparar agora" })).toHaveAttribute(
+      "href",
+      "/decidir?valor=10000&comparar=true",
+    );
+    expect(within(card).queryByRole("link", { name: "Mudar valor" })).not.toBeInTheDocument();
   });
 });
 
-describe("the market data on the dashboard", () => {
-  it("flags each kind of market data that is stale, failed or missing", async () => {
-    stubDashboard({
-      "GET /api/market-data/status": () =>
-        Response.json({
-          ...FRESH_STATUS,
-          indexes: [
-            { index: "tr", status: "failed", failed_at: "2024-03-20T09:00:00Z" },
-            { index: "selic", status: "fresh", refreshed_at: "2024-03-19T18:23:42Z" },
-          ],
-          bonds: { status: "stale", refreshed_at: "2024-03-15T18:24:00Z" },
-          focus: { status: "missing" },
-        } satisfies MarketDataStatus),
-    });
-    renderAt("/");
-
-    const marketData = await region("Dados de mercado");
-    const alerts = await within(marketData).findAllByRole("alert");
-    expect(
-      alerts.map((alert) =>
-        ["alert-title", "alert-description"].map(
-          (slot) => alert.querySelector(`[data-slot="${slot}"]`)?.textContent,
-        ),
-      ),
-    ).toEqual([
-      [
-        "Preços dos títulos",
-        "Dados desatualizados: a última atualização foi há mais de dois dias.",
+describe("the stale-data note", () => {
+  const staleVerdict: Verdict = {
+    ...ltn,
+    market_data: {
+      bonds: { status: "stale", refreshed_at: "2024-03-15T18:24:00Z" },
+      focus: { status: "missing" },
+      indexes: [
+        { index: "tr", status: "fresh", refreshed_at: "2024-03-19T18:23:39Z" },
+        { index: "ipca", status: "failed", refreshed_at: "2024-03-01T12:00:00Z" },
       ],
-      ["Expectativas do Focus", "Ainda não há expectativas do Focus."],
-      ["TR", "A última atualização falhou em 20/03/2024 09:00."],
-    ]);
-    expect(within(marketData).getByRole("link", { name: "Ver índices" })).toHaveAttribute(
-      "href",
-      "/mercado",
+    },
+  };
+  const note = (card: HTMLElement) => card.parentElement?.querySelector(":scope > p");
+
+  it("names each source the answer reads that is not fresh, directly under the card", async () => {
+    stubInicio({ "POST /api/decisions": decisionOf([staleVerdict]) });
+    renderAt("/");
+
+    const card = await answerCard();
+    expect(card.nextElementSibling).toBe(note(card));
+    expect(text(card.nextElementSibling as Element)).toBe(
+      "Preços dos títulos de 15/03. Expectativas do Focus indisponível. IPCA de 01/03. Atualizar",
     );
   });
 
-  it("says the market data is fresh when nothing is wrong with it", async () => {
-    stubDashboard();
+  it("is absent while the market data the answer reads is fresh", async () => {
+    stubInicio({ "POST /api/decisions": decisionOf([ltn]) });
     renderAt("/");
 
-    const marketData = await region("Dados de mercado");
-    expect(await within(marketData).findByText("Dados de mercado em dia.")).toBeInTheDocument();
-    expect(within(marketData).queryByRole("alert")).not.toBeInTheDocument();
+    const card = await answerCard();
+    expect(card.nextElementSibling).toBeNull();
   });
 
-  it("says the market data status could not be loaded", async () => {
-    stubDashboard({
-      "GET /api/market-data/status": () => problem(500, "Internal Server Error", "boom"),
+  it("refreshes the market data and reads the answer again once the refresh ends", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(2024, 2, 20, 9, 30));
+    const statuses = [FRESH_STATUS, { ...FRESH_STATUS, refreshing: true }, FRESH_STATUS];
+    let refreshed = false;
+    const requests = stubInicio({
+      "GET /api/market-data/status": () => Response.json(statuses.shift() ?? FRESH_STATUS),
+      "POST /api/market-data/refresh": () => {
+        refreshed = true;
+        return Response.json({ ...FRESH_STATUS, refreshing: true });
+      },
+      "POST /api/decisions": () => decisionOf([refreshed ? ltn : staleVerdict])(),
     });
     renderAt("/");
 
-    const marketData = await region("Dados de mercado");
-    expect(await within(marketData).findByRole("alert")).toHaveTextContent(
-      "Não foi possível verificar os dados de mercado.",
+    const card = await answerCard();
+    fireEvent.click(
+      within(card.parentElement as HTMLElement).getByRole("button", { name: "Atualizar" }),
     );
+    expect(await screen.findByText("Atualizando…")).toBeInTheDocument();
+    await vi.advanceTimersByTimeAsync(4000);
+
+    await waitFor(() => expect(card.nextElementSibling).toBeNull());
+    expect(requests.filter((r) => new URL(r.url).pathname === "/api/decisions").length).toBe(2);
+  });
+});
+
+describe("the mortgage panel", () => {
+  it("shows the balance after the latest installment due, the payoff month, the share paid and the next installment", async () => {
+    stubInicio();
+    renderAt("/");
+
+    const mortgage = await region("Financiamento");
+    expect(within(mortgage).getByText("R$ 30.000,00")).toBeInTheDocument();
+    expect(within(mortgage).getByText("Quitação prevista em junho de 2024")).toBeInTheDocument();
+    expect(within(mortgage).getByText("50% pago")).toBeInTheDocument();
+    expect(linkNamed(mortgage, "Próxima prestação · 10/04 · R$ 10.337,50")).toHaveAttribute(
+      "href",
+      "/financiamento",
+    );
+  });
+
+  it("counts an installment due today as paid", async () => {
+    vi.setSystemTime(new Date(2024, 3, 10, 0, 5));
+    stubInicio();
+    renderAt("/");
+
+    const mortgage = await region("Financiamento");
+    expect(within(mortgage).getByText("R$ 20.000,00")).toBeInTheDocument();
+    expect(within(mortgage).getByText("66% pago")).toBeInTheDocument();
+  });
+
+  it("reads today in the owner's time zone", async () => {
+    vi.stubEnv("TZ", "America/Sao_Paulo");
+    // Already 2024-04-10 in UTC, but still the evening of 2024-04-09 in São Paulo.
+    vi.setSystemTime(new Date("2024-04-10T02:55:00Z"));
+    stubInicio();
+    renderAt("/");
+
+    const mortgage = await region("Financiamento");
+    expect(within(mortgage).getByText("R$ 30.000,00")).toBeInTheDocument();
+  });
+
+  it("owes the amount financed before the first installment is due", async () => {
+    vi.setSystemTime(new Date(2024, 0, 9, 23, 55));
+    stubInicio();
+    renderAt("/");
+
+    const mortgage = await region("Financiamento");
+    expect(within(mortgage).getByText("R$ 60.000,00")).toBeInTheDocument();
+    expect(within(mortgage).getByText("0% pago")).toBeInTheDocument();
+    expect(linkNamed(mortgage, "Próxima prestação · 10/01 · R$ 10.640,50")).toBeInTheDocument();
+  });
+
+  it("owes nothing once the last installment is due", async () => {
+    vi.setSystemTime(new Date(2024, 6, 1));
+    stubInicio();
+    renderAt("/");
+
+    const mortgage = await region("Financiamento");
+    expect(within(mortgage).getByText("R$ 0,00")).toBeInTheDocument();
+    expect(within(mortgage).getByText("100% pago")).toBeInTheDocument();
+    expect(within(mortgage).getByRole("link", { name: "Ver prestações" })).toHaveAttribute(
+      "href",
+      "/financiamento",
+    );
+  });
+});
+
+describe("the investments panel", () => {
+  const sameBond: LotValued = { ...quotedLot, id: 2, purchase_date: "2023-05-02" };
+  const unquoted: LotValued = {
+    ...quotedLot,
+    id: 3,
+    type: "ntn_b_principal",
+    maturity: "2035-05-15",
+    values: undefined,
+    values_unavailable: "missing_ipca",
+  };
+  const lot: Lot = {
+    id: 1,
+    type: "ltn",
+    maturity: "2026-01-01",
+    purchase_date: "2022-01-03",
+    rate: "0.1",
+    unit_price: "800.00",
+    quantity: "1",
+  };
+  const checksOf = (checks: EarlySaleCheck[]) => () =>
+    Response.json({ date: "2024-03-20", effect: "shorten_term", checks });
+
+  it("shows the net market value, the lots and bonds held, and the lots left out of the total", async () => {
+    stubInicio({
+      "GET /api/lots": () =>
+        Response.json({
+          lots: [quotedLot, sameBond, unquoted],
+          market_value: { gross: "1800.00", net: "1765.00" },
+        }),
+    });
+    renderAt("/");
+
+    const investments = await region("Investimentos");
+    expect(within(investments).getByText("Valor de mercado líquido")).toBeInTheDocument();
+    expect(within(investments).getByText("R$ 1.765,00")).toBeInTheDocument();
+    expect(within(investments).getByText("3 compras · 2 títulos")).toBeInTheDocument();
+    expect(
+      within(investments).getByText("1 compra sem valor de mercado ficou fora do total."),
+    ).toBeInTheDocument();
+  });
+
+  it("says no lot has a market value when none has", async () => {
+    stubInicio({ "GET /api/lots": () => Response.json({ lots: [unquoted] }) });
+    renderAt("/");
+
+    const investments = await region("Investimentos");
+    expect(
+      within(investments).getByText("Nenhuma compra tem valor de mercado hoje."),
+    ).toBeInTheDocument();
+    expect(within(investments).getByText("1 compra · 1 título")).toBeInTheDocument();
+  });
+
+  it.each([
+    [[], "Venda antecipada · Nenhuma vale a pena agora"],
+    [["sell", "hold"], "Venda antecipada · 1 vale a pena agora"],
+    [["sell", "sell"], "Venda antecipada · 2 valem a pena agora"],
+  ] as const)("sums up the early sale checks %j", async (verdicts, summary) => {
+    stubInicio({
+      "GET /api/lots": () =>
+        Response.json({ lots: [quotedLot], market_value: { gross: "900.00", net: "882.50" } }),
+      "GET /api/early-sale-checks": checksOf(
+        verdicts.map((verdict) => ({
+          lot,
+          verdict,
+          advantage: verdict === "sell" ? "-10.00" : "10.00",
+          projected_by: [],
+          market_data: freshMarketData,
+        })),
+      ),
+    });
+    renderAt("/");
+
+    const investments = await region("Investimentos");
+    expect(await within(investments).findByRole("link", { name: summary })).toHaveAttribute(
+      "href",
+      "/investimentos/venda-antecipada",
+    );
+  });
+
+  it("invites recording a lot while none is", async () => {
+    stubInicio();
+    renderAt("/");
+
+    const investments = await region("Investimentos");
+    expect(within(investments).getByRole("link", { name: "Adicionar compra" })).toHaveAttribute(
+      "href",
+      "/investimentos",
+    );
+    expect(within(investments).queryByText("Valor de mercado líquido")).not.toBeInTheDocument();
+  });
+});
+
+describe("the next steps", () => {
+  const steps = async () =>
+    within(await region("Próximos passos"))
+      .getAllByRole("listitem")
+      .map((item) => [words(item), item.querySelector("a")?.getAttribute("href") ?? null]);
+
+  it("marks the mortgage done and links to each step still to do", async () => {
+    stubInicio();
+    renderAt("/");
+
+    expect(await steps()).toEqual([
+      ["Configurar o financiamento Concluído", null],
+      ["Registrar o último extrato do banco", "/financiamento"],
+      ["Adicionar suas compras do Tesouro", "/investimentos"],
+    ]);
+  });
+
+  it("marks a statement and a lot done once one of each is recorded", async () => {
+    stubInicio({
+      "GET /api/mortgage/statements": () => Response.json({ statements: [statement] }),
+    });
+    renderAt("/");
+
+    expect(await steps()).toEqual([
+      ["Configurar o financiamento Concluído", null],
+      ["Registrar o último extrato do banco Concluído", null],
+      ["Adicionar suas compras do Tesouro", "/investimentos"],
+    ]);
+  });
+
+  it("disappears once every step is done", async () => {
+    stubInicio({
+      "GET /api/mortgage/statements": () => Response.json({ statements: [statement] }),
+      "GET /api/lots": () => Response.json({ lots: [quotedLot] }),
+    });
+    renderAt("/");
+
+    await answerCard();
+    expect(screen.queryByRole("region", { name: "Próximos passos" })).not.toBeInTheDocument();
+  });
+});
+
+describe("the recent activity", () => {
+  it("lists the latest three statements and prepayments, newest first", async () => {
+    stubInicio({
+      "GET /api/mortgage/statements": () =>
+        Response.json({
+          statements: [{ ...statement, id: 1, date: "2023-12-15", drift: "-1.00" }, statement],
+        }),
+      "GET /api/mortgage/prepayments": () =>
+        Response.json({
+          prepayments: [{ ...prepayment, id: 8, date: "2024-01-20", amount: "500.00" }, prepayment],
+        }),
+    });
+    renderAt("/");
+
+    const activity = await region("Atividade recente");
+    const rows = within(activity).getAllByRole("link");
+    expect(rows.map((row) => [words(row), row.getAttribute("href")])).toEqual([
+      ["Amortização extraordinária 02/03/2024 R$ 15.000,00", "/financiamento"],
+      ["Extrato registrado 15/02/2024 · diferença de R$ 0,42", "/financiamento"],
+      ["Amortização extraordinária 20/01/2024 R$ 500,00", "/financiamento"],
+    ]);
+  });
+
+  it("is absent while nothing is recorded", async () => {
+    stubInicio();
+    renderAt("/");
+
+    await answerCard();
+    expect(screen.queryByRole("region", { name: "Atividade recente" })).not.toBeInTheDocument();
   });
 });

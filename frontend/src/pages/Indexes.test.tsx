@@ -137,7 +137,6 @@ function stubBackend(partial: Partial<Backend>, routes: Routes = {}): RecordedRe
     ...partial,
   };
   return stubRoutes({
-    "GET /api/health": () => Response.json({ status: "ok" }),
     "GET /api/market-data/status": () => Response.json(backend.status),
     ...Object.fromEntries(
       Object.keys(HISTORIES).map((index) => [

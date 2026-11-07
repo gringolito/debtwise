@@ -8,6 +8,7 @@ import {
   indexProjectionsKey,
   startMarketDataRefresh,
 } from "@/lib/api";
+import { decisionsKey } from "@/lib/decisionQueries";
 import { lotsKey } from "@/lib/lotQueries";
 import { scheduleKey } from "@/lib/mortgageQueries";
 
@@ -17,8 +18,8 @@ const POLL_MS = 2000;
 /**
  * useMarketData returns the status of the market data and a way to refresh it. While a refresh
  * runs it polls the status, and when the refresh ends it reloads what reads the market data: the
- * index histories and projections, the bond catalogue, the mortgage schedule, the lots' values and
- * the early sale checks.
+ * index histories and projections, the bond catalogue, the mortgage schedule, the lots' values,
+ * the early sale checks and the decisions read as queries.
  */
 export function useMarketData() {
   const queryClient = useQueryClient();
@@ -43,6 +44,7 @@ export function useMarketData() {
         scheduleKey,
         lotsKey,
         earlySaleChecksKeys,
+        decisionsKey,
       ]) {
         void queryClient.invalidateQueries({ queryKey });
       }

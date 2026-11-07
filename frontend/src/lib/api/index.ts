@@ -14,7 +14,6 @@ import {
   editLot,
   editPrepayment,
   editStatement,
-  health,
   importLots as importLotsRequest,
   indexHistory,
   indexProjection,
@@ -44,7 +43,6 @@ import type {
   EarlySaleCheck,
   EarlySaleCheckList,
   ErrorModel,
-  Health,
   IndexHistory,
   IndexProjection,
   IndexStatus,
@@ -91,7 +89,6 @@ export type {
   DecisionInput,
   EarlySaleCheck,
   EarlySaleCheckList,
-  Health,
   IndexHistory,
   IndexProjection,
   IndexStatus,
@@ -146,11 +143,6 @@ export class ApiError extends Error {
 
 function failure(error: unknown, response: Response | undefined): ApiError {
   return new ApiError(response?.status, error as ErrorModel | undefined);
-}
-
-export async function fetchHealth(): Promise<Health> {
-  const { data } = await health({ throwOnError: true });
-  return data;
 }
 
 /** indexHistoriesKey prefixes the query key of every index's history, to invalidate them all. */

@@ -84,7 +84,6 @@ export function stubMortgageApi({
   });
 
   return stubRoutes({
-    "GET /api/health": () => Response.json({ status: "ok" }),
     "GET /api/mortgage": () => (registered ? Response.json(registered) : notFound()),
     "GET /api/mortgage/schedule": () => (registered ? Response.json(served) : notFound()),
     "PUT /api/mortgage": (req) => {

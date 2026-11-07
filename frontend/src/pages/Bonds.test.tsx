@@ -67,7 +67,6 @@ interface Backend {
 
 function stubBackend(backend: Backend): RecordedRequest[] {
   return stubRoutes({
-    "GET /api/health": () => Response.json({ status: "ok" }),
     "GET /api/market-data/status": () => Response.json(backend.status),
     "GET /api/bonds": () => Response.json(backend.catalogue),
   });

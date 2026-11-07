@@ -29,17 +29,14 @@ const notFound = () => problem(404, "Not Found", "no mortgage is registered");
 
 describe("navigation", () => {
   it("links the header to the home page and to the mortgage", async () => {
-    stubRoutes({
-      "GET /api/health": () => Response.json({ status: "ok" }),
-      "GET /api/mortgage": notFound,
-    });
+    stubRoutes({ "GET /api/mortgage": notFound });
     renderAt("/");
 
     fireEvent.click(await screen.findByRole("link", { name: "Financiamento" }));
 
     expect(await screen.findByText("Nenhum financiamento cadastrado.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("link", { name: "Início" }));
-    expect(await screen.findByText("Servidor disponível")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Início" })).toBeInTheDocument();
   });
 });
 

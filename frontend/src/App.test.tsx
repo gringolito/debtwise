@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderAt } from "./test/renderAt";
 import { stubRoutes, stubServer } from "./test/stubServer";
@@ -7,55 +7,19 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("server status", () => {
-  it("reports a healthy server", async () => {
-    const requests = stubRoutes({ "GET /api/health": () => Response.json({ status: "ok" }) });
+describe("the API", () => {
+  it("is called on the page's origin", async () => {
+    const requests = stubRoutes({});
 
     renderAt("/");
 
-    expect(await screen.findByText("Servidor disponível")).toBeInTheDocument();
     // Same origin as the page: in the images Caddy proxies /api to the server.
-    expect(requests).toContainEqual({
-      method: "GET",
-      url: new URL("/api/health", window.location.origin).href,
-    });
-  });
-
-  it("reports an unavailable server", async () => {
-    stubServer(() =>
-      Response.json(
-        { title: "Service Unavailable", status: 503, detail: "database is unavailable" },
-        { status: 503 },
-      ),
-    );
-
-    renderAt("/");
-
-    expect(await screen.findByText("Servidor indisponível")).toBeInTheDocument();
-  });
-
-  it("reports an unreachable server", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => {
-        throw new TypeError("Failed to fetch");
+    await waitFor(() =>
+      expect(requests).toContainEqual({
+        method: "GET",
+        url: new URL("/api/mortgage", window.location.origin).href,
       }),
     );
-
-    renderAt("/");
-
-    expect(await screen.findByText("Servidor indisponível")).toBeInTheDocument();
-  });
-
-  it("says it is checking until the server answers", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise<Response>(() => {})),
-    );
-
-    renderAt("/");
-
-    expect(await screen.findByText("Verificando servidor…")).toBeInTheDocument();
   });
 });
 
