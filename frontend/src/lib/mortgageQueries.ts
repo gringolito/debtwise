@@ -7,6 +7,7 @@ import {
   type PrepaymentInput,
   postPrepayment,
   postStatement,
+  previewSchedule,
   putMortgage,
   putPrepayment,
   putStatement,
@@ -57,6 +58,11 @@ export function useSaveMortgage() {
       return queryClient.invalidateQueries({ queryKey: mortgageKey, exact: true });
     },
   });
+}
+
+/** usePreviewSchedule computes the schedule of terms that are not registered yet. */
+export function usePreviewSchedule() {
+  return useMutation({ mutationFn: previewSchedule });
 }
 
 export function useDeleteMortgage() {

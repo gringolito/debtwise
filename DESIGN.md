@@ -133,19 +133,34 @@ Large Title at semibold weight. The wordmark is Title 2. These seven sizes are t
 
 ## Onboarding
 
-Setup Assistant pattern: a welcome screen, then six steps. Full-screen, no sidebar, a thin soft-accent
-progress bar on the top edge, "Passo N de 6" once in footnote grey at the top right, a centered 560px
+Setup Assistant pattern: a welcome screen, then six steps. While no mortgage is registered, every
+page of the app opens it in place of the page (unknown addresses still show the 404); once one
+is, it is unreachable. Full-screen, no sidebar, a thin soft-accent progress bar on the top edge,
+the wordmark top left, "Passo N de 6" once in footnote grey at the top right, a centered 560px
 column, a Large Title that asks a question, one sentence of context, the inputs, a graphite
-"Continuar" and a plain "Voltar".
+"Continuar" and a plain "Voltar" that keeps what was typed.
 
-- Boas-vindas (unnumbered)
-1. O contrato: data do contrato, valor financiado, prazo, primeira prestação
-2. Sistema de amortização: SAC ou Price, framed as "find it in your contract", not as advice
-3. Correção do saldo: TR, IPCA ou nenhum
-4. Juros do contrato: taxa anual, efetiva/nominal, parcela poupança opcional, mudanças de taxa
-5. Seguros e taxas: valor de avaliação, MIP, DFI, taxa de administração, with a helper that
-   derives a rate from the first installment
-6. Revisão: summary, payoff date and balance curve
+- Boas-vindas (unnumbered): the graphite tile with the house icon, three inset rows of what
+  DebtWise does, and a graphite "Configurar meu financiamento".
+1. O contrato: data do contrato, valor financiado, prazo, primeira prestação, typed in place in an
+   inset grouped list; the term also reads in years
+2. Sistema de amortização: SAC ou Price as two selectable cards with a schematic of the
+   installments, framed as "find it in your contract", not as advice
+3. Correção do saldo: TR, IPCA ou nenhum as selectable rows, with a tint note on why it matters
+4. Juros do contrato: the annual rate as a hero figure underlined in the soft accent, a segmented
+   Efetiva/Nominal, a toggle for the poupança part, and "Adicionar mudança" for each later rate
+   change, which opens its own group
+5. Seguros e taxas: valor de avaliação, MIP, DFI, taxa de administração (left empty, it is none),
+   with a text button that opens what each insurance charged on the first installment and derives
+   its rate from it
+6. Revisão: a white panel with the payoff month and the current installment (the first one while
+   none is due) over the balance curve, graphite up to today and dashed after it, then the informed
+   terms with "Editar", which goes back to step 1. "Concluir" saves and opens Início.
+
+The review shows the schedule the server computes for the typed terms before anything is saved.
+When the server rejects the terms, on the review or on "Concluir", the owner goes back to the
+first step that asks for a rejected field, with "Confira os campos destacados." above it and each
+rejected field marked.
 
 ## Voice
 

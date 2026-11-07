@@ -2929,6 +2929,48 @@
         ]
       }
     },
+    "/mortgage/schedule/preview": {
+      "post": {
+        "description": "Returns the installments the given terms would schedule, month by month, without registering them, so a client can show what the terms give before saving them.",
+        "operationId": "preview-mortgage-schedule",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MortgageTerms"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Schedule"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Preview a mortgage's schedule",
+        "tags": [
+          "Mortgage"
+        ]
+      }
+    },
     "/mortgage/statements": {
       "get": {
         "description": "Returns the statements recorded on the mortgage, each compared with the outstanding balance the schedule computed for its date.",

@@ -40,7 +40,7 @@
       }
     },
     {
-      "files": ["src/components/ui/chart.tsx"],
+      "files": ["src/components/ui/chart.tsx", "src/components/ui/progress.tsx"],
       "rules": { "shadcn/no-inline-styles": "off" }
     },
     {

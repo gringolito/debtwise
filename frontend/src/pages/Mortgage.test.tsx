@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CorrectionIndex } from "@/lib/api";
 import { rowTexts, text } from "@/test/dom";
 import { stubMortgageApi } from "@/test/mortgageApi";
+import { completeOnboarding } from "@/test/onboarding";
 import {
   deferredSchedule,
   ipcaMortgage,
@@ -25,56 +26,18 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const notFound = () => problem(404, "Not Found", "no mortgage is registered");
-
 describe("navigation", () => {
   it("links the header to the home page and to the mortgage", async () => {
-    stubRoutes({ "GET /api/mortgage": notFound });
+    stubMortgageApi({ mortgage: registeredMortgage });
     renderAt("/");
 
     fireEvent.click(await screen.findByRole("link", { name: "Financiamento" }));
 
-    expect(await screen.findByText("Nenhum financiamento cadastrado.")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("region", { name: "Condições do contrato" }),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("link", { name: "Início" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Início" })).toBeInTheDocument();
-  });
-});
-
-describe("mortgage page without a mortgage", () => {
-  it("offers to register one", async () => {
-    stubRoutes({ "GET /api/mortgage": notFound });
-
-    renderAt("/financiamento");
-
-    expect(await screen.findByText("Nenhum financiamento cadastrado.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Cadastrar financiamento" })).toHaveAttribute(
-      "href",
-      "/financiamento/editar",
-    );
-  });
-
-  it("says it is loading until the server answers", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise<Response>(() => {})),
-    );
-
-    renderAt("/financiamento");
-
-    expect(await screen.findByText("Carregando financiamento…")).toBeInTheDocument();
-  });
-
-  it("says it could not load the mortgage when the server fails", async () => {
-    stubRoutes({
-      "GET /api/mortgage": () => problem(500, "Internal Server Error", "unexpected failure"),
-    });
-
-    renderAt("/financiamento");
-
-    expect(
-      await screen.findByText("Não foi possível carregar o financiamento."),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Nenhum financiamento cadastrado.")).not.toBeInTheDocument();
   });
 });
 
@@ -650,7 +613,7 @@ describe("the schedule of an indexed mortgage", () => {
 });
 
 describe("deleting the mortgage", () => {
-  it("asks for confirmation, deletes and then shows the empty state", async () => {
+  it("asks for confirmation, deletes and then opens the onboarding", async () => {
     const requests = stubMortgageApi({ mortgage: registeredMortgage });
     renderAt("/financiamento");
 
@@ -659,7 +622,9 @@ describe("deleting the mortgage", () => {
     expect(requests.some((req) => req.method === "DELETE")).toBe(false);
     fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
 
-    expect(await screen.findByText("Nenhum financiamento cadastrado.")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Seu financiamento, com clareza." }),
+    ).toBeInTheDocument();
     expect(requests.filter((req) => req.method === "DELETE")).toHaveLength(1);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
@@ -737,8 +702,8 @@ describe("a schedule that changed on the server", () => {
     fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
-    fireEvent.click(await screen.findByRole("link", { name: "Cadastrar financiamento" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
+    await completeOnboarding();
+    fireEvent.click(await screen.findByRole("link", { name: "Financiamento" }));
 
     await expectOnlyNewSchedule();
   });
@@ -759,8 +724,8 @@ describe("prepayments and statements of a mortgage deleted and registered again"
     fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
-    fireEvent.click(await screen.findByRole("link", { name: "Cadastrar financiamento" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
+    await completeOnboarding();
+    fireEvent.click(await screen.findByRole("link", { name: "Financiamento" }));
 
     await screen.findByRole("region", { name: "Condições do contrato" });
     expect(screen.queryByText("R$ 12.500,50")).not.toBeInTheDocument();

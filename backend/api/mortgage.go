@@ -10,6 +10,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/gringolito/debtwise/backend/decimal"
+	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
@@ -194,30 +195,60 @@ func registerMortgage(humaAPI huma.API, mortgages Mortgages, store IndexStore, n
 			return nil, err
 		}
 
-		out := &scheduleOutput{Body: schedule{Installments: make([]scheduledInstallment, 0, terms.TermMonths)}}
-		for m := range terms.Schedule(outlook, events, now()) {
-			out.Body.Installments = append(out.Body.Installments, scheduledInstallment{
-				Number:             m.Number,
-				DueDate:            m.DueDate.Format(time.DateOnly),
-				Correction:         m.Correction.String(),
-				IndexValues:        newCorrectionIndexes(m.IndexValues),
-				Rate:               m.Rate.String(),
-				RateIndexValues:    newCorrectionIndexes(m.RateIndexValues),
-				Interest:           m.Interest.String(),
-				Amortization:       m.Amortization.String(),
-				MIP:                m.MIP.String(),
-				DFI:                m.DFI.String(),
-				Fee:                m.Fee.String(),
-				Amount:             m.Amount.String(),
-				Prepaid:            m.Prepaid.String(),
-				OutstandingBalance: m.OutstandingBalance.String(),
-			})
+		return &scheduleOutput{Body: newSchedule(terms, outlook, events, now())}, nil
+	})
+
+	register(humaAPI, huma.Operation{
+		OperationID: "preview-mortgage-schedule",
+		Method:      http.MethodPost,
+		Path:        mortgagePath + "/schedule/preview",
+		Summary:     "Preview a mortgage's schedule",
+		Description: "Returns the installments the given terms would schedule, month by month, without registering them, so a client can show what the terms give before saving them.",
+		Tags:        []string{mortgageTag},
+	}, func(ctx context.Context, in *struct{ Body mortgageTerms }) (*scheduleOutput, error) {
+		terms, err := in.Body.terms()
+		if err != nil {
+			return nil, err
 		}
 
-		return out, nil
+		if err := violationsFailure(terms.Validate()); err != nil {
+			return nil, err
+		}
+
+		outlook, err := outlookOf(ctx, store, terms.Indexes()...)
+		if err != nil {
+			return nil, err
+		}
+
+		return &scheduleOutput{Body: newSchedule(terms, outlook, mortgage.Events{}, now())}, nil
 	})
 
 	registerMortgageEvents(humaAPI, mortgages, store, now)
+}
+
+// newSchedule lists the installments terms schedule under outlook and events, as of today.
+func newSchedule(terms mortgage.Terms, outlook indexes.Outlook, events mortgage.Events, today time.Time) schedule {
+	out := schedule{Installments: make([]scheduledInstallment, 0, terms.TermMonths)}
+	for m := range terms.Schedule(outlook, events, today) {
+		out.Installments = append(out.Installments, scheduledInstallment{
+			Number:             m.Number,
+			DueDate:            m.DueDate.Format(time.DateOnly),
+			Correction:         m.Correction.String(),
+			IndexValues:        newCorrectionIndexes(m.IndexValues),
+			Rate:               m.Rate.String(),
+			RateIndexValues:    newCorrectionIndexes(m.RateIndexValues),
+			Interest:           m.Interest.String(),
+			Amortization:       m.Amortization.String(),
+			MIP:                m.MIP.String(),
+			DFI:                m.DFI.String(),
+			Fee:                m.Fee.String(),
+			Amount:             m.Amount.String(),
+			Prepaid:            m.Prepaid.String(),
+			OutstandingBalance: m.OutstandingBalance.String(),
+		})
+	}
+
+	return out
 }
 
 func mortgageFailure(err error) error {

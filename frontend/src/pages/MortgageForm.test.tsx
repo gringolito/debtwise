@@ -4,7 +4,7 @@ import type { RegisteredMortgage } from "@/lib/api";
 import { stubMortgageApi } from "@/test/mortgageApi";
 import { registeredMortgage, trMortgage } from "@/test/mortgageFixtures";
 import { renderAt } from "@/test/renderAt";
-import { problem, stubRoutes } from "@/test/stubServer";
+import { problem } from "@/test/stubServer";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -26,139 +26,9 @@ async function savedPage() {
   return screen.findByRole("region", { name: "Condições do contrato" });
 }
 
-describe("registering the mortgage", () => {
-  it("sends the terms as the API reads them and shows the saved mortgage", async () => {
-    const requests = stubMortgageApi({ onSave: () => registeredMortgage });
-    renderAt("/financiamento");
-
-    fireEvent.click(await screen.findByRole("link", { name: "Cadastrar financiamento" }));
-
-    expect(
-      await screen.findByRole("heading", { name: "Cadastrar financiamento" }),
-    ).toBeInTheDocument();
-    for (const name of [
-      "Taxa de juros",
-      "Taxa de juros 1",
-      "MIP",
-      "MIP 1",
-      "DFI",
-      "DFI 1",
-      "Taxa de administração",
-      "Taxa de administração 1",
-    ]) {
-      expect(group(name)).toBeInTheDocument();
-    }
-    expect(screen.queryByRole("group", { name: / 2$/ })).not.toBeInTheDocument();
-    fill("Data do contrato", "2023-12-10");
-    fill("Valor financiado", "60.000,00");
-    fill("Prazo (meses)", "6");
-    fill("Primeira prestação", "2024-01-10");
-    fill("Sistema de amortização", "price");
-    fill("Indexador", "tr");
-    fill("Valor de avaliação", "100.000");
-    fill("Vigência da taxa de juros 1", "2023-12-10");
-    fill("Taxa de juros 1 (% a.a.)", "9,5");
-    fill("Base da taxa de juros 1", "effective");
-    fill("Vigência do MIP 1", "2023-12-10");
-    fill("Taxa do MIP 1 (% a.m.)", "0,0258");
-    fill("Vigência do DFI 1", "2023-12-10");
-    fill("Taxa do DFI 1 (% a.m.)", "0,01");
-    fill("Vigência da taxa de administração 1", "2023-12-10");
-    fill("Valor da taxa de administração 1 (R$)", "25,90");
-    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
-
-    expect(await savedPage()).toBeInTheDocument();
-    expect(putBodies(requests)).toEqual([
-      {
-        contract_date: "2023-12-10",
-        original_amount: "60000.00",
-        term_months: 6,
-        first_installment_date: "2024-01-10",
-        amortization_system: "price",
-        indexer: "tr",
-        appraisal_value: "100000",
-        contract_rates: [
-          {
-            effective_from: "2023-12-10",
-            rate: "0.095",
-            basis: "effective",
-            poupanca_additional: false,
-          },
-        ],
-        mip_rates: [{ effective_from: "2023-12-10", rate: "0.000258" }],
-        dfi_rates: [{ effective_from: "2023-12-10", rate: "0.0001" }],
-        fees: [{ effective_from: "2023-12-10", amount: "25.90" }],
-      },
-    ]);
-    expect(screen.getByRole("heading", { name: "Financiamento" })).toBeInTheDocument();
-    expect(
-      await screen.findByRole("table", { name: "Evolução do financiamento" }),
-    ).toBeInTheDocument();
-  });
-
-  it("sends text the API cannot read as typed so the API rejects it", async () => {
-    const requests = stubMortgageApi({
-      onSave: () => problem(422, "Unprocessable Entity", "validation failed"),
-    });
-    renderAt("/financiamento/editar");
-
-    await screen.findByRole("heading", { name: "Cadastrar financiamento" });
-    fill("Valor financiado", "muito");
-    fill("Taxa de juros 1 (% a.a.)", "alta");
-    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
-
-    await screen.findByRole("alert");
-    expect(putBodies(requests)).toEqual([
-      {
-        contract_date: "",
-        original_amount: "muito",
-        term_months: null,
-        first_installment_date: "",
-        amortization_system: "sac",
-        indexer: "none",
-        appraisal_value: "",
-        contract_rates: [
-          { effective_from: "", rate: "alta", basis: "nominal", poupanca_additional: false },
-        ],
-        mip_rates: [{ effective_from: "", rate: "" }],
-        dfi_rates: [{ effective_from: "", rate: "" }],
-        fees: [{ effective_from: "", amount: "" }],
-      },
-    ]);
-  });
-
-  it("sends the poupança additional part when the owner declares it", async () => {
-    const requests = stubMortgageApi({ onSave: () => registeredMortgage });
-    renderAt("/financiamento/editar");
-
-    await screen.findByRole("heading", { name: "Cadastrar financiamento" });
-    const part = screen.getByLabelText("Parte variável da taxa de juros 1");
-    expect(part).toHaveValue("none");
-    expect(
-      within(part)
-        .getAllByRole("option")
-        .map((option) => [option.getAttribute("value"), option.textContent]),
-    ).toEqual([
-      ["none", "Nenhuma"],
-      ["poupanca_additional", "Adicional da poupança"],
-    ]);
-    fill("Parte variável da taxa de juros 1", "poupanca_additional");
-    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
-
-    await savedPage();
-    expect(putBodies(requests)).toEqual([
-      expect.objectContaining({
-        contract_rates: [
-          { effective_from: "", rate: "", basis: "nominal", poupanca_additional: true },
-        ],
-      }),
-    ]);
-  });
-});
-
 describe("the indexer choice", () => {
-  it("offers the indexers in pt-BR and starts on none for a new mortgage", async () => {
-    stubMortgageApi();
+  it("offers the indexers in pt-BR", async () => {
+    stubMortgageApi({ mortgage: registeredMortgage });
     renderAt("/financiamento/editar");
 
     const select = await screen.findByLabelText("Indexador");
@@ -533,32 +403,6 @@ describe("a rejected mortgage", () => {
   });
 });
 
-describe("loading the form", () => {
-  it("says it could not load the mortgage when the server fails", async () => {
-    stubRoutes({
-      "GET /api/mortgage": () => problem(500, "Internal Server Error", "unexpected failure"),
-    });
-
-    renderAt("/financiamento/editar");
-
-    expect(
-      await screen.findByText("Não foi possível carregar o financiamento."),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Salvar" })).not.toBeInTheDocument();
-  });
-
-  it("says it is loading until the server answers", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise<Response>(() => {})),
-    );
-
-    renderAt("/financiamento/editar");
-
-    expect(await screen.findByText("Carregando financiamento…")).toBeInTheDocument();
-  });
-});
-
 describe("money typed with several thousands groups", () => {
   it.each([
     ["1.250.000,00", "1250000.00"],
@@ -905,29 +749,6 @@ describe("the rates of the insurances charged on the first installment", () => {
     fill("Valor do DFI na primeira prestação (R$)", charge);
 
     expect(screen.getByLabelText("Taxa do DFI 1 (% a.m.)")).toHaveValue(rate);
-  });
-
-  it("says each value needs the amount it is charged on, and fills the rate once it is there", async () => {
-    stubMortgageApi();
-    renderAt("/financiamento/editar");
-
-    await screen.findByRole("heading", { name: "Cadastrar financiamento" });
-    const mip = screen.getByLabelText("Valor do MIP na primeira prestação (R$)");
-    const dfi = screen.getByLabelText("Valor do DFI na primeira prestação (R$)");
-    expect(mip).toHaveAccessibleDescription("Preencha o valor financiado para calcular a taxa.");
-    expect(dfi).toHaveAccessibleDescription("Preencha o valor de avaliação para calcular a taxa.");
-
-    fill("Valor do MIP na primeira prestação (R$)", "15,48");
-    fill("Valor do DFI na primeira prestação (R$)", "33,50");
-    expect(screen.getByLabelText("Taxa do MIP 1 (% a.m.)")).toHaveValue("");
-    expect(screen.getByLabelText("Taxa do DFI 1 (% a.m.)")).toHaveValue("");
-
-    fill("Valor financiado", "60.000,00");
-    fill("Valor de avaliação", "100.000,00");
-    expect(mip).not.toHaveAccessibleDescription();
-    expect(dfi).not.toHaveAccessibleDescription();
-    expect(screen.getByLabelText("Taxa do MIP 1 (% a.m.)")).toHaveValue("0,0258");
-    expect(screen.getByLabelText("Taxa do DFI 1 (% a.m.)")).toHaveValue("0,0335");
   });
 
   it("saves the rate the owner types over the derived one, dropping the value it no longer charges", async () => {
