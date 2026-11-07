@@ -46,3 +46,6 @@ sketch
 
 ### Local claude configurations ###
 .claude/*.local.json
+
+### Stitch working artifacts (captures, screenshots, palette drafts) ###
+/.stitch/
