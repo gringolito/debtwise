@@ -1,12 +1,19 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RegisteredMortgage } from "@/lib/api";
 import { stubMortgageApi } from "@/test/mortgageApi";
 import { registeredMortgage, trMortgage } from "@/test/mortgageFixtures";
 import { renderAt } from "@/test/renderAt";
 import { problem } from "@/test/stubServer";
 
+// Before the first installment, the balance the mortgage page shows is the amount financed.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2023-12-01T12:00:00"));
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -22,8 +29,10 @@ function group(name: string) {
   return screen.getByRole("group", { name });
 }
 
+/** savedPage is the summary of the mortgage page the form returns to. */
 async function savedPage() {
-  return screen.findByRole("region", { name: "Condições do contrato" });
+  await screen.findByRole("table", { name: "Prestações" });
+  return screen.getByText("Saldo devedor").closest("dl") as HTMLElement;
 }
 
 describe("the indexer choice", () => {
@@ -95,7 +104,7 @@ describe("editing the mortgage", () => {
     const requests = stubMortgageApi({ mortgage: registeredMortgage, onSave: () => edited });
     renderAt("/financiamento");
 
-    fireEvent.click(await screen.findByRole("link", { name: "Editar" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Editar contrato" }));
 
     expect(
       await screen.findByRole("heading", { name: "Editar financiamento" }),

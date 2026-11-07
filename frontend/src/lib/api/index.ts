@@ -23,6 +23,8 @@ import {
   listStatements,
   marketDataStatus,
   previewMortgageSchedule,
+  previewPrepayment as requestPrepaymentPreview,
+  previewStatement as requestStatementPreview,
   projectionMethods,
   readMortgage,
   readMortgageSchedule,
@@ -61,6 +63,9 @@ import type {
   Prepayment,
   PrepaymentInput,
   PrepaymentList,
+  PrepaymentOutcome,
+  PrepaymentPreview,
+  PrepaymentPreviewInput,
   ProjectedBy,
   ProjectedValue,
   ProjectionMethod,
@@ -73,6 +78,8 @@ import type {
   StatementDrift,
   StatementInput,
   StatementList,
+  StatementPreview,
+  StatementPreviewInput,
   Verdict,
   VerdictMarketData,
 } from "./generated/types.gen";
@@ -107,6 +114,9 @@ export type {
   Prepayment,
   PrepaymentInput,
   PrepaymentList,
+  PrepaymentOutcome,
+  PrepaymentPreview,
+  PrepaymentPreviewInput,
   ProjectedBy,
   ProjectedValue,
   ProjectionMethod,
@@ -119,6 +129,8 @@ export type {
   StatementDrift,
   StatementInput,
   StatementList,
+  StatementPreview,
+  StatementPreviewInput,
   Verdict,
   VerdictMarketData,
 };
@@ -252,6 +264,12 @@ export async function postPrepayment(body: PrepaymentInput): Promise<Prepayment>
   return data;
 }
 
+export async function previewPrepayment(body: PrepaymentPreviewInput): Promise<PrepaymentPreview> {
+  const { data, error, response } = await requestPrepaymentPreview({ body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
 export async function putPrepayment(id: number, body: PrepaymentInput): Promise<Prepayment> {
   const { data, error, response } = await editPrepayment({ path: { id }, body });
   if (!data) throw failure(error, response);
@@ -271,6 +289,12 @@ export async function fetchStatements(): Promise<StatementList> {
 
 export async function postStatement(body: StatementInput): Promise<Statement> {
   const { data, error, response } = await addStatement({ body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+export async function previewStatement(body: StatementPreviewInput): Promise<StatementPreview> {
+  const { data, error, response } = await requestStatementPreview({ body });
   if (!data) throw failure(error, response);
   return data;
 }

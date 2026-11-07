@@ -1,4 +1,4 @@
-import type { Prepayment, RegisteredMortgage, Schedule, StatementDrift } from "@/lib/api";
+import type { PrepaymentOutcome, RegisteredMortgage, Schedule, StatementDrift } from "@/lib/api";
 
 const FIXED_RATE = "0.126825030131969720661201";
 
@@ -389,14 +389,37 @@ export const projectedSchedule: Schedule = {
 };
 
 // Three prepayments in date order, one for each effect and amounts that need thousands separators.
-export const prepayments: Prepayment[] = [
-  { id: 1, date: "2024-02-20", amount: "5000.00", effect: "shorten_term" },
-  { id: 2, date: "2024-03-15", amount: "12500.50", effect: "lower_installment" },
-  { id: 3, date: "2024-04-02", amount: "1234.00", effect: "shorten_term" },
+// The first shortened the term, the second lowered the installment, and the third was too small to
+// shorten the term by a whole month.
+export const prepayments: PrepaymentOutcome[] = [
+  {
+    id: 1,
+    date: "2024-02-20",
+    amount: "5000.00",
+    effect: "shorten_term",
+    months_shortened: 1,
+    installment_reduction: "0.00",
+  },
+  {
+    id: 2,
+    date: "2024-03-15",
+    amount: "12500.50",
+    effect: "lower_installment",
+    months_shortened: 0,
+    installment_reduction: "1250.05",
+  },
+  {
+    id: 3,
+    date: "2024-04-02",
+    amount: "1234.00",
+    effect: "shorten_term",
+    months_shortened: 0,
+    installment_reduction: "0.00",
+  },
 ];
 
-// Three statements in date order: the bank says more is owed, less is owed, and exactly what the
-// schedule computed.
+// Three statements in date order: the bank says more is owed, less is owed, and a few centavos
+// more than the schedule computed.
 export const statements: StatementDrift[] = [
   {
     id: 1,
@@ -404,6 +427,7 @@ export const statements: StatementDrift[] = [
     outstanding_balance: "41000.00",
     computed_balance: "40000.00",
     drift: "1000.00",
+    within_rounding: false,
   },
   {
     id: 2,
@@ -411,13 +435,15 @@ export const statements: StatementDrift[] = [
     outstanding_balance: "19500.00",
     computed_balance: "20000.00",
     drift: "-500.00",
+    within_rounding: false,
   },
   {
     id: 3,
     date: "2024-05-10",
-    outstanding_balance: "10000.00",
+    outstanding_balance: "10000.42",
     computed_balance: "10000.00",
-    drift: "0.00",
+    drift: "0.42",
+    within_rounding: true,
   },
 ];
 

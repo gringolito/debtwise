@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CorrectionIndex } from "@/lib/api";
+import type { CorrectionIndex, Schedule, ScheduledInstallment } from "@/lib/api";
 import { rowTexts, text } from "@/test/dom";
 import { stubMortgageApi } from "@/test/mortgageApi";
 import { completeOnboarding } from "@/test/onboarding";
@@ -14,6 +14,7 @@ import {
   projectedSchedule,
   registeredMortgage,
   schedule,
+  scheduleAfterEvent,
   scheduleAfterSave,
   statements,
   trMortgage,
@@ -23,399 +24,266 @@ import { renderAt } from "@/test/renderAt";
 import { problem, stubRoutes } from "@/test/stubServer";
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
+/** setToday fakes only the clock, so timers and the server stub keep running. */
+function setToday(date: string) {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(`${date}T12:00:00`));
+}
+
+const installmentsTable = () => screen.findByRole("table", { name: "Prestações" });
+
+function figures() {
+  const summary = screen.getAllByRole("term").map((term) => term.closest("dl"))[0];
+  return within(summary as HTMLElement)
+    .getAllByRole("term")
+    .map((term) => [text(term), text(term.nextElementSibling as HTMLElement)]);
+}
+
+const header = ["Nº", "Vencimento", "Prestação", "Juros", "Amortização", "Saldo após", "Detalhes"];
+
 describe("navigation", () => {
-  it("links the header to the home page and to the mortgage", async () => {
+  it("links the sidebar to the home page and to the mortgage", async () => {
     stubMortgageApi({ mortgage: registeredMortgage });
     renderAt("/");
 
     fireEvent.click(await screen.findByRole("link", { name: "Financiamento" }));
 
-    expect(
-      await screen.findByRole("region", { name: "Condições do contrato" }),
-    ).toBeInTheDocument();
+    expect(await installmentsTable()).toBeInTheDocument();
     fireEvent.click(screen.getByRole("link", { name: "Início" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Início" })).toBeInTheDocument();
   });
 });
 
-describe("mortgage page with a mortgage", () => {
-  it("shows the contract terms in pt-BR", async () => {
-    stubMortgageApi({ mortgage: registeredMortgage });
-
-    renderAt("/financiamento");
-
-    const terms = await screen.findByRole("region", { name: "Condições do contrato" });
-    const entries = within(terms)
-      .getAllByRole("term")
-      .map((term) => [text(term), text(term.nextElementSibling as HTMLElement)]);
-    expect(entries).toEqual([
-      ["Data do contrato", "10/12/2023"],
-      ["Valor financiado", "R$ 60.000,00"],
-      ["Prazo", "6 meses"],
-      ["Primeira prestação", "10/01/2024"],
-      ["Sistema de amortização", "SAC"],
-      ["Indexador", "Nenhum (prefixado)"],
-      ["Valor de avaliação", "R$ 100.000,00"],
-    ]);
-  });
-
-  it("shows each rate and fee row with its effective date", async () => {
-    stubMortgageApi({ mortgage: registeredMortgage });
-
-    renderAt("/financiamento");
-
-    const lists = async (name: string) =>
-      within(await screen.findByRole("region", { name }))
-        .getAllByRole("listitem")
-        .map(text);
-    expect(await lists("Taxa de juros")).toEqual([
-      "A partir de 10/12/2023 Nominal: 12,00% a.a. (informada) Efetiva: 12,682503% a.a. (calculada)",
-    ]);
-    expect(await lists("MIP")).toEqual([
-      "A partir de 10/12/2023 0,03% a.m.",
-      "A partir de 01/04/2024 0,05% a.m.",
-    ]);
-    expect(await lists("DFI")).toEqual(["A partir de 10/12/2023 0,01% a.m."]);
-    expect(await lists("Taxa de administração")).toEqual(["A partir de 10/12/2023 R$ 12,50"]);
-  });
-
-  it("marks the effective rate as the informed one when it was", async () => {
-    stubMortgageApi({
-      mortgage: {
-        ...registeredMortgage,
-        amortization_system: "price",
-        contract_rates: [
-          {
-            effective_from: "2023-12-10",
-            basis: "effective",
-            nominal: "0.1137",
-            effective: "0.12",
-            poupanca_additional: false,
-          },
-        ],
-      },
-    });
-
-    renderAt("/financiamento");
-
-    const rates = await screen.findByRole("region", { name: "Taxa de juros" });
-    expect(within(rates).getAllByRole("listitem").map(text)).toEqual([
-      "A partir de 10/12/2023 Nominal: 11,37% a.a. (calculada) Efetiva: 12,00% a.a. (informada)",
-    ]);
-    expect(screen.getByText("Price")).toBeInTheDocument();
-  });
-
-  it("says a rate adds the poupança additional part to its fixed part", async () => {
-    stubMortgageApi({
-      mortgage: {
-        ...poupancaMortgage,
-        contract_rates: [
-          ...poupancaMortgage.contract_rates,
-          {
-            effective_from: "2024-06-10",
-            basis: "nominal",
-            nominal: "0.11",
-            effective: "0.1157",
-            poupanca_additional: false,
-          },
-        ],
-      },
-    });
-
-    renderAt("/financiamento");
-
-    const rates = await screen.findByRole("region", { name: "Taxa de juros" });
-    expect(within(rates).getAllByRole("listitem").map(text)).toEqual([
-      "A partir de 10/12/2023 Nominal: 6,00% a.a. (informada) Efetiva: 6,17% a.a. (calculada) + adicional da poupança",
-      "A partir de 10/06/2024 Nominal: 11,00% a.a. (informada) Efetiva: 11,57% a.a. (calculada)",
-    ]);
-  });
-
-  it("does not round small monthly rates away", async () => {
-    stubMortgageApi({
-      mortgage: {
-        ...registeredMortgage,
-        mip_rates: [{ effective_from: "2023-12-10", rate: "0.00003456" }],
-      },
-    });
-
-    renderAt("/financiamento");
-
-    const mip = await screen.findByRole("region", { name: "MIP" });
-    expect(within(mip).getAllByRole("listitem").map(text)).toEqual([
-      "A partir de 10/12/2023 0,003456% a.m.",
-    ]);
-  });
-
-  it("shows every installment of the schedule in pt-BR", async () => {
-    stubMortgageApi({ mortgage: registeredMortgage });
-
-    renderAt("/financiamento");
-
-    const table = await screen.findByRole("table", { name: "Evolução do financiamento" });
-    expect(screen.getByText("Evolução do financiamento")).toBeInTheDocument();
-    expect(rowTexts(table)).toEqual([
-      [
-        "Nº",
-        "Vencimento",
-        "Índice",
-        "Correção",
-        "Taxa de juros",
-        "Juros",
-        "Amortização",
-        "MIP",
-        "DFI",
-        "Taxa adm.",
-        "Prestação",
-        "Amortização extraordinária",
-        "Saldo devedor",
-      ],
-      [
-        "1",
-        "10/01/2024",
-        "—",
-        "R$ 0,00",
-        "12,682503% a.a.",
-        "R$ 600,00",
-        "R$ 10.000,00",
-        "R$ 18,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.640,50",
-        "R$ 0,00",
-        "R$ 50.000,00",
-      ],
-      [
-        "2",
-        "10/02/2024",
-        "—",
-        "R$ 0,00",
-        "12,682503% a.a.",
-        "R$ 500,00",
-        "R$ 10.000,00",
-        "R$ 15,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.537,50",
-        "R$ 0,00",
-        "R$ 40.000,00",
-      ],
-      [
-        "3",
-        "10/03/2024",
-        "—",
-        "R$ 0,00",
-        "12,682503% a.a.",
-        "R$ 400,00",
-        "R$ 10.000,00",
-        "R$ 12,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.434,50",
-        "R$ 0,00",
-        "R$ 30.000,00",
-      ],
-      [
-        "4",
-        "10/04/2024",
-        "—",
-        "R$ 0,00",
-        "12,682503% a.a.",
-        "R$ 300,00",
-        "R$ 10.000,00",
-        "R$ 15,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.337,50",
-        "R$ 0,00",
-        "R$ 20.000,00",
-      ],
-      [
-        "5",
-        "10/05/2024",
-        "—",
-        "R$ 0,00",
-        "12,682503% a.a.",
-        "R$ 200,00",
-        "R$ 10.000,00",
-        "R$ 10,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.232,50",
-        "R$ 0,00",
-        "R$ 10.000,00",
-      ],
-      [
-        "6",
-        "10/06/2024",
-        "—",
-        "R$ 0,00",
-        "12,682503% a.a.",
-        "R$ 100,00",
-        "R$ 10.000,00",
-        "R$ 5,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.127,50",
-        "R$ 0,00",
-        "R$ 0,00",
-      ],
-    ]);
-  });
-
-  it("shows the indexer of the mortgage among its terms", async () => {
-    stubMortgageApi({ mortgage: trMortgage });
-
-    renderAt("/financiamento");
-
-    const terms = await screen.findByRole("region", { name: "Condições do contrato" });
-    const entries = within(terms)
-      .getAllByRole("term")
-      .map((term) => [text(term), text(term.nextElementSibling as HTMLElement)]);
-    expect(entries).toContainEqual(["Indexador", "TR"]);
-  });
-
-  it("shows no warning above the schedule of a mortgage without an indexer", async () => {
-    stubMortgageApi({ mortgage: registeredMortgage });
-
-    renderAt("/financiamento");
-
-    await screen.findByRole("table", { name: "Evolução do financiamento" });
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
-  it("says the schedule could not load while still showing the terms", async () => {
-    stubRoutes({
-      "GET /api/mortgage": () => Response.json(registeredMortgage),
-      "GET /api/mortgage/schedule": () =>
-        problem(500, "Internal Server Error", "unexpected failure"),
-    });
+describe("loading the mortgage page", () => {
+  it("shows skeletons until the schedule arrives", async () => {
+    stubRoutes({ "GET /api/mortgage/schedule": () => new Promise<Response>(() => {}) });
 
     renderAt("/financiamento");
 
     expect(
-      await screen.findByText("Não foi possível carregar a evolução do financiamento."),
+      await screen.findByRole("status", { name: "Carregando financiamento" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("R$ 60.000,00")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Editar contrato" })).toBeInTheDocument();
   });
 
-  it("says the schedule is loading until the server answers", async () => {
+  it("offers to retry when the schedule fails, and shows it once the server answers", async () => {
+    let failing = true;
     stubRoutes({
-      "GET /api/mortgage": () => Response.json(registeredMortgage),
-      "GET /api/mortgage/schedule": () => new Promise<Response>(() => {}),
+      "GET /api/mortgage/schedule": () =>
+        failing
+          ? problem(500, "Internal Server Error", "unexpected failure")
+          : Response.json(schedule),
     });
-
+    setToday("2024-03-01");
     renderAt("/financiamento");
 
-    expect(await screen.findByText("Carregando evolução…")).toBeInTheDocument();
+    const panel = await screen.findByRole("alert");
+    expect(within(panel).getByRole("heading")).toHaveTextContent(
+      "Não foi possível carregar seu financiamento",
+    );
+    failing = false;
+    fireEvent.click(within(panel).getByRole("button", { name: "Tentar novamente" }));
+
+    expect(await installmentsTable()).toBeInTheDocument();
   });
 });
 
-describe("the schedule of an indexed mortgage", () => {
-  const header = [
-    "Nº",
-    "Vencimento",
-    "Índice",
-    "Correção",
-    "Taxa de juros",
-    "Juros",
-    "Amortização",
-    "MIP",
-    "DFI",
-    "Taxa adm.",
-    "Prestação",
-    "Amortização extraordinária",
-    "Saldo devedor",
-  ];
-
-  it("shows each correction with the index value and period behind it", async () => {
-    stubMortgageApi({ mortgage: trMortgage, schedule: trSchedule });
+describe("the summary of the mortgage", () => {
+  it("shows what is owed, the next installment and the payoff month", async () => {
+    stubMortgageApi({ mortgage: registeredMortgage });
+    setToday("2024-03-01");
 
     renderAt("/financiamento");
 
-    const table = await screen.findByRole("table", { name: "Evolução do financiamento" });
+    await installmentsTable();
+    expect(figures()).toEqual([
+      ["Saldo devedor", "R$ 40.000,00"],
+      ["Prestação atual", "R$ 10.434,50"],
+      ["Quitação prevista", "junho de 2024"],
+    ]);
+    expect(screen.getByRole("link", { name: "Editar contrato" })).toHaveAttribute(
+      "href",
+      "/financiamento/editar",
+    );
+  });
+
+  it("owes the amount financed before the first installment", async () => {
+    stubMortgageApi({ mortgage: registeredMortgage });
+    setToday("2023-12-20");
+
+    renderAt("/financiamento");
+
+    await installmentsTable();
+    expect(figures()).toEqual([
+      ["Saldo devedor", "R$ 60.000,00"],
+      ["Prestação atual", "R$ 10.640,50"],
+      ["Quitação prevista", "junho de 2024"],
+    ]);
+  });
+
+  it("has no current installment once the schedule is paid off", async () => {
+    stubMortgageApi({ mortgage: registeredMortgage });
+    setToday("2024-07-01");
+
+    renderAt("/financiamento");
+
+    await installmentsTable();
+    expect(figures()).toEqual([
+      ["Saldo devedor", "R$ 0,00"],
+      ["Prestação atual", "—"],
+      ["Quitação prevista", "junho de 2024"],
+    ]);
+  });
+
+  it("switches the chart between balance, installment and composition", async () => {
+    stubMortgageApi({ mortgage: registeredMortgage });
+    setToday("2024-03-01");
+    renderAt("/financiamento");
+
+    expect(
+      await screen.findByRole("region", { name: "Saldo devedor ao longo do tempo" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Prestação" }));
+    expect(screen.getByRole("region", { name: "Prestação ao longo do tempo" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Composição" }));
+    expect(screen.getByRole("region", { name: "Composição da prestação" })).toBeInTheDocument();
+  });
+});
+
+describe("the installments of the mortgage", () => {
+  it("shows the installments with the current one marked and expanded", async () => {
+    stubMortgageApi({ mortgage: registeredMortgage });
+    setToday("2024-03-01");
+
+    renderAt("/financiamento");
+
+    const table = await installmentsTable();
     expect(rowTexts(table)).toEqual([
       header,
+      ["1", "10/01/2024", "R$ 10.640,50", "R$ 600,00", "R$ 10.000,00", "R$ 50.000,00", ""],
+      ["2", "10/02/2024", "R$ 10.537,50", "R$ 500,00", "R$ 10.000,00", "R$ 40.000,00", ""],
+      ["3 Atual", "10/03/2024", "R$ 10.434,50", "R$ 400,00", "R$ 10.000,00", "R$ 30.000,00", ""],
       [
-        "1",
-        "10/01/2024",
-        "TR 0,0539% 10/12/2023 a 10/01/2024",
-        "R$ 32,34",
-        "12,682503% a.a.",
-        "R$ 603,23",
-        "R$ 10.000,00",
-        "R$ 18,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.643,73",
-        "R$ 0,00",
-        "R$ 50.032,34",
+        "Correção R$ 0,00 Taxa de juros 12,682503% a.a. MIP R$ 12,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
       ],
-      [
-        "2",
-        "10/02/2024",
-        "TR Sem índice 10/01/2024 a 10/02/2024",
-        "R$ 0,00",
-        "12,682503% a.a.",
-        "R$ 500,00",
-        "R$ 10.000,00",
-        "R$ 15,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.537,50",
-        "R$ 0,00",
-        "R$ 40.032,34",
-      ],
-      [
-        "3",
-        "10/03/2024",
-        "—",
-        "R$ 0,00",
-        "12,682503% a.a.",
-        "R$ 400,00",
-        "R$ 10.000,00",
-        "R$ 12,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.434,50",
-        "R$ 0,00",
-        "R$ 30.032,34",
-      ],
+      ["4", "10/04/2024", "R$ 10.337,50", "R$ 300,00", "R$ 10.000,00", "R$ 20.000,00", ""],
+      ["5", "10/05/2024", "R$ 10.232,50", "R$ 200,00", "R$ 10.000,00", "R$ 10.000,00", ""],
+      ["6", "10/06/2024", "R$ 10.127,50", "R$ 100,00", "R$ 10.000,00", "R$ 0,00", ""],
     ]);
+    expect(screen.getByRole("button", { name: "Detalhes da prestação 3" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.queryByRole("button", { name: /^Ver todas/ })).not.toBeInTheDocument();
+  });
+
+  it("expands and collapses an installment's correction, rate, insurance and fee", async () => {
+    stubMortgageApi({ mortgage: registeredMortgage, schedule: scheduleAfterEvent });
+    setToday("2024-03-01");
+    renderAt("/financiamento");
+
+    const table = await installmentsTable();
+    const details = screen.getByRole("button", { name: "Detalhes da prestação 2" });
+    fireEvent.click(details);
+
+    expect(details).toHaveAttribute("aria-expanded", "true");
+    expect(rowTexts(table)[3]).toEqual([
+      "Correção R$ 0,00 Taxa de juros 12,682503% a.a. MIP R$ 15,00 DFI R$ 10,00 Taxa de administração R$ 12,50 Amortização extraordinária R$ 5.000,00",
+    ]);
+    fireEvent.click(details);
+    expect(details).toHaveAttribute("aria-expanded", "false");
+    expect(rowTexts(table)[3][0]).toBe("3 Atual");
+  });
+
+  describe("in a schedule longer than six", () => {
+    const installment = (number: number): ScheduledInstallment => ({
+      ...schedule.installments[0],
+      number,
+      due_date: `2024-${String(number).padStart(2, "0")}-10`,
+    });
+    const long: Schedule = {
+      installments: Array.from({ length: 10 }, (_, i) => installment(i + 1)),
+    };
+    const numbers = (table: HTMLElement) =>
+      rowTexts(table)
+        .slice(1)
+        .filter((cells) => cells.length > 1)
+        .map((cells) => cells[0]);
+
+    it.each([
+      ["two before the current one", "2024-04-20", ["3", "4", "5 Atual", "6", "7", "8"]],
+      [
+        "the first ones before the first installment",
+        "2023-12-20",
+        ["1 Atual", "2", "3", "4", "5", "6"],
+      ],
+      ["the last ones once it is paid off", "2024-12-01", ["5", "6", "7", "8", "9", "10"]],
+    ])("shows six installments: %s", async (_case, date, shown) => {
+      stubMortgageApi({ mortgage: registeredMortgage, schedule: long });
+      setToday(date);
+      renderAt("/financiamento");
+
+      expect(numbers(await installmentsTable())).toEqual(shown);
+    });
+
+    it("shows every installment on request, and six again after", async () => {
+      stubMortgageApi({ mortgage: registeredMortgage, schedule: long });
+      setToday("2024-04-20");
+      renderAt("/financiamento");
+      const table = await installmentsTable();
+
+      fireEvent.click(screen.getByRole("button", { name: "Ver todas as 10 prestações" }));
+      expect(numbers(table)).toEqual(["1", "2", "3", "4", "5 Atual", "6", "7", "8", "9", "10"]);
+
+      fireEvent.click(screen.getByRole("button", { name: "Ver menos prestações" }));
+      expect(numbers(table)).toEqual(["3", "4", "5 Atual", "6", "7", "8"]);
+    });
+  });
+});
+
+describe("the installments of an indexed mortgage", () => {
+  async function detailsOf(number: number) {
+    const table = await installmentsTable();
+    const button = within(table).getByRole("button", { name: `Detalhes da prestação ${number}` });
+    if (button.getAttribute("aria-expanded") === "false") fireEvent.click(button);
+    const row = button.closest("tr")?.nextElementSibling as HTMLElement;
+    return text(row);
+  }
+
+  it("shows each correction with the index value and period behind it", async () => {
+    stubMortgageApi({ mortgage: trMortgage, schedule: trSchedule });
+    setToday("2024-03-01");
+    renderAt("/financiamento");
+
+    expect(await detailsOf(1)).toBe(
+      "Correção R$ 32,34 TR 0,0539% 10/12/2023 a 10/01/2024 Taxa de juros 12,682503% a.a. MIP R$ 18,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
+    );
+    expect(await detailsOf(2)).toBe(
+      "Correção R$ 0,00 TR Sem índice 10/01/2024 a 10/02/2024 Taxa de juros 12,682503% a.a. MIP R$ 15,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
+    );
+    expect(await detailsOf(3)).toBe(
+      "Correção R$ 0,00 Taxa de juros 12,682503% a.a. MIP R$ 12,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
+    );
   });
 
   it("shows an IPCA value with the month it is for", async () => {
     stubMortgageApi({ mortgage: ipcaMortgage, schedule: ipcaSchedule });
-
+    setToday("2024-01-01");
     renderAt("/financiamento");
 
-    const table = await screen.findByRole("table", { name: "Evolução do financiamento" });
-    expect(rowTexts(table).slice(1)).toEqual([
-      [
-        "1",
-        "10/01/2024",
-        "IPCA 0,56% dez/2023",
-        "R$ 336,00",
-        "12,682503% a.a.",
-        "R$ 603,23",
-        "R$ 10.000,00",
-        "R$ 18,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.643,73",
-        "R$ 0,00",
-        "R$ 50.336,00",
-      ],
-    ]);
+    expect(await detailsOf(1)).toBe(
+      "Correção R$ 336,00 IPCA 0,56% dez/2023 Taxa de juros 12,682503% a.a. MIP R$ 18,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
+    );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("warns above the schedule how many months have no index value", async () => {
+  it("warns above the installments how many months have no index value", async () => {
     stubMortgageApi({ mortgage: trMortgage, schedule: trSchedule });
-
+    setToday("2024-03-01");
     renderAt("/financiamento");
 
     const alert = await screen.findByRole("alert");
@@ -428,10 +296,17 @@ describe("the schedule of an indexed mortgage", () => {
     );
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(
-      alert.compareDocumentPosition(
-        screen.getByRole("table", { name: "Evolução do financiamento" }),
-      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      alert.compareDocumentPosition(await installmentsTable()) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("shows no warning above the installments of a mortgage without an indexer", async () => {
+    stubMortgageApi({ mortgage: registeredMortgage });
+    setToday("2024-03-01");
+    renderAt("/financiamento");
+
+    await installmentsTable();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("counts every month without an index value", async () => {
@@ -453,7 +328,7 @@ describe("the schedule of an indexed mortgage", () => {
         ],
       },
     });
-
+    setToday("2024-03-01");
     renderAt("/financiamento");
 
     expect(text(await screen.findByRole("alert"))).toBe(
@@ -463,27 +338,12 @@ describe("the schedule of an indexed mortgage", () => {
 
   it("lists each index value of an installment on its own line and counts the missing ones", async () => {
     stubMortgageApi({ mortgage: trMortgage, schedule: deferredSchedule });
-
+    setToday("2024-03-01");
     renderAt("/financiamento");
 
-    const table = await screen.findByRole("table", { name: "Evolução do financiamento" });
-    expect(rowTexts(table).slice(1)).toEqual([
-      [
-        "1",
-        "10/03/2024",
-        "TR Sem índice 10/12/2023 a 10/01/2024 TR Sem índice 10/01/2024 a 10/02/2024 TR 0,2166% 10/02/2024 a 10/03/2024",
-        "R$ 108,30",
-        "12,682503% a.a.",
-        "R$ 603,23",
-        "R$ 10.000,00",
-        "R$ 18,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.643,73",
-        "R$ 0,00",
-        "R$ 50.108,30",
-      ],
-    ]);
+    expect(await detailsOf(1)).toBe(
+      "Correção R$ 108,30 TR Sem índice 10/12/2023 a 10/01/2024 TR Sem índice 10/01/2024 a 10/02/2024 TR 0,2166% 10/02/2024 a 10/03/2024 Taxa de juros 12,682503% a.a. MIP R$ 18,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
+    );
     expect(text(await screen.findByRole("alert"))).toBe(
       "Faltam valores de TR para 2 meses. Esses meses não foram corrigidos. Atualize os dados de mercado na página Índices.",
     );
@@ -491,73 +351,31 @@ describe("the schedule of an indexed mortgage", () => {
 
   it("marks a projected value and names the projection methods behind it", async () => {
     stubMortgageApi({ mortgage: trMortgage, schedule: projectedSchedule });
-
+    setToday("2024-03-01");
     renderAt("/financiamento");
 
-    const table = await screen.findByRole("table", { name: "Evolução do financiamento" });
-    expect(rowTexts(table).slice(1)).toEqual([
-      [
-        "3",
-        "10/03/2024",
-        "TR 0,0150% Projetado 10/02/2024 a 10/03/2024 TR: Média dos últimos 12 meses",
-        "R$ 7,50",
-        "11,91% a.a. Selic meta 10,50% Projetado 29/02/2024 Selic meta: Mediana do Focus (BCB)",
-        "R$ 400,00",
-        "R$ 10.000,00",
-        "R$ 12,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.434,50",
-        "R$ 0,00",
-        "R$ 30.032,34",
-      ],
-    ]);
+    expect(await detailsOf(3)).toBe(
+      "Correção R$ 7,50 TR 0,0150% Projetado 10/02/2024 a 10/03/2024 TR: Média dos últimos 12 meses Taxa de juros 11,91% a.a. Selic meta 10,50% Projetado 29/02/2024 Selic meta: Mediana do Focus (BCB) MIP R$ 12,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
+    );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("shows the rate charged with the Selic target reading behind its poupança part", async () => {
     stubMortgageApi({ mortgage: poupancaMortgage, schedule: poupancaSchedule });
-
+    setToday("2024-03-01");
     renderAt("/financiamento");
 
-    const table = await screen.findByRole("table", { name: "Evolução do financiamento" });
-    expect(rowTexts(table).slice(1)).toEqual([
-      [
-        "1",
-        "10/01/2024",
-        "TR 0,0539% 10/12/2023 a 10/01/2024",
-        "R$ 32,34",
-        "12,33778% a.a. Selic meta 11,75% 06/12/2023",
-        "R$ 603,23",
-        "R$ 10.000,00",
-        "R$ 18,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.643,73",
-        "R$ 0,00",
-        "R$ 50.032,34",
-      ],
-      [
-        "2",
-        "10/02/2024",
-        "—",
-        "R$ 0,00",
-        "6,17% a.a. Selic meta Sem índice 31/01/2024",
-        "R$ 400,00",
-        "R$ 10.000,00",
-        "R$ 12,00",
-        "R$ 10,00",
-        "R$ 12,50",
-        "R$ 10.434,50",
-        "R$ 0,00",
-        "R$ 30.032,34",
-      ],
-    ]);
+    expect(await detailsOf(1)).toBe(
+      "Correção R$ 32,34 TR 0,0539% 10/12/2023 a 10/01/2024 Taxa de juros 12,33778% a.a. Selic meta 11,75% 06/12/2023 MIP R$ 18,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
+    );
+    expect(await detailsOf(2)).toBe(
+      "Correção R$ 0,00 Taxa de juros 6,17% a.a. Selic meta Sem índice 31/01/2024 MIP R$ 12,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
+    );
   });
 
   it("warns apart from the correction warning that the rate lacks Selic target values", async () => {
     stubMortgageApi({ mortgage: poupancaMortgage, schedule: poupancaSchedule });
-
+    setToday("2024-03-01");
     renderAt("/financiamento");
 
     const alert = await screen.findByRole("alert");
@@ -570,9 +388,7 @@ describe("the schedule of an indexed mortgage", () => {
     );
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(
-      alert.compareDocumentPosition(
-        screen.getByRole("table", { name: "Evolução do financiamento" }),
-      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      alert.compareDocumentPosition(await installmentsTable()) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
@@ -584,7 +400,7 @@ describe("the schedule of an indexed mortgage", () => {
         installments: [{ ...first, rate_index_values: second.rate_index_values }, second],
       },
     });
-
+    setToday("2024-03-01");
     renderAt("/financiamento");
 
     expect(text(await screen.findByRole("alert"))).toBe(
@@ -601,10 +417,10 @@ describe("the schedule of an indexed mortgage", () => {
         installments: [first, { ...second, rate_index_values: withMissingSelic.rate_index_values }],
       },
     });
-
+    setToday("2024-03-01");
     renderAt("/financiamento");
 
-    await screen.findByRole("table", { name: "Evolução do financiamento" });
+    await installmentsTable();
     expect(screen.getAllByRole("alert").map(text)).toEqual([
       "Faltam valores de TR para 1 mês. Esse mês não foi corrigido. Atualize os dados de mercado na página Índices.",
       "Faltam valores de Selic meta para 1 mês. A taxa de juros desse mês não inclui o adicional da poupança. Atualize os dados de mercado na página Índices.",
@@ -617,7 +433,7 @@ describe("deleting the mortgage", () => {
     const requests = stubMortgageApi({ mortgage: registeredMortgage });
     renderAt("/financiamento");
 
-    fireEvent.click(await screen.findByRole("button", { name: "Excluir" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Excluir financiamento" }));
     const dialog = await screen.findByRole("alertdialog", { name: "Excluir financiamento?" });
     expect(requests.some((req) => req.method === "DELETE")).toBe(false);
     fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
@@ -633,13 +449,13 @@ describe("deleting the mortgage", () => {
     const requests = stubMortgageApi({ mortgage: registeredMortgage });
     renderAt("/financiamento");
 
-    fireEvent.click(await screen.findByRole("button", { name: "Excluir" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Excluir financiamento" }));
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Cancelar" }));
 
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
     expect(requests.some((req) => req.method === "DELETE")).toBe(false);
-    expect(screen.getByText("R$ 60.000,00")).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Prestações" })).toBeInTheDocument();
   });
 
   it("says so when the server refuses to delete", async () => {
@@ -650,14 +466,14 @@ describe("deleting the mortgage", () => {
     });
     renderAt("/financiamento");
 
-    fireEvent.click(await screen.findByRole("button", { name: "Excluir" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Excluir financiamento" }));
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
 
     expect(
       await screen.findByText("Não foi possível excluir o financiamento."),
     ).toBeInTheDocument();
-    expect(screen.getByText("R$ 60.000,00")).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Prestações" })).toBeInTheDocument();
   });
 });
 
@@ -665,7 +481,7 @@ describe("a schedule that changed on the server", () => {
   const oldAmounts = ["R$ 10.640,50", "R$ 10.537,50", "R$ 10.127,50"];
 
   async function expectOnlyNewSchedule() {
-    await screen.findByRole("region", { name: "Condições do contrato" });
+    await screen.findByRole("heading", { name: "Financiamento" });
     for (const amount of oldAmounts) {
       expect(screen.queryByText(amount)).not.toBeInTheDocument();
     }
@@ -681,10 +497,11 @@ describe("a schedule that changed on the server", () => {
       onSave: () => registeredMortgage,
       scheduleAfterSave,
     });
+    setToday("2024-03-01");
     renderAt("/financiamento");
     expect(await screen.findByText("R$ 10.640,50")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("link", { name: "Editar" }));
+    fireEvent.click(screen.getByRole("link", { name: "Editar contrato" }));
     fireEvent.click(await screen.findByRole("button", { name: "Salvar" }));
 
     await expectOnlyNewSchedule();
@@ -696,10 +513,11 @@ describe("a schedule that changed on the server", () => {
       onSave: () => registeredMortgage,
       scheduleAfterSave,
     });
+    setToday("2024-03-01");
     renderAt("/financiamento");
     expect(await screen.findByText("R$ 10.640,50")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
+    fireEvent.click(screen.getByRole("button", { name: "Excluir financiamento" }));
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
     await completeOnboarding();
@@ -717,24 +535,24 @@ describe("prepayments and statements of a mortgage deleted and registered again"
       statements,
       onSave: () => registeredMortgage,
     });
+    setToday("2024-03-01");
     renderAt("/financiamento");
+    fireEvent.click(await screen.findByRole("radio", { name: "Amortizações" }));
     expect(await screen.findByText("R$ 12.500,50")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Extratos" }));
     expect(await screen.findByText("R$ 41.000,00")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Excluir" }));
+    fireEvent.click(screen.getByRole("button", { name: "Excluir financiamento" }));
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
     await completeOnboarding();
     fireEvent.click(await screen.findByRole("link", { name: "Financiamento" }));
 
-    await screen.findByRole("region", { name: "Condições do contrato" });
+    fireEvent.click(await screen.findByRole("radio", { name: "Amortizações" }));
     expect(screen.queryByText("R$ 12.500,50")).not.toBeInTheDocument();
+    expect(await screen.findByText("Nenhuma amortização registrada.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Extratos" }));
     expect(screen.queryByText("R$ 41.000,00")).not.toBeInTheDocument();
-    expect(
-      await screen.findByText("Nenhuma amortização extraordinária registrada."),
-    ).toBeInTheDocument();
     expect(await screen.findByText("Nenhum extrato registrado.")).toBeInTheDocument();
-    expect(screen.queryByText("R$ 12.500,50")).not.toBeInTheDocument();
-    expect(screen.queryByText("R$ 41.000,00")).not.toBeInTheDocument();
   });
 });

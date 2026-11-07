@@ -14,6 +14,11 @@ export const effectLabels: Record<PrepaymentEffect, string> = {
   lower_installment: "Reduzir prestação",
 };
 
+export const effectDescriptions: Record<PrepaymentEffect, string> = {
+  shorten_term: "Mesma prestação, quitação mais cedo.",
+  lower_installment: "Mesmo prazo, prestações menores.",
+};
+
 export const effectOptions = (Object.entries(effectLabels) as [PrepaymentEffect, string][]).map(
   ([value, label]) => ({ value, label }),
 );

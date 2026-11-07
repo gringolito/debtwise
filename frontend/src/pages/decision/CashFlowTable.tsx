@@ -1,5 +1,5 @@
 import { ProjectionCell } from "@/components/lots/LotValuesTables";
-import { IndexCell } from "@/components/mortgage/MortgageSchedule";
+import { IndexCell } from "@/components/mortgage/IndexValues";
 import {
   Table,
   TableBody,

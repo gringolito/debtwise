@@ -26,8 +26,34 @@ type prepayment struct {
 	Effect string `json:"effect" enum:"shorten_term,lower_installment" doc:"What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments."`
 }
 
+// prepaymentOutcome is a prepayment with what it changed in the schedule.
+type prepaymentOutcome struct {
+	ID                   int64  `json:"id" doc:"The prepayment's ID."`
+	Date                 string `json:"date" format:"date" doc:"Date the prepayment was made."`
+	Amount               string `json:"amount" doc:"Amount prepaid, in reais, as a decimal string."`
+	Effect               string `json:"effect" enum:"shorten_term,lower_installment" doc:"What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments."`
+	MonthsShortened      int64  `json:"months_shortened" doc:"How many installments fewer the schedule has because of this prepayment."`
+	InstallmentReduction string `json:"installment_reduction" doc:"How much lower the first installment due after the prepayment is because of it, in reais, as a decimal string. Zero when no installment is due after it."`
+}
+
 type prepaymentList struct {
-	Prepayments []prepayment `json:"prepayments" nullable:"false" doc:"Every prepayment recorded on the mortgage, in date order."`
+	Prepayments     []prepaymentOutcome `json:"prepayments" nullable:"false" doc:"Every prepayment recorded on the mortgage, in date order, each with what it changed in the schedule. Only this list carries what each changed."`
+	TotalAmount     string              `json:"total_amount" doc:"Sum of every prepayment's amount, in reais, as a decimal string."`
+	MonthsShortened int64               `json:"months_shortened" doc:"How many installments fewer the schedule has because of all the prepayments together."`
+}
+
+type prepaymentPreviewInput struct {
+	Date     string `json:"date" format:"date" doc:"Date the prepayment was made."`
+	Amount   string `json:"amount" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"Amount prepaid, in reais, as a decimal string."`
+	Effect   string `json:"effect" enum:"shorten_term,lower_installment" doc:"What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments."`
+	Replaces *int64 `json:"replaces,omitempty" minimum:"1" doc:"ID of the recorded prepayment the previewed one would replace, when previewing an edit. Absent when previewing a new prepayment."`
+}
+
+type prepaymentPreview struct {
+	CurrentPayoffDate  string `json:"current_payoff_date" format:"date" doc:"Date the mortgage is paid off in the schedule as recorded: the due date of its last installment."`
+	PayoffDate         string `json:"payoff_date" format:"date" doc:"Date the mortgage is paid off with the previewed prepayment: the due date of its last installment."`
+	CurrentInstallment string `json:"current_installment,omitempty" doc:"Amount of the first installment due after the previewed prepayment's date in the schedule as recorded, in reais, as a decimal string. Absent when none is due after it."`
+	Installment        string `json:"installment,omitempty" doc:"Amount of that same installment with the previewed prepayment, in reais, as a decimal string. Absent when the mortgage no longer has it."`
 }
 
 type statementInput struct {
@@ -47,6 +73,19 @@ type statementDrift struct {
 	OutstandingBalance string `json:"outstanding_balance" doc:"Outstanding balance the bank reported, in reais, as a decimal string."`
 	ComputedBalance    string `json:"computed_balance" doc:"Outstanding balance the schedule shows on the same date, after the installments due by then, in reais, as a decimal string."`
 	Drift              string `json:"drift" doc:"The reported balance minus the computed one, in reais, as a decimal string. Positive when the bank says more is owed."`
+	WithinRounding     bool   `json:"within_rounding" doc:"Whether the drift is only the centavos the bank and the schedule round differently, rather than a sign that the contract terms no longer match the bank's."`
+}
+
+type statementPreviewInput struct {
+	Date               string `json:"date" format:"date" doc:"Date of the outstanding balance the bank reported."`
+	OutstandingBalance string `json:"outstanding_balance" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"Outstanding balance the bank reported, in reais, as a decimal string."`
+	Replaces           *int64 `json:"replaces,omitempty" minimum:"1" doc:"ID of the recorded statement the previewed one would replace, when previewing an edit. Absent when previewing a new statement."`
+}
+
+type statementPreview struct {
+	ComputedBalance string `json:"computed_balance" doc:"Outstanding balance the schedule would show on the statement's date, in reais, as a decimal string."`
+	Drift           string `json:"drift" doc:"The reported balance minus the computed one, in reais, as a decimal string. Positive when the bank says more is owed."`
+	WithinRounding  bool   `json:"within_rounding" doc:"Whether the drift is only the centavos the bank and the schedule round differently, rather than a sign that the contract terms no longer match the bank's."`
 }
 
 type statementList struct {
@@ -59,27 +98,78 @@ const (
 )
 
 func registerMortgageEvents(humaAPI huma.API, mortgages Mortgages, store IndexStore, now func() time.Time) {
-	registerPrepayments(humaAPI, mortgages)
+	registerPrepayments(humaAPI, mortgages, store, now)
 	registerStatements(humaAPI, mortgages, store, now)
 }
 
-func registerPrepayments(humaAPI huma.API, mortgages Mortgages) {
+func registerPrepayments(humaAPI huma.API, mortgages Mortgages, store IndexStore, now func() time.Time) {
 	register(humaAPI, huma.Operation{
 		OperationID: "list-prepayments",
 		Method:      http.MethodGet,
 		Path:        prepaymentsPath,
 		Summary:     "List the prepayments",
-		Description: "Returns the prepayments recorded on the mortgage.",
+		Description: "Returns the prepayments recorded on the mortgage, each with how many installments it removed and how much it lowered the next installment.",
 		Tags:        []string{mortgageTag},
 	}, func(ctx context.Context, _ *struct{}) (*struct{ Body prepaymentList }, error) {
-		events, err := mortgages.Events(ctx)
+		terms, outlook, events, err := replayInputs(ctx, mortgages, store)
+		if err != nil {
+			return nil, err
+		}
+
+		outcomes := terms.PrepaymentOutcomes(outlook, events, now())
+
+		out := &struct{ Body prepaymentList }{Body: prepaymentList{
+			Prepayments:     make([]prepaymentOutcome, 0, len(outcomes.Prepayments)),
+			TotalAmount:     outcomes.TotalAmount.String(),
+			MonthsShortened: int64(outcomes.MonthsShortened),
+		}}
+		for _, o := range outcomes.Prepayments {
+			out.Body.Prepayments = append(out.Body.Prepayments, prepaymentOutcome{
+				ID:                   o.Prepayment.ID,
+				Date:                 o.Prepayment.Date.Format(time.DateOnly),
+				Amount:               o.Prepayment.Amount.String(),
+				Effect:               string(o.Prepayment.Effect),
+				MonthsShortened:      int64(o.MonthsShortened),
+				InstallmentReduction: o.InstallmentReduction.String(),
+			})
+		}
+
+		return out, nil
+	})
+
+	register(humaAPI, huma.Operation{
+		OperationID: "preview-prepayment",
+		Method:      http.MethodPost,
+		Path:        prepaymentsPath + "/preview",
+		Summary:     "Preview a prepayment",
+		Description: "Shows what a prepayment would change in the schedule, without recording it. Give the ID of a recorded prepayment to preview an edit of it.",
+		Tags:        []string{mortgageTag},
+	}, func(ctx context.Context, in *struct{ Body prepaymentPreviewInput }) (*struct{ Body prepaymentPreview }, error) {
+		p, err := readPrepayment(ctx, mortgages, prepaymentInput{Date: in.Body.Date, Amount: in.Body.Amount, Effect: in.Body.Effect})
+		if err != nil {
+			return nil, err
+		}
+
+		terms, outlook, events, err := replayInputs(ctx, mortgages, store)
+		if err != nil {
+			return nil, err
+		}
+
+		previewed, err := terms.PreviewPrepayment(outlook, events, now(), p, replacedID(in.Body.Replaces))
 		if err != nil {
 			return nil, mortgageFailure(err)
 		}
 
-		out := &struct{ Body prepaymentList }{Body: prepaymentList{Prepayments: make([]prepayment, 0, len(events.Prepayments))}}
-		for _, p := range events.Prepayments {
-			out.Body.Prepayments = append(out.Body.Prepayments, newPrepayment(p))
+		out := &struct{ Body prepaymentPreview }{Body: prepaymentPreview{
+			CurrentPayoffDate: previewed.CurrentPayoff.Format(time.DateOnly),
+			PayoffDate:        previewed.Payoff.Format(time.DateOnly),
+		}}
+		if previewed.CurrentInstallment != nil {
+			out.Body.CurrentInstallment = previewed.CurrentInstallment.String()
+		}
+
+		if previewed.Installment != nil {
+			out.Body.Installment = previewed.Installment.String()
 		}
 
 		return out, nil
@@ -175,10 +265,41 @@ func registerStatements(humaAPI huma.API, mortgages Mortgages, store IndexStore,
 				OutstandingBalance: d.Statement.OutstandingBalance.String(),
 				ComputedBalance:    d.ComputedBalance.String(),
 				Drift:              d.Amount.String(),
+				WithinRounding:     d.WithinRounding(),
 			})
 		}
 
 		return out, nil
+	})
+
+	register(humaAPI, huma.Operation{
+		OperationID: "preview-statement",
+		Method:      http.MethodPost,
+		Path:        statementsPath + "/preview",
+		Summary:     "Preview a statement",
+		Description: "Shows how far a statement's balance would be from the schedule, without recording it. Give the ID of a recorded statement to preview an edit of it.",
+		Tags:        []string{mortgageTag},
+	}, func(ctx context.Context, in *struct{ Body statementPreviewInput }) (*struct{ Body statementPreview }, error) {
+		st, err := readStatement(ctx, mortgages, statementInput{Date: in.Body.Date, OutstandingBalance: in.Body.OutstandingBalance})
+		if err != nil {
+			return nil, err
+		}
+
+		terms, outlook, events, err := replayInputs(ctx, mortgages, store)
+		if err != nil {
+			return nil, err
+		}
+
+		d, err := terms.PreviewStatement(outlook, events, now(), st, replacedID(in.Body.Replaces))
+		if err != nil {
+			return nil, statementFailure(err)
+		}
+
+		return &struct{ Body statementPreview }{Body: statementPreview{
+			ComputedBalance: d.ComputedBalance.String(),
+			Drift:           d.Amount.String(),
+			WithinRounding:  d.WithinRounding(),
+		}}, nil
 	})
 
 	register(humaAPI, huma.Operation{
@@ -307,6 +428,16 @@ func readStatement(ctx context.Context, mortgages Mortgages, body statementInput
 	}
 
 	return st, violationsFailure(st.Validate(terms))
+}
+
+// replacedID returns the ID of the recorded event a preview replaces, or zero when it replaces
+// none.
+func replacedID(replaces *int64) int64 {
+	if replaces == nil {
+		return 0
+	}
+
+	return *replaces
 }
 
 // violationsFailure returns a 422 listing violations, or nil when there are none.

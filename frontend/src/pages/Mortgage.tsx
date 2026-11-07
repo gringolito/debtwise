@@ -1,158 +1,157 @@
 import { Link } from "@tanstack/react-router";
-import { cn } from "@/lib/utils";
+import { PlusIcon } from "lucide-react";
+import { useState } from "react";
+import { Page, PageHeader, PageTitle } from "@/components/layout/Page";
 import { DeleteMortgageDialog } from "@/components/mortgage/DeleteMortgageDialog";
-import { MortgageSchedule } from "@/components/mortgage/MortgageSchedule";
+import { InstallmentsTable } from "@/components/mortgage/InstallmentsTable";
+import { PrepaymentSheet } from "@/components/mortgage/PrepaymentSheet";
 import { Prepayments } from "@/components/mortgage/Prepayments";
-import { Section } from "@/components/mortgage/Section";
+import { ScheduleChart } from "@/components/mortgage/ScheduleChart";
+import { StatementSheet } from "@/components/mortgage/StatementSheet";
 import { Statements } from "@/components/mortgage/Statements";
+import { KeyFigure, KeyFigures } from "@/components/mortgage/KeyFigures";
+import { ErrorPanel } from "@/components/patterns/ErrorPanel";
+import { Loading } from "@/components/patterns/Loading";
+import { SegmentedControl, SegmentedControlItem } from "@/components/patterns/SegmentedControl";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import type { ContractRate, RegisteredMortgage } from "@/lib/api";
-import { amortizationSystemLabels, indexerLabels } from "@/lib/mortgageForm";
-import { useDeleteMortgage, useMortgage } from "@/lib/mortgageQueries";
-import { formatDate, formatMoney, formatRate } from "@/lib/format";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Prepayment, RegisteredMortgage, Schedule, StatementDrift } from "@/lib/api";
+import { latestDue, nextDue, today } from "@/lib/dashboard";
+import { formatMoney, formatMonthYear } from "@/lib/format";
+import { useDeleteMortgage, useMortgage, useMortgageSchedule } from "@/lib/mortgageQueries";
 
-type TermProps = React.ComponentProps<"div"> & { name: string };
+type Tab = "installments" | "prepayments" | "statements";
 
-function Term({ name, className, children, ...props }: TermProps) {
+type Sheet =
+  | { kind: "prepayment"; prepayment?: Prepayment }
+  | { kind: "statement"; statement?: StatementDrift };
+
+function MortgageSkeleton() {
   return (
-    <div className={cn("flex justify-between gap-4", className)} {...props}>
-      <dt className="text-muted-foreground">{name}</dt>
-      <dd>{children}</dd>
-    </div>
+    <Loading label="Carregando financiamento">
+      <Skeleton className="h-28" />
+      <Skeleton className="h-80" />
+      <Skeleton className="h-96" />
+    </Loading>
   );
 }
 
-function ContractTerms({ mortgage }: { mortgage: RegisteredMortgage }) {
-  return (
-    <Section heading="Condições do contrato">
-      <dl className="flex flex-col gap-2">
-        <Term name="Data do contrato">{formatDate(mortgage.contract_date)}</Term>
-        <Term name="Valor financiado">{formatMoney(mortgage.original_amount)}</Term>
-        <Term name="Prazo">{mortgage.term_months} meses</Term>
-        <Term name="Primeira prestação">{formatDate(mortgage.first_installment_date)}</Term>
-        <Term name="Sistema de amortização">
-          {amortizationSystemLabels[mortgage.amortization_system]}
-        </Term>
-        <Term name="Indexador">{indexerLabels[mortgage.indexer]}</Term>
-        <Term name="Valor de avaliação">{formatMoney(mortgage.appraisal_value)}</Term>
-      </dl>
-    </Section>
-  );
-}
-
-function informedMark(rate: ContractRate, basis: ContractRate["basis"]): string {
-  return rate.basis === basis ? "informada" : "calculada";
-}
-
-function ContractRates({ rates }: { rates: ContractRate[] }) {
-  return (
-    <Section heading="Taxa de juros">
-      <ul className="flex flex-col gap-2">
-        {rates.map((rate) => (
-          <li key={rate.effective_from} className="flex flex-wrap gap-x-4">
-            <span className="text-muted-foreground">
-              A partir de {formatDate(rate.effective_from)}
-            </span>{" "}
-            <span>
-              Nominal: {formatRate(rate.nominal)} a.a. ({informedMark(rate, "nominal")})
-            </span>{" "}
-            <span>
-              Efetiva: {formatRate(rate.effective)} a.a. ({informedMark(rate, "effective")})
-            </span>
-            {rate.poupanca_additional && (
-              <>
-                {" "}
-                <span>+ adicional da poupança</span>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-    </Section>
-  );
-}
-
-function EffectiveRows({
-  title,
-  rows,
-}: {
-  title: string;
-  rows: { effective_from: string; value: string }[];
-}) {
-  return (
-    <Section heading={title}>
-      <ul className="flex flex-col gap-2">
-        {rows.map((row) => (
-          <li key={row.effective_from} className="flex flex-wrap gap-x-4">
-            <span className="text-muted-foreground">
-              A partir de {formatDate(row.effective_from)}
-            </span>{" "}
-            <span>{row.value}</span>
-          </li>
-        ))}
-      </ul>
-    </Section>
-  );
-}
-
-function monthly(rows: { effective_from: string; rate: string }[]) {
-  return rows.map((row) => ({
-    effective_from: row.effective_from,
-    value: `${formatRate(row.rate)} a.m.`,
-  }));
-}
-
-function MortgageDetails({ mortgage }: { mortgage: RegisteredMortgage }) {
+function DeleteMortgage() {
   const remove = useDeleteMortgage();
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-title-2">Financiamento</h2>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link to="/financiamento/editar">Editar</Link>
-          </Button>
-          <DeleteMortgageDialog onConfirm={() => remove.mutate()} />
-        </div>
-      </div>
+    <div className="flex flex-col items-start gap-2">
       {remove.isError && (
         <Alert variant="destructive">
           <AlertDescription>Não foi possível excluir o financiamento.</AlertDescription>
         </Alert>
       )}
-      <ContractTerms mortgage={mortgage} />
-      <ContractRates rates={mortgage.contract_rates} />
-      <EffectiveRows title="MIP" rows={monthly(mortgage.mip_rates)} />
-      <EffectiveRows title="DFI" rows={monthly(mortgage.dfi_rates)} />
-      <EffectiveRows
-        title="Taxa de administração"
-        rows={mortgage.fees.map((fee) => ({
-          effective_from: fee.effective_from,
-          value: formatMoney(fee.amount),
-        }))}
-      />
-      <Prepayments />
-      <Statements />
-      <MortgageSchedule />
+      <DeleteMortgageDialog onConfirm={() => remove.mutate()} />
     </div>
   );
 }
 
-export function Mortgage() {
-  const { data, isPending, isError } = useMortgage();
+function MortgageDetails({
+  mortgage,
+  schedule,
+}: {
+  mortgage: RegisteredMortgage;
+  schedule: Schedule;
+}) {
+  const [tab, setTab] = useState<Tab>("installments");
+  const [sheet, setSheet] = useState<Sheet | null>(null);
+  const date = today();
+  const { installments } = schedule;
+  const current = nextDue(installments, date);
+  const payoff = installments.at(-1);
+  // Before the first installment the amount financed is owed; with none left, nothing is.
+  const balance =
+    latestDue(installments, date)?.outstanding_balance ??
+    (current ? mortgage.original_amount : "0.00");
 
-  if (isPending) return <p>Carregando financiamento…</p>;
-  if (isError) return <p>Não foi possível carregar o financiamento.</p>;
-  if (data === null) {
-    return (
-      <div className="flex flex-col items-start gap-4">
-        <p>Nenhum financiamento cadastrado.</p>
-        <Button asChild>
-          <Link to="/financiamento/editar">Cadastrar financiamento</Link>
-        </Button>
+  return (
+    <>
+      <KeyFigures>
+        <KeyFigure name="Saldo devedor">{formatMoney(balance)}</KeyFigure>
+        <KeyFigure name="Prestação atual">{current ? formatMoney(current.amount) : "—"}</KeyFigure>
+        <KeyFigure name="Quitação prevista">
+          {payoff ? formatMonthYear(payoff.due_date) : "—"}
+        </KeyFigure>
+      </KeyFigures>
+      <ScheduleChart
+        installments={schedule.installments}
+        contractDate={mortgage.contract_date}
+        originalAmount={mortgage.original_amount}
+        today={date}
+      />
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between gap-4">
+          <SegmentedControl value={tab} onValueChange={setTab} aria-label="Seção">
+            <SegmentedControlItem value="installments">Prestações</SegmentedControlItem>
+            <SegmentedControlItem value="prepayments">Amortizações</SegmentedControlItem>
+            <SegmentedControlItem value="statements">Extratos</SegmentedControlItem>
+          </SegmentedControl>
+          {tab === "statements" ? (
+            <Button onClick={() => setSheet({ kind: "statement" })}>
+              <PlusIcon aria-hidden="true" />
+              Registrar extrato
+            </Button>
+          ) : (
+            <Button onClick={() => setSheet({ kind: "prepayment" })}>
+              <PlusIcon aria-hidden="true" />
+              Registrar amortização
+            </Button>
+          )}
+        </div>
+        {tab === "installments" && (
+          <InstallmentsTable installments={schedule.installments} current={current} />
+        )}
+        {tab === "prepayments" && (
+          <Prepayments onEdit={(prepayment) => setSheet({ kind: "prepayment", prepayment })} />
+        )}
+        {tab === "statements" && (
+          <Statements onEdit={(statement) => setSheet({ kind: "statement", statement })} />
+        )}
       </div>
+      <DeleteMortgage />
+      {sheet?.kind === "prepayment" && (
+        <PrepaymentSheet prepayment={sheet.prepayment} onClose={() => setSheet(null)} />
+      )}
+      {sheet?.kind === "statement" && (
+        <StatementSheet statement={sheet.statement} onClose={() => setSheet(null)} />
+      )}
+    </>
+  );
+}
+
+function MortgageContent({ mortgage }: { mortgage: RegisteredMortgage }) {
+  const schedule = useMortgageSchedule();
+
+  if (schedule.isError) {
+    return (
+      <ErrorPanel
+        title="Não foi possível carregar seu financiamento"
+        onRetry={() => void schedule.refetch()}
+      />
     );
   }
-  return <MortgageDetails mortgage={data} />;
+  if (schedule.isPending) return <MortgageSkeleton />;
+  return <MortgageDetails mortgage={mortgage} schedule={schedule.data} />;
+}
+
+// The gate on the shell opens this page only once the mortgage is loaded and registered.
+export function Mortgage() {
+  const { data } = useMortgage();
+  if (!data) return null;
+  return (
+    <Page>
+      <PageHeader>
+        <PageTitle>Financiamento</PageTitle>
+        <Button asChild variant="link" size="inline">
+          <Link to="/financiamento/editar">Editar contrato</Link>
+        </Button>
+      </PageHeader>
+      <MortgageContent mortgage={data} />
+    </Page>
+  );
 }

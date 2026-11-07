@@ -15,7 +15,7 @@ export function DeleteMortgageDialog({ onConfirm }: { onConfirm: () => void }) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive">Excluir</Button>
+        <Button variant="destructive">Excluir financiamento</Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>

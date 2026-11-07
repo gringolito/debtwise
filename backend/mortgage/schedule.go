@@ -109,6 +109,8 @@ type replayer struct {
 	relevel bool
 	// drifts are those of the statements applied so far.
 	drifts []Drift
+	// paidOffOn is the date of the event that left nothing owed, once one has.
+	paidOffOn time.Time
 	// prepaymentValues are the index values the updates at the prepayments applied so far read.
 	prepaymentValues []IndexValue
 	// rates are the contract rates with their fixed parts converted once.
@@ -297,6 +299,10 @@ func (r *replayer) applyNext(paid int) decimal.Decimal {
 
 	if r.balance.Cmp(decimal.Decimal{}) == 0 {
 		r.term = paid
+
+		if r.paidOffOn.IsZero() {
+			r.paidOffOn = e.date
+		}
 	}
 
 	return prepaid

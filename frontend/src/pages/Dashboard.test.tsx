@@ -101,6 +101,7 @@ const statement: StatementDrift = {
   outstanding_balance: "40000.42",
   computed_balance: "40000.00",
   drift: "0.42",
+  within_rounding: true,
 };
 
 const prepayment: Prepayment = {
