@@ -33,12 +33,15 @@ export function nextDue(
 }
 
 /**
- * sharePaid is the whole percent of the amount financed that the balance no longer owes, from 0 to
- * 100. An indexer's correction can push the balance above the amount financed, which reads as 0.
+ * sharePaid is the whole percent of the amount financed that the balance no longer owes, rounded
+ * down, from 0 to 100. An indexer's correction can push the balance above the amount financed,
+ * which reads as 0. It is exact on the digits, as ADR-0003 allows for this one display figure.
  */
 export function sharePaid(originalAmount: string, balance: string): number {
-  const paid = Math.floor((1 - Number(balance) / Number(originalAmount)) * 100 + 1e-9);
-  return Math.min(100, Math.max(0, paid));
+  const [original, owed] = atCommonScale(originalAmount, balance);
+  if (original <= 0n) return 0;
+  const paid = ((original - owed) * 100n) / original;
+  return Number(paid < 0n ? 0n : paid > 100n ? 100n : paid);
 }
 
 /** bondCount is how many distinct bonds the lots bought: a type and maturity each. */
@@ -88,18 +91,24 @@ export function staleSources({ bonds, focus, indexes }: VerdictMarketData): Stal
     .map(({ name, refreshed_at }) => ({ name, refreshedAt: refreshed_at }));
 }
 
+/** atCommonScale reads two decimal strings as integers of the same number of decimal places. */
+function atCommonScale(a: string, b: string): [bigint, bigint] {
+  const [aInteger, aFraction = ""] = a.split(".");
+  const [bInteger, bFraction = ""] = b.split(".");
+  const places = Math.max(aFraction.length, bFraction.length);
+  return [
+    BigInt(aInteger + aFraction.padEnd(places, "0")),
+    BigInt(bInteger + bFraction.padEnd(places, "0")),
+  ];
+}
+
 /**
  * compareDecimals orders two signed decimal strings exactly, as no float rounding can tie two
  * amounts a cent apart: negative when a is the smaller, positive when b is.
  */
 function compareDecimals(a: string, b: string): number {
-  const [aInteger, aFraction = ""] = a.split(".");
-  const [bInteger, bFraction = ""] = b.split(".");
-  const places = Math.max(aFraction.length, bFraction.length);
-  const scaled = (integer: string, fraction: string) =>
-    BigInt(integer + fraction.padEnd(places, "0"));
-  const difference = scaled(aInteger, aFraction) - scaled(bInteger, bFraction);
-  return difference === 0n ? 0 : difference < 0n ? -1 : 1;
+  const [scaledA, scaledB] = atCommonScale(a, b);
+  return scaledA === scaledB ? 0 : scaledA < scaledB ? -1 : 1;
 }
 
 /**

@@ -280,6 +280,22 @@ describe("the answer card", () => {
     );
     expect(within(card).queryByRole("link", { name: "Mudar valor" })).not.toBeInTheDocument();
   });
+
+  it.each(["0.00", "-0.00"])(
+    "says both options come out the same when the advantage is %s",
+    async (advantage) => {
+      stubInicio({ "POST /api/decisions": decisionOf([{ ...ltn, advantage }]) });
+      renderAt("/");
+
+      const card = await answerCard();
+      expect(
+        within(card).getByRole("heading", {
+          name: "Investir em Tesouro Prefixado 2029 ou amortizar dá no mesmo",
+        }),
+      ).toBeInTheDocument();
+      expect(paragraph(card, "Nenhuma diferença até 01/01/2029.")).toBeInTheDocument();
+    },
+  );
 });
 
 describe("the stale-data note", () => {
@@ -315,7 +331,7 @@ describe("the stale-data note", () => {
     expect(card.nextElementSibling).toBeNull();
   });
 
-  it("refreshes the market data and reads the answer again once the refresh ends", async () => {
+  it("refreshes the market data and reads what depends on it again once the refresh ends", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date(2024, 2, 20, 9, 30));
     const statuses = [FRESH_STATUS, { ...FRESH_STATUS, refreshing: true }, FRESH_STATUS];
@@ -327,6 +343,13 @@ describe("the stale-data note", () => {
         return Response.json({ ...FRESH_STATUS, refreshing: true });
       },
       "POST /api/decisions": () => decisionOf([refreshed ? ltn : staleVerdict])(),
+      "GET /api/lots": () =>
+        Response.json({
+          lots: [quotedLot],
+          market_value: refreshed
+            ? { gross: "960.00", net: "950.00" }
+            : { gross: "900.00", net: "882.50" },
+        }),
     });
     renderAt("/");
 
@@ -338,7 +361,13 @@ describe("the stale-data note", () => {
     await vi.advanceTimersByTimeAsync(4000);
 
     await waitFor(() => expect(card.nextElementSibling).toBeNull());
-    expect(requests.filter((r) => new URL(r.url).pathname === "/api/decisions").length).toBe(2);
+    expect(await within(await region("Investimentos")).findByText("R$ 950,00")).toBeInTheDocument();
+    const reads = (path: string) => requests.filter((r) => new URL(r.url).pathname === path).length;
+    expect(
+      ["/api/decisions", "/api/mortgage/schedule", "/api/lots", "/api/early-sale-checks"].map(
+        reads,
+      ),
+    ).toEqual([2, 2, 2, 2]);
   });
 });
 
@@ -513,7 +542,7 @@ describe("the next steps", () => {
     ]);
   });
 
-  it("marks a statement and a lot done once one of each is recorded", async () => {
+  it("marks the statement step done once a statement is recorded", async () => {
     stubInicio({
       "GET /api/mortgage/statements": () => Response.json({ statements: [statement] }),
     });
@@ -523,6 +552,17 @@ describe("the next steps", () => {
       ["Configurar o financiamento Concluído", null],
       ["Registrar o último extrato do banco Concluído", null],
       ["Adicionar suas compras do Tesouro", "/investimentos"],
+    ]);
+  });
+
+  it("marks the lot step done once a lot is recorded", async () => {
+    stubInicio({ "GET /api/lots": () => Response.json({ lots: [quotedLot] }) });
+    renderAt("/");
+
+    expect(await steps()).toEqual([
+      ["Configurar o financiamento Concluído", null],
+      ["Registrar o último extrato do banco", "/financiamento"],
+      ["Adicionar suas compras do Tesouro Concluído", null],
     ]);
   });
 
