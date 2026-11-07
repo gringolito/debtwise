@@ -88,7 +88,8 @@ describe("shell", () => {
 
     renderAt(path);
 
-    const nav = await screen.findByRole("navigation", { name: "Principal" });
+    expect(await screen.findByText("DebtWise")).toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: "Principal" });
     const links = within(nav).getAllByRole("link");
     expect(links.map((link) => [link.textContent, link.getAttribute("href")])).toEqual(
       destinations,
@@ -98,6 +99,23 @@ describe("shell", () => {
         .filter((link) => link.getAttribute("aria-current") === "page")
         .map((link) => link.textContent),
     ).toEqual([current]);
+  });
+
+  it.each([
+    ["/mercado/", "Índices"],
+    ["/investimentos/", "Compras"],
+  ])("selects the section %s opens, trailing slash and all", async (path, section) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+
+    renderAt(path);
+
+    expect(await screen.findByRole("radio", { name: section })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
   });
 
   it.each(["/nao-existe", "/financiamento/nao-existe"])(

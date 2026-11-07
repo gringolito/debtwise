@@ -13,7 +13,7 @@ interface SectionLayoutProps {
 
 /** A destination split into sections, each its own route, switched by a segmented control. */
 export function SectionLayout({ label, sections }: SectionLayoutProps) {
-  const pathname = useLocation({ select: (location) => location.pathname });
+  const pathname = useLocation({ select: (location) => location.pathname.replace(/\/+$/, "") });
   const navigate = useNavigate();
 
   return (
