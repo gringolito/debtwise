@@ -6,7 +6,6 @@ import {
   type Router,
   type RouterHistory,
 } from "@tanstack/react-router";
-import { AppShell } from "@/components/layout/AppShell";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { Bonds } from "@/pages/Bonds";
 import { Dashboard } from "@/pages/Dashboard";
@@ -18,6 +17,7 @@ import { Lots } from "@/pages/Lots";
 import { Mortgage } from "@/pages/Mortgage";
 import { MortgageForm } from "@/pages/MortgageForm";
 import { NotFound } from "@/pages/NotFound";
+import { MortgageGate } from "@/pages/onboarding/MortgageGate";
 import { Settings } from "@/pages/Settings";
 
 const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFound });
@@ -25,7 +25,7 @@ const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFou
 const shellRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "shell",
-  component: AppShell,
+  component: MortgageGate,
 });
 
 const homeRoute = createRoute({

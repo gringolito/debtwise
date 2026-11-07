@@ -22,6 +22,7 @@ import {
   listPrepayments,
   listStatements,
   marketDataStatus,
+  previewMortgageSchedule,
   projectionMethods,
   readMortgage,
   readMortgageSchedule,
@@ -223,6 +224,13 @@ export async function fetchMortgageSchedule(): Promise<Schedule> {
 
 export async function putMortgage(terms: MortgageTerms): Promise<RegisteredMortgage> {
   const { data, error, response } = await saveMortgage({ body: terms });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+/** previewSchedule computes the schedule of terms without registering them. */
+export async function previewSchedule(terms: MortgageTerms): Promise<Schedule> {
+  const { data, error, response } = await previewMortgageSchedule({ body: terms });
   if (!data) throw failure(error, response);
   return data;
 }

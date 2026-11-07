@@ -18,6 +18,8 @@ interface MortgageApiOptions {
   onSave?: (body: unknown) => RegisteredMortgage | Response;
   /** The schedule the server serves once a PUT succeeds, in place of the first one. */
   scheduleAfterSave?: Schedule;
+  /** Answers a schedule preview; the schedule served before any save by default. */
+  onPreview?: (body: unknown) => Schedule | Response;
   /** The prepayments recorded before the test starts, in date order; none by default. */
   prepayments?: Prepayment[];
   /** The statements recorded before the test starts, in date order; none by default. */
@@ -46,6 +48,7 @@ export function stubMortgageApi({
   schedule: initialSchedule = schedule,
   onSave,
   scheduleAfterSave,
+  onPreview,
   prepayments = [],
   statements = [],
   scheduleAfterChange,
@@ -93,6 +96,10 @@ export function stubMortgageApi({
       registered = answer;
       served = scheduleAfterSave ?? served;
       return Response.json(answer);
+    },
+    "POST /api/mortgage/schedule/preview": (req) => {
+      const answer = onPreview?.(req.body) ?? initialSchedule;
+      return answer instanceof Response ? answer : Response.json(answer);
     },
     "DELETE /api/mortgage": () => {
       if (!registered) return notFound();

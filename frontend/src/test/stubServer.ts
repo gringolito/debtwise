@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { registeredMortgage } from "./mortgageFixtures";
 
 export interface RecordedRequest {
   method: string;
@@ -30,9 +31,14 @@ export function stubServer(respond: Responder): RecordedRequest[] {
   return requests;
 }
 
+// The mortgage every screen opens behind, which the app reads before any screen shows.
+const MORTGAGE_READ = "GET /api/mortgage";
+
 // Stubs the network with one handler per "METHOD /path", so a test answers each endpoint on its own.
 // A path segment written ":name" matches any value and reaches the handler in its params. A request
-// with no handler gets a 404 problem document and is still recorded.
+// with no handler gets a 404 problem document and is still recorded. A test that leaves
+// GET /api/mortgage unanswered gets `registeredMortgage`, and the request stays out of the record,
+// which lists what the screen under test asked for.
 export function stubRoutes(routes: Record<string, RouteResponder>): RecordedRequest[] {
   const patterns = Object.entries(routes).map(([key, route]) => {
     const [method, path] = key.split(" ");
@@ -43,7 +49,7 @@ export function stubRoutes(routes: Record<string, RouteResponder>): RecordedRequ
     });
     return { method, regex: new RegExp(`^${source}$`), names, route };
   });
-  return stubServer((req) => {
+  const requests = stubServer((req) => {
     const { pathname } = new URL(req.url);
     for (const { method, regex, names, route } of patterns) {
       const match = method === req.method ? regex.exec(pathname) : null;
@@ -51,11 +57,16 @@ export function stubRoutes(routes: Record<string, RouteResponder>): RecordedRequ
         return route(req, Object.fromEntries(names.map((name, i) => [name, match[i + 1]])));
       }
     }
+    if (`${req.method} ${pathname}` === MORTGAGE_READ) {
+      requests.splice(requests.indexOf(req), 1);
+      return Response.json(registeredMortgage);
+    }
     return Response.json(
       { title: "Not Found", status: 404, detail: `no stub for ${req.method} ${pathname}` },
       { status: 404 },
     );
   });
+  return requests;
 }
 
 export function problem(

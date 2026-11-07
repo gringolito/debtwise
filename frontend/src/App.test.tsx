@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { registeredMortgage } from "./test/mortgageFixtures";
 import { renderAt } from "./test/renderAt";
 import { stubRoutes, stubServer } from "./test/stubServer";
 
@@ -9,7 +10,7 @@ afterEach(() => {
 
 describe("the API", () => {
   it("is called on the page's origin", async () => {
-    const requests = stubRoutes({});
+    const requests = stubRoutes({ "GET /api/mortgage": () => Response.json(registeredMortgage) });
 
     renderAt("/");
 
@@ -45,10 +46,7 @@ describe("shell", () => {
     ["/mercado/titulos", "Mercado"],
     ["/ajustes", "Ajustes"],
   ])("lists the six destinations and marks the current one on %s", async (path, current) => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise<Response>(() => {})),
-    );
+    stubRoutes({});
 
     renderAt(path);
 
@@ -69,10 +67,7 @@ describe("shell", () => {
     ["/mercado/", "Índices"],
     ["/investimentos/", "Compras"],
   ])("selects the section %s opens, trailing slash and all", async (path, section) => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise<Response>(() => {})),
-    );
+    stubRoutes({});
 
     renderAt(path);
 
