@@ -71,8 +71,8 @@ fills the sidebar, summary panels or page backgrounds.
 The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reassuring, collaborative.
 
 - Canvas `#F5F7F6`, panels `#FFFFFF`, text `#1D1D1F`.
-- Secondary text is `#6E6E73` on white and `#A1A1A6` on graphite, never lighter. Calm comes from
-  restraint, not from faint text. `#AEAEB2` is only for placeholders and disabled states.
+- Secondary text is `#6E6E73` on white and `#A1A1A6` on graphite. Calm comes from restraint, not
+  from faint text. `#AEAEB2` is only for placeholders and disabled states.
 - **Primary buttons are graphite** with white text, 12px radius, 44px tall. On a graphite card the
   button inverts to white with graphite text. One primary button per screen.
 - Accent roles:
@@ -88,10 +88,9 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
 
 ## Typography
 
-Inter as the SF Pro stand-in for everything, including large figures, with tabular numerals. Never a
-monospace font. Large Title 34 bold for page titles, Title 2 22 semibold for sections, Headline 17
-semibold, Body 17, Callout 15 for explanations, Footnote 13 for metadata. Key figures use a 56px
-semibold hero figure.
+Inter as the SF Pro stand-in for everything, including large figures, with tabular numerals. Large
+Title 34 bold for page titles, Title 2 22 semibold for sections, Headline 17 semibold, Body 17,
+Callout 15 for explanations, Footnote 13 for metadata. Key figures use a 56px semibold hero figure.
 
 ## Layout and components
 
@@ -103,11 +102,11 @@ semibold hero figure.
   groups, 40px between sections.
 - Inset grouped lists: white 12px-radius panels, 52px rows with inset hairlines, label left, value
   right, chevron for drill-in. Section headers are Footnote uppercase in secondary grey.
-- Editable values inside sentences are underlined in the soft accent, never boxed as pills.
+- Editable values inside sentences are underlined in the soft accent.
 - Segmented controls for two- or three-way choices; large selectable cards with a small schematic
   chart for conceptual choices like SAC vs Price.
 - Market data freshness is shown next to what it affects (a footnote directly under the answer
-  card), never as a loose notice at the bottom of a page.
+  card).
 
 ## Onboarding
 
@@ -130,8 +129,7 @@ column, a Large Title that asks a question, one sentence of context, the inputs,
 Direct, warm, second person ("você"), one sentence per explanation, deeper detail behind "Saiba
 mais". Use the domain words: financiamento, prestação, amortização extraordinária, saldo devedor,
 projeção, decisão. Avoid dívida, simulação, previsão. Results are conditional ("Na projeção
-atual…"), never authoritative ("melhor", "otimizado", "rentabilidade máxima"). Never expose server
-state or refresh mechanics.
+atual…"). Never expose server state or refresh mechanics.
 
 ## Sample data for mockups
 
