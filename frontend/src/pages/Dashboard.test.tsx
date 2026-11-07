@@ -254,7 +254,7 @@ describe("the lots on the dashboard", () => {
     const lots = await region("Lotes");
     expect(await within(lots).findByRole("link", { name: "Registrar lote" })).toHaveAttribute(
       "href",
-      "/lotes",
+      "/investimentos",
     );
   });
 
@@ -352,7 +352,7 @@ describe("the best early sale check on the dashboard", () => {
     expect(within(check).queryByText("Manter até o vencimento")).not.toBeInTheDocument();
     expect(within(check).getByRole("link", { name: "Ver todos os lotes" })).toHaveAttribute(
       "href",
-      "/venda-antecipada",
+      "/investimentos/venda-antecipada",
     );
     expect(
       requests
@@ -382,7 +382,7 @@ describe("the best early sale check on the dashboard", () => {
     const check = await region("Melhor venda antecipada");
     expect(await within(check).findByRole("link", { name: "Registrar lote" })).toHaveAttribute(
       "href",
-      "/lotes",
+      "/investimentos",
     );
   });
 
@@ -485,7 +485,7 @@ describe("the best decision on the dashboard", () => {
     ).toBeInTheDocument();
     expect(within(best).getByRole("link", { name: "Ver todos os títulos" })).toHaveAttribute(
       "href",
-      "/decisao",
+      "/decidir",
     );
   });
 
@@ -613,7 +613,7 @@ describe("the market data on the dashboard", () => {
     ]);
     expect(within(marketData).getByRole("link", { name: "Ver índices" })).toHaveAttribute(
       "href",
-      "/indices",
+      "/mercado",
     );
   });
 

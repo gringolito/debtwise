@@ -153,11 +153,24 @@ function stubChecks(respond: (effect: string | null) => Response) {
 const checkRegion = (name: string) => screen.findByRole("region", { name });
 
 describe("the early sale checks", () => {
+  it("is reached from the Venda antecipada segment of Investimentos", async () => {
+    stubChecks(() => Response.json(listOf([])));
+    renderAt("/investimentos");
+
+    fireEvent.click(await screen.findByRole("radio", { name: "Venda antecipada" }));
+
+    expect(await screen.findByRole("heading", { name: "Venda antecipada" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Investimentos" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
   it("lists every lot in the order the API ranks them, with its verdict and advantage", async () => {
     const requests = stubChecks(() =>
       Response.json(listOf([sellingCheck, holdingCheck, maturedCheck])),
     );
-    renderAt("/venda-antecipada");
+    renderAt("/investimentos/venda-antecipada");
 
     const selling = await checkRegion("Tesouro Prefixado 2029 (compra em 02/01/2025)");
     expect(
@@ -242,7 +255,7 @@ describe("the early sale checks", () => {
         ]),
       ),
     );
-    renderAt("/venda-antecipada");
+    renderAt("/investimentos/venda-antecipada");
 
     const matured = await checkRegion("Tesouro Prefixado 2026 (compra em 02/01/2025)");
     expect(within(matured).getByText("O título deste lote já venceu.")).toBeInTheDocument();
@@ -280,7 +293,7 @@ describe("the early sale checks", () => {
         ),
       ),
     );
-    renderAt("/venda-antecipada");
+    renderAt("/investimentos/venda-antecipada");
 
     await screen.findByText("Vantagem: -R$ 605,50, a favor de vender");
     fireEvent.change(screen.getByLabelText("Efeito"), { target: { value: "lower_installment" } });
@@ -318,7 +331,7 @@ describe("the early sale checks", () => {
 
   it("shows holding and selling, with the sale on its first day", async () => {
     stubChecks(() => Response.json(listOf([sellingCheck])));
-    renderAt("/venda-antecipada");
+    renderAt("/investimentos/venda-antecipada");
 
     const check = await checkRegion("Tesouro Prefixado 2029 (compra em 02/01/2025)");
     fireEvent.click(within(check).getByRole("button", { name: "Ver cenários" }));
@@ -398,7 +411,7 @@ describe("the early sale checks", () => {
 
   it("asks for a mortgage when none is registered", async () => {
     stubChecks(() => problem(404, "Not Found", "no mortgage is registered"));
-    renderAt("/venda-antecipada");
+    renderAt("/investimentos/venda-antecipada");
 
     expect(await screen.findByText(/Nenhum financiamento cadastrado/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Cadastrar financiamento" })).toHaveAttribute(
@@ -409,16 +422,19 @@ describe("the early sale checks", () => {
 
   it("says when the checks could not be computed", async () => {
     stubChecks(() => problem(500, "Internal Server Error", "unexpected error"));
-    renderAt("/venda-antecipada");
+    renderAt("/investimentos/venda-antecipada");
 
     expect(await screen.findByText("Não foi possível comparar os lotes.")).toBeInTheDocument();
   });
 
   it("asks for a lot when none is recorded", async () => {
     stubChecks(() => Response.json(listOf([])));
-    renderAt("/venda-antecipada");
+    renderAt("/investimentos/venda-antecipada");
 
     expect(await screen.findByText(/Nenhum lote registrado/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Registrar lote" })).toHaveAttribute("href", "/lotes");
+    expect(screen.getByRole("link", { name: "Registrar lote" })).toHaveAttribute(
+      "href",
+      "/investimentos",
+    );
   });
 });

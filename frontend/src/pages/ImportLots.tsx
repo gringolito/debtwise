@@ -84,9 +84,9 @@ export function ImportLots() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold">Importar lotes de um arquivo CSV</h2>
+        <h2 className="text-title-2">Importar lotes de um arquivo CSV</h2>
         <Button asChild variant="outline">
-          <Link to="/lotes">Voltar aos lotes</Link>
+          <Link to="/investimentos">Voltar aos lotes</Link>
         </Button>
       </div>
       {catalogue.isError && (
@@ -116,11 +116,11 @@ export function ImportLots() {
         </FieldDescription>
       </Field>
       {importLots.isSuccess && (
-        <p role="status" className="text-sm">
+        <p role="status" className="text-callout">
           {importLots.data.length === 1
             ? "1 lote importado."
             : `${importLots.data.length} lotes importados.`}{" "}
-          <Link to="/lotes">Ver lotes</Link>.
+          <Link to="/investimentos">Ver lotes</Link>.
         </p>
       )}
       {importLots.isError && rejectedRows.length === 0 && (

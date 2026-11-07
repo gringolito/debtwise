@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 import { DeleteMortgageDialog } from "@/components/mortgage/DeleteMortgageDialog";
 import { MortgageSchedule } from "@/components/mortgage/MortgageSchedule";
 import { Prepayments } from "@/components/mortgage/Prepayments";
@@ -108,7 +108,7 @@ function MortgageDetails({ mortgage }: { mortgage: RegisteredMortgage }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold">Financiamento</h2>
+        <h2 className="text-title-2">Financiamento</h2>
         <div className="flex gap-2">
           <Button asChild variant="outline">
             <Link to="/financiamento/editar">Editar</Link>

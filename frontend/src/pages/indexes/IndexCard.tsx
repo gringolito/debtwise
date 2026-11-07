@@ -59,7 +59,7 @@ export function IndexCard({ status }: { status: IndexStatus }) {
           )}
           {latest && (
             <div>
-              <p className="text-2xl font-semibold">{format(latest.value)}</p>
+              <p className="text-title-2">{format(latest.value)}</p>
               <p className="text-muted-foreground">
                 {formatPeriod(latest.period_start, latest.period_end)}
               </p>

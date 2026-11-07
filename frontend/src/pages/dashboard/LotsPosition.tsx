@@ -20,7 +20,7 @@ function Position() {
   if (data.lots.length === 0) {
     return (
       <p className="text-muted-foreground">
-        Nenhum lote registrado. <Link to="/lotes">Registrar lote</Link>.
+        Nenhum lote registrado. <Link to="/investimentos">Registrar lote</Link>.
       </p>
     );
   }

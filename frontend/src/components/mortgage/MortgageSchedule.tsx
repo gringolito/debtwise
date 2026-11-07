@@ -59,9 +59,9 @@ export function IndexCell({ indexValues }: { indexValues: CorrectionIndex[] }) {
             <span>{index.value && formatPercent(index.value)}</span>
           )}{" "}
           {index.status === "projected" && <Badge variant="secondary">Projetado</Badge>}{" "}
-          <span className="block text-xs text-muted-foreground">{indexPeriod(index)}</span>{" "}
+          <span className="block text-footnote text-muted-foreground">{indexPeriod(index)}</span>{" "}
           {index.status === "projected" && (
-            <span className="block text-xs text-muted-foreground">
+            <span className="block text-footnote text-muted-foreground">
               {projectedByText(index.methods)}
             </span>
           )}
@@ -82,7 +82,7 @@ function MissingIndexWarning({ missing }: { missing: CorrectionIndex[] }) {
       <AlertDescription>
         Faltam valores de {indexNames[missing[0].index]} para {months} Atualize os dados de mercado
         na página{" "}
-        <Link to="/indices" className="underline">
+        <Link to="/mercado" className="underline">
           Índices
         </Link>
         .
@@ -102,7 +102,7 @@ function MissingRateWarning({ missing }: { missing: CorrectionIndex[] }) {
       <AlertDescription>
         Faltam valores de {indexNames[missing[0].index]} para {months} Atualize os dados de mercado
         na página{" "}
-        <Link to="/indices" className="underline">
+        <Link to="/mercado" className="underline">
           Índices
         </Link>
         .

@@ -111,7 +111,7 @@ function fill(form: HTMLElement, label: string, value: string) {
 describe("the lots", () => {
   it("shows each lot's values gross, taxed and net, and its coupons", async () => {
     stubLots([ltn, ntnb]);
-    renderAt("/lotes");
+    renderAt("/investimentos");
 
     const ltnSection = await lotRegion(ltnName);
     expect(
@@ -167,7 +167,7 @@ describe("the lots", () => {
 
   it("says when a lot's values need an IPCA that is neither published nor projected", async () => {
     stubLots([ntnbPrincipalUnvalued]);
-    renderAt("/lotes");
+    renderAt("/investimentos");
 
     const section = await lotRegion("Tesouro IPCA+ 2035 (compra em 01/06/2026)");
     expect(within(section).getByRole("alert")).toHaveTextContent(
@@ -178,7 +178,7 @@ describe("the lots", () => {
 
   it("says so when no lot is recorded", async () => {
     stubLots([]);
-    renderAt("/lotes");
+    renderAt("/investimentos");
 
     expect(await screen.findByText("Nenhum lote registrado.")).toBeInTheDocument();
   });
@@ -187,7 +187,7 @@ describe("the lots", () => {
 describe("recording a lot", () => {
   it("sends what the owner typed and then lists the lot", async () => {
     const requests = stubLots([]);
-    renderAt("/lotes");
+    renderAt("/investimentos");
 
     const form = await screen.findByRole("form", { name: "Registrar lote" });
     fill(form, "Título", "ntn_f");
@@ -214,7 +214,7 @@ describe("recording a lot", () => {
 
   it("shows the reason next to each field the server rejects", async () => {
     stubLots([]);
-    renderAt("/lotes");
+    renderAt("/investimentos");
 
     const form = await screen.findByRole("form", { name: "Registrar lote" });
     fill(form, "Preço unitário", "0");
@@ -233,7 +233,7 @@ describe("recording a lot", () => {
 describe("editing a lot", () => {
   it("fills the form with the lot and saves what the owner changes", async () => {
     const requests = stubLots([ltn]);
-    renderAt("/lotes");
+    renderAt("/investimentos");
 
     fireEvent.click(await screen.findByRole("button", { name: `Editar ${ltnName}` }));
     const form = await screen.findByRole("form", { name: `Editar ${ltnName}` });
@@ -273,7 +273,7 @@ describe("editing a lot", () => {
 describe("deleting a lot", () => {
   it("asks for confirmation and then removes the lot", async () => {
     const requests = stubLots([ltn, ntnb]);
-    renderAt("/lotes");
+    renderAt("/investimentos");
 
     fireEvent.click(await screen.findByRole("button", { name: `Excluir ${ltnName}` }));
     const dialog = await screen.findByRole("alertdialog", { name: "Excluir lote?" });
@@ -291,10 +291,10 @@ describe("deleting a lot", () => {
 describe("importing lots", () => {
   it("leads to the page that imports a CSV file", async () => {
     stubLots([]);
-    renderAt("/lotes");
+    renderAt("/investimentos");
 
     expect(
       await screen.findByRole("link", { name: "Importar lotes de um arquivo CSV" }),
-    ).toHaveAttribute("href", "/lotes/importar");
+    ).toHaveAttribute("href", "/investimentos/importar");
   });
 });

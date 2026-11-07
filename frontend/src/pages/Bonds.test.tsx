@@ -90,20 +90,21 @@ function tableText(): string[][] {
 }
 
 describe("bonds page", () => {
-  it("is reached from the nav in the header", async () => {
+  it("is reached from the Títulos segment of Mercado", async () => {
     stubBackend({ status: FRESH_STATUS, catalogue: CATALOGUE });
 
-    renderAt("/");
-    fireEvent.click(await screen.findByRole("link", { name: "Títulos" }));
+    renderAt("/mercado");
+    fireEvent.click(await screen.findByRole("radio", { name: "Títulos" }));
 
     expect(await screen.findByRole("heading", { name: "Títulos" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Índices" })).toHaveAttribute("href", "/indices");
+    expect(screen.getByRole("radio", { name: "Títulos" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("link", { name: "Mercado" })).toHaveAttribute("aria-current", "page");
   });
 
   it("lists every bond with its maturity, rates and prices, and — where it is not on offer", async () => {
     stubBackend({ status: FRESH_STATUS, catalogue: CATALOGUE });
 
-    renderAt("/titulos");
+    renderAt("/mercado/titulos");
 
     await screen.findByText("Tesouro Prefixado 2029");
     expect(tableText()).toEqual([
@@ -149,7 +150,7 @@ describe("refresh time", () => {
   it("shows when the bond prices were last refreshed", async () => {
     stubBackend({ status: FRESH_STATUS, catalogue: CATALOGUE });
 
-    renderAt("/titulos");
+    renderAt("/mercado/titulos");
 
     expect(await screen.findByText("Atualizado em 25/10/2026 18:24")).toBeInTheDocument();
   });
@@ -160,7 +161,7 @@ describe("refresh time", () => {
       catalogue: { bonds: [] },
     });
 
-    renderAt("/titulos");
+    renderAt("/mercado/titulos");
 
     expect(await screen.findByText("Nunca atualizado")).toBeInTheDocument();
   });
@@ -174,7 +175,7 @@ describe("warnings", () => {
   it("shows no warning while the bond prices are fresh", async () => {
     stubBackend({ status: FRESH_STATUS, catalogue: CATALOGUE });
 
-    renderAt("/titulos");
+    renderAt("/mercado/titulos");
 
     expect(await screen.findByText("Tesouro Prefixado 2029")).toBeInTheDocument();
     expect(await screen.findByText("Atualizado em 25/10/2026 18:24")).toBeInTheDocument();
@@ -184,7 +185,7 @@ describe("warnings", () => {
   it("warns that stale prices are more than two days old", async () => {
     stubBackend(withBonds({ status: "stale", refreshed_at: "2026-10-23T09:05:00Z" }));
 
-    renderAt("/titulos");
+    renderAt("/mercado/titulos");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Dados desatualizados: a última atualização foi há mais de dois dias.",
@@ -202,7 +203,7 @@ describe("warnings", () => {
       }),
     );
 
-    renderAt("/titulos");
+    renderAt("/mercado/titulos");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "A última atualização falhou em 25/10/2026 17:00.",
@@ -215,7 +216,7 @@ describe("warnings", () => {
   it("warns that there are no bond prices yet", async () => {
     stubBackend(withBonds({ status: "missing" }, { bonds: [] }));
 
-    renderAt("/titulos");
+    renderAt("/mercado/titulos");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Ainda não há preços de títulos.");
     expect(screen.getAllByRole("alert")).toHaveLength(1);
@@ -258,7 +259,7 @@ describe("refresh", () => {
         ),
     });
 
-    renderAt("/titulos");
+    renderAt("/mercado/titulos");
     expect(await screen.findByText("Tesouro Prefixado 2029")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
 
@@ -292,7 +293,7 @@ describe("refresh", () => {
         ),
     });
 
-    renderAt("/titulos");
+    renderAt("/mercado/titulos");
     fireEvent.click(await screen.findByRole("button", { name: "Atualizar" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -308,7 +309,7 @@ describe("empty and failed loads", () => {
   it("says when no bond is available", async () => {
     stubBackend({ status: FRESH_STATUS, catalogue: { bonds: [] } });
 
-    renderAt("/titulos");
+    renderAt("/mercado/titulos");
 
     expect(await screen.findByText("Nenhum título disponível.")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
@@ -320,7 +321,7 @@ describe("empty and failed loads", () => {
       "GET /api/bonds": () => Response.json(PROBLEM, { status: 503 }),
     });
 
-    renderAt("/titulos");
+    renderAt("/mercado/titulos");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não foi possível carregar os títulos.",

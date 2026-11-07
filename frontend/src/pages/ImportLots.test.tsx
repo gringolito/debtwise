@@ -111,7 +111,7 @@ describe("importing lots from a CSV file", () => {
     "previews a file separated by $separator and imports it once confirmed",
     async ({ contents }) => {
       const requests = stubImport();
-      renderAt("/lotes/importar");
+      renderAt("/investimentos/importar");
 
       const preview = await chooseFile(contents);
 
@@ -147,7 +147,7 @@ describe("importing lots from a CSV file", () => {
       expect(status).toHaveTextContent("5 lotes importados. Ver lotes.");
       expect(within(status).getByRole("link", { name: "Ver lotes" })).toHaveAttribute(
         "href",
-        "/lotes",
+        "/investimentos",
       );
       expect(screen.queryByRole("table", { name: "Lotes do arquivo" })).toBeNull();
       fireEvent.click(within(status).getByRole("link", { name: "Ver lotes" }));
@@ -205,7 +205,7 @@ describe("importing lots from a CSV file", () => {
 
   it("suggests the closest bond of the same year for a name the catalogue lacks", async () => {
     stubImport();
-    renderAt("/lotes/importar");
+    renderAt("/investimentos/importar");
 
     await chooseFile(
       [
@@ -262,7 +262,7 @@ describe("importing lots from a CSV file", () => {
 
   it("imports the bond the owner picks over the one suggested", async () => {
     const requests = stubImport();
-    renderAt("/lotes/importar");
+    renderAt("/investimentos/importar");
 
     await chooseFile(
       [
@@ -297,7 +297,7 @@ describe("importing lots from a CSV file", () => {
 
   it("imports the lots as the owner edits them and leaves out the rows removed", async () => {
     const requests = stubImport();
-    renderAt("/lotes/importar");
+    renderAt("/investimentos/importar");
 
     const preview = await chooseFile(
       [
@@ -368,7 +368,7 @@ describe("importing lots from a CSV file", () => {
         );
       },
     });
-    renderAt("/lotes/importar");
+    renderAt("/investimentos/importar");
 
     await chooseFile(
       [
@@ -420,7 +420,7 @@ describe("importing lots from a CSV file", () => {
 
   it("has nothing to import once every row is removed", async () => {
     const requests = stubImport();
-    renderAt("/lotes/importar");
+    renderAt("/investimentos/importar");
 
     await chooseFile(
       [
@@ -446,7 +446,7 @@ describe("importing lots from a CSV file", () => {
       { location: "body.lots[5].rate", message: "expected string to match pattern" },
       { location: "body.lots[6].type", message: 'expected value to be one of "ltn, ntn_f"' },
     ]);
-    renderAt("/lotes/importar");
+    renderAt("/investimentos/importar");
 
     const preview = await chooseFile(
       [

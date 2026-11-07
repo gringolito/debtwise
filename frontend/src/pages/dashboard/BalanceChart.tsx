@@ -10,8 +10,8 @@ import type { Scenario } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 
 const CHART_CONFIG = {
-  invest: { label: "Investir", color: "var(--chart-1)" },
-  prepay: { label: "Amortizar", color: "var(--chart-2)" },
+  invest: { label: "Investir", color: "var(--chart-investment)" },
+  prepay: { label: "Amortizar", color: "var(--chart-mortgage)" },
 } satisfies ChartConfig;
 
 const tickFormat = new Intl.NumberFormat("pt-BR", { notation: "compact" });

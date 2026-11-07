@@ -91,20 +91,38 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
 Inter as the SF Pro stand-in for everything, including large figures, with tabular numerals. Large
 Title 34 bold for page titles, Title 2 22 semibold for sections, Headline 17 semibold, Body 17,
 Callout 15 for explanations, Footnote 13 for metadata. Key figures use a 56px semibold hero figure.
+The wordmark is Title 2. These seven sizes are the whole scale.
 
 ## Layout and components
 
 - Desktop canvas 1280px. Left sidebar 240px on the canvas color, separated by a hairline, with only
   the "DebtWise" wordmark (no subtitle, no badge) and these items with thin line icons: Início,
   Financiamento, Investimentos, Decidir; a hairline; Mercado; and Ajustes pinned at the bottom.
-  No top bar, no footer.
+  The current item, including on its sub-pages, has the tint background and the strong accent
+  label and icon; the others are Callout in secondary grey. No top bar, no footer.
 - Content column max 880px, centered, 40px top margin. 8px grid; 16px inside rows, 24px between
   groups, 40px between sections.
 - Inset grouped lists: white 12px-radius panels, 52px rows with inset hairlines, label left, value
   right, chevron for drill-in. Section headers are Footnote uppercase in secondary grey.
 - Editable values inside sentences are underlined in the soft accent.
-- Segmented controls for two- or three-way choices; large selectable cards with a small schematic
-  chart for conceptual choices like SAC vs Price.
+- Segmented controls for two- or three-way choices: a translucent grey track with the selected
+  segment raised in white. A destination split into sections, such as Mercado (Índices,
+  Títulos) and Investimentos (Compras, Venda antecipada), switches them with a segmented control
+  at the top of the page. Large selectable cards with a small schematic chart for conceptual
+  choices like SAC vs Price.
+- Buttons: graphite primary; white on a graphite card; plain text buttons in secondary grey
+  ("Cancelar", "Voltar", "Mudar valor"); links and text actions in the strong accent.
+- Modal sheets for recording something over a page: a centered 520px white panel with the sheet
+  shadow over the page dimmed by graphite at 30% and blurred. The title (Title 2) sits left and a
+  plain "Cancelar" right; the content is inset grouped lists; the primary button spans the width.
+- Loading shows skeletons: blocks the shape of the content, in graphite at 5% so they read on both
+  the canvas and white panels, pulsing gently.
+- A screen that fails to load shows a white error panel in place of its content: a cloud-off icon
+  in a grey circle, a Headline saying what could not load, "Verifique sua conexão. Seus dados
+  estão salvos." in Callout, and a graphite "Tentar novamente" that retries the failed request.
+- Unknown addresses open a full-screen page without the sidebar: the wordmark top left, "404" as a
+  hero figure in tertiary grey, "Esta página não existe", "O endereço pode ter mudado." and a
+  graphite "Voltar ao início".
 - Market data freshness is shown next to what it affects (a footnote directly under the answer
   card).
 
@@ -135,3 +153,32 @@ atual…"). Never expose server state or refresh mechanics.
 
 R$ 480.000,00 over 420 months from 15/03/2023, SAC, TR, 9,50 % ao ano efetiva, appraisal
 R$ 650.000,00. Today is sexta-feira, 6 de novembro de 2026.
+
+## Tokens in the frontend
+
+`frontend/src/index.css` declares these tokens and removes Tailwind's default palette, type scale
+and radii, so a class outside them generates no CSS and the `shadcn` lint rules reject it.
+Colors keep shadcn's names where shadcn has the role:
+
+| Token | Utility |
+| --- | --- |
+| background (canvas) | `bg-background` |
+| surface | `bg-card`, `bg-popover` |
+| on-surface | `text-foreground` |
+| on-surface-secondary | `text-muted-foreground` |
+| on-surface-tertiary | `text-tertiary-foreground` |
+| separator | `border-border`, `border-input` |
+| primary, on-primary | `bg-primary`, `text-primary-foreground` |
+| graphite, graphite-raised | `bg-graphite`, `bg-graphite-raised` |
+| on-graphite, on-graphite-secondary | `text-graphite-foreground`, `text-graphite-muted-foreground` |
+| accent, accent-soft, accent-tint | `text-accent`, `accent-soft`, `accent-tint` (`ring` is soft) |
+| positive, caution, caution-tint | `text-positive`, `text-caution`, `bg-caution-tint` |
+| critical | `text-destructive` |
+| chart-mortgage, chart-investment, chart-projection | `var(--chart-mortgage)` and so on |
+| typography | `text-large-title`, `text-title-2`, `text-headline`, `text-body`, `text-callout`, `text-footnote`, `text-hero-figure` |
+| roundness | `rounded-lg` |
+| spacing xs, sm, md, lg, xl, xxl | Tailwind's 4px steps 1, 2, 4, 6, 10, 16 |
+| content column | `max-w-content` |
+| sheet shadow | `shadow-sheet` |
+
+There is no dark palette yet, so the tokens have no `.dark` values.

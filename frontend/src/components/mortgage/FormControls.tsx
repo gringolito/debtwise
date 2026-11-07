@@ -1,4 +1,4 @@
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 
 function Message({ className, ...props }: React.ComponentProps<"p">) {
-  return <p className={cn("text-sm text-destructive", className)} {...props} />;
+  return <p className={cn("text-callout text-destructive", className)} {...props} />;
 }
 
 interface TextFieldProps {

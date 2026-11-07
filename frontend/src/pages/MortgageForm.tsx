@@ -78,7 +78,7 @@ function MortgageFormFields({ mortgage }: { mortgage: RegisteredMortgage | null 
 
   return (
     <form noValidate onSubmit={submit} className="flex flex-col gap-6">
-      <h2 className="text-xl font-semibold">
+      <h2 className="text-title-2">
         {mortgage ? "Editar financiamento" : "Cadastrar financiamento"}
       </h2>
       {save.isError && (

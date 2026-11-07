@@ -14,7 +14,7 @@ export function EarlySale() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-xl font-semibold">Venda antecipada</h2>
+      <h2 className="text-title-2">Venda antecipada</h2>
       <div className="max-w-xs">
         <SelectField label="Efeito" options={effectOptions} value={effect} onChange={setEffect} />
       </div>

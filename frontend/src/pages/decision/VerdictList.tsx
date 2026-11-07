@@ -31,7 +31,7 @@ function VerdictCard({ verdict }: { verdict: Verdict }) {
           </Alert>
         )}
         {verdict.advantage && (
-          <p className="text-lg font-semibold">
+          <p className="text-headline">
             Vantagem: {advantageText(verdict.advantage, "investir", "amortizar")}
           </p>
         )}

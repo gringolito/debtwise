@@ -1,4 +1,4 @@
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 
 /** Figures lists a panel's headline figures, one per row. */
 export function Figures({ className, ...props }: React.ComponentProps<"ul">) {
