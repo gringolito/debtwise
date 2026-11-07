@@ -241,15 +241,28 @@ export function termsFromValues(values: FormValues): MortgageTerms {
   };
 }
 
+// The reasons backend/mortgage/validate.go gives for terms that break its rules, in the owner's
+// words. A reason it rewords, and a value the schema cannot read, read as invalid.
+const reasonMessages: Record<string, string> = {
+  "must be greater than zero": "Precisa ser maior que zero.",
+  "must not be before the contract date": "Não pode ser antes da data do contrato.",
+  "needs a row effective on or before the first installment date":
+    "Uma mudança precisa valer desde a primeira prestação.",
+  "repeats the date of another row": "Outra mudança já começa nesta data.",
+};
+
 /**
- * invalidLocations lists what the API rejected, as "contract_date", "fees" or
- * "fees[1].effective_from": a body field, a whole list or a field of one row of it.
+ * rejections maps what the API rejected to the message the owner reads there. A location is a
+ * body field, a whole list or a field of one row of it: "contract_date", "fees" or
+ * "fees[1].effective_from".
  */
-export function invalidLocations(error: Error | null): Set<string> {
-  if (!(error instanceof ApiError)) return new Set();
-  return new Set(
-    error.locations.flatMap((location) =>
-      location.startsWith("body.") ? [location.slice("body.".length)] : [],
+export function rejections(error: Error | null): Map<string, string> {
+  if (!(error instanceof ApiError)) return new Map();
+  return new Map(
+    error.rejected.flatMap(({ location, message }) =>
+      location.startsWith("body.")
+        ? [[location.slice("body.".length), reasonMessages[message] ?? "Valor inválido."] as const]
+        : [],
     ),
   );
 }
