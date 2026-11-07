@@ -91,7 +91,6 @@ export function useChangeEditor({
 
     return {
       change: { list, row } as Change,
-      isNew,
       update: (patch) =>
         editDraft({
           ...draft,
@@ -107,17 +106,19 @@ export function useChangeEditor({
         if (isNew) onRowsMoved();
         setEditing(null);
       },
-      onRemove: () => {
-        setValues(
-          withRows(
-            values,
-            list,
-            rowsOf(values, list).filter((r) => r.id !== rowId),
-          ),
-        );
-        onRowsMoved();
-        setEditing(null);
-      },
+      onRemove: isNew
+        ? undefined
+        : () => {
+            setValues(
+              withRows(
+                values,
+                list,
+                rowsOf(values, list).filter((r) => r.id !== rowId),
+              ),
+            );
+            onRowsMoved();
+            setEditing(null);
+          },
       onCancel: () => setEditing(null),
     };
   }

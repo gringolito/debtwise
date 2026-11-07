@@ -31,14 +31,14 @@ type Patch = Partial<ContractRateRow> | Partial<MonthlyRateRow> | Partial<FeeRow
 
 export interface ChangeSheetProps {
   change: Change;
-  isNew: boolean;
   update: (patch: Patch) => void;
   /** The message for what the API rejected in a field of the row, such as "rate". */
   messageOf: (field: string) => string | undefined;
   insurance?: InsuranceChoice;
   firstCharge?: FirstChargeInput;
   onDone: () => void;
-  onRemove: () => void;
+  /** Removes the change from the form; a change the sheet is adding has nothing to remove. */
+  onRemove?: () => void;
   onCancel: () => void;
 }
 
@@ -161,8 +161,7 @@ function ChangeFields({ change, update, messageOf, firstCharge }: ChangeSheetPro
 
 /** ChangeSheet edits one dated change of a list over the page, until "Concluir" or "Cancelar". */
 export function ChangeSheet(props: ChangeSheetProps) {
-  const { change, isNew, update, messageOf, insurance, firstCharge, onDone, onRemove, onCancel } =
-    props;
+  const { change, update, messageOf, insurance, firstCharge, onDone, onRemove, onCancel } = props;
   return (
     <Dialog open onOpenChange={(open) => open || onCancel()}>
       <DialogContent aria-describedby={undefined}>
@@ -211,7 +210,7 @@ export function ChangeSheet(props: ChangeSheetProps) {
           </GroupedList>
           <DialogFooter>
             <Button type="submit">Concluir</Button>
-            {!isNew && (
+            {onRemove && (
               <Button type="button" variant="destructive" onClick={onRemove}>
                 Remover mudança
               </Button>

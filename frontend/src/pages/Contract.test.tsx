@@ -207,6 +207,7 @@ describe("saving", () => {
 
     fireEvent.click(await screen.findByRole("link", { name: "Editar" }));
     await screen.findByRole("button", { name: "Salvar" });
+    fill("Data do contrato", "2023-12-11");
     fill("Valor financiado", "250.000,00");
     const sheet = openChange(/^MIP a partir de 01\/04\/2024/);
     fill("Taxa", "0,06", sheet);
@@ -223,6 +224,7 @@ describe("saving", () => {
     expect(putBodies(requests)).toEqual([
       {
         ...registeredTerms,
+        contract_date: "2023-12-11",
         original_amount: "250000.00",
         mip_rates: [
           { effective_from: "2023-12-10", rate: "0.0003" },
@@ -409,12 +411,16 @@ describe("the poupança part of a contract rate", () => {
     ]);
   });
 
-  it("sends it once the owner declares it", async () => {
+  it("sends the basis and the poupança part the owner sets", async () => {
     const requests = await openPage({ onSave: () => registeredMortgage });
 
     const sheet = openChange(/^A partir de 10\/12\/2023/);
+    fireEvent.click(within(sheet).getByRole("radio", { name: "Efetiva" }));
     fireEvent.click(within(sheet).getByRole("switch", { name: "Parte vinculada à poupança" }));
     finish(sheet);
+    expect(changes("Juros do contrato")).toEqual([
+      "A partir de 10/12/2023, 12,00 % ao ano · efetiva + poupança",
+    ]);
     save();
 
     await savedPage();
@@ -425,7 +431,7 @@ describe("the poupança part of a contract rate", () => {
           {
             effective_from: "2023-12-10",
             rate: "0.12",
-            basis: "nominal",
+            basis: "effective",
             poupanca_additional: true,
           },
         ],
@@ -532,6 +538,26 @@ describe("adding and removing changes", () => {
     expect(within(sheet).getByRole("radio", { name: "Efetiva" })).toBeChecked();
   });
 
+  it("marks a rejected change by its place in the list, not where its date shows it", async () => {
+    await openPage({
+      onSave: rejected([{ location: "body.mip_rates[2].rate", message: "is not acceptable" }]),
+    });
+
+    let sheet = addChange("Seguros");
+    fill("A partir de", "2024-01-01", sheet);
+    fill("Taxa", "0,04", sheet);
+    finish(sheet);
+    save();
+    await screen.findByRole("alert");
+
+    const marked = screen
+      .getAllByRole("button", { name: /a partir de/i })
+      .filter((row) => row.hasAttribute("aria-describedby"));
+    expect(marked).toEqual([change(/^MIP a partir de 01\/01\/2024/)]);
+    sheet = openChange(/^MIP a partir de 01\/01\/2024/);
+    expect(within(sheet).getByLabelText("Taxa")).toHaveAccessibleDescription("Valor inválido.");
+  });
+
   it("lists a change without a date after the dated ones", async () => {
     await openPage();
 
@@ -633,6 +659,10 @@ describe("without a registered mortgage", () => {
     expect(changes("Seguros")).toEqual(["MIP sem data, — % ao mês", "DFI sem data, — % ao mês"]);
     expect(changes("Taxas")).toEqual(["Taxa de administração sem data, — por mês"]);
     fill("Valor financiado", "muito");
+    const sheet = openChange(/^Sem data/);
+    fill("Taxa", "alta", sheet);
+    finish(sheet);
+    expect(changes("Juros do contrato")).toEqual(["Sem data, alta % ao ano · nominal"]);
     save();
 
     await screen.findByRole("alert");
@@ -646,7 +676,7 @@ describe("without a registered mortgage", () => {
         indexer: "none",
         appraisal_value: "",
         contract_rates: [
-          { effective_from: "", rate: "", basis: "nominal", poupanca_additional: false },
+          { effective_from: "", rate: "alta", basis: "nominal", poupanca_additional: false },
         ],
         mip_rates: [{ effective_from: "", rate: "" }],
         dfi_rates: [{ effective_from: "", rate: "" }],
@@ -1100,6 +1130,11 @@ describe("the insurance charged on the first installment", () => {
     expect(within(sheet).getByLabelText("Taxa")).toHaveValue("0,01");
     finish(sheet);
     expect(screen.getByRole("dialog")).toBe(sheet);
+
+    fill("Valor na primeira prestação", "33,50", sheet);
+    finish(sheet);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(changes("Seguros")).toContain("DFI a partir de 10/12/2023, 0,0335 % ao mês");
   });
 });
 
