@@ -5,7 +5,7 @@
 [tools]
 go = "1.27.3"                   # Keep in sync with backend/go.mod
 node = "26.13.0"                # LTS; keep in sync with frontend/package.json devEngines
-"npm:pnpm" = "12.17.0"         # aqua has no darwin/amd64 build; keep in sync with frontend/package.json devEngines
+"npm:pnpm" = "12.18.0"         # aqua has no darwin/amd64 build; keep in sync with frontend/package.json devEngines
 sqlc = "1.31.1"
 helm = "4.3.1"
 "go:github.com/pressly/goose/v3/cmd/goose" = "v3.29.0"
