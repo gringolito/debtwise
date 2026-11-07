@@ -14,7 +14,7 @@ export function Decision() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-xl font-semibold">Decisão</h2>
+      <h2 className="text-title-2">Decisão</h2>
       <DecisionForm
         onSubmit={decide.mutate}
         pending={decide.isPending}

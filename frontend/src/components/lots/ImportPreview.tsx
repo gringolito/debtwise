@@ -57,7 +57,7 @@ export function ImportPreview({ rows, catalogue, onChange, onRemove }: ImportPre
   return (
     <>
       {inexact > 0 && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-callout text-muted-foreground">
           {inexact === 1
             ? "1 linha não corresponde exatamente a um título do catálogo."
             : `${inexact} linhas não correspondem exatamente a um título do catálogo.`}{" "}
@@ -110,7 +110,7 @@ export function ImportPreview({ rows, catalogue, onChange, onRemove }: ImportPre
                         ))}
                       </NativeSelect>
                       {!exact && (
-                        <p id={fileNameId} className="mt-1 text-xs text-muted-foreground">
+                        <p id={fileNameId} className="mt-1 text-footnote text-muted-foreground">
                           No arquivo: {row.bond.trim()}
                         </p>
                       )}

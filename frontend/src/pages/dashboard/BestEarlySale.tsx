@@ -25,7 +25,7 @@ function Best() {
   if (data.checks.length === 0) {
     return (
       <p className="text-muted-foreground">
-        Nenhum lote registrado. <Link to="/lotes">Registrar lote</Link>.
+        Nenhum lote registrado. <Link to="/investimentos">Registrar lote</Link>.
       </p>
     );
   }
@@ -38,9 +38,9 @@ function Best() {
   return (
     <div className="flex flex-col gap-2">
       <p>{lotLabel(best.lot)}</p>
-      <p className="text-lg font-semibold">{earlySaleVerdicts[best.verdict]}</p>
+      <p className="text-headline">{earlySaleVerdicts[best.verdict]}</p>
       <p>Vantagem: {advantageText(best.advantage, "manter", "vender")}</p>
-      <Link to="/venda-antecipada">Ver todos os lotes</Link>
+      <Link to="/investimentos/venda-antecipada">Ver todos os lotes</Link>
     </div>
   );
 }

@@ -1,6 +1,12 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { createCn } from "cn/config";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+/** Merges class names knowing the DESIGN.md scales, so `text-callout` overrides a size, not a color. */
+export const cn = createCn({
+  extend: {
+    theme: {
+      text: ["hero-figure", "large-title", "title-2", "headline", "body", "callout", "footnote"],
+      shadow: ["sheet"],
+      container: ["content"],
+    },
+  },
+});

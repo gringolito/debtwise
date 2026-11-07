@@ -5,6 +5,18 @@
   "rules": {
     "react/rules-of-hooks": "error",
     "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "cn",
+            "importNames": ["cn"],
+            "message": "Import cn from @/lib/utils, which knows the DESIGN.md type scale."
+          }
+        ]
+      }
+    ],
     "shadcn/no-restyle": [
       "error",
       {

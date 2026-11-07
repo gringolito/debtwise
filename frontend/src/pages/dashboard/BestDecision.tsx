@@ -31,7 +31,7 @@ function Best({ decision }: { decision: Decision }) {
   return (
     <div className="flex flex-col gap-2">
       <p>{verdictTitle(best)}</p>
-      <p className="text-lg font-semibold">
+      <p className="text-headline">
         Vantagem: {advantageText(best.advantage, "investir", "amortizar")}
       </p>
       {best.break_even_rate && <p>{breakEvenText(best.type, best.rate, best.break_even_rate)}</p>}
@@ -39,7 +39,7 @@ function Best({ decision }: { decision: Decision }) {
       {best.invest && best.prepay && (
         <BalanceChart invest={best.invest} prepay={best.prepay} className="h-64 w-full" />
       )}
-      <Link to="/decisao">Ver todos os títulos</Link>
+      <Link to="/decidir">Ver todos os títulos</Link>
     </div>
   );
 }

@@ -10,8 +10,8 @@ import type { IndexValue, ProjectedValue } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 
 const CHART_CONFIG = {
-  value: { label: "Valor", color: "var(--chart-2)" },
-  projection: { label: "Projeção", color: "var(--chart-2)" },
+  value: { label: "Valor", color: "var(--foreground)" },
+  projection: { label: "Projeção", color: "var(--chart-projection)" },
 } satisfies ChartConfig;
 
 const tickFormat = new Intl.NumberFormat("pt-BR");

@@ -170,20 +170,20 @@ afterEach(() => {
 });
 
 describe("indexes page", () => {
-  it("is reached from the nav in the header", async () => {
+  it("is reached from Mercado in the sidebar", async () => {
     stubBackend({ status: FRESH_STATUS, histories: HISTORIES });
 
     renderAt("/");
-    fireEvent.click(await screen.findByRole("link", { name: "Índices" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Mercado" }));
 
     expect(await screen.findByRole("heading", { name: "Índices" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Início" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("radio", { name: "Índices" })).toHaveAttribute("aria-checked", "true");
   });
 
   it("shows one card per index, in order, with its unit", async () => {
     stubBackend({ status: FRESH_STATUS, histories: HISTORIES });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const cards = await screen.findAllByRole("region");
     expect(cards.map((card) => card.getAttribute("aria-label"))).toEqual([
@@ -207,7 +207,7 @@ describe("latest value and refresh time", () => {
   it("shows each index's latest value with its period and when it was refreshed", async () => {
     stubBackend({ status: FRESH_STATUS, histories: HISTORIES });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const expected = [
       {
@@ -256,7 +256,7 @@ describe("latest value and refresh time", () => {
       histories: { ...HISTORIES, ipca: [] },
     });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const card = within(await screen.findByRole("region", { name: "IPCA" }));
     expect(card.getByText("Nunca atualizado")).toBeInTheDocument();
@@ -267,7 +267,7 @@ describe("history chart", () => {
   it("plots every index's history under an accessible name, and the projection with it", async () => {
     stubBackend({ status: FRESH_STATUS, histories: HISTORIES });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const names = {
       TR: "Histórico e projeção de TR",
@@ -286,7 +286,7 @@ describe("history chart", () => {
   it("labels the chart as history only while the projection has no values", async () => {
     stubBackend({ projections: { ...PROJECTIONS, tr: [] } });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const tr = within(await screen.findByRole("region", { name: "TR" }));
     expect(await tr.findByRole("img", { name: "Histórico de TR" })).toBeInTheDocument();
@@ -299,7 +299,7 @@ describe("history chart", () => {
   it("requests the projection of the indexes that are projected only", async () => {
     const requests = stubBackend({});
 
-    renderAt("/indices");
+    renderAt("/mercado");
     for (const name of ["TR", "Remuneração da poupança", "Selic meta", "IPCA"]) {
       const card = within(await screen.findByRole("region", { name }));
       expect(
@@ -322,7 +322,7 @@ describe("history chart", () => {
       },
     );
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const tr = within(await screen.findByRole("region", { name: "TR" }));
     expect(await tr.findByRole("alert")).toHaveTextContent("Não foi possível carregar a projeção.");
@@ -341,7 +341,7 @@ describe("history chart", () => {
       histories: { ...HISTORIES, ipca: [] },
     });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const ipca = within(await screen.findByRole("region", { name: "IPCA" }));
     const tr = within(screen.getByRole("region", { name: "TR" }));
@@ -364,7 +364,7 @@ describe("warnings", () => {
   it("shows no warning while every index is fresh", async () => {
     stubBackend({ status: FRESH_STATUS, histories: HISTORIES });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     expect(await screen.findByText("0,0299%")).toBeInTheDocument();
     expect(screen.queryAllByRole("alert")).toEqual([]);
@@ -375,7 +375,7 @@ describe("warnings", () => {
       withStatuses({ index: "selic", status: "stale", refreshed_at: "2026-10-23T09:05:00Z" }),
     );
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const card = within(await screen.findByRole("region", { name: "Selic diária" }));
     expect(await card.findByRole("alert")).toHaveTextContent(
@@ -395,7 +395,7 @@ describe("warnings", () => {
       }),
     );
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const card = within(await screen.findByRole("region", { name: "Selic meta" }));
     expect(await card.findByRole("alert")).toHaveTextContent(
@@ -412,7 +412,7 @@ describe("warnings", () => {
       histories: { ...HISTORIES, ipca: [] },
     });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const card = within(await screen.findByRole("region", { name: "IPCA" }));
     expect(await card.findByRole("alert")).toHaveTextContent(
@@ -428,7 +428,7 @@ describe("warnings", () => {
       histories: { ...HISTORIES, poupanca_yield: [] },
     });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const card = within(await screen.findByRole("region", { name: "Remuneração da poupança" }));
     expect(await card.findByRole("alert")).toHaveTextContent("Ainda não há dados deste índice.");
@@ -440,7 +440,7 @@ describe("warnings", () => {
       status: { ...FRESH_STATUS, focus: { status: "stale", refreshed_at: "2026-10-23T09:05:00Z" } },
     });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const alert = within(await screen.findByRole("alert"));
     expect(alert.getByText("Expectativas do Focus")).toBeInTheDocument();
@@ -462,7 +462,7 @@ describe("warnings", () => {
       },
     });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const alert = within(await screen.findByRole("alert"));
     expect(alert.getByText("Expectativas do Focus")).toBeInTheDocument();
@@ -473,7 +473,7 @@ describe("warnings", () => {
   it("warns that there are no Focus expectations yet", async () => {
     stubBackend({ status: { ...FRESH_STATUS, focus: { status: "missing" } } });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const alert = within(await screen.findByRole("alert"));
     expect(alert.getByText("Expectativas do Focus")).toBeInTheDocument();
@@ -541,7 +541,7 @@ describe("refresh", () => {
       ),
     });
 
-    renderAt("/indices");
+    renderAt("/mercado");
     expect(await screen.findByText("0,0299%")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Atualizar" }));
 
@@ -588,7 +588,7 @@ describe("refresh", () => {
       ),
     });
 
-    renderAt("/indices");
+    renderAt("/mercado");
     fireEvent.click(await screen.findByRole("button", { name: "Atualizar" }));
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Atualizar" })).toBeDisabled());
@@ -599,7 +599,7 @@ describe("refresh", () => {
   it("shows a refresh that another client started", async () => {
     stubBackend({ status: { ...FRESH_STATUS, refreshing: true }, histories: HISTORIES });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     expect(await screen.findByRole("button", { name: "Atualizando…" })).toBeDisabled();
   });
@@ -621,7 +621,7 @@ describe("refresh", () => {
       ),
     });
 
-    renderAt("/indices");
+    renderAt("/mercado");
     fireEvent.click(await screen.findByRole("button", { name: "Atualizar" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -639,7 +639,7 @@ describe("load failures", () => {
       "GET /api/market-data/status": () => Response.json(PROBLEM, { status: 503 }),
     });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não foi possível carregar os índices.",
@@ -662,7 +662,7 @@ describe("load failures", () => {
       ),
     });
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const tr = within(await screen.findByRole("region", { name: "TR" }));
     expect(await tr.findByRole("alert")).toHaveTextContent(
@@ -693,7 +693,7 @@ describe("projection method", () => {
   it("offers each projected index its methods and shows the current one", async () => {
     stubBackend({});
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const tr = await methodSelect("TR");
     expect(tr).toHaveDisplayValue("Média dos últimos 12 meses");
@@ -729,7 +729,7 @@ describe("projection method", () => {
       },
     );
 
-    renderAt("/indices");
+    renderAt("/mercado");
     const select = await methodSelect("TR");
     const loaded = requests.length;
     fireEvent.change(select, { target: { value: "trailing_60" } });
@@ -764,7 +764,7 @@ describe("projection method", () => {
       },
     );
 
-    renderAt("/indices");
+    renderAt("/mercado");
     const select = await methodSelect("TR");
     const loaded = requests.length;
     fireEvent.change(select, { target: { value: "trailing_60" } });
@@ -788,7 +788,7 @@ describe("projection method", () => {
   it("says how the poupança yield is projected, naming the TR and Selic meta methods", async () => {
     stubBackend({});
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     const card = within(await screen.findByRole("region", { name: "Remuneração da poupança" }));
     expect(
@@ -808,7 +808,7 @@ describe("projection method", () => {
       },
     );
 
-    renderAt("/indices");
+    renderAt("/mercado");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não foi possível carregar os métodos de projeção.",

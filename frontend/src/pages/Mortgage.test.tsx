@@ -464,7 +464,7 @@ describe("the schedule of an indexed mortgage", () => {
     );
     expect(within(alert).getByRole("link", { name: "Índices" })).toHaveAttribute(
       "href",
-      "/indices",
+      "/mercado",
     );
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(
@@ -606,7 +606,7 @@ describe("the schedule of an indexed mortgage", () => {
     );
     expect(within(alert).getByRole("link", { name: "Índices" })).toHaveAttribute(
       "href",
-      "/indices",
+      "/mercado",
     );
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(

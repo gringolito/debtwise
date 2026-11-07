@@ -63,7 +63,7 @@ const verdictRegion = (name: string) => screen.findByRole("region", { name });
 describe("the decision form", () => {
   it("sends the amount and the effect, leaves the date to the server, and lists each verdict", async () => {
     const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     expect(within(form).getByLabelText("Data")).toHaveValue("");
@@ -86,7 +86,7 @@ describe("the decision form", () => {
 
   it("tells the advantage apart from the avoided cost and says which option it favours", async () => {
     stubDecisions(() => Response.json(decisionOf([ltnVerdict, ntnbPrincipalVerdict])));
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "10000");
@@ -110,7 +110,7 @@ describe("the decision form", () => {
         decisionOf([{ ...ntnbPrincipalVerdict, advantage: "0.00", avoided_cost: "0.00" }]),
       ),
     );
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "10000");
@@ -131,7 +131,7 @@ describe("the decision form", () => {
       ],
     };
     stubDecisions(() => Response.json(decisionOf([ltnVerdict, projected])));
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "10000");
@@ -163,7 +163,7 @@ describe("the decision form", () => {
       ],
     };
     stubDecisions(() => Response.json(decisionOf([{ ...ltnVerdict, market_data: marketData }])));
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "10000");
@@ -184,7 +184,7 @@ describe("the decision form", () => {
 describe("the break-even rate of a verdict", () => {
   async function compare(verdicts: Verdict[]) {
     stubDecisions(() => Response.json(decisionOf(verdicts)));
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "10000");
@@ -383,7 +383,7 @@ const cashFlowHeader = [
 describe("the scenarios of a verdict", () => {
   it("lists the summary and every monthly cash flow of investing and of prepaying", async () => {
     stubDecisions(() => Response.json(decisionOf([{ ...ltnVerdict, invest, prepay }])));
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "10000");
@@ -526,7 +526,7 @@ describe("the scenarios of a verdict", () => {
       },
     };
     stubDecisions(() => Response.json(decisionOf([ntnbVerdict])));
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "10000");
@@ -586,7 +586,7 @@ describe("a verdict that is unavailable", () => {
 
   it("gives the reason instead of an advantage and scenarios", async () => {
     stubDecisions(() => Response.json(decisionOf([missingIpca, tooSmall, ltnVerdict])));
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "10");
@@ -628,7 +628,7 @@ describe("a decision the server rejects", () => {
     const requests = stubDecisions(() =>
       Response.json(decisionOf([ltnVerdict], { effect: "lower_installment", date: "2026-12-01" })),
     );
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "2.500,50");
@@ -650,7 +650,7 @@ describe("a decision the server rejects", () => {
         { location: "body.date", message: "must not be before today" },
       ]),
     );
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "0");
@@ -670,7 +670,7 @@ describe("a decision the server rejects", () => {
 describe("a decision with nothing to compare", () => {
   it("says no mortgage is registered and links to its registration", async () => {
     stubDecisions(() => problem(404, "Not Found", "no mortgage is registered"));
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "10000");
@@ -686,7 +686,7 @@ describe("a decision with nothing to compare", () => {
 
   it("says the comparison failed when the server breaks", async () => {
     stubDecisions(() => problem(500, "Internal Server Error", "boom"));
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "10000");
@@ -698,7 +698,7 @@ describe("a decision with nothing to compare", () => {
 
   it("says no bond on offer follows the indexer of the mortgage", async () => {
     stubDecisions(() => Response.json(decisionOf([])));
-    renderAt("/decisao");
+    renderAt("/decidir");
 
     const form = await decisionForm();
     fill(form, "Valor", "10000");

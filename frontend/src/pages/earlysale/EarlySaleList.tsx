@@ -29,9 +29,7 @@ function EarlySaleCard({ check }: { check: EarlySaleCheck }) {
             <AlertDescription>{earlySaleUnavailableReasons[check.unavailable]}</AlertDescription>
           </Alert>
         )}
-        {check.verdict && (
-          <p className="text-lg font-semibold">{earlySaleVerdicts[check.verdict]}</p>
-        )}
+        {check.verdict && <p className="text-headline">{earlySaleVerdicts[check.verdict]}</p>}
         {check.advantage && <p>Vantagem: {advantageText(check.advantage, "manter", "vender")}</p>}
         {check.market_value && check.hold?.bond && (
           <Table aria-label={`Valores de ${label}`}>
@@ -64,7 +62,7 @@ export function EarlySaleList({ list }: { list: EarlySaleCheckList }) {
   if (list.checks.length === 0) {
     return (
       <p className="text-muted-foreground">
-        Nenhum lote registrado. <Link to="/lotes">Registrar lote</Link>.
+        Nenhum lote registrado. <Link to="/investimentos">Registrar lote</Link>.
       </p>
     );
   }

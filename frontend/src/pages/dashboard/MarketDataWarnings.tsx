@@ -44,7 +44,7 @@ function Warnings() {
           missing="Ainda não há dados deste índice."
         />
       ))}
-      <Link to="/indices">Ver índices</Link>
+      <Link to="/mercado">Ver índices</Link>
     </div>
   );
 }

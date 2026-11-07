@@ -478,26 +478,24 @@ const badgeVariants = cva("...", {
 <Comp className={`${base} ${muted ? "bg-muted text-muted-foreground" : "bg-primary"}`} />
 ```
 
-### New colors are theme variables with a dark value
+### Colors, sizes and radii come from `DESIGN.md`
 
-When a design needs a color the theme lacks, such as a success or warning text, add it the way
-`src/index.css` declares `destructive`: an oklch value under `:root`, another under `.dark`, and a
+`src/index.css` holds only the `DESIGN.md` tokens; Tailwind's default palette, type scale and radii
+are removed. When a design needs a color the theme lacks, add it to `DESIGN.md` first, then the
+way `src/index.css` declares `positive`: a value under `:root` and a
 `--color-<name>: var(--<name>)` line in `@theme inline`. Tailwind then generates `text-<name>` and
-`bg-<name>`, and the color switches with the theme. Name the token for what it means, not for its
-hue, so `success` rather than `green`. A value written straight into `@theme` has no dark
-counterpart.
+`bg-<name>`. Name the token for what it means, not for its hue, so `positive` rather than `green`.
+A new font size also goes into the `text` scale of `cn` in `src/lib/utils.ts`; otherwise `cn`
+takes `text-<size>` for a color and drops the real color next to it. Keep the variable indirection
+rather than writing values into `@theme`, so a dark palette can add `.dark` values later.
 
 ```css
 :root {
-  --success: oklch(0.6 0.15 150);
-}
-
-.dark {
-  --success: oklch(0.75 0.15 150);
+  --positive: #248a3d;
 }
 
 @theme inline {
-  --color-success: var(--success);
+  --color-positive: var(--positive);
 }
 ```
 

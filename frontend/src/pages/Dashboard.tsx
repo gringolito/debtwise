@@ -19,7 +19,7 @@ export function Dashboard() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold">Painel</h2>
+        <h2 className="text-title-2">Painel</h2>
         <ServerStatus />
       </div>
       <MarketDataWarnings />

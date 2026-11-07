@@ -15,7 +15,7 @@ export function Bonds() {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold">Títulos</h2>
+        <h2 className="text-title-2">Títulos</h2>
         <Button disabled={refreshing || refresh.isPending} onClick={() => refresh.mutate()}>
           {refreshing ? "Atualizando…" : "Atualizar"}
         </Button>

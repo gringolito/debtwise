@@ -17,7 +17,7 @@ export function ProjectionCell({ methods }: { methods: ProjectedBy[] }) {
   return (
     <TableCell>
       <Badge variant="secondary">Projetado</Badge>
-      <span className="block text-xs text-muted-foreground">{projectedByText(methods)}</span>
+      <span className="block text-footnote text-muted-foreground">{projectedByText(methods)}</span>
     </TableCell>
   );
 }

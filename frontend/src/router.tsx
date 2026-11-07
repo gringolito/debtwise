@@ -2,11 +2,12 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  Link,
   Outlet,
   type Router,
   type RouterHistory,
 } from "@tanstack/react-router";
+import { AppShell } from "@/components/layout/AppShell";
+import { SectionLayout } from "@/components/layout/SectionLayout";
 import { Bonds } from "@/pages/Bonds";
 import { Dashboard } from "@/pages/Dashboard";
 import { Decision } from "@/pages/Decision";
@@ -16,110 +17,123 @@ import { Indexes } from "@/pages/Indexes";
 import { Lots } from "@/pages/Lots";
 import { Mortgage } from "@/pages/Mortgage";
 import { MortgageForm } from "@/pages/MortgageForm";
+import { NotFound } from "@/pages/NotFound";
+import { Settings } from "@/pages/Settings";
 
-const rootRoute = createRootRoute({
-  component: () => (
-    <div className="flex min-h-svh flex-col gap-6 p-6">
-      <header className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">DebtWise</h1>
-        <nav className="flex gap-4 text-sm">
-          <Link to="/" className="text-muted-foreground [&.active]:text-foreground">
-            Início
-          </Link>
-          <Link to="/indices" className="text-muted-foreground [&.active]:text-foreground">
-            Índices
-          </Link>
-          <Link to="/titulos" className="text-muted-foreground [&.active]:text-foreground">
-            Títulos
-          </Link>
-          <Link to="/lotes" className="text-muted-foreground [&.active]:text-foreground">
-            Lotes
-          </Link>
-          <Link to="/decisao" className="text-muted-foreground [&.active]:text-foreground">
-            Decisão
-          </Link>
-          <Link to="/venda-antecipada" className="text-muted-foreground [&.active]:text-foreground">
-            Venda antecipada
-          </Link>
-          <Link to="/financiamento" className="text-muted-foreground [&.active]:text-foreground">
-            Financiamento
-          </Link>
-        </nav>
-      </header>
-      <main>
-        <Outlet />
-      </main>
-    </div>
-  ),
-  notFoundComponent: () => <p>Página não encontrada.</p>,
+const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFound });
+
+const shellRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: "shell",
+  component: AppShell,
 });
 
-const homeRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: Dashboard });
-const indexesRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/indices",
-  component: Indexes,
-});
-
-const bondsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/titulos",
-  component: Bonds,
-});
-
-const lotsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/lotes",
-  component: Lots,
-});
-
-const importLotsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/lotes/importar",
-  component: ImportLots,
-});
-
-const decisionRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/decisao",
-  component: Decision,
-});
-
-const earlySaleRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/venda-antecipada",
-  component: EarlySale,
+const homeRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/",
+  component: Dashboard,
 });
 
 const mortgageRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => shellRoute,
   path: "/financiamento",
   component: Mortgage,
 });
 
 const mortgageFormRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => shellRoute,
   path: "/financiamento/editar",
   component: MortgageForm,
 });
 
+const investmentsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/investimentos",
+  component: () => (
+    <SectionLayout
+      label="Investimentos"
+      sections={[
+        { to: "/investimentos", label: "Compras" },
+        { to: "/investimentos/venda-antecipada", label: "Venda antecipada" },
+      ]}
+    />
+  ),
+});
+
+const lotsRoute = createRoute({
+  getParentRoute: () => investmentsRoute,
+  path: "/",
+  component: Lots,
+});
+
+const earlySaleRoute = createRoute({
+  getParentRoute: () => investmentsRoute,
+  path: "/venda-antecipada",
+  component: EarlySale,
+});
+
+const importLotsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/investimentos/importar",
+  component: ImportLots,
+});
+
+const decisionRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/decidir",
+  component: Decision,
+});
+
+const marketRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/mercado",
+  component: () => (
+    <SectionLayout
+      label="Mercado"
+      sections={[
+        { to: "/mercado", label: "Índices" },
+        { to: "/mercado/titulos", label: "Títulos" },
+      ]}
+    />
+  ),
+});
+
+const indexesRoute = createRoute({
+  getParentRoute: () => marketRoute,
+  path: "/",
+  component: Indexes,
+});
+
+const bondsRoute = createRoute({
+  getParentRoute: () => marketRoute,
+  path: "/titulos",
+  component: Bonds,
+});
+
+const settingsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/ajustes",
+  component: Settings,
+});
+
 const routeTree = rootRoute.addChildren([
-  homeRoute,
-  indexesRoute,
-  bondsRoute,
-  lotsRoute,
-  importLotsRoute,
-  decisionRoute,
-  earlySaleRoute,
-  mortgageRoute,
-  mortgageFormRoute,
+  shellRoute.addChildren([
+    homeRoute,
+    mortgageRoute,
+    mortgageFormRoute,
+    investmentsRoute.addChildren([lotsRoute, earlySaleRoute]),
+    importLotsRoute,
+    decisionRoute,
+    marketRoute.addChildren([indexesRoute, bondsRoute]),
+    settingsRoute,
+  ]),
 ]);
 
 export type AppRouter = Router<typeof routeTree>;
 
 /** createAppRouter takes the history tests pass in; the browser uses the default one. */
 export function createAppRouter(history?: RouterHistory): AppRouter {
-  return createRouter({ routeTree, history });
+  return createRouter({ routeTree, history, notFoundMode: "root" });
 }
 
 declare module "@tanstack/react-router" {
