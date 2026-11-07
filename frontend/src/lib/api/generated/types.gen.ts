@@ -1749,6 +1749,31 @@ export type ReadMortgageScheduleResponses = {
 
 export type ReadMortgageScheduleResponse = ReadMortgageScheduleResponses[keyof ReadMortgageScheduleResponses];
 
+export type PreviewMortgageScheduleData = {
+    body: MortgageTerms;
+    path?: never;
+    query?: never;
+    url: '/mortgage/schedule/preview';
+};
+
+export type PreviewMortgageScheduleErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type PreviewMortgageScheduleError = PreviewMortgageScheduleErrors[keyof PreviewMortgageScheduleErrors];
+
+export type PreviewMortgageScheduleResponses = {
+    /**
+     * OK
+     */
+    200: Schedule;
+};
+
+export type PreviewMortgageScheduleResponse = PreviewMortgageScheduleResponses[keyof PreviewMortgageScheduleResponses];
+
 export type ListStatementsData = {
     body?: never;
     path?: never;

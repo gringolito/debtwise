@@ -124,6 +124,30 @@ const sacMortgageRead = `{
 // sacRate is the rate every installment of sacMortgage is charged at, as the schedule answers it.
 const sacRate = `"rate": "0.126825030131969720661201", "rate_index_values": []`
 
+// sacSchedule is the schedule of sacMortgage as the API answers it, worked out by hand: 10,000.00
+// of amortization a month, interest on the balance of the month before, MIP stepping down with the
+// balance and up on April 1.
+const sacSchedule = `{"installments": [
+	{"number": 1, "due_date": "2024-01-10", "correction": "0.00", "index_values": [], ` + sacRate + `, "interest": "600.00",
+	 "amortization": "10000.00", "mip": "18.00", "dfi": "10.00", "fee": "12.50", "amount": "10640.50",
+	 "prepaid": "0.00", "outstanding_balance": "50000.00"},
+	{"number": 2, "due_date": "2024-02-10", "correction": "0.00", "index_values": [], ` + sacRate + `, "interest": "500.00",
+	 "amortization": "10000.00", "mip": "15.00", "dfi": "10.00", "fee": "12.50", "amount": "10537.50",
+	 "prepaid": "0.00", "outstanding_balance": "40000.00"},
+	{"number": 3, "due_date": "2024-03-10", "correction": "0.00", "index_values": [], ` + sacRate + `, "interest": "400.00",
+	 "amortization": "10000.00", "mip": "12.00", "dfi": "10.00", "fee": "12.50", "amount": "10434.50",
+	 "prepaid": "0.00", "outstanding_balance": "30000.00"},
+	{"number": 4, "due_date": "2024-04-10", "correction": "0.00", "index_values": [], ` + sacRate + `, "interest": "300.00",
+	 "amortization": "10000.00", "mip": "15.00", "dfi": "10.00", "fee": "12.50", "amount": "10337.50",
+	 "prepaid": "0.00", "outstanding_balance": "20000.00"},
+	{"number": 5, "due_date": "2024-05-10", "correction": "0.00", "index_values": [], ` + sacRate + `, "interest": "200.00",
+	 "amortization": "10000.00", "mip": "10.00", "dfi": "10.00", "fee": "12.50", "amount": "10232.50",
+	 "prepaid": "0.00", "outstanding_balance": "10000.00"},
+	{"number": 6, "due_date": "2024-06-10", "correction": "0.00", "index_values": [], ` + sacRate + `, "interest": "100.00",
+	 "amortization": "10000.00", "mip": "5.00", "dfi": "10.00", "fee": "12.50", "amount": "10127.50",
+	 "prepaid": "0.00", "outstanding_balance": "0.00"}
+]}`
+
 func TestMortgageIsRegisteredAndReadBack(t *testing.T) {
 	t.Parallel()
 
@@ -147,31 +171,183 @@ func TestMortgageScheduleIsServed(t *testing.T) {
 	rec := serve(t, handler, http.MethodGet, "/mortgage/schedule", "")
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.JSONEq(t, sacSchedule, rec.Body.String())
+}
+
+// Previewing answers the schedule the terms would give, without a registered mortgage and without
+// registering one.
+func TestMortgageSchedulePreviewIsServedWithoutRegistering(t *testing.T) {
+	t.Parallel()
+
+	handler := newAPI(t)
+
+	rec := serve(t, handler, http.MethodPost, "/mortgage/schedule/preview", sacMortgage)
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.JSONEq(t, sacSchedule, rec.Body.String())
+
+	assert.Equal(t, http.StatusNotFound, serve(t, handler, http.MethodGet, "/mortgage", "").Code,
+		"a previewed mortgage is not registered")
+}
+
+// Previewing other terms leaves the registered mortgage, and its schedule, as they were.
+func TestMortgageSchedulePreviewLeavesTheRegisteredMortgageAlone(t *testing.T) {
+	t.Parallel()
+
+	handler := newAPI(t)
+	require.Equal(t, http.StatusOK, serve(t, handler, http.MethodPut, "/mortgage", sacMortgage).Code)
+
+	preview := serve(t, handler, http.MethodPost, "/mortgage/schedule/preview", withField(t, "term_months", "1"))
+
+	require.Equal(t, http.StatusOK, preview.Code, preview.Body.String())
 	assert.JSONEq(t, `{"installments": [
 		{"number": 1, "due_date": "2024-01-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "600.00",
-		 "amortization": "10000.00", "mip": "18.00", "dfi": "10.00", "fee": "12.50", "amount": "10640.50",
-		 "prepaid": "0.00", "outstanding_balance": "50000.00"},
-		{"number": 2, "due_date": "2024-02-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "500.00",
-		 "amortization": "10000.00", "mip": "15.00", "dfi": "10.00", "fee": "12.50", "amount": "10537.50",
-		 "prepaid": "0.00", "outstanding_balance": "40000.00"},
-		{"number": 3, "due_date": "2024-03-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "400.00",
-		 "amortization": "10000.00", "mip": "12.00", "dfi": "10.00", "fee": "12.50", "amount": "10434.50",
-		 "prepaid": "0.00", "outstanding_balance": "30000.00"},
-		{"number": 4, "due_date": "2024-04-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "300.00",
-		 "amortization": "10000.00", "mip": "15.00", "dfi": "10.00", "fee": "12.50", "amount": "10337.50",
-		 "prepaid": "0.00", "outstanding_balance": "20000.00"},
-		{"number": 5, "due_date": "2024-05-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "200.00",
-		 "amortization": "10000.00", "mip": "10.00", "dfi": "10.00", "fee": "12.50", "amount": "10232.50",
-		 "prepaid": "0.00", "outstanding_balance": "10000.00"},
-		{"number": 6, "due_date": "2024-06-10", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "100.00",
-		 "amortization": "10000.00", "mip": "5.00", "dfi": "10.00", "fee": "12.50", "amount": "10127.50",
+		 "amortization": "60000.00", "mip": "18.00", "dfi": "10.00", "fee": "12.50", "amount": "60640.50",
 		 "prepaid": "0.00", "outstanding_balance": "0.00"}
-	]}`, rec.Body.String())
+	]}`, preview.Body.String())
+
+	read := serve(t, handler, http.MethodGet, "/mortgage", "")
+	require.Equal(t, http.StatusOK, read.Code, read.Body.String())
+	assert.JSONEq(t, sacMortgageRead, read.Body.String())
+
+	schedule := serve(t, handler, http.MethodGet, "/mortgage/schedule", "")
+	require.Equal(t, http.StatusOK, schedule.Code, schedule.Body.String())
+	assert.JSONEq(t, sacSchedule, schedule.Body.String())
+}
+
+// Previewing rejects the terms the same way saving does, with the same locations.
+func TestInvalidMortgageSchedulePreviewIsRejected(t *testing.T) {
+	t.Parallel()
+
+	const moneyPattern = `expected string to match pattern ^(0|[1-9][0-9]{0,14})(\.[0-9]{1,2})?$`
+
+	tests := []struct {
+		name string
+		body string
+		want []errorDetail
+	}{
+		{
+			name: "no months",
+			body: withField(t, "term_months", "0"),
+			want: []errorDetail{{"body.term_months", "expected number >= 1"}},
+		},
+		{
+			name: "original amount below a centavo",
+			body: withField(t, "original_amount", `"60000.005"`),
+			want: []errorDetail{{"body.original_amount", moneyPattern}},
+		},
+		{
+			name: "zero original amount",
+			body: withField(t, "original_amount", `"0"`),
+			want: []errorDetail{{"body.original_amount", "must be greater than zero"}},
+		},
+		{
+			name: "first installment before the contract date",
+			body: withField(t, "contract_date", `"2024-01-11"`),
+			want: []errorDetail{{"body.first_installment_date", "must not be before the contract date"}},
+		},
+		{
+			name: "every broken rule at once",
+			body: withField(t, "dfi_rates", `[
+				{"effective_from": "2024-02-01", "rate": "0.0001"},
+				{"effective_from": "2024-02-01", "rate": "0.0002"}
+			]`),
+			want: []errorDetail{
+				{"body.dfi_rates", "needs a row effective on or before the first installment date"},
+				{"body.dfi_rates[1].effective_from", "repeats the date of another row"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			rec := serve(t, newAPI(t), http.MethodPost, "/mortgage/schedule/preview", tt.body)
+
+			require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
+			assert.Equal(t, "application/problem+json", rec.Header().Get("Content-Type"))
+
+			var problem struct {
+				Errors []errorDetail `json:"errors"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &problem))
+			assert.Equal(t, tt.want, problem.Errors)
+		})
+	}
 }
 
 // publishedValue is one value of an index as SGS published it.
 func publishedValue(start, end, value string) indexes.Value {
 	return indexes.Value{PeriodStart: mustDate(start), PeriodEnd: mustDate(end), Value: decimal.MustParse(value), FetchedAt: time.Now()}
+}
+
+// seedPublishedTR stores the TR of the months of sacMortgage signed on 2023-12-10, as SGS
+// published it, except for the period starting on 2024-03-10, which is missing.
+func seedPublishedTR(t *testing.T, conn *sql.DB) {
+	t.Helper()
+
+	require.NoError(t, indexes.NewStore(conn).SaveRefresh(t.Context(), indexes.TR, []indexes.Value{
+		publishedValue("2023-12-10", "2024-01-10", "0.0539"),
+		publishedValue("2024-01-10", "2024-02-10", "0.1250"),
+		publishedValue("2024-02-10", "2024-03-10", "0.0000"),
+		publishedValue("2024-04-10", "2024-05-10", "0.0836"),
+		publishedValue("2024-05-10", "2024-06-10", "0.0488"),
+	}, time.Now()))
+}
+
+// trSchedule is the schedule of the sacMortgage signed on 2023-12-10 with the TR as indexer, over
+// the TR seedPublishedTR stores.
+const trSchedule = `{"installments": [
+	{"number": 1, "due_date": "2024-01-10", "correction": "32.34",
+	 "index_values": [{"index": "tr", "status": "published", "value": "0.0539",
+	                   "period_start": "2023-12-10", "period_end": "2024-01-10", "methods": []}], ` + sacRate + `,
+	 "interest": "620.33", "amortization": "9985.38", "mip": "18.01", "dfi": "10.00", "fee": "12.50",
+	 "amount": "10646.22", "prepaid": "0.00", "outstanding_balance": "50046.96"},
+	{"number": 2, "due_date": "2024-02-10", "correction": "62.56",
+	 "index_values": [{"index": "tr", "status": "published", "value": "0.1250",
+	                   "period_start": "2024-01-10", "period_end": "2024-02-10", "methods": []}], ` + sacRate + `,
+	 "interest": "501.10", "amortization": "10021.90", "mip": "15.03", "dfi": "10.01", "fee": "12.50",
+	 "amount": "10560.54", "prepaid": "0.00", "outstanding_balance": "40087.62"},
+	{"number": 3, "due_date": "2024-03-10", "correction": "0.00",
+	 "index_values": [{"index": "tr", "status": "published", "value": "0.0000",
+	                   "period_start": "2024-02-10", "period_end": "2024-03-10", "methods": []}], ` + sacRate + `,
+	 "interest": "400.88", "amortization": "10021.91", "mip": "12.03", "dfi": "10.01", "fee": "12.50",
+	 "amount": "10457.33", "prepaid": "0.00", "outstanding_balance": "30065.71"},
+	{"number": 4, "due_date": "2024-04-10", "correction": "0.00",
+	 "index_values": [{"index": "tr", "status": "missing", "period_start": "2024-03-10", "period_end": "2024-04-10",
+	                   "methods": []}], ` + sacRate + `,
+	 "interest": "300.66", "amortization": "10021.90", "mip": "15.03", "dfi": "10.01", "fee": "12.50",
+	 "amount": "10360.10", "prepaid": "0.00", "outstanding_balance": "20043.81"},
+	{"number": 5, "due_date": "2024-05-10", "correction": "16.76",
+	 "index_values": [{"index": "tr", "status": "published", "value": "0.0836",
+	                   "period_start": "2024-04-10", "period_end": "2024-05-10", "methods": []}], ` + sacRate + `,
+	 "interest": "200.61", "amortization": "10030.29", "mip": "10.03", "dfi": "10.02", "fee": "12.50",
+	 "amount": "10263.45", "prepaid": "0.00", "outstanding_balance": "10030.28"},
+	{"number": 6, "due_date": "2024-06-10", "correction": "4.89",
+	 "index_values": [{"index": "tr", "status": "published", "value": "0.0488",
+	                   "period_start": "2024-05-10", "period_end": "2024-06-10", "methods": []}], ` + sacRate + `,
+	 "interest": "100.35", "amortization": "10035.17", "mip": "5.02", "dfi": "10.03", "fee": "12.50",
+	 "amount": "10163.07", "prepaid": "0.00", "outstanding_balance": "0.00"}
+]}`
+
+// Previewing reads the published index history the terms need, with no mortgage registered: the
+// schedule is the one registering the same terms would give.
+func TestMortgageSchedulePreviewIsCorrectedByPublishedValues(t *testing.T) {
+	t.Parallel()
+
+	conn := migratedDatabase(t)
+	handler := apiOver(conn)
+	seedPublishedTR(t, conn)
+
+	rec := serve(t, handler, http.MethodPost, "/mortgage/schedule/preview",
+		withFieldOf(t, signedOnDecember10(), "indexer", `"tr"`))
+
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	assert.JSONEq(t, trSchedule, rec.Body.String())
+
+	assert.Equal(t, http.StatusNotFound, serve(t, handler, http.MethodGet, "/mortgage", "").Code,
+		"a previewed mortgage is not registered")
 }
 
 // The TR of each period is stored as SGS published it, except for the period starting on
@@ -187,13 +363,7 @@ func TestIndexedMortgageScheduleIsCorrectedByPublishedValues(t *testing.T) {
 	conn := migratedDatabase(t)
 	handler := apiOver(conn)
 
-	require.NoError(t, indexes.NewStore(conn).SaveRefresh(t.Context(), indexes.TR, []indexes.Value{
-		publishedValue("2023-12-10", "2024-01-10", "0.0539"),
-		publishedValue("2024-01-10", "2024-02-10", "0.1250"),
-		publishedValue("2024-02-10", "2024-03-10", "0.0000"),
-		publishedValue("2024-04-10", "2024-05-10", "0.0836"),
-		publishedValue("2024-05-10", "2024-06-10", "0.0488"),
-	}, time.Now()))
+	seedPublishedTR(t, conn)
 
 	saved := serve(t, handler, http.MethodPut, "/mortgage", withFieldOf(t, signedOnDecember10(), "indexer", `"tr"`))
 	require.Equal(t, http.StatusOK, saved.Code, saved.Body.String())
@@ -201,38 +371,7 @@ func TestIndexedMortgageScheduleIsCorrectedByPublishedValues(t *testing.T) {
 	rec := serve(t, handler, http.MethodGet, "/mortgage/schedule", "")
 
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
-	assert.JSONEq(t, `{"installments": [
-		{"number": 1, "due_date": "2024-01-10", "correction": "32.34",
-		 "index_values": [{"index": "tr", "status": "published", "value": "0.0539",
-		                   "period_start": "2023-12-10", "period_end": "2024-01-10", "methods": []}], `+sacRate+`,
-		 "interest": "620.33", "amortization": "9985.38", "mip": "18.01", "dfi": "10.00", "fee": "12.50",
-		 "amount": "10646.22", "prepaid": "0.00", "outstanding_balance": "50046.96"},
-		{"number": 2, "due_date": "2024-02-10", "correction": "62.56",
-		 "index_values": [{"index": "tr", "status": "published", "value": "0.1250",
-		                   "period_start": "2024-01-10", "period_end": "2024-02-10", "methods": []}], `+sacRate+`,
-		 "interest": "501.10", "amortization": "10021.90", "mip": "15.03", "dfi": "10.01", "fee": "12.50",
-		 "amount": "10560.54", "prepaid": "0.00", "outstanding_balance": "40087.62"},
-		{"number": 3, "due_date": "2024-03-10", "correction": "0.00",
-		 "index_values": [{"index": "tr", "status": "published", "value": "0.0000",
-		                   "period_start": "2024-02-10", "period_end": "2024-03-10", "methods": []}], `+sacRate+`,
-		 "interest": "400.88", "amortization": "10021.91", "mip": "12.03", "dfi": "10.01", "fee": "12.50",
-		 "amount": "10457.33", "prepaid": "0.00", "outstanding_balance": "30065.71"},
-		{"number": 4, "due_date": "2024-04-10", "correction": "0.00",
-		 "index_values": [{"index": "tr", "status": "missing", "period_start": "2024-03-10", "period_end": "2024-04-10",
-		                   "methods": []}], `+sacRate+`,
-		 "interest": "300.66", "amortization": "10021.90", "mip": "15.03", "dfi": "10.01", "fee": "12.50",
-		 "amount": "10360.10", "prepaid": "0.00", "outstanding_balance": "20043.81"},
-		{"number": 5, "due_date": "2024-05-10", "correction": "16.76",
-		 "index_values": [{"index": "tr", "status": "published", "value": "0.0836",
-		                   "period_start": "2024-04-10", "period_end": "2024-05-10", "methods": []}], `+sacRate+`,
-		 "interest": "200.61", "amortization": "10030.29", "mip": "10.03", "dfi": "10.02", "fee": "12.50",
-		 "amount": "10263.45", "prepaid": "0.00", "outstanding_balance": "10030.28"},
-		{"number": 6, "due_date": "2024-06-10", "correction": "4.89",
-		 "index_values": [{"index": "tr", "status": "published", "value": "0.0488",
-		                   "period_start": "2024-05-10", "period_end": "2024-06-10", "methods": []}], `+sacRate+`,
-		 "interest": "100.35", "amortization": "10035.17", "mip": "5.02", "dfi": "10.03", "fee": "12.50",
-		 "amount": "10163.07", "prepaid": "0.00", "outstanding_balance": "0.00"}
-	]}`, rec.Body.String())
+	assert.JSONEq(t, trSchedule, rec.Body.String())
 }
 
 // A two-installment mortgage whose schedule reads the stored history of every index its terms
