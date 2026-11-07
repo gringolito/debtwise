@@ -10,6 +10,7 @@ place, and keeps `apd`'s mutable, context-passing API out of domain code.
 ## Consequences
 
 The API carries these values as decimal strings. The frontend formats them and never does
-arithmetic on them, with one exception: the mortgage form derives the MIP and DFI rates from what
-the first installment charged, when a statement prints only those values. It does so exactly, on
-the digits as integers, with the schedule's rounding half up to centavos.
+arithmetic on them, with two exceptions, both exact on the digits as integers. The mortgage form
+derives the MIP and DFI rates from what the first installment charged, when a statement prints only
+those values, with the schedule's rounding half up to centavos. Início shows the whole percent of
+the amount financed that the outstanding balance no longer owes, rounded down.

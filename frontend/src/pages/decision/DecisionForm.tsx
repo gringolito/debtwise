@@ -13,10 +13,18 @@ interface DecisionFormProps {
   errors: Map<string, string>;
   /** What the alert says; null while the last comparison did not fail or the failure names a field. */
   failure: string | null;
+  /** The amount the form opens with, as the owner would type it. */
+  initialAmount?: string;
 }
 
-export function DecisionForm({ onSubmit, pending, errors, failure }: DecisionFormProps) {
-  const [values, setValues] = useState(blankDecision);
+export function DecisionForm({
+  onSubmit,
+  pending,
+  errors,
+  failure,
+  initialAmount = "",
+}: DecisionFormProps) {
+  const [values, setValues] = useState({ ...blankDecision, amount: initialAmount });
 
   function submit(event: FormEvent) {
     event.preventDefault();

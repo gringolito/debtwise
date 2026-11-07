@@ -60,6 +60,38 @@ function fill(form: HTMLElement, label: string, value: string) {
 const decisionForm = () => screen.findByRole("form", { name: "Simular decisão" });
 const verdictRegion = (name: string) => screen.findByRole("region", { name });
 
+describe("arriving with an amount in the address", () => {
+  it("compares the amount at once when asked to", async () => {
+    const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
+    renderAt("/decidir?valor=10000&comparar=true");
+
+    await verdictRegion("Tesouro Prefixado 2029");
+    expect(within(await decisionForm()).getByLabelText("Valor")).toHaveValue("10000");
+    expect(requests.map((r) => [r.method, new URL(r.url).pathname, r.body])).toEqual([
+      ["POST", "/api/decisions", { amount: "10000", effect: "shorten_term" }],
+    ]);
+  });
+
+  it("only fills in the amount otherwise", async () => {
+    const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
+    renderAt("/decidir?valor=1234.5");
+
+    expect(within(await decisionForm()).getByLabelText("Valor")).toHaveValue("1234,5");
+    expect(requests).toEqual([]);
+  });
+
+  it.each(["?valor=abc&comparar=true", "?valor=-5&comparar=true"])(
+    "ignores an amount that is no positive number in %s",
+    async (search) => {
+      const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
+      renderAt(`/decidir${search}`);
+
+      expect(within(await decisionForm()).getByLabelText("Valor")).toHaveValue("");
+      expect(requests).toEqual([]);
+    },
+  );
+});
+
 describe("the decision form", () => {
   it("sends the amount and the effect, leaves the date to the server, and lists each verdict", async () => {
     const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));

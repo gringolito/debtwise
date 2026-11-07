@@ -29,12 +29,17 @@ export function decisionInput(values: DecisionFormValues): DecisionInput {
 
 const ZERO = /^-?0+(\.0+)?$/;
 
+/** isZero tells whether a signed decimal string is zero, "-0.00" included. */
+export function isZero(decimal: string): boolean {
+  return ZERO.test(decimal);
+}
+
 /**
  * advantageText writes an Advantage signed, with the option it favours: ifPositive when it is above
  * zero, ifNegative when below.
  */
 export function advantageText(advantage: string, ifPositive: string, ifNegative: string): string {
-  if (ZERO.test(advantage)) {
+  if (isZero(advantage)) {
     return `${formatMoney(advantage.replace("-", ""))}, sem diferença entre ${ifPositive} e ${ifNegative}`;
   }
   if (advantage.startsWith("-")) return `${formatMoney(advantage)}, a favor de ${ifNegative}`;

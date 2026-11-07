@@ -90,8 +90,9 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
 
 Inter as the SF Pro stand-in for everything, including large figures, with tabular numerals. Large
 Title 34 bold for page titles, Title 2 22 semibold for sections, Headline 17 semibold, Body 17,
-Callout 15 for explanations, Footnote 13 for metadata. Key figures use a 56px semibold hero figure.
-The wordmark is Title 2. These seven sizes are the whole scale.
+Callout 15 for explanations, Footnote 13 for metadata. Key figures use a 56px semibold hero figure
+when a screen has one figure alone; figures sharing a row, such as the Início summary panels, use
+Large Title at semibold weight. The wordmark is Title 2. These seven sizes are the whole scale.
 
 ## Layout and components
 
@@ -123,8 +124,12 @@ The wordmark is Title 2. These seven sizes are the whole scale.
 - Unknown addresses open a full-screen page without the sidebar: the wordmark top left, "404" as a
   hero figure in tertiary grey, "Esta página não existe", "O endereço pode ter mudado." and a
   graphite "Voltar ao início".
-- Market data freshness is shown next to what it affects (a footnote directly under the answer
-  card).
+- Market data freshness is shown next to what it affects: on Início, a Footnote directly under the
+  answer card, in caution orange with a clock icon, naming each source the answer reads that is
+  not fresh with the date of its last update, then an "Atualizar" text action.
+- Checklists, such as Início's "Próximos passos", are inset grouped lists: a step still to do is an
+  empty tertiary circle and a chevron; a done step has an accent check, its label struck through in
+  secondary grey and "Concluído" as its value. Green stays reserved for signed money.
 
 ## Onboarding
 

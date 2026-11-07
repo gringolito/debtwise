@@ -36,6 +36,42 @@ export function formatMonth(isoDate: string): string {
   return `${MONTH_NAMES[Number(month) - 1]}/${year}`;
 }
 
+/** formatDayMonth writes an ISO date without its year: "2026-12-15" is "15/12". */
+export function formatDayMonth(isoDate: string): string {
+  const [, month, day] = isoDate.split("-");
+  return `${day}/${month}`;
+}
+
+const monthYearFormat = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
+
+/** formatMonthYear writes the month of an ISO date in prose: "2058-03-15" is "março de 2058". */
+export function formatMonthYear(isoDate: string): string {
+  const [year, month] = isoDate.split("-");
+  return monthYearFormat.format(new Date(Number(year), Number(month) - 1));
+}
+
+const weekdayFormat = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+
+/** formatWeekday writes a day as a page subtitle: "Sexta-feira, 6 de novembro". */
+export function formatWeekday(date: Date): string {
+  const text = weekdayFormat.format(date);
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+const instantDayMonthFormat = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+});
+
+/** formatInstantDayMonth writes the owner's calendar day of an instant without its year: "15/12". */
+export function formatInstantDayMonth(instant: string): string {
+  return instantDayMonthFormat.format(new Date(instant));
+}
+
 const timeFormat = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
 const dateFormat = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
