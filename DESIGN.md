@@ -81,10 +81,13 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
   - `#2A7A6A` (strong) only for text-weight uses: links, the selected sidebar label and icon, text
     buttons.
 - Charts: the mortgage ("Amortizar") series is graphite, the investment ("Investir") series is
-  `#4E9E8C` at 2.5px, projections are dashed `#AEAEB2`.
+  `#4E9E8C` at 2.5px, projections are dashed `#AEAEB2`. A dotted strong-accent line marks today.
+  Financiamento's "Composição" stacks amortization in graphite, interest in the soft accent and
+  insurance and fee in `#AEAEB2`.
 - Signed money is the only place for gain/loss colors, and the accent is never used for it: green
   `#248A3D` for gains, red `#D70015` for losses and destructive actions, both only on white. Orange
-  `#B25000` only for stale market data.
+  `#B25000` only for stale market data. The one exception is a statement's difference on
+  Financiamento: green with a check when it is within rounding, orange with a dot when it is drift.
 
 ## Typography
 
@@ -115,7 +118,8 @@ Large Title at semibold weight. The wordmark is Title 2. These seven sizes are t
   segment raised in white. A destination split into sections, such as Mercado (Índices,
   Títulos) and Investimentos (Compras, Venda antecipada), switches them with a segmented control
   at the top of the page. Large selectable cards with a small schematic chart for conceptual
-  choices like SAC vs Price.
+  choices like SAC vs Price; a selected card has the soft-accent border, the tint background and a
+  check in a soft-accent disc.
 - Buttons: graphite primary; white on a graphite card; plain text buttons in secondary grey
   ("Cancelar", "Voltar", "Mudar valor"); links and text actions in the strong accent.
 - Modal sheets for recording something over a page: a centered 520px white panel with the sheet
@@ -135,6 +139,24 @@ Large Title at semibold weight. The wordmark is Title 2. These seven sizes are t
 - Checklists, such as Início's "Próximos passos", are inset grouped lists: a step still to do is an
   empty tertiary circle and a chevron; a done step has an accent check, its label struck through in
   secondary grey and "Concluído" as its value. Green stays reserved for signed money.
+
+## Financiamento
+
+Three key figures in a white summary panel (Saldo devedor, Prestação atual, Quitação prevista), the
+balance chart with a Saldo, Prestação and Composição segmented control, then Prestações,
+Amortizações and Extratos in a segmented control with the page's one primary button on its right
+("Registrar amortização", or "Registrar extrato" on Extratos).
+
+- The chart reads its year and value axes, with no fill under the line, since panels carry no
+  gradients. A hollow ring marks each installment a prepayment followed.
+- Prestações shows six rows around the current installment, which has the tint background and an
+  "Atual" label in the strong accent and starts expanded; a row's chevron expands its correction,
+  rate, insurance and fee. "Ver todas as N prestações" shows every row.
+- Amortizações shows the total prepaid and the months the term shrank in a summary panel above an
+  inset grouped list, newest first, each row drilling into the sheet that edits or deletes it.
+- Extratos compares the bank's balance with the calculated one, newest first.
+- The sheets preview before saving: the new payoff month or installment for a prepayment, the
+  calculated balance and the difference for a statement.
 
 ## Onboarding
 

@@ -1374,16 +1374,135 @@
       "PrepaymentList": {
         "additionalProperties": false,
         "properties": {
+          "months_shortened": {
+            "description": "How many installments fewer the schedule has because of all the prepayments together.",
+            "format": "int64",
+            "type": "integer"
+          },
           "prepayments": {
-            "description": "Every prepayment recorded on the mortgage, in date order.",
+            "description": "Every prepayment recorded on the mortgage, in date order, each with what it changed in the schedule. Only this list carries what each changed.",
             "items": {
-              "$ref": "#/components/schemas/Prepayment"
+              "$ref": "#/components/schemas/PrepaymentOutcome"
             },
             "type": "array"
+          },
+          "total_amount": {
+            "description": "Sum of every prepayment's amount, in reais, as a decimal string.",
+            "type": "string"
           }
         },
         "required": [
-          "prepayments"
+          "prepayments",
+          "total_amount",
+          "months_shortened"
+        ],
+        "type": "object"
+      },
+      "PrepaymentOutcome": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "Amount prepaid, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "date": {
+            "description": "Date the prepayment was made.",
+            "format": "date",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "description": "The prepayment's ID.",
+            "format": "int64",
+            "type": "integer"
+          },
+          "installment_reduction": {
+            "description": "How much lower the first installment due after the prepayment is because of it, in reais, as a decimal string. Zero when no installment is due after it.",
+            "type": "string"
+          },
+          "months_shortened": {
+            "description": "How many installments fewer the schedule has because of this prepayment.",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "amount",
+          "effect",
+          "months_shortened",
+          "installment_reduction"
+        ],
+        "type": "object"
+      },
+      "PrepaymentPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "current_installment": {
+            "description": "Amount of the first installment due after the previewed prepayment's date in the schedule as recorded, in reais, as a decimal string. Absent when none is due after it.",
+            "type": "string"
+          },
+          "current_payoff_date": {
+            "description": "Date the mortgage is paid off in the schedule as recorded: the due date of its last installment.",
+            "format": "date",
+            "type": "string"
+          },
+          "installment": {
+            "description": "Amount of that same installment with the previewed prepayment, in reais, as a decimal string. Absent when the mortgage no longer has it.",
+            "type": "string"
+          },
+          "payoff_date": {
+            "description": "Date the mortgage is paid off with the previewed prepayment: the due date of its last installment.",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_payoff_date",
+          "payoff_date"
+        ],
+        "type": "object"
+      },
+      "PrepaymentPreviewInput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "Amount prepaid, in reais, as a decimal string.",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
+            "type": "string"
+          },
+          "date": {
+            "description": "Date the prepayment was made.",
+            "format": "date",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          },
+          "replaces": {
+            "description": "ID of the recorded prepayment the previewed one would replace, when previewing an edit. Absent when previewing a new prepayment.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "amount",
+          "effect"
         ],
         "type": "object"
       },
@@ -1800,6 +1919,10 @@
           "outstanding_balance": {
             "description": "Outstanding balance the bank reported, in reais, as a decimal string.",
             "type": "string"
+          },
+          "within_rounding": {
+            "description": "Whether the drift is small enough to be the rounding the bank and the schedule do differently, rather than a sign that the contract terms no longer match the bank's.",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1807,7 +1930,8 @@
           "date",
           "outstanding_balance",
           "computed_balance",
-          "drift"
+          "drift",
+          "within_rounding"
         ],
         "type": "object"
       },
@@ -1844,6 +1968,55 @@
         },
         "required": [
           "statements"
+        ],
+        "type": "object"
+      },
+      "StatementPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "computed_balance": {
+            "description": "Outstanding balance the schedule would show on the statement's date, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "drift": {
+            "description": "The reported balance minus the computed one, in reais, as a decimal string. Positive when the bank says more is owed.",
+            "type": "string"
+          },
+          "within_rounding": {
+            "description": "Whether the drift is small enough to be the rounding the bank and the schedule do differently, rather than a sign that the contract terms no longer match the bank's.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "computed_balance",
+          "drift",
+          "within_rounding"
+        ],
+        "type": "object"
+      },
+      "StatementPreviewInput": {
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "description": "Date of the outstanding balance the bank reported.",
+            "format": "date",
+            "type": "string"
+          },
+          "outstanding_balance": {
+            "description": "Outstanding balance the bank reported, in reais, as a decimal string.",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
+            "type": "string"
+          },
+          "replaces": {
+            "description": "ID of the recorded statement the previewed one would replace, when previewing an edit. Absent when previewing a new statement.",
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "outstanding_balance"
         ],
         "type": "object"
       },
@@ -2747,7 +2920,7 @@
     },
     "/mortgage/prepayments": {
       "get": {
-        "description": "Returns the prepayments recorded on the mortgage.",
+        "description": "Returns the prepayments recorded on the mortgage, each with how many installments it removed and how much it lowered the next installment.",
         "operationId": "list-prepayments",
         "responses": {
           "200": {
@@ -2812,6 +2985,48 @@
           }
         },
         "summary": "Record a prepayment",
+        "tags": [
+          "Mortgage"
+        ]
+      }
+    },
+    "/mortgage/prepayments/preview": {
+      "post": {
+        "description": "Shows what a prepayment would change in the schedule, without recording it. Give the ID of a recorded prepayment to preview an edit of it.",
+        "operationId": "preview-prepayment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrepaymentPreviewInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrepaymentPreview"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Preview a prepayment",
         "tags": [
           "Mortgage"
         ]
@@ -3049,6 +3264,48 @@
           }
         },
         "summary": "Record a statement",
+        "tags": [
+          "Mortgage"
+        ]
+      }
+    },
+    "/mortgage/statements/preview": {
+      "post": {
+        "description": "Shows how far a statement's balance would be from the schedule, without recording it. Give the ID of a recorded statement to preview an edit of it.",
+        "operationId": "preview-statement",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatementPreviewInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementPreview"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Preview a statement",
         "tags": [
           "Mortgage"
         ]
