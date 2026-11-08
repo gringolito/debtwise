@@ -1,7 +1,7 @@
 ---
 name: DebtWise · Orvalho
 colors:
-  background: '#F2F2F7'
+  background: '#F5F5F7'
   surface: '#FFFFFF'
   on-surface: '#1D1D1F'
   on-surface-secondary: '#6E6E73'
@@ -70,7 +70,7 @@ fills the sidebar, summary panels or page backgrounds.
 
 The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reassuring, collaborative.
 
-- Canvas `#F2F2F7`, the system grouped-background gray; panels `#FFFFFF`, text `#1D1D1F`. The
+- Canvas `#F5F5F7`, a light neutral gray; panels `#FFFFFF`, text `#1D1D1F`. The
   canvas stays a neutral gray: the accent appears only in its accent roles below.
 - Secondary text is `#6E6E73` on white and `#A1A1A6` on graphite. Calm comes from restraint, not
   from faint text. `#AEAEB2` is only for placeholders and disabled states.
