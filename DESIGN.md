@@ -73,7 +73,9 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
 - Canvas `#F5F5F7`, a light neutral gray; panels `#FFFFFF`, text `#1D1D1F`. The
   canvas stays a neutral gray: the accent appears only in its accent roles below.
 - Secondary text is `#6E6E73` on white and `#A1A1A6` on graphite. Calm comes from restraint, not
-  from faint text. `#AEAEB2` is only for placeholders and disabled states.
+  from faint text. `#AEAEB2` (tertiary) marks what is placeholder, disabled or set back:
+  placeholders, disabled states, projections, a checklist step still to do and the 404 figure. Text
+  the owner has to read is secondary grey or darker.
 - **Primary buttons are graphite** with white text, 12px radius, 44px tall. On a graphite card the
   button inverts to white with graphite text. One primary button per screen.
 - Accent roles:
@@ -154,7 +156,37 @@ Large Title at semibold weight. The wordmark is Title 2. These seven sizes are t
   "Atualizar" text action.
 - Checklists, such as Início's "Próximos passos", are inset grouped lists: a step still to do is an
   empty tertiary circle and a chevron; a done step has an accent check, its label struck through in
-  secondary grey and "Concluído" as its value. Green stays reserved for signed money.
+  secondary grey and "Concluído" as its value. A done step is not green: green stays for signed
+  money and the exceptions listed under Color.
+
+## Início
+
+The Large Title "Início" over the weekday and date in Callout grey ("Domingo, 8 de novembro"),
+then:
+
+- The answer card, the screen's one graphite card, for R$ 10.000,00 prepaid today to shorten the
+  term: "Na projeção atual, para R$ 10.000,00 hoje" in Footnote uppercase grey, the better option
+  as a Title 2 ("Investir em Tesouro Prefixado 2029 rende mais", "Amortizar rende mais", or that
+  both give the same), and a Callout line with the advantage in semibold white and the horizon. A
+  white "Ver comparação" opens Decidir with the amount and compares at once; a plain "Mudar valor"
+  opens it with the amount to change. With no verdict to state, the card reads "Amortizar ou
+  investir? Veja a comparação." with "Comparar agora". The stale-data note sits under the card.
+- Two white summary panels side by side, each titled in Footnote uppercase grey, with its figure in
+  Large Title semibold under a Callout label and a hairline drill-in row at the bottom:
+  - Financiamento: "Saldo devedor", "Quitação prevista em março de 2058", a soft-accent progress
+    bar over "N% pago", and the next installment ("Próxima prestação · 15/11 · R$ 4.809,89")
+    opening Financiamento.
+  - Investimentos: "Valor de mercado líquido", the counts ("3 compras · 2 títulos"), a Footnote
+    when lots without a market value were left out of the total, and the early sale summary
+    ("Venda antecipada · 1 vale a pena agora") opening Venda antecipada. With no lot, the panel
+    holds the investments icon on an accent-tint tile, one Callout sentence and an accent
+    "Adicionar compra".
+- "Próximos passos": set up the mortgage, record the bank's latest statement, add the Tesouro
+  purchases, each marked done from what is recorded. The checklist goes away once all three are.
+- "Atividade recente": the latest three statements and prepayments, newest first, as an inset
+  grouped list opening Financiamento. A statement has an accent check on the tint and its
+  difference; a prepayment has a clock on grey and its amount on the right. Hidden while there is
+  none.
 
 ## Financiamento
 
@@ -218,7 +250,10 @@ back link discard what was changed. The sections are inset grouped lists:
   segmented controls on their rows.
 - Juros do contrato, Seguros (MIP and DFI together, MIP first) and Taxas: one drill-in row per
   dated change, named by where it starts ("MIP a partir de 15/03/2023") with its value on the
-  right, in date order, and an accent "Adicionar mudança" text action under the list.
+  right, in date order, and an accent "Adicionar mudança" text action under the list. A contract
+  rate as registered also reads what it equals in the other basis, as the server converted it
+  ("12,00 % ao ano · nominal · equivale a 12,68% efetiva"). The equivalent goes away once the
+  rate or its basis is changed, until it is saved, since only the server converts rates.
 
 A change opens in a modal sheet: its start date, its value and, for a contract rate, the basis as a
 segmented control and the poupança part as a toggle. A new insurance change picks MIP or DFI first.
