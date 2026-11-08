@@ -7,18 +7,18 @@ import {
   type Router,
   type RouterHistory,
 } from "@tanstack/react-router";
-import { isIndexName } from "@/lib/marketIndexes";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { Bonds } from "@/pages/market/Bonds";
-import { IndexDetail } from "@/pages/market/IndexDetail";
-import { Indexes } from "@/pages/market/Indexes";
-import { Market } from "@/pages/Market";
+import { isIndexName } from "@/lib/marketIndexes";
 import { Contract } from "@/pages/Contract";
 import { Dashboard } from "@/pages/Dashboard";
 import { Decision } from "@/pages/Decision";
 import { EarlySale } from "@/pages/EarlySale";
 import { ImportLots } from "@/pages/ImportLots";
 import { Lots } from "@/pages/Lots";
+import { Market } from "@/pages/Market";
+import { Bonds } from "@/pages/market/Bonds";
+import { IndexDetail } from "@/pages/market/IndexDetail";
+import { Indexes } from "@/pages/market/Indexes";
 import { Mortgage } from "@/pages/Mortgage";
 import { NotFound } from "@/pages/NotFound";
 import { MortgageGate } from "@/pages/onboarding/MortgageGate";

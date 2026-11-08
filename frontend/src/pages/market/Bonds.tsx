@@ -1,7 +1,14 @@
-import { ChevronDownIcon } from "lucide-react";
 import { useId } from "react";
-import { GroupedListHeader, GroupedListSection } from "@/components/patterns/GroupedList";
 import { ErrorPanel } from "@/components/patterns/ErrorPanel";
+import {
+  GroupedList,
+  GroupedListChevron,
+  GroupedListHeader,
+  GroupedListItem,
+  GroupedListLabel,
+  GroupedListRow,
+  GroupedListSection,
+} from "@/components/patterns/GroupedList";
 import { Loading } from "@/components/patterns/Loading";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -85,19 +92,18 @@ function Others({ bonds }: { bonds: BondQuote[] }) {
     <GroupedListSection aria-labelledby={id}>
       <GroupedListHeader id={id}>Outros títulos</GroupedListHeader>
       <Collapsible>
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="flex min-h-13 w-full items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3 text-left text-body transition-colors outline-none hover:bg-muted focus-visible:bg-muted"
-          >
-            {othersSummary(bonds)}
-            <ChevronDownIcon
-              aria-hidden="true"
-              strokeWidth={1.5}
-              className="size-5 shrink-0 text-tertiary-foreground transition-transform in-data-[state=open]:rotate-180"
-            />
-          </button>
-        </CollapsibleTrigger>
+        <GroupedList>
+          <GroupedListItem>
+            <CollapsibleTrigger asChild>
+              <GroupedListRow asChild>
+                <button type="button">
+                  <GroupedListLabel>{othersSummary(bonds)}</GroupedListLabel>
+                  <GroupedListChevron className="rotate-90 transition-transform in-data-[state=open]:-rotate-90" />
+                </button>
+              </GroupedListRow>
+            </CollapsibleTrigger>
+          </GroupedListItem>
+        </GroupedList>
         <CollapsibleContent>
           <div className="pt-2">
             <BondsTable bonds={bonds} label="Outros títulos" />
@@ -115,7 +121,7 @@ function Others({ bonds }: { bonds: BondQuote[] }) {
 export function Bonds() {
   const { status } = useMarketData();
   const bonds = useBonds();
-  const indexer = useMortgage().data?.indexer ?? "none";
+  const mortgage = useMortgage().data;
   const id = useId();
 
   const failed = [status, bonds].filter((query) => query.isError);
@@ -129,6 +135,8 @@ export function Bonds() {
       />
     );
   }
+  // The shell opens only once the mortgage is loaded and registered.
+  if (!mortgage) return null;
   if (!status.data || !bonds.data) {
     return (
       <Loading label="Carregando títulos">
@@ -140,8 +148,8 @@ export function Bonds() {
 
   const refreshedAt = status.data.bonds.refreshed_at;
   const catalogue = bonds.data.bonds;
-  const comparable = catalogue.filter((b) => comparesWith(b.type, indexer));
-  const others = catalogue.filter((b) => !comparesWith(b.type, indexer));
+  const comparable = catalogue.filter((b) => comparesWith(b.type, mortgage.indexer));
+  const others = catalogue.filter((b) => !comparesWith(b.type, mortgage.indexer));
 
   return (
     <div className="flex flex-col gap-6">

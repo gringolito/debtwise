@@ -5,7 +5,7 @@ import { type ChartConfig, ChartContainer } from "@/components/ui/chart";
 import type { IndexName, IndexValue, ProjectedValue } from "@/lib/api";
 import { formatMonth } from "@/lib/format";
 import { indexNames } from "@/lib/indexNames";
-import { addMonths, plottedValues, seriesPoints, timeOf } from "@/lib/indexSeries";
+import { axisTicks, chartWindow, plottedValues, seriesPoints, timeOf } from "@/lib/indexSeries";
 import { marketIndexes } from "@/lib/marketIndexes";
 
 type Years = "1" | "5" | "10";
@@ -52,9 +52,7 @@ interface IndexChartProps {
  */
 export function IndexChart({ index, values, projection, today }: IndexChartProps) {
   const [years, setYears] = useState<Years>("5");
-  const months = Number(years) * 12;
-  const from = addMonths(today, -months);
-  const to = addMonths(today, months / 2);
+  const { from, to } = chartWindow(today, Number(years));
   const points = useMemo(
     () => seriesPoints(plottedValues(index, values), projection, from, to),
     [index, values, projection, from, to],
@@ -65,19 +63,11 @@ export function IndexChart({ index, values, projection, today }: IndexChartProps
   const todayTime = timeOf(today);
   const showsToday =
     points.length > 0 && todayTime >= points[0].time && todayTime <= points[points.length - 1].time;
-  // Ticks on the 1st of each year, or of each quarter over one year, so no label repeats.
-  const step = years === "1" ? 3 : 12;
-  const ticks: number[] = [];
-  if (points.length > 0) {
-    const last = points[points.length - 1].time;
-    for (
-      let tick = `${isoOf(points[0].time).slice(0, 4)}-01-01`;
-      timeOf(tick) <= last;
-      tick = addMonths(tick, step)
-    ) {
-      if (timeOf(tick) >= points[0].time) ticks.push(timeOf(tick));
-    }
-  }
+  // Quarters over one year, years otherwise.
+  const ticks =
+    points.length > 0
+      ? axisTicks(points[0].time, points[points.length - 1].time, years === "1" ? 3 : 12)
+      : [];
 
   return (
     <section aria-label={title} className="flex flex-col gap-6 rounded-lg border bg-card p-6">

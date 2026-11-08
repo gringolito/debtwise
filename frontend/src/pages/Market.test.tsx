@@ -249,13 +249,30 @@ describe("Índices", () => {
     ).toBeInTheDocument();
   });
 
-  it("offers to try again when an index fails to load, and loads it on the retry", async () => {
+  it("keeps the other indexes listed when one fails to load", async () => {
+    stubBackend(
+      {},
+      {
+        "GET /api/indexes/tr/history": PROBLEM,
+        "GET /api/indexes/ipca/projection": PROBLEM,
+      },
+    );
+
+    renderAt("/mercado");
+
+    const list = within(await indexList());
+    expect(
+      list.getByRole("link", { name: "TR, seu financiamento, não foi possível carregar" }),
+    ).toBeInTheDocument();
+    expect(list.getByRole("link", { name: "IPCA, -0,32% no mês, fev/2024" })).toBeInTheDocument();
+  });
+
+  it("offers to try again when the indexes fail to load, and loads them on the retry", async () => {
     let fail = true;
     stubBackend(
       {},
       {
-        "GET /api/indexes/tr/history": () =>
-          fail ? PROBLEM() : Response.json({ index: "tr", values: HISTORIES.tr }),
+        "GET /api/market-data/status": () => (fail ? PROBLEM() : Response.json(FRESH_STATUS)),
       },
     );
 
@@ -290,6 +307,36 @@ describe("an index's page", () => {
     ).toHaveAttribute("aria-current", "page");
   });
 
+  it("switches the period the chart shows", async () => {
+    stubBackend();
+
+    renderAt("/mercado/indices/ipca");
+    fireEvent.click(await screen.findByRole("radio", { name: "1 ano" }));
+
+    expect(screen.getByRole("radio", { name: "1 ano" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("img", { name: "Histórico e projeção de IPCA" })).toBeInTheDocument();
+  });
+
+  it("charts the history alone while the projection has no values", async () => {
+    stubBackend(
+      {},
+      { "GET /api/indexes/tr/projection": () => Response.json({ index: "tr", values: [] }) },
+    );
+
+    renderAt("/mercado/indices/tr");
+
+    expect(await screen.findByRole("img", { name: "Histórico de TR" })).toBeInTheDocument();
+  });
+
+  it("goes back to Mercado", async () => {
+    stubBackend();
+
+    renderAt("/mercado/indices/ipca");
+    fireEvent.click(within(await screen.findByRole("main")).getByRole("link", { name: "Mercado" }));
+
+    expect(await indexList()).toBeInTheDocument();
+  });
+
   it("charts the history alone for an index that is not projected", async () => {
     stubBackend();
 
@@ -320,6 +367,17 @@ describe("an index's page", () => {
     ).toBeInTheDocument();
   });
 
+  it("leaves the Focus out of the note for an index not projected by it", async () => {
+    stubBackend({
+      status: { ...FRESH_STATUS, focus: { status: "stale", refreshed_at: "2024-04-02T10:00:00Z" } },
+    });
+
+    renderAt("/mercado/indices/tr");
+
+    await screen.findByRole("radiogroup", { name: "Projeção" });
+    expect(screen.queryByText(/Expectativas do Focus/)).not.toBeInTheDocument();
+  });
+
   it("says when there are no values yet and draws no chart", async () => {
     stubBackend({ histories: { ...HISTORIES, ipca: [] } });
 
@@ -329,8 +387,12 @@ describe("an index's page", () => {
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
-  it("offers to try again when the index fails to load", async () => {
-    stubBackend({}, { "GET /api/indexes/ipca/history": PROBLEM });
+  it.each([
+    ["history", "GET /api/indexes/ipca/history"],
+    ["projection", "GET /api/indexes/ipca/projection"],
+    ["projection methods", "GET /api/indexes/projection-methods"],
+  ])("offers to try again when its %s fails to load", async (_, route) => {
+    stubBackend({}, { [route]: PROBLEM });
 
     renderAt("/mercado/indices/ipca");
 
@@ -366,7 +428,7 @@ describe("projection method", () => {
     expect(group.getByRole("radio", { name: "Média dos últimos 60 meses" })).toBeInTheDocument();
   });
 
-  it("saves the chosen method and reloads every projection", async () => {
+  it("saves the chosen method and reloads the projection shown", async () => {
     const requests = stubBackend(
       {},
       {

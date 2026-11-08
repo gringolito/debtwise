@@ -26,6 +26,26 @@ export function plottedValues(index: IndexName, values: IndexValue[]): IndexValu
     (v) => v.period_start.endsWith("-01") && v.period_end === addMonths(v.period_start, 1),
   );
 }
+
+/** chartWindow is what a chart over `years` shows: that many years up to today, half as many after. */
+export function chartWindow(today: string, years: number): { from: string; to: string } {
+  const months = years * 12;
+  return { from: addMonths(today, -months), to: addMonths(today, months / 2) };
+}
+
+/**
+ * axisTicks places ticks from `first` to `last` on the 1st of January and every `stepMonths`
+ * months after it, so a year or quarter label never repeats.
+ */
+export function axisTicks(first: number, last: number, stepMonths: number): number[] {
+  const ticks: number[] = [];
+  const start = `${new Date(first).toISOString().slice(0, 4)}-01-01`;
+  for (let tick = start; timeOf(tick) <= last; tick = addMonths(tick, stepMonths)) {
+    if (timeOf(tick) >= first) ticks.push(timeOf(tick));
+  }
+  return ticks;
+}
+
 /**
  * seriesPoints plots the values and projected values that start from `from` to `to`, both
  * included. The projection starts from the last published value shown, so the two lines meet.

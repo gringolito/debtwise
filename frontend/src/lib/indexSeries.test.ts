@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { IndexValue, ProjectedValue } from "@/lib/api";
-import { addMonths, plottedValues, seriesPoints, timeOf } from "@/lib/indexSeries";
+import {
+  addMonths,
+  axisTicks,
+  chartWindow,
+  plottedValues,
+  seriesPoints,
+  timeOf,
+} from "@/lib/indexSeries";
 
 const published = (start: string, end: string, value: string): IndexValue => ({
   period_start: start,
@@ -20,9 +27,40 @@ describe("addMonths", () => {
   it.each([
     ["2024-04-15", -12, "2023-04-15"],
     ["2024-11-01", 3, "2025-02-01"],
+    // A day the target month lacks runs into the next, as Date does.
     ["2024-01-31", 1, "2024-03-02"],
   ])("moves %s by %i months to %s", (date, months, want) => {
     expect(addMonths(date, months)).toBe(want);
+  });
+});
+
+describe("chartWindow", () => {
+  it.each([
+    [1, "2025-11-08", "2027-05-08"],
+    [5, "2021-11-08", "2029-05-08"],
+    [10, "2016-11-08", "2031-11-08"],
+  ])("shows %i years up to today and half as many after", (years, from, to) => {
+    expect(chartWindow("2026-11-08", years)).toEqual({ from, to });
+  });
+});
+
+describe("axisTicks", () => {
+  const iso = (ticks: number[]) => ticks.map((t) => new Date(t).toISOString().slice(0, 10));
+
+  it("ticks each 1st of January in the range", () => {
+    expect(iso(axisTicks(timeOf("2021-11-08"), timeOf("2024-05-08"), 12))).toEqual([
+      "2022-01-01",
+      "2023-01-01",
+      "2024-01-01",
+    ]);
+  });
+
+  it("ticks each quarter for a shorter range", () => {
+    expect(iso(axisTicks(timeOf("2025-11-08"), timeOf("2026-07-01"), 3))).toEqual([
+      "2026-01-01",
+      "2026-04-01",
+      "2026-07-01",
+    ]);
   });
 });
 

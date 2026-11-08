@@ -44,26 +44,29 @@ function IndexRow({
   ofMortgage,
 }: {
   index: IndexName;
-  history: IndexHistory;
+  /** Undefined when the history failed to load. */
+  history?: IndexHistory;
   projection?: IndexProjection;
   ofMortgage: boolean;
 }) {
-  const latest = history.values.at(-1);
-  const points = latest
-    ? seriesPoints(
-        plottedValues(index, history.values),
-        projection?.values ?? [],
-        addMonths(latest.period_start, -SPARKLINE_MONTHS),
-        addMonths(latest.period_start, SPARKLINE_MONTHS),
-      )
-    : [];
+  const latest = history?.values.at(-1);
+  const points =
+    history && latest
+      ? seriesPoints(
+          plottedValues(index, history.values),
+          projection?.values ?? [],
+          addMonths(latest.period_start, -SPARKLINE_MONTHS),
+          addMonths(latest.period_start, SPARKLINE_MONTHS),
+        )
+      : [];
+  const missing = history ? "Sem dados" : "Não foi possível carregar";
   // The row's parts are spans, which an accessible name would run together.
   const label = [
     indexNames[index],
     ofMortgage && "seu financiamento",
     latest
       ? `${indexValueText(index, latest.value)}, ${indexPeriodText(index, latest)}`
-      : "sem dados",
+      : missing.toLowerCase(),
   ]
     .filter(Boolean)
     .join(", ");
@@ -95,7 +98,7 @@ function IndexRow({
                 </span>
               </>
             ) : (
-              <span className="text-muted-foreground">Sem dados</span>
+              <span className="text-muted-foreground">{missing}</span>
             )}
           </span>
           <GroupedListChevron />
@@ -108,22 +111,21 @@ function IndexRow({
 /** Indexes is Mercado's Índices: each index with its latest value, the mortgage's marked. */
 export function Indexes() {
   const { status } = useMarketData();
+  // The shell opens only once the mortgage is loaded and registered.
   const indexer = useMortgage().data?.indexer;
   const statuses = status.data?.indexes ?? [];
   const { histories, projections } = useIndexSeries(statuses.map((s) => s.index));
 
-  const failed = [status, ...histories].filter((query) => query.isError);
-  if (failed.length > 0) {
+  if (status.isError) {
     return (
       <ErrorPanel
         title="Não foi possível carregar os índices"
-        onRetry={() => {
-          for (const query of failed) void query.refetch();
-        }}
+        onRetry={() => void status.refetch()}
       />
     );
   }
-  if (!status.data || histories.some((h) => !h.data) || projections.some((p) => p.isLoading)) {
+  // A failed history or projection fails its own row, which opens the index's page to retry.
+  if (!status.data || [...histories, ...projections].some((query) => query.isLoading)) {
     return <IndexesSkeleton />;
   }
 
@@ -146,7 +148,7 @@ export function Indexes() {
           <IndexRow
             key={index}
             index={index}
-            history={histories[i].data as IndexHistory}
+            history={histories[i].data}
             projection={projections[i].data}
             ofMortgage={index === indexer}
           />

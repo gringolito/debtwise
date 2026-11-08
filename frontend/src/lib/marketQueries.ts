@@ -21,34 +21,30 @@ export function useBonds() {
   return useQuery({ queryKey: bondsKey, queryFn: fetchBonds });
 }
 
+const historyQuery = (index: IndexName) => ({
+  queryKey: indexHistoryKey(index),
+  queryFn: () => fetchIndexHistory(index),
+});
+
+// An index that is not projected has no projection to read, so its query stays idle.
+const projectionQuery = (index: IndexName) => ({
+  queryKey: indexProjectionKey(index),
+  queryFn: () => fetchIndexProjection(index),
+  enabled: marketIndexes[index].projected,
+});
+
 export function useIndexHistory(index: IndexName) {
-  return useQuery({ queryKey: indexHistoryKey(index), queryFn: () => fetchIndexHistory(index) });
+  return useQuery(historyQuery(index));
 }
 
-/** useIndexProjection reads the projected path of an index; it stays idle for one not projected. */
 export function useIndexProjection(index: IndexName) {
-  return useQuery({
-    queryKey: indexProjectionKey(index),
-    queryFn: () => fetchIndexProjection(index),
-    enabled: marketIndexes[index].projected,
-  });
+  return useQuery(projectionQuery(index));
 }
 
 /** useIndexSeries reads the history and the projection of each index, in the order given. */
 export function useIndexSeries(indexes: IndexName[]) {
-  const histories = useQueries({
-    queries: indexes.map((index) => ({
-      queryKey: indexHistoryKey(index),
-      queryFn: () => fetchIndexHistory(index),
-    })),
-  });
-  const projections = useQueries({
-    queries: indexes.map((index) => ({
-      queryKey: indexProjectionKey(index),
-      queryFn: () => fetchIndexProjection(index),
-      enabled: marketIndexes[index].projected,
-    })),
-  });
+  const histories = useQueries({ queries: indexes.map(historyQuery) });
+  const projections = useQueries({ queries: indexes.map(projectionQuery) });
   return { histories, projections };
 }
 
