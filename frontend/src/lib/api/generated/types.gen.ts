@@ -589,6 +589,13 @@ export type LotList = {
     market_value?: MarketTotal;
 };
 
+export type LotPreview = {
+    /**
+     * What the lot costs: its unit price times its quantity, rounded to centavos, in reais, as a decimal string.
+     */
+    cost: string;
+};
+
 export type LotValued = {
     /**
      * The lot's ID.
@@ -1428,6 +1435,31 @@ export type ImportLotsResponses = {
 };
 
 export type ImportLotsResponse = ImportLotsResponses[keyof ImportLotsResponses];
+
+export type PreviewLotData = {
+    body: LotInput;
+    path?: never;
+    query?: never;
+    url: '/lots/preview';
+};
+
+export type PreviewLotErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type PreviewLotError = PreviewLotErrors[keyof PreviewLotErrors];
+
+export type PreviewLotResponses = {
+    /**
+     * OK
+     */
+    200: LotPreview;
+};
+
+export type PreviewLotResponse = PreviewLotResponses[keyof PreviewLotResponses];
 
 export type DeleteLotData = {
     body?: never;

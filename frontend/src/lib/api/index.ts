@@ -22,6 +22,7 @@ import {
   listPrepayments,
   listStatements,
   marketDataStatus,
+  previewLot as previewLotRequest,
   previewMortgageSchedule,
   projectionMethods,
   readMortgage,
@@ -54,6 +55,7 @@ import type {
   LotImport,
   LotInput,
   LotList,
+  LotPreview,
   LotValued,
   LotValues,
   MarketDataStatus,
@@ -100,6 +102,7 @@ export type {
   LotImport,
   LotInput,
   LotList,
+  LotPreview,
   LotValued,
   LotValues,
   MarketDataStatus,
@@ -294,6 +297,13 @@ export async function fetchLots(): Promise<LotList> {
 
 export async function postLot(body: LotInput): Promise<Lot> {
   const { data, error, response } = await addLot({ body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+/** previewLot answers what the lot would cost, without recording it. */
+export async function previewLot(body: LotInput): Promise<LotPreview> {
+  const { data, error, response } = await previewLotRequest({ body });
   if (!data) throw failure(error, response);
   return data;
 }

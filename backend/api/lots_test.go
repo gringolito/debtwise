@@ -414,6 +414,36 @@ func TestLotsWithoutTheIPCAHaveNoValues(t *testing.T) {
 	}
 }
 
+// A lot's cost is its unit price times its quantity, rounded to centavos: 800.123456 × 1.5 is
+// 1,200.185184, and 1500.123456 × 0.25 is 375.030864. Previewing records nothing.
+func TestLotPreviewAnswersTheCostWithoutRecordingIt(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		unitPrice string
+		quantity  string
+		want      string
+	}{
+		{name: "rounded up", unitPrice: "800.123456", quantity: "1.5", want: "1200.19"},
+		{name: "rounded down", unitPrice: "1500.123456", quantity: "0.25", want: "375.03"},
+		{name: "exact", unitPrice: "771.26", quantity: "10", want: "7712.60"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler, _ := lotsOn(t, "2026-10-26")
+
+			body := lotBody("ltn", "2027-01-01", "2026-03-10", "0.1276", tt.unitPrice, tt.quantity)
+			assert.JSONEq(t, `{"cost": "`+tt.want+`"}`, do(t, handler, http.MethodPost, "/lots/preview", body, http.StatusOK))
+
+			assert.Empty(t, lotRows(t, handler))
+		})
+	}
+}
+
 func TestInvalidLotIsRejectedAndKeepsWhatIsRecorded(t *testing.T) {
 	t.Parallel()
 
@@ -477,6 +507,27 @@ func TestInvalidLotIsRejectedAndKeepsWhatIsRecorded(t *testing.T) {
 			name:   "zero quantity",
 			method: http.MethodPost,
 			path:   "/lots",
+			body:   lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "0.00"),
+			want:   []errorDetail{{"body.quantity", "must be greater than zero"}},
+		},
+		{
+			name:   "preview of a maturity not after the purchase",
+			method: http.MethodPost,
+			path:   "/lots/preview",
+			body:   lotBody("ltn", "2026-03-01", "2026-03-10", "0.12", "800", "1"),
+			want:   []errorDetail{{"body.maturity", "must be after the purchase date"}},
+		},
+		{
+			name:   "preview of a purchase after today",
+			method: http.MethodPost,
+			path:   "/lots/preview",
+			body:   lotBody("ltn", "2027-01-01", "2026-10-27", "0.12", "800", "1"),
+			want:   []errorDetail{{"body.purchase_date", "must not be after today"}},
+		},
+		{
+			name:   "preview of a zero quantity",
+			method: http.MethodPost,
+			path:   "/lots/preview",
 			body:   lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "0.00"),
 			want:   []errorDetail{{"body.quantity", "must be greater than zero"}},
 		},

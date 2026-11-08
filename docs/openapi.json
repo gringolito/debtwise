@@ -1039,6 +1039,19 @@
         ],
         "type": "object"
       },
+      "LotPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "cost": {
+            "description": "What the lot costs: its unit price times its quantity, rounded to centavos, in reais, as a decimal string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cost"
+        ],
+        "type": "object"
+      },
       "LotValued": {
         "additionalProperties": false,
         "properties": {
@@ -2479,6 +2492,48 @@
           }
         },
         "summary": "Import lots",
+        "tags": [
+          "Lots"
+        ]
+      }
+    },
+    "/lots/preview": {
+      "post": {
+        "description": "Shows what a lot would cost, without recording it.",
+        "operationId": "preview-lot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotPreview"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Preview a lot",
         "tags": [
           "Lots"
         ]

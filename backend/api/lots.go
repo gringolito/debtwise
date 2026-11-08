@@ -49,6 +49,10 @@ type lot struct {
 	Quantity     string   `json:"quantity" doc:"How many bonds the lot bought, as a decimal string."`
 }
 
+type lotPreview struct {
+	Cost string `json:"cost" doc:"What the lot costs: its unit price times its quantity, rounded to centavos, in reais, as a decimal string."`
+}
+
 type lotImport struct {
 	Lots []lotInput `json:"lots" minItems:"1" nullable:"false" doc:"The lots to record, every one or none."`
 
@@ -168,6 +172,22 @@ func registerLots(humaAPI huma.API, lots Lots, quotes Quotes, store IndexStore, 
 		}
 
 		return &struct{ Body lot }{Body: newLot(added)}, nil
+	})
+
+	register(humaAPI, huma.Operation{
+		OperationID: "preview-lot",
+		Method:      http.MethodPost,
+		Path:        lotsPath + "/preview",
+		Summary:     "Preview a lot",
+		Description: "Shows what a lot would cost, without recording it.",
+		Tags:        []string{lotsTag},
+	}, func(_ context.Context, in *struct{ Body lotInput }) (*struct{ Body lotPreview }, error) {
+		l, err := readLot(in.Body, dateOf(now()))
+		if err != nil {
+			return nil, err
+		}
+
+		return &struct{ Body lotPreview }{Body: lotPreview{Cost: l.Cost().String()}}, nil
 	})
 
 	importSchema := humaAPI.OpenAPI().Components.Schemas.Schema(reflect.TypeFor[lotImport](), true, "")

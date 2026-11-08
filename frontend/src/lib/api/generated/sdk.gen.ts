@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddLotData, AddLotErrors, AddLotResponses, AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, CheckEarlySaleData, CheckEarlySaleErrors, CheckEarlySaleResponses, CheckEarlySalesData, CheckEarlySalesErrors, CheckEarlySalesResponses, DecideData, DecideErrors, DecideResponses, DeleteLotData, DeleteLotErrors, DeleteLotResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditLotData, EditLotErrors, EditLotResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, ImportLotsData, ImportLotsErrors, ImportLotsResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListLotsData, ListLotsErrors, ListLotsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, PreviewMortgageScheduleData, PreviewMortgageScheduleErrors, PreviewMortgageScheduleResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
+import type { AddLotData, AddLotErrors, AddLotResponses, AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, CheckEarlySaleData, CheckEarlySaleErrors, CheckEarlySaleResponses, CheckEarlySalesData, CheckEarlySalesErrors, CheckEarlySalesResponses, DecideData, DecideErrors, DecideResponses, DeleteLotData, DeleteLotErrors, DeleteLotResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditLotData, EditLotErrors, EditLotResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, ImportLotsData, ImportLotsErrors, ImportLotsResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListLotsData, ListLotsErrors, ListLotsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, PreviewLotData, PreviewLotErrors, PreviewLotResponses, PreviewMortgageScheduleData, PreviewMortgageScheduleErrors, PreviewMortgageScheduleResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -123,6 +123,20 @@ export const addLot = <ThrowOnError extends boolean = false>(options: Options<Ad
  */
 export const importLots = <ThrowOnError extends boolean = false>(options: Options<ImportLotsData, ThrowOnError>) => (options.client ?? client).post<ImportLotsResponses, ImportLotsErrors, ThrowOnError>({
     url: '/lots/import',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Preview a lot
+ *
+ * Shows what a lot would cost, without recording it.
+ */
+export const previewLot = <ThrowOnError extends boolean = false>(options: Options<PreviewLotData, ThrowOnError>) => (options.client ?? client).post<PreviewLotResponses, PreviewLotErrors, ThrowOnError>({
+    url: '/lots/preview',
     ...options,
     headers: {
         'Content-Type': 'application/json',
