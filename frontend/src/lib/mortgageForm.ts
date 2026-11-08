@@ -3,6 +3,7 @@ import {
   type ContractRate,
   type MortgageTerms,
   type RegisteredMortgage,
+  type Rule,
 } from "@/lib/api";
 import { fractionToPercent, inputToMoney, moneyToInput, percentToFraction } from "@/lib/format";
 import { indexNames } from "@/lib/indexNames";
@@ -241,27 +242,27 @@ export function termsFromValues(values: FormValues): MortgageTerms {
   };
 }
 
-// The reasons backend/mortgage/validate.go gives for terms that break its rules, in the owner's
-// words. A reason it rewords, and a value the schema cannot read, read as invalid.
-const reasonMessages: Record<string, string> = {
-  "must be greater than zero": "Precisa ser maior que zero.",
-  "must not be before the contract date": "Não pode ser antes da data do contrato.",
-  "needs a row effective on or before the first installment date":
-    "Uma mudança precisa valer desde a primeira prestação.",
-  "repeats the date of another row": "Outra mudança já começa nesta data.",
+/** What each rule of the mortgage asks, in the owner's words. */
+const ruleMessages: Record<Rule, string> = {
+  not_positive: "Precisa ser maior que zero.",
+  before_contract: "Não pode ser antes da data do contrato.",
+  before_today: "Não pode ser antes de hoje.",
+  no_row_from_first_installment: "Uma mudança precisa valer desde a primeira prestação.",
+  repeated_date: "Outra mudança já começa nesta data.",
 };
 
 /**
- * rejections maps what the API rejected to the message the owner reads there. A location is a
- * body field, a whole list or a field of one row of it: "contract_date", "fees" or
+ * rejections maps what the API rejected to the message the owner reads there: what the rule the
+ * value breaks asks, or "Valor inválido." for a value the schema rejected. A location is a body
+ * field, a whole list or a field of one row of it: "contract_date", "fees" or
  * "fees[1].effective_from".
  */
 export function rejections(error: Error | null): Map<string, string> {
   if (!(error instanceof ApiError)) return new Map();
   return new Map(
-    error.rejected.flatMap(({ location, message }) =>
+    error.rejected.flatMap(({ location, rule }) =>
       location.startsWith("body.")
-        ? [[location.slice("body.".length), reasonMessages[message] ?? "Valor inválido."] as const]
+        ? [[location.slice("body.".length), rule ? ruleMessages[rule] : "Valor inválido."] as const]
         : [],
     ),
   );

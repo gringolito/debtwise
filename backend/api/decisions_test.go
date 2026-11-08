@@ -524,3 +524,24 @@ func TestADecisionFailsWithoutAMortgageOrWithAnInvalidRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestADecisionDatedBeforeTodayNamesTheRuleItBreaks(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
+	do(t, s.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
+
+	rec := serve(t, s.handler, http.MethodPost, "/decisions",
+		`{"amount": "0.00", "date": "2026-10-27", "effect": "shorten_term"}`)
+
+	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
+
+	var problem struct {
+		Errors []ruleDetail `json:"errors"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &problem))
+	assert.Equal(t, []ruleDetail{
+		{"body.amount", "not_positive"},
+		{"body.date", "before_today"},
+	}, problem.Errors)
+}

@@ -316,6 +316,10 @@ export type EarlySaleCheckList = {
 
 export type ErrorDetail = {
     /**
+     * The rule of the mortgage the value breaks, present when it breaks one rather than the schema. message says what the rule asks in English.
+     */
+    code?: 'not_positive' | 'before_contract' | 'before_today' | 'no_row_from_first_installment' | 'repeated_date';
+    /**
      * Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
      */
     location?: string;

@@ -678,8 +678,8 @@ describe("a decision the server rejects", () => {
   it("shows the reason next to each field the server rejects", async () => {
     stubDecisions(() =>
       problem(422, "Unprocessable Entity", "validation failed", [
-        { location: "body.amount", message: "must be greater than zero" },
-        { location: "body.date", message: "must not be before today" },
+        { location: "body.amount", message: "must be greater than zero", code: "not_positive" },
+        { location: "body.date", message: "must not be before today", code: "before_today" },
       ]),
     );
     renderAt("/decidir");

@@ -2,6 +2,7 @@ import type {
   Prepayment,
   PrepaymentInput,
   RegisteredMortgage,
+  Rule,
   Schedule,
   StatementDrift,
   StatementInput,
@@ -34,6 +35,7 @@ interface MortgageApiOptions {
 interface FieldError {
   location: string;
   message: string;
+  code?: Rule;
 }
 
 const byDate = (a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date);
@@ -67,13 +69,25 @@ export function stubMortgageApi({
 
   const dateErrors = (date: string): FieldError[] =>
     registered && date < registered.contract_date
-      ? [{ location: "body.date", message: "must not be before the contract date" }]
+      ? [
+          {
+            location: "body.date",
+            message: "must not be before the contract date",
+            code: "before_contract",
+          },
+        ]
       : [];
   const prepaymentErrors = (input: PrepaymentInput): FieldError[] => [
     ...dateErrors(input.date),
     ...(Number(input.amount) > 0
       ? []
-      : [{ location: "body.amount", message: "must be greater than zero" }]),
+      : [
+          {
+            location: "body.amount",
+            message: "must be greater than zero",
+            code: "not_positive" as const,
+          },
+        ]),
   ];
   const statementTaken = (input: StatementInput, id?: number) =>
     statementList.some((s) => s.date === input.date && s.id !== id);

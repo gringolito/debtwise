@@ -92,6 +92,7 @@ func newHandler(logger *slog.Logger, registerOperations func(huma.API)) http.Han
 	humaAPI := humago.NewWithPrefix(mux, "/api", cfg)
 	humaAPI.UseMiddleware(failureLogger{logger: logger}.log)
 	documentRequestID(humaAPI.OpenAPI().Components.Schemas)
+	documentRuleCode(humaAPI.OpenAPI().Components.Schemas)
 
 	registerOperations(humaAPI)
 

@@ -94,7 +94,7 @@ const registeredTerms = {
   fees: [{ effective_from: "2023-12-10", amount: "12.50" }],
 };
 
-const rejected = (errors: { location: string; message: string }[]) => () =>
+const rejected = (errors: NonNullable<Parameters<typeof problem>[3]>) => () =>
   problem(422, "Unprocessable Entity", "validation failed", errors);
 
 const effectiveRate: RegisteredMortgage["contract_rates"] = [
@@ -683,18 +683,29 @@ describe("text the API cannot read", () => {
 describe("a rejected mortgage", () => {
   const rejection = rejected([
     { location: "body.original_amount", message: "expected string to match pattern" },
-    { location: "body.first_installment_date", message: "must not be before the contract date" },
+    {
+      location: "body.first_installment_date",
+      message: "must not be before the contract date",
+      code: "before_contract",
+    },
     {
       location: "body.contract_rates",
       message: "needs a row effective on or before the first installment date",
+      code: "no_row_from_first_installment",
     },
-    { location: "body.mip_rates[1].rate", message: "must be greater than zero" },
+    // The message is the API's English for its consumers; the code alone picks the owner's words.
+    { location: "body.mip_rates[1].rate", message: "reworded by the API", code: "not_positive" },
     {
       location: "body.dfi_rates",
       message: "needs a row effective on or before the first installment date",
+      code: "no_row_from_first_installment",
     },
     { location: "body.contract_rates[0].basis", message: "expected value to be one of" },
-    { location: "body.fees[1].effective_from", message: "repeats the date of another row" },
+    {
+      location: "body.fees[1].effective_from",
+      message: "repeats the date of another row",
+      code: "repeated_date",
+    },
     { location: "body.something_else", message: "is not known" },
   ]);
 
