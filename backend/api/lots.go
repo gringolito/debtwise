@@ -368,18 +368,18 @@ func readLot(body lotInput, today time.Time) (bonds.Lot, error) {
 		return bonds.Lot{}, err
 	}
 
-	if len(violations) > 0 {
-		return bonds.Lot{}, huma.Error422UnprocessableEntity("validation failed", lotViolationDetails("body.", violations)...)
+	if err := rulesFailure(lotViolationDetails("body.", violations)); err != nil {
+		return bonds.Lot{}, err
 	}
 
 	return l, nil
 }
 
 // lotViolationDetails locates each violation under prefix, such as "body.lots[1].".
-func lotViolationDetails(prefix string, violations []bonds.Violation) []error {
-	details := make([]error, 0, len(violations))
+func lotViolationDetails(prefix string, violations []bonds.Violation) []any {
+	details := make([]any, 0, len(violations))
 	for _, v := range violations {
-		details = append(details, &huma.ErrorDetail{Location: prefix + v.Field, Message: v.Reason})
+		details = append(details, newRuleViolation(prefix+v.Field, v.Rule))
 	}
 
 	return details
@@ -418,9 +418,9 @@ func readLots(registry huma.Registry, schema *huma.Schema, raw []byte, bodies []
 
 	huma.Validate(registry, schema, huma.NewPathBuffer([]byte("body"), len("body")), huma.ModeWriteToServer, parsed, &res)
 
-	var details []error // errors of the batch itself, then of each lot in turn
+	var details []any // errors of the batch itself, then of each lot in turn
 
-	malformed := make(map[int][]error)
+	malformed := make(map[int][]any)
 
 	for _, err := range res.Errors {
 		if i, ok := lotIndex(err); ok {
@@ -449,8 +449,8 @@ func readLots(registry huma.Registry, schema *huma.Schema, raw []byte, bodies []
 		lots = append(lots, l)
 	}
 
-	if len(details) > 0 {
-		return nil, huma.Error422UnprocessableEntity("validation failed", details...)
+	if err := rulesFailure(details); err != nil {
+		return nil, err
 	}
 
 	return lots, nil
