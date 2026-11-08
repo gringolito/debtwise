@@ -185,7 +185,8 @@ func TestStatementsSetTheScheduleAndShowTheirDriftUntilDeleted(t *testing.T) {
 }
 
 // The edited statement on March 20 restarts the schedule from 30,001.00, which the 4th and 5th
-// installments amortize to 10,000.33 by May 20. The statement on May 20 is left as it was.
+// installments amortize to 10,000.33 by May 20. The statement on May 20 is left as it was, its 0.33
+// over 0.001% of that.
 func TestStatementIsEdited(t *testing.T) {
 	t.Parallel()
 
@@ -205,7 +206,7 @@ func TestStatementIsEdited(t *testing.T) {
 		{"id": 1, "date": "2024-03-20", "outstanding_balance": "30001.00", "computed_balance": "30000.00",
 		 "drift": "1.00", "within_rounding": false},
 		{"id": 2, "date": "2024-05-20", "outstanding_balance": "10000.00", "computed_balance": "10000.33",
-		 "drift": "-0.33", "within_rounding": true}
+		 "drift": "-0.33", "within_rounding": false}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 }
 

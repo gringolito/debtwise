@@ -15,10 +15,12 @@ one the edit would give. A statement preview refuses a date another statement ha
 would, and answers the drift the statement would show once recorded. Both are computed on each
 request and stored nowhere, as every figure that depends on the history of the indexes is.
 
-A drift under R$ 1,00 either way counts as within rounding. The bank and the schedule round each
-charge to centavos on balances that differ by a few of them, so a drift that small says the model
-still tracks the contract, and a larger one says the terms no longer match it. The Drift reports
-the verdict, so every screen draws the same line.
+A drift counts as within rounding when it is zero or under 0.001% of the balance the schedule
+computed, either way. The bank and the schedule round each charge to centavos, and the corrections
+those charges compound on grow with the balance, so the line grows with it: R$ 4,30 on a balance of
+R$ 430.000,00, ten centavos on R$ 10.000,00. It is the tolerance the schedule is held to against a
+real contract's statements. A larger drift says the terms no longer match the contract. The Drift
+reports the verdict, so every screen draws the same line.
 
 ## Considered Options
 
@@ -33,6 +35,6 @@ the verdict, so every screen draws the same line.
   computed on every read for the same reason (ADR-0008).
 - **A drift threshold set by the owner:** not taken. Nothing in the contract or the statements calls
   for another line, and a setting could make two screens disagree on the same drift.
-- **A percentage of the balance as the threshold:** rejected. Rounding is a matter of centavos
-  and does not grow with the balance, so a percentage would call a real mismatch on a large
-  balance rounding.
+- **A fixed amount, such as R$ 1,00, as the threshold:** rejected. On a large balance it would call
+  a few reais of ordinary rounding drift, and near the end of the term it would let a mismatch that
+  is a large share of what is left pass as rounding.

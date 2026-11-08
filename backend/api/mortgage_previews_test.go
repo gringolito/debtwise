@@ -161,9 +161,14 @@ func TestStatementIsPreviewed(t *testing.T) {
 			want: `{"computed_balance": "10000.00", "drift": "0.00", "within_rounding": true}`,
 		},
 		{
-			name: "a statement of less than computed, within rounding",
-			body: `{"date": "2024-05-20", "outstanding_balance": "9999.50"}`,
-			want: `{"computed_balance": "10000.00", "drift": "-0.50", "within_rounding": true}`,
+			name: "a statement of less than computed, within 0.001% of it",
+			body: `{"date": "2024-05-20", "outstanding_balance": "9999.91"}`,
+			want: `{"computed_balance": "10000.00", "drift": "-0.09", "within_rounding": true}`,
+		},
+		{
+			name: "a statement of 0.001% less than computed",
+			body: `{"date": "2024-05-20", "outstanding_balance": "9999.90"}`,
+			want: `{"computed_balance": "10000.00", "drift": "-0.10", "within_rounding": false}`,
 		},
 		{
 			name: "a statement of a real more than computed",
@@ -190,8 +195,8 @@ func TestStatementIsPreviewed(t *testing.T) {
 		{
 			name:     "replacing a recorded statement on its date",
 			recorded: true,
-			body:     `{"date": "2024-02-20", "outstanding_balance": "40000.50", "replaces": 1}`,
-			want:     `{"computed_balance": "40000.00", "drift": "0.50", "within_rounding": true}`,
+			body:     `{"date": "2024-02-20", "outstanding_balance": "40000.39", "replaces": 1}`,
+			want:     `{"computed_balance": "40000.00", "drift": "0.39", "within_rounding": true}`,
 		},
 		{
 			name:     "replacing a recorded statement with one on another date",

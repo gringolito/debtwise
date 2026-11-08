@@ -440,9 +440,9 @@ export const statements: StatementDrift[] = [
   {
     id: 3,
     date: "2024-05-10",
-    outstanding_balance: "10000.42",
+    outstanding_balance: "10000.08",
     computed_balance: "10000.00",
-    drift: "0.42",
+    drift: "0.08",
     within_rounding: true,
   },
 ];

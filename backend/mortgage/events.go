@@ -47,12 +47,24 @@ type Drift struct {
 	Amount decimal.Decimal
 }
 
-// WithinRounding reports whether the drift is under R$ 1,00 either way: centavos the bank and the
-// schedule round differently, rather than terms that no longer match the contract (ADR-0016).
-func (d Drift) WithinRounding() bool {
-	one := decimal.FromInt(1)
+// roundingShare is the share of the computed balance a drift stays under to be rounding (ADR-0016).
+var roundingShare = decimal.MustParse("0.00001")
 
-	return d.Amount.Cmp(one) < 0 && d.Amount.Cmp(decimal.Decimal{}.Sub(one)) > 0
+// WithinRounding reports whether the drift is zero or under 0.001% of the computed balance either
+// way: centavos the bank and the schedule round differently, rather than terms that no longer match
+// the contract (ADR-0016).
+func (d Drift) WithinRounding() bool {
+	zero := decimal.Decimal{}
+	if d.Amount.Cmp(zero) == 0 {
+		return true
+	}
+
+	size := d.Amount
+	if size.Cmp(zero) < 0 {
+		size = zero.Sub(size)
+	}
+
+	return size.Cmp(d.ComputedBalance.Mul(roundingShare)) < 0
 }
 
 // Validate returns every rule the prepayment breaks for terms. The schema checks the effect.

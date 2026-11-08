@@ -107,8 +107,8 @@ export function Statements({ onEdit }: StatementsProps) {
         <>
           <StatementTable statements={data.statements.toReversed()} onEdit={onEdit} />
           <p className="px-1 text-footnote text-muted-foreground">
-            Diferenças de alguns centavos são arredondamento. Diferenças maiores podem indicar uma
-            taxa ou seguro desatualizado.
+            Diferenças de menos de um centavo a cada mil reais do saldo são arredondamento.
+            Diferenças maiores podem indicar uma taxa ou seguro desatualizado.
           </p>
         </>
       )}

@@ -73,7 +73,7 @@ type statementDrift struct {
 	OutstandingBalance string `json:"outstanding_balance" doc:"Outstanding balance the bank reported, in reais, as a decimal string."`
 	ComputedBalance    string `json:"computed_balance" doc:"Outstanding balance the schedule shows on the same date, after the installments due by then, in reais, as a decimal string."`
 	Drift              string `json:"drift" doc:"The reported balance minus the computed one, in reais, as a decimal string. Positive when the bank says more is owed."`
-	WithinRounding     bool   `json:"within_rounding" doc:"Whether the drift is only the centavos the bank and the schedule round differently, rather than a sign that the contract terms no longer match the bank's."`
+	WithinRounding     bool   `json:"within_rounding" doc:"Whether the drift is small enough to be the rounding the bank and the schedule do differently, rather than a sign that the contract terms no longer match the bank's."`
 }
 
 type statementPreviewInput struct {
@@ -85,7 +85,7 @@ type statementPreviewInput struct {
 type statementPreview struct {
 	ComputedBalance string `json:"computed_balance" doc:"Outstanding balance the schedule would show on the statement's date, in reais, as a decimal string."`
 	Drift           string `json:"drift" doc:"The reported balance minus the computed one, in reais, as a decimal string. Positive when the bank says more is owed."`
-	WithinRounding  bool   `json:"within_rounding" doc:"Whether the drift is only the centavos the bank and the schedule round differently, rather than a sign that the contract terms no longer match the bank's."`
+	WithinRounding  bool   `json:"within_rounding" doc:"Whether the drift is small enough to be the rounding the bank and the schedule do differently, rather than a sign that the contract terms no longer match the bank's."`
 }
 
 type statementList struct {

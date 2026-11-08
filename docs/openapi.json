@@ -1910,7 +1910,7 @@
             "type": "string"
           },
           "within_rounding": {
-            "description": "Whether the drift is only the centavos the bank and the schedule round differently, rather than a sign that the contract terms no longer match the bank's.",
+            "description": "Whether the drift is small enough to be the rounding the bank and the schedule do differently, rather than a sign that the contract terms no longer match the bank's.",
             "type": "boolean"
           }
         },
@@ -1972,7 +1972,7 @@
             "type": "string"
           },
           "within_rounding": {
-            "description": "Whether the drift is only the centavos the bank and the schedule round differently, rather than a sign that the contract terms no longer match the bank's.",
+            "description": "Whether the drift is small enough to be the rounding the bank and the schedule do differently, rather than a sign that the contract terms no longer match the bank's.",
             "type": "boolean"
           }
         },

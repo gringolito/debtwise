@@ -1079,7 +1079,7 @@ export type StatementDrift = {
      */
     outstanding_balance: string;
     /**
-     * Whether the drift is only the centavos the bank and the schedule round differently, rather than a sign that the contract terms no longer match the bank's.
+     * Whether the drift is small enough to be the rounding the bank and the schedule do differently, rather than a sign that the contract terms no longer match the bank's.
      */
     within_rounding: boolean;
 };
@@ -1112,7 +1112,7 @@ export type StatementPreview = {
      */
     drift: string;
     /**
-     * Whether the drift is only the centavos the bank and the schedule round differently, rather than a sign that the contract terms no longer match the bank's.
+     * Whether the drift is small enough to be the rounding the bank and the schedule do differently, rather than a sign that the contract terms no longer match the bank's.
      */
     within_rounding: boolean;
 };
