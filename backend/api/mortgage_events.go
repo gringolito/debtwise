@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -309,18 +310,59 @@ func readStatement(ctx context.Context, mortgages Mortgages, body statementInput
 	return st, violationsFailure(st.Validate(terms))
 }
 
+// ruleViolations is the 422 for values that break a rule of the mortgage: Huma's problem document,
+// with each error naming the rule it breaks by its code.
+type ruleViolations struct {
+	huma.ErrorModel
+
+	Errors []ruleViolation `json:"errors"`
+}
+
+type ruleViolation struct {
+	Location string        `json:"location"`
+	Message  string        `json:"message"`
+	Code     mortgage.Rule `json:"code"`
+}
+
 // violationsFailure returns a 422 listing violations, or nil when there are none.
 func violationsFailure(violations []mortgage.Violation) error {
 	if len(violations) == 0 {
 		return nil
 	}
 
-	details := make([]error, 0, len(violations))
+	problem := &ruleViolations{
+		Title:  http.StatusText(http.StatusUnprocessableEntity),
+		Status: http.StatusUnprocessableEntity,
+		Detail: "validation failed",
+	}
 	for _, v := range violations {
-		details = append(details, &huma.ErrorDetail{Location: "body." + v.Field, Message: v.Reason})
+		problem.Errors = append(problem.Errors, ruleViolation{
+			Location: "body." + v.Field,
+			Message:  v.Rule.Reason(),
+			Code:     v.Rule,
+		})
 	}
 
-	return huma.Error422UnprocessableEntity("validation failed", details...)
+	return problem
+}
+
+// documentRuleCode declares the code of the rule a value breaks on the ErrorDetail schema every
+// error response refers to, which forbids undeclared properties.
+func documentRuleCode(registry huma.Registry) {
+	rules := mortgage.Rules()
+
+	enum := make([]any, 0, len(rules))
+	for _, rule := range rules {
+		enum = append(enum, string(rule))
+	}
+
+	ref := registry.Schema(reflect.TypeFor[huma.ErrorDetail](), true, "").Ref
+	registry.SchemaFromRef(ref).Properties["code"] = &huma.Schema{
+		Type: huma.TypeString,
+		Enum: enum,
+		Description: "The rule of the mortgage the value breaks, present when it breaks one rather " +
+			"than the schema. message says what the rule asks in English.",
+	}
 }
 
 func statementFailure(err error) error {

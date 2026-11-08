@@ -72,7 +72,7 @@ export const lotFieldMessages: Record<string, string> = {
 export function lotErrors(error: Error | null): Map<string, string> {
   const errors = new Map<string, string>();
   if (!(error instanceof ApiError) || error.status !== 422) return errors;
-  for (const location of error.locations) {
+  for (const { location } of error.rejected) {
     if (!location.startsWith("body.")) continue;
     const field = location.slice("body.".length);
     errors.set(field, lotFieldMessages[field] ?? "Valor inválido.");

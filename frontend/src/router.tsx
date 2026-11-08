@@ -7,6 +7,7 @@ import {
   type RouterHistory,
 } from "@tanstack/react-router";
 import { Bonds } from "@/pages/Bonds";
+import { Contract } from "@/pages/Contract";
 import { Dashboard } from "@/pages/Dashboard";
 import { Decision } from "@/pages/Decision";
 import { ImportLots } from "@/pages/ImportLots";
@@ -16,7 +17,6 @@ import { EarlySales } from "@/pages/investments/EarlySales";
 import { Purchases } from "@/pages/investments/Purchases";
 import { LotDetail } from "@/pages/LotDetail";
 import { Mortgage } from "@/pages/Mortgage";
-import { MortgageForm } from "@/pages/MortgageForm";
 import { NotFound } from "@/pages/NotFound";
 import { MortgageGate } from "@/pages/onboarding/MortgageGate";
 import { Settings } from "@/pages/Settings";
@@ -43,10 +43,10 @@ const mortgageRoute = createRoute({
   component: Mortgage,
 });
 
-const mortgageFormRoute = createRoute({
+const contractRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/financiamento/editar",
-  component: MortgageForm,
+  component: Contract,
 });
 
 const investmentsRoute = createRoute({
@@ -139,7 +139,7 @@ const routeTree = rootRoute.addChildren([
   shellRoute.addChildren([
     homeRoute,
     mortgageRoute,
-    mortgageFormRoute,
+    contractRoute,
     investmentsRoute.addChildren([purchasesRoute, earlySaleRoute]),
     lotRoute,
     importLotsRoute,

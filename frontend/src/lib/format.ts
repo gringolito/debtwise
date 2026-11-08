@@ -120,12 +120,46 @@ export function formatNumber(decimal: string): string {
   return format.format(decimal as DecimalString);
 }
 
-/** moneyToInput turns the API's "60000.00" into the "60000,00" the owner types. */
+const groupDigits = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+/** moneyToInput turns the API's "60000.00" into the "60.000,00" the owner types. */
 export function moneyToInput(decimal: string): string {
-  return decimal.replace(".", ",");
+  const [integer, fraction] = decimal.split(".");
+  const grouped = groupDigits(integer);
+  return fraction === undefined ? grouped : `${grouped},${fraction}`;
 }
 
 const THOUSANDS_GROUPED = /^\d{1,3}(\.\d{3})+$/;
+const TYPED_MONEY = /^([\d.]*)(,\d*)?$/;
+
+// Whether one character typed into or deleted from one text gives the other.
+function oneKeyApart(a: string, b: string): boolean {
+  const [longer, shorter] = a.length > b.length ? [a, b] : [b, a];
+  if (longer.length - shorter.length !== 1) return false;
+  let i = 0;
+  while (i < shorter.length && longer[i] === shorter[i]) i++;
+  return longer.slice(i + 1) === shorter.slice(i);
+}
+
+/**
+ * groupThousands writes the pt-BR number the owner is typing, `typed`, with its thousands grouped:
+ * "1250000,5" reads "1.250.000,5". Its dots are thousands separators when a comma marks the
+ * decimals, when they already group thousands, or when one key typed or deleted changed the
+ * grouped text it replaces, `previous`. Otherwise, as in "60000.00" pasted, a dot is the decimal
+ * point inputToMoney reads, and the text stays as typed, as does text that is no number.
+ */
+export function groupThousands(typed: string, previous = ""): string {
+  const match = TYPED_MONEY.exec(typed);
+  if (!match) return typed;
+  const [, integer, decimals = ""] = match;
+  const keyOnGrouped =
+    oneKeyApart(typed, previous) && THOUSANDS_GROUPED.test(previous.split(",")[0]);
+  const separators =
+    decimals !== "" || !integer.includes(".") || THOUSANDS_GROUPED.test(integer) || keyOnGrouped;
+  if (!separators) return typed;
+  const digits = integer.replaceAll(".", "");
+  return digits === "" ? typed : `${groupDigits(digits)}${decimals}`;
+}
 
 /**
  * inputToMoney turns what the owner typed, "250000,00" or "250.000,00", into the API's

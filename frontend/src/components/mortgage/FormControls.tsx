@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { useId } from "react";
-import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
@@ -98,52 +97,5 @@ export function SelectField<T extends string>({
       </NativeSelect>
       {invalid && <Message id={messageId}>{message}</Message>}
     </Field>
-  );
-}
-
-type ListSectionProps = React.ComponentProps<"fieldset"> & {
-  title: string;
-  invalid: boolean;
-  onAdd: () => void;
-};
-
-/** ListSection frames the rows of one editable list with the button that adds another. */
-export function ListSection({
-  title,
-  invalid,
-  onAdd,
-  className,
-  children,
-  ...props
-}: ListSectionProps) {
-  const messageId = useId();
-  return (
-    <fieldset
-      className={cn("flex flex-col gap-3", className)}
-      aria-invalid={invalid || undefined}
-      aria-describedby={invalid ? messageId : undefined}
-      {...props}
-    >
-      <legend className="mb-1.5 font-medium">{title}</legend>
-      {children}
-      {invalid && <Message id={messageId}>Confira as linhas desta lista.</Message>}
-      <Button type="button" variant="outline" className="self-start" onClick={onAdd}>
-        Adicionar
-      </Button>
-    </fieldset>
-  );
-}
-
-type RowProps = React.ComponentProps<"div"> & { onRemove: () => void };
-
-/** Row groups the inputs of one list row; the caller names it with its list and row number. */
-export function Row({ onRemove, className, children, ...props }: RowProps) {
-  return (
-    <div role="group" className={cn("flex flex-wrap items-start gap-3", className)} {...props}>
-      {children}
-      <Button type="button" variant="ghost" className="self-end" onClick={onRemove}>
-        Remover
-      </Button>
-    </div>
   );
 }

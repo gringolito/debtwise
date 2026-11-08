@@ -42,7 +42,7 @@ const fieldSteps = new Map(
 
 /**
  * stepOf is the first step that asks for a field the API rejected, given locations as
- * invalidLocations lists them; undefined when no step asks for any of them.
+ * rejections names them; undefined when no step asks for any of them.
  */
 export function stepOf(locations: Iterable<string>): number | undefined {
   let first: number | undefined;

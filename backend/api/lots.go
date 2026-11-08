@@ -17,7 +17,6 @@ import (
 	"github.com/gringolito/debtwise/backend/bonds"
 	"github.com/gringolito/debtwise/backend/decimal"
 	"github.com/gringolito/debtwise/backend/indexes"
-	"github.com/gringolito/debtwise/backend/mortgage"
 )
 
 // Lots is the subset of *bonds.Store the API uses to record lots and to value them.
@@ -369,12 +368,26 @@ func readLot(body lotInput, today time.Time) (bonds.Lot, error) {
 		return bonds.Lot{}, err
 	}
 
-	return l, violationsFailure(violations)
+	if len(violations) > 0 {
+		return bonds.Lot{}, huma.Error422UnprocessableEntity("validation failed", lotViolationDetails("body.", violations)...)
+	}
+
+	return l, nil
+}
+
+// lotViolationDetails locates each violation under prefix, such as "body.lots[1].".
+func lotViolationDetails(prefix string, violations []bonds.Violation) []error {
+	details := make([]error, 0, len(violations))
+	for _, v := range violations {
+		details = append(details, &huma.ErrorDetail{Location: prefix + v.Field, Message: v.Reason})
+	}
+
+	return details
 }
 
 // checkLot reads a lot like readLot, and returns the violations of the lot's rules instead of
 // failing with them.
-func checkLot(body lotInput, today time.Time) (bonds.Lot, []mortgage.Violation, error) {
+func checkLot(body lotInput, today time.Time) (bonds.Lot, []bonds.Violation, error) {
 	var p parser
 
 	l := bonds.Lot{
@@ -388,14 +401,7 @@ func checkLot(body lotInput, today time.Time) (bonds.Lot, []mortgage.Violation, 
 		return bonds.Lot{}, nil, fmt.Errorf("read lot: %w", p.err)
 	}
 
-	violations := l.Validate(today)
-
-	converted := make([]mortgage.Violation, 0, len(violations))
-	for _, v := range violations {
-		converted = append(converted, mortgage.Violation(v))
-	}
-
-	return l, converted, nil
+	return l, l.Validate(today), nil
 }
 
 // readLots reads every lot of an import like readLot. The operation skips huma's validation of the
@@ -438,12 +444,7 @@ func readLots(registry huma.Registry, schema *huma.Schema, raw []byte, bodies []
 			return nil, fmt.Errorf("lot %d: %w", i, err)
 		}
 
-		for _, v := range violations {
-			details = append(details, &huma.ErrorDetail{
-				Location: fmt.Sprintf("body.lots[%d].%s", i, v.Field),
-				Message:  v.Reason,
-			})
-		}
+		details = append(details, lotViolationDetails(fmt.Sprintf("body.lots[%d].", i), violations)...)
 
 		lots = append(lots, l)
 	}
