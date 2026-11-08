@@ -128,6 +128,10 @@
             "description": "What the bond cost, in reais, as a decimal string.",
             "type": "string"
           },
+          "net_worth": {
+            "description": "The scenario's net worth once the day's flows are done: the cash held by then and the bond's net value, its accrual value before the horizon and its Maturity Value on it, less the outstanding balance, in reais, as a decimal string.",
+            "type": "string"
+          },
           "outstanding_balance": {
             "description": "What is owed once the day's flows are done, in reais, as a decimal string.",
             "type": "string"
@@ -150,7 +154,8 @@
           "invested",
           "prepaid",
           "held",
-          "outstanding_balance"
+          "outstanding_balance",
+          "net_worth"
         ],
         "type": "object"
       },
@@ -527,13 +532,16 @@
         "additionalProperties": false,
         "properties": {
           "code": {
-            "description": "The rule of the mortgage the value breaks, present when it breaks one rather than the schema. message says what the rule asks in English.",
+            "description": "The rule of the mortgage or of a lot the value breaks, present when it breaks one rather than the schema. message says what the rule asks in English.",
             "enum": [
               "not_positive",
               "before_contract",
               "before_today",
               "no_row_from_first_installment",
-              "repeated_date"
+              "repeated_date",
+              "not_after_purchase",
+              "not_maturity_day",
+              "after_today"
             ],
             "type": "string"
           },
@@ -1047,6 +1055,19 @@
         },
         "required": [
           "lots"
+        ],
+        "type": "object"
+      },
+      "LotPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "cost": {
+            "description": "What the lot costs: its unit price times its quantity, rounded to centavos, in reais, as a decimal string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cost"
         ],
         "type": "object"
       },
@@ -2048,6 +2069,10 @@
             "format": "date",
             "type": "string"
           },
+          "minimum_amount": {
+            "description": "The smallest amount that buys a hundredth of the bond at the unit price, in reais, as a decimal string. Only when the verdict is unavailable for amount_too_small.",
+            "type": "string"
+          },
           "no_break_even": {
             "description": "Why no yearly bond rate from 0% to 100% is a break-even rate. below_range: investing wins even at 0%; above_range: prepaying wins even at 100%. Absent when the verdict has a break_even_rate or is unavailable.",
             "enum": [
@@ -2663,6 +2688,48 @@
           }
         },
         "summary": "Import lots",
+        "tags": [
+          "Lots"
+        ]
+      }
+    },
+    "/lots/preview": {
+      "post": {
+        "description": "Shows what a lot would cost, without recording it.",
+        "operationId": "preview-lot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotPreview"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Preview a lot",
         "tags": [
           "Lots"
         ]

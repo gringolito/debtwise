@@ -82,6 +82,10 @@ export type CashFlow = {
      */
     invested: string;
     /**
+     * The scenario's net worth once the day's flows are done: the cash held by then and the bond's net value, its accrual value before the horizon and its Maturity Value on it, less the outstanding balance, in reais, as a decimal string.
+     */
+    net_worth: string;
+    /**
      * What is owed once the day's flows are done, in reais, as a decimal string.
      */
     outstanding_balance: string;
@@ -316,9 +320,9 @@ export type EarlySaleCheckList = {
 
 export type ErrorDetail = {
     /**
-     * The rule of the mortgage the value breaks, present when it breaks one rather than the schema. message says what the rule asks in English.
+     * The rule of the mortgage or of a lot the value breaks, present when it breaks one rather than the schema. message says what the rule asks in English.
      */
-    code?: 'not_positive' | 'before_contract' | 'before_today' | 'no_row_from_first_installment' | 'repeated_date';
+    code?: 'not_positive' | 'before_contract' | 'before_today' | 'no_row_from_first_installment' | 'repeated_date' | 'not_after_purchase' | 'not_maturity_day' | 'after_today';
     /**
      * Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
      */
@@ -591,6 +595,13 @@ export type LotList = {
      * The total Market Value of the lots that have one. Absent when none has.
      */
     market_value?: MarketTotal;
+};
+
+export type LotPreview = {
+    /**
+     * What the lot costs: its unit price times its quantity, rounded to centavos, in reais, as a decimal string.
+     */
+    cost: string;
 };
 
 export type LotValued = {
@@ -1162,6 +1173,10 @@ export type Verdict = {
      */
     maturity: string;
     /**
+     * The smallest amount that buys a hundredth of the bond at the unit price, in reais, as a decimal string. Only when the verdict is unavailable for amount_too_small.
+     */
+    minimum_amount?: string;
+    /**
      * Why no yearly bond rate from 0% to 100% is a break-even rate. below_range: investing wins even at 0%; above_range: prepaying wins even at 100%. Absent when the verdict has a break_even_rate or is unavailable.
      */
     no_break_even?: 'below_range' | 'above_range';
@@ -1539,6 +1554,31 @@ export type ImportLotsResponses = {
 };
 
 export type ImportLotsResponse = ImportLotsResponses[keyof ImportLotsResponses];
+
+export type PreviewLotData = {
+    body: LotInput;
+    path?: never;
+    query?: never;
+    url: '/lots/preview';
+};
+
+export type PreviewLotErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type PreviewLotError = PreviewLotErrors[keyof PreviewLotErrors];
+
+export type PreviewLotResponses = {
+    /**
+     * OK
+     */
+    200: LotPreview;
+};
+
+export type PreviewLotResponse = PreviewLotResponses[keyof PreviewLotResponses];
 
 export type DeleteLotData = {
     body?: never;

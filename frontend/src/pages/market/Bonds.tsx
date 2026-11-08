@@ -26,7 +26,7 @@ import { staleSources } from "@/lib/dashboard";
 import { formatDate, formatInstantDate, formatMoney } from "@/lib/format";
 import { useBonds } from "@/lib/marketQueries";
 import { useMortgage } from "@/lib/mortgageQueries";
-import { StaleSourcesNote } from "@/pages/market/StaleSourcesNote";
+import { StaleSourcesNote } from "@/pages/marketdata/StaleSourcesNote";
 import { useMarketData } from "@/pages/marketdata/useMarketData";
 
 // A side of a quote: its rate, with the unit price under it in Footnote.

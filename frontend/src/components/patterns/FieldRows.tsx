@@ -1,12 +1,12 @@
-import { type ReactNode, useId, useLayoutEffect, useRef } from "react";
+import { type ReactNode, useId } from "react";
 import {
   GroupedListItem,
   GroupedListLabel,
   GroupedListRow,
 } from "@/components/patterns/GroupedList";
+import { useTypedValue } from "@/components/patterns/useTypedValue";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { groupThousands } from "@/lib/format";
 
 interface RowTextProps {
   id: string;
@@ -43,9 +43,15 @@ function RowText({ id, label, hint, message }: RowTextProps) {
   );
 }
 
-interface InputRowProps
-  extends Omit<React.ComponentProps<"input">, "value" | "onChange" | "prefix">,
-    Omit<RowTextProps, "id"> {
+interface InputRowProps extends Omit<InlineInputProps, "prefix">, Omit<RowTextProps, "id"> {
+  /** The unit before the value, such as "R$". */
+  prefix?: string;
+  /** The unit after the value, such as "% ao mês". */
+  suffix?: ReactNode;
+}
+
+interface InlineInputProps
+  extends Omit<React.ComponentProps<typeof Input>, "value" | "onChange" | "variant"> {
   value: string;
   onChange: (value: string) => void;
   /**
@@ -53,67 +59,27 @@ interface InputRowProps
    * inputToMoney reads.
    */
   grouped?: boolean;
-  /** The unit before the value, such as "R$". */
-  prefix?: string;
-  /** The unit after the value, such as "% ao mês". */
-  suffix?: ReactNode;
 }
 
-// Where the caret goes in formatted text: after as many characters other than group dots as were
-// before it in what the owner typed.
-function caretIn(formatted: string, typed: string, caret: number): number {
-  const kept = typed.slice(0, caret).replaceAll(".", "").length;
-  let position = 0;
-  for (let seen = 0; position < formatted.length && seen < kept; position++) {
-    if (formatted[position] !== ".") seen++;
-  }
-  return position;
+/** InlineInput is a value typed in place, as on a grouped list row or a table cell. */
+export function InlineInput({ value, onChange, grouped = false, ...props }: InlineInputProps) {
+  const typed = useTypedValue(value, onChange, grouped);
+
+  return <Input {...typed} variant="inline" {...props} />;
 }
 
 /** InputRow is a grouped list row whose value the owner types in place. */
-export function InputRow({
-  label,
-  hint,
-  message,
-  value,
-  onChange,
-  grouped = false,
-  prefix,
-  suffix,
-  ...props
-}: InputRowProps) {
+export function InputRow({ label, hint, message, prefix, suffix, ...props }: InputRowProps) {
   const id = useId();
   const text = { id, label, hint, message };
-  const input = useRef<HTMLInputElement>(null);
-  const caret = useRef<number | null>(null);
-
-  useLayoutEffect(() => {
-    if (caret.current === null) return;
-    input.current?.setSelectionRange(caret.current, caret.current);
-    caret.current = null;
-  });
-
-  const change = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const typed = event.target.value;
-    const next = grouped ? groupThousands(typed, value) : typed;
-    if (next !== typed) {
-      caret.current = caretIn(next, typed, event.target.selectionStart ?? typed.length);
-    }
-    onChange(next);
-  };
-
   return (
     <GroupedListItem>
       <GroupedListRow>
         <RowText {...text} />
         <span className="flex shrink-0 items-baseline gap-1">
           {prefix !== undefined && <span className="text-muted-foreground">{prefix}</span>}
-          <Input
-            ref={input}
+          <InlineInput
             id={id}
-            variant="inline"
-            value={value}
-            onChange={change}
             aria-invalid={message !== undefined || undefined}
             aria-describedby={describedBy(text)}
             {...props}

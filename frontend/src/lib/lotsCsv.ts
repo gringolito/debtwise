@@ -1,7 +1,8 @@
 import { ApiError, type BondQuote, type LotInput } from "@/lib/api";
 import type { BondType } from "@/lib/bondKinds";
-import { inputToMoney, percentToFraction } from "@/lib/format";
+import { inputToMoney, moneyToInput, percentToFraction } from "@/lib/format";
 import { lotFieldMessages } from "@/lib/lots";
+import { lotRuleMessage } from "@/lib/rules";
 
 /** CsvRow is one row of a lots file, its fields as text: as the file writes them or as edited. */
 export interface CsvRow {
@@ -79,6 +80,23 @@ export function importedRow(row: CsvRow, bond: BondQuote | null): ImportedRow {
   };
 }
 
+const PLAIN_DECIMAL = /^\d+(\.\d+)?$/;
+
+/**
+ * asTyped writes a number the file gives the way the owner types it, thousands grouped: "2012.34",
+ * "2012,34" and "R$ 2.012,34" all read "2.012,34", and "6,21%" reads "6,21". Text that is no
+ * number comes back as the file gives it, for the owner to fix.
+ */
+export function asTyped(text: string): string {
+  const decimal = inputToMoney(
+    text
+      .trim()
+      .replace(/^R\$\s*/, "")
+      .replace(/%$/, ""),
+  );
+  return PLAIN_DECIMAL.test(decimal) ? moneyToInput(decimal) : text;
+}
+
 /** InvalidRow is a row of the file the owner has to fix, with why. */
 export interface InvalidRow {
   line: number;
@@ -98,15 +116,23 @@ const explainedFields: Record<RowProblem, (field: string) => boolean> = {
 
 const importMessages: Record<string, string> = {
   ...lotFieldMessages,
-  maturity: "O título vence antes da data da compra.",
-  purchase_date: "Informe a data da compra (dd/mm/aaaa), que não pode ser futura.",
+  purchase_date: "Informe a data da compra (dd/mm/aaaa).",
+};
+
+// A rule's message says what it asks, not of which value; a row names the value it is about.
+const fieldNames: Record<string, string> = {
+  maturity: "Vencimento",
+  purchase_date: "Data da compra",
+  unit_price: "Preço unitário",
+  quantity: "Quantidade",
 };
 
 const lotLocation = /^body\.lots\[(\d+)\]\.(\w+)$/;
 
 /**
- * importErrors reads a rejected import of rows as the rows the owner has to fix, in file order.
- * Any other failure gives none.
+ * importErrors reads a rejected import of rows as the rows the owner has to fix, in file order:
+ * what the rule each rejected value breaks asks, or what the field takes when the schema rejected
+ * it. Any other failure gives none.
  */
 export function importErrors(error: Error | null, rows: ImportedRow[]): InvalidRow[] {
   if (!(error instanceof ApiError) || error.status !== 422) return [];
@@ -114,14 +140,19 @@ export function importErrors(error: Error | null, rows: ImportedRow[]): InvalidR
   for (const row of rows) {
     if (row.problem) messages.set(row, new Set([problemMessages[row.problem]]));
   }
-  for (const { location } of error.rejected) {
+  for (const { location, rule } of error.rejected) {
     const match = lotLocation.exec(location);
     const row = match && rows[Number(match[1])];
     if (!match || !row) continue;
     const field = match[2];
     if (row.problem && explainedFields[row.problem](field)) continue;
     const rowMessages = messages.get(row) ?? new Set<string>();
-    rowMessages.add(importMessages[field] ?? "Valor inválido.");
+    const reason = rule && lotRuleMessage(rule, row.input.type);
+    rowMessages.add(
+      reason
+        ? `${fieldNames[field] ?? field}: ${reason.charAt(0).toLowerCase()}${reason.slice(1)}`
+        : (importMessages[field] ?? "Valor inválido."),
+    );
     messages.set(row, rowMessages);
   }
   return rows

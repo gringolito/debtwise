@@ -10,9 +10,9 @@ import { staleSources, today } from "@/lib/dashboard";
 import { indexNames } from "@/lib/indexNames";
 import { indexPeriodProse, indexValueText, marketIndexes } from "@/lib/marketIndexes";
 import { useIndexHistory, useIndexProjection, useProjectionMethods } from "@/lib/marketQueries";
-import { StaleSourcesNote } from "@/pages/market/StaleSourcesNote";
 import { IndexChart } from "@/pages/market/IndexChart";
 import { PoupancaDerivation, ProjectionChoice } from "@/pages/market/ProjectionChoice";
+import { StaleSourcesNote } from "@/pages/marketdata/StaleSourcesNote";
 import { useMarketData } from "@/pages/marketdata/useMarketData";
 
 const route = getRouteApi("/shell/mercado/indices/$index");

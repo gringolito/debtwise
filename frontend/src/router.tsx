@@ -7,14 +7,16 @@ import {
   type Router,
   type RouterHistory,
 } from "@tanstack/react-router";
-import { SectionLayout } from "@/components/layout/SectionLayout";
+import { validateEffectSearch } from "@/lib/investments";
 import { isIndexName } from "@/lib/marketIndexes";
 import { Contract } from "@/pages/Contract";
 import { Dashboard } from "@/pages/Dashboard";
 import { Decision } from "@/pages/Decision";
-import { EarlySale } from "@/pages/EarlySale";
 import { ImportLots } from "@/pages/ImportLots";
-import { Lots } from "@/pages/Lots";
+import { Investments } from "@/pages/Investments";
+import { EarlySales } from "@/pages/investments/EarlySales";
+import { Purchases } from "@/pages/investments/Purchases";
+import { LotDetail } from "@/pages/LotDetail";
 import { Market } from "@/pages/Market";
 import { Bonds } from "@/pages/market/Bonds";
 import { IndexDetail } from "@/pages/market/IndexDetail";
@@ -53,27 +55,27 @@ const contractRoute = createRoute({
 const investmentsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/investimentos",
-  component: () => (
-    <SectionLayout
-      label="Investimentos"
-      sections={[
-        { to: "/investimentos", label: "Compras" },
-        { to: "/investimentos/venda-antecipada", label: "Venda antecipada" },
-      ]}
-    />
-  ),
+  component: Investments,
 });
 
-const lotsRoute = createRoute({
+const purchasesRoute = createRoute({
   getParentRoute: () => investmentsRoute,
   path: "/",
-  component: Lots,
+  component: Purchases,
 });
 
 const earlySaleRoute = createRoute({
   getParentRoute: () => investmentsRoute,
   path: "/venda-antecipada",
-  component: EarlySale,
+  component: EarlySales,
+  validateSearch: validateEffectSearch,
+});
+
+const lotRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/investimentos/compras/$lotId",
+  component: LotDetail,
+  validateSearch: validateEffectSearch,
 });
 
 const importLotsRoute = createRoute({
@@ -142,7 +144,8 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     mortgageRoute,
     contractRoute,
-    investmentsRoute.addChildren([lotsRoute, earlySaleRoute]),
+    investmentsRoute.addChildren([purchasesRoute, earlySaleRoute]),
+    lotRoute,
     importLotsRoute,
     decisionRoute,
     marketRoute.addChildren([indexesRoute, bondsRoute]),

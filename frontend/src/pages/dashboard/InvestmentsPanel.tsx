@@ -5,6 +5,7 @@ import type { LotList } from "@/lib/api";
 import { bondCount } from "@/lib/dashboard";
 import { useEarlySaleChecks } from "@/lib/earlySaleQueries";
 import { formatMoney } from "@/lib/format";
+import { leftOutOfMarketTotal } from "@/lib/investments";
 import {
   SummaryBody,
   SummaryFigure,
@@ -56,7 +57,7 @@ export function InvestmentsPanel({
     );
   }
 
-  const leftOut = lots.filter((lot) => !lot.values?.market && lot.maturity > today).length;
+  const leftOut = leftOutOfMarketTotal(lots, today);
   return (
     <SummaryPanel title="Investimentos">
       <SummaryBody>

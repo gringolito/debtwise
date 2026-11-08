@@ -21,8 +21,8 @@ import {
 } from "@/lib/marketIndexes";
 import { useIndexSeries } from "@/lib/marketQueries";
 import { useMortgage } from "@/lib/mortgageQueries";
-import { StaleSourcesNote } from "@/pages/market/StaleSourcesNote";
 import { Sparkline } from "@/pages/market/Sparkline";
+import { StaleSourcesNote } from "@/pages/marketdata/StaleSourcesNote";
 import { useMarketData } from "@/pages/marketdata/useMarketData";
 
 function IndexesSkeleton() {
