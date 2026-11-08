@@ -414,6 +414,36 @@ func TestLotsWithoutTheIPCAHaveNoValues(t *testing.T) {
 	}
 }
 
+// A lot's cost is its unit price times its quantity, rounded to centavos: 800.123456 × 1.5 is
+// 1,200.185184, and 1500.123456 × 0.25 is 375.030864. Previewing records nothing.
+func TestLotPreviewAnswersTheCostWithoutRecordingIt(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		unitPrice string
+		quantity  string
+		want      string
+	}{
+		{name: "rounded up", unitPrice: "800.123456", quantity: "1.5", want: "1200.19"},
+		{name: "rounded down", unitPrice: "1500.123456", quantity: "0.25", want: "375.03"},
+		{name: "exact", unitPrice: "771.26", quantity: "10", want: "7712.60"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler, _ := lotsOn(t, "2026-10-26")
+
+			body := lotBody("ltn", "2027-01-01", "2026-03-10", "0.1276", tt.unitPrice, tt.quantity)
+			assert.JSONEq(t, `{"cost": "`+tt.want+`"}`, do(t, handler, http.MethodPost, "/lots/preview", body, http.StatusOK))
+
+			assert.Empty(t, lotRows(t, handler))
+		})
+	}
+}
+
 func TestInvalidLotIsRejectedAndKeepsWhatIsRecorded(t *testing.T) {
 	t.Parallel()
 
@@ -436,28 +466,28 @@ func TestInvalidLotIsRejectedAndKeepsWhatIsRecorded(t *testing.T) {
 			method: http.MethodPost,
 			path:   "/lots",
 			body:   lotBody("ltn", "2027-01-02", "2026-03-10", "0.12", "800", "1"),
-			want:   []errorDetail{{"body.maturity", "must be the 1st of a month"}},
+			want:   []errorDetail{{"body.maturity", "must be a date Tesouro matures this type of bond on"}},
 		},
 		{
 			name:   "NTN-F not maturing in January or July",
 			method: http.MethodPost,
 			path:   "/lots",
 			body:   lotBody("ntn_f", "2027-03-01", "2026-03-10", "0.12", "800", "1"),
-			want:   []errorDetail{{"body.maturity", "must be the 1st of January or July"}},
+			want:   []errorDetail{{"body.maturity", "must be a date Tesouro matures this type of bond on"}},
 		},
 		{
 			name:   "NTN-B Principal not maturing on the 15th",
 			method: http.MethodPut,
 			path:   "/lots/1",
 			body:   lotBody("ntn_b_principal", "2035-05-01", "2026-03-10", "0.06", "1500", "1"),
-			want:   []errorDetail{{"body.maturity", "must be the 15th of a month"}},
+			want:   []errorDetail{{"body.maturity", "must be a date Tesouro matures this type of bond on"}},
 		},
 		{
 			name:   "NTN-B not maturing on the 15th",
 			method: http.MethodPost,
 			path:   "/lots",
 			body:   lotBody("ntn_b", "2035-05-01", "2026-03-10", "0.06", "4000", "1"),
-			want:   []errorDetail{{"body.maturity", "must be the 15th of a month"}},
+			want:   []errorDetail{{"body.maturity", "must be a date Tesouro matures this type of bond on"}},
 		},
 		{
 			name:   "purchase after today",
@@ -477,6 +507,27 @@ func TestInvalidLotIsRejectedAndKeepsWhatIsRecorded(t *testing.T) {
 			name:   "zero quantity",
 			method: http.MethodPost,
 			path:   "/lots",
+			body:   lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "0.00"),
+			want:   []errorDetail{{"body.quantity", "must be greater than zero"}},
+		},
+		{
+			name:   "preview of a maturity not after the purchase",
+			method: http.MethodPost,
+			path:   "/lots/preview",
+			body:   lotBody("ltn", "2026-03-01", "2026-03-10", "0.12", "800", "1"),
+			want:   []errorDetail{{"body.maturity", "must be after the purchase date"}},
+		},
+		{
+			name:   "preview of a purchase after today",
+			method: http.MethodPost,
+			path:   "/lots/preview",
+			body:   lotBody("ltn", "2027-01-01", "2026-10-27", "0.12", "800", "1"),
+			want:   []errorDetail{{"body.purchase_date", "must not be after today"}},
+		},
+		{
+			name:   "preview of a zero quantity",
+			method: http.MethodPost,
+			path:   "/lots/preview",
 			body:   lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "0.00"),
 			want:   []errorDetail{{"body.quantity", "must be greater than zero"}},
 		},
@@ -586,7 +637,7 @@ func TestInvalidLotsRejectTheWholeImport(t *testing.T) {
 				lotBody("ntn_b", "2035-05-15", "2026-03-10", "0.06", "0", "0.00"),
 			},
 			want: []errorDetail{
-				{"body.lots[1].maturity", "must be the 1st of a month"},
+				{"body.lots[1].maturity", "must be a date Tesouro matures this type of bond on"},
 				{"body.lots[1].purchase_date", "must not be after today"},
 				{"body.lots[3].unit_price", "must be greater than zero"},
 				{"body.lots[3].quantity", "must be greater than zero"},
@@ -601,7 +652,7 @@ func TestInvalidLotsRejectTheWholeImport(t *testing.T) {
 				lotBody("ltn", "2027-01-01", "2026-10-27", "0.12", "800", "1"),
 			},
 			want: []errorDetail{
-				{"body.lots[0].maturity", "must be the 1st of a month"},
+				{"body.lots[0].maturity", "must be a date Tesouro matures this type of bond on"},
 				{"body.lots[1].type", `expected value to be one of "ltn, ntn_f, ntn_b_principal, ntn_b"`},
 				{"body.lots[2].quantity", quantityPattern},
 				{"body.lots[3].purchase_date", "must not be after today"},
@@ -615,7 +666,7 @@ func TestInvalidLotsRejectTheWholeImport(t *testing.T) {
 			},
 			want: []errorDetail{
 				{"body.lots[0].rate", "expected string"},
-				{"body.lots[1].maturity", "must be the 1st of a month"},
+				{"body.lots[1].maturity", "must be a date Tesouro matures this type of bond on"},
 			},
 		},
 		{
@@ -780,6 +831,89 @@ func TestMalformedLotIsRejectedBySchema(t *testing.T) {
 			}
 
 			assert.Empty(t, lotRows(t, handler))
+		})
+	}
+}
+
+// A value that breaks a rule of a lot names the rule by its code, on every endpoint that takes a
+// lot, and an import keeps the schema errors of its other lots, which have no code.
+func TestLotRuleViolationsNameTheRuleTheyBreak(t *testing.T) {
+	t.Parallel()
+
+	broken := lotBody("ntn_b", "2026-03-10", "2026-10-27", "0.06", "0", "0.00")
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+		want   []ruleDetail
+	}{
+		{
+			name:   "recorded lot",
+			method: http.MethodPost,
+			path:   "/lots",
+			body:   broken,
+			want: []ruleDetail{
+				{"body.maturity", "not_after_purchase"},
+				{"body.maturity", "not_maturity_day"},
+				{"body.purchase_date", "after_today"},
+				{"body.unit_price", "not_positive"},
+				{"body.quantity", "not_positive"},
+			},
+		},
+		{
+			name:   "edited lot",
+			method: http.MethodPut,
+			path:   "/lots/1",
+			body:   lotBody("ltn", "2027-01-02", "2026-03-10", "0.12", "800", "1"),
+			want:   []ruleDetail{{"body.maturity", "not_maturity_day"}},
+		},
+		{
+			name:   "previewed lot",
+			method: http.MethodPost,
+			path:   "/lots/preview",
+			body:   broken,
+			want: []ruleDetail{
+				{"body.maturity", "not_after_purchase"},
+				{"body.maturity", "not_maturity_day"},
+				{"body.purchase_date", "after_today"},
+				{"body.unit_price", "not_positive"},
+				{"body.quantity", "not_positive"},
+			},
+		},
+		{
+			name:   "imported lots next to a malformed one",
+			method: http.MethodPost,
+			path:   "/lots/import",
+			body: `{"lots": [` + lotBody("ltn", "2027-01-02", "2026-03-10", "0.12", "800", "1") + `,` +
+				lotBody("selic", "2027-01-01", "2026-03-10", "0.12", "800", "1") + `,` +
+				lotBody("ltn", "2027-01-01", "2026-10-27", "0.12", "0", "1") + `]}`,
+			want: []ruleDetail{
+				{"body.lots[0].maturity", "not_maturity_day"},
+				{"body.lots[1].type", ""},
+				{"body.lots[2].purchase_date", "after_today"},
+				{"body.lots[2].unit_price", "not_positive"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler, _ := lotsOn(t, "2026-10-26")
+			addLots(t, handler, lotBody("ltn", "2027-01-01", "2026-03-10", "0.1276", "771.26", "10"))
+
+			rec := serve(t, handler, tt.method, tt.path, tt.body)
+
+			require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
+
+			var problem struct {
+				Errors []ruleDetail `json:"errors"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &problem))
+			assert.Equal(t, tt.want, problem.Errors)
 		})
 	}
 }

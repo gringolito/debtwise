@@ -99,7 +99,7 @@ type valuer struct {
 func (v *valuer) pay() ([]CouponPayment, error) {
 	var payments []CouponPayment
 
-	basis := priced{gross: v.lot.cost()}
+	basis := priced{gross: v.lot.Cost()}
 
 	for _, date := range v.coupons {
 		coupon, err := v.coupon(date, basis)
@@ -312,7 +312,7 @@ func (v valuer) lastDeduction(date time.Time) time.Time {
 // basis is the lot's cost basis on date: its cost, less the principal the coupons paid by then
 // returned.
 func (v valuer) basis(date time.Time) priced {
-	basis := priced{gross: v.lot.cost()}
+	basis := priced{gross: v.lot.Cost()}
 
 	for i, coupon := range v.coupons {
 		if coupon.After(date) {
@@ -325,8 +325,8 @@ func (v valuer) basis(date time.Time) priced {
 	return basis
 }
 
-// cost is what the lot cost, in reais.
-func (l Lot) cost() decimal.Decimal {
+// Cost is what the lot cost, in reais.
+func (l Lot) Cost() decimal.Decimal {
 	return l.UnitPrice.Mul(l.Quantity).RoundCents()
 }
 

@@ -1,7 +1,7 @@
 ---
 name: DebtWise · Orvalho
 colors:
-  background: '#F5F7F6'
+  background: '#F5F5F7'
   surface: '#FFFFFF'
   on-surface: '#1D1D1F'
   on-surface-secondary: '#6E6E73'
@@ -70,7 +70,8 @@ fills the sidebar, summary panels or page backgrounds.
 
 The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reassuring, collaborative.
 
-- Canvas `#F5F7F6`, panels `#FFFFFF`, text `#1D1D1F`.
+- Canvas `#F5F5F7`, a light neutral gray; panels `#FFFFFF`, text `#1D1D1F`. The
+  canvas stays a neutral gray: the accent appears only in its accent roles below.
 - Secondary text is `#6E6E73` on white and `#A1A1A6` on graphite. Calm comes from restraint, not
   from faint text. `#AEAEB2` is only for placeholders and disabled states.
 - **Primary buttons are graphite** with white text, 12px radius, 44px tall. On a graphite card the
@@ -86,8 +87,9 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
   insurance and fee in `#AEAEB2`.
 - Signed money is the only place for gain/loss colors, and the accent is never used for it: green
   `#248A3D` for gains, red `#D70015` for losses and destructive actions, both only on white. Orange
-  `#B25000` only for stale market data. The one exception is a statement's difference on
-  Financiamento: green with a check when it is within rounding, orange with a dot when it is drift.
+  `#B25000` only for stale market data. The two exceptions are a statement's difference on
+  Financiamento, green with a check when it is within rounding and orange with a dot when it is
+  drift, and an imported row whose bond name wasn't recognised, flagged in orange.
 
 ## Typography
 
@@ -121,7 +123,13 @@ Large Title at semibold weight. The wordmark is Title 2. These seven sizes are t
   choices like SAC vs Price; a selected card has the soft-accent border, the tint background and a
   check in a soft-accent disc.
 - Buttons: graphite primary; white on a graphite card; plain text buttons in secondary grey
-  ("Cancelar", "Voltar", "Mudar valor"); links and text actions in the strong accent.
+  ("Cancelar", "Voltar", "Mudar valor"); links and text actions in the strong accent, except a
+  destructive one beside them, such as "Excluir" next to "Editar", which is red text.
+- Tables of figures sit on the same white panel as an inset grouped list: Footnote uppercase
+  column headers in secondary grey, 52px rows with hairlines, labels left and figures right.
+- An empty destination shows, centered, the destination's icon on an accent-tint tile, a Title 2
+  that says nothing is there yet, one Callout sentence on why to add it, the graphite button that
+  adds it and any other way in as an accent text action.
 - Modal sheets for recording something over a page: a centered 520px white panel with the sheet
   shadow over the page dimmed by graphite at 30% and blurred. The title (Title 2) sits left and a
   plain "Cancelar" right; the content is inset grouped lists; the primary button spans the width.
@@ -211,6 +219,37 @@ The change in force at the first installment also offers what the insurance char
 derives the rate. "Concluir" keeps the change on the page until "Salvar"; an existing change also
 has "Remover mudança" in the destructive style. A Footnote under the lists says each change holds
 from its date until the next one.
+
+## Investimentos
+
+A lot is a "compra". Investimentos opens on Compras; once a lot is recorded, the page title carries
+"Importar planilha" as an accent text action and a graphite "Adicionar compra", and a segmented
+control switches Compras and Venda antecipada. With no lot, the page shows only its empty state.
+
+- Compras: a white panel with "Valor de mercado líquido" as a hero figure and the gross total in
+  Callout under it, then a group per bond, the bonds maturing first leading, under a Headline with
+  the bond's name. Each lot is a row with "Compra em" its date, its rate in Callout, what its early
+  sale check favours in Footnote ("Manter até o vencimento", or "Vender e amortizar renderia" and
+  the gain in green), and its net Market Value, or why it has none, as the value.
+- A lot's detail: an accent "‹ Investimentos" back link, the bond's name as the Large Title with
+  "Editar" and a red "Excluir", one line on the purchase, then the net Market, Accrual and Maturity
+  Values side by side in one white panel. Under it, a white panel on the early sale with its own
+  Reduzir prazo / Reduzir prestação segmented control: a Title 2 verdict, one sentence with the
+  difference in green or red, and what the comparison assumes in Footnote. Then the Descontos table
+  (gross, income tax, custody fee, IOF and net of each value), the Cupons table for coupon bonds,
+  and the date of the values and any projection they read, centered in Footnote.
+- Venda antecipada: one sentence on what is compared beside the effect's segmented control, then
+  every lot in one inset grouped list, the lots most worth selling first. Each row shows what
+  selling gains over holding, signed, green when positive and red when negative, and "vender" or
+  "manter".
+- Adicionar compra and Editar compra are sheets: the bond picked from those Tesouro Direto quotes
+  ("Outro título" types any other), the purchase date, rate, unit price and quantity typed in
+  place, a Footnote on where to find them, and a tinted "Valor investido" row with what the
+  server computes for them, before saving.
+- Importar planilha: the file's name and row count with "Trocar arquivo", then every row in a
+  table, each value editable in place. A row whose bond name wasn't recognised is tinted
+  caution-tint with an orange bar on its edge, its bond picker holds the suggested bond, and an
+  orange note asks to confirm it.
 
 ## Decidir
 

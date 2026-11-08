@@ -1,12 +1,7 @@
 import { ApiError, type Lot, type LotInput } from "@/lib/api";
-import { type BondType, bondKinds } from "@/lib/bondKinds";
-import {
-  formatDate,
-  fractionToPercent,
-  inputToMoney,
-  moneyToInput,
-  percentToFraction,
-} from "@/lib/format";
+import type { BondType } from "@/lib/bondKinds";
+import { fractionToPercent, inputToMoney, moneyToInput, percentToFraction } from "@/lib/format";
+import { lotRuleMessage } from "@/lib/rules";
 
 /** LotFormValues is what the owner typed for a lot, as text, the way the inputs show it. */
 export interface LotFormValues {
@@ -51,34 +46,39 @@ export function lotInput(values: LotFormValues): LotInput {
   };
 }
 
-/** lotLabel names a lot for the owner: its bond and the day it was bought. */
-export function lotLabel({ type, maturity, purchase_date }: Lot): string {
-  return `${bondKinds[type].name} ${maturity.slice(0, 4)} (compra em ${formatDate(purchase_date)})`;
+/** lotPreviewInput is lotInput once the owner has filled every field, and undefined before. */
+export function lotPreviewInput(values: LotFormValues): LotInput | undefined {
+  const { maturity, purchaseDate, rate, unitPrice, quantity } = values;
+  return [maturity, purchaseDate, rate, unitPrice, quantity].every((text) => text.trim() !== "")
+    ? lotInput(values)
+    : undefined;
 }
 
-// The API's own reasons are English sentences for API consumers; the owner reads these.
+/** What the owner reads next to a field whose value the schema rejected, by body field. */
 export const lotFieldMessages: Record<string, string> = {
   type: "Escolha um dos títulos.",
-  maturity:
-    "O vencimento deve ser posterior à compra e cair no dia 1 (Prefixado) ou no dia 15 (IPCA+).",
-  purchase_date: "A data da compra não pode ser futura.",
+  maturity: "Informe a data de vencimento.",
+  purchase_date: "Informe a data da compra.",
   rate: "Informe uma taxa de 0% a menos de 100% ao ano.",
   unit_price: "Informe um preço maior que zero, com até 6 casas decimais.",
   quantity: "Informe uma quantidade maior que zero, com até 2 casas decimais.",
 };
 
 /**
- * lotErrors reads a rejected lot as what the owner sees next to each field, by body field such as
- * "maturity" or "unit_price". Any other failure, one that names a field with a 5xx included, gives
- * an empty map.
+ * lotErrors reads a rejected lot of a bond of type as what the owner sees next to each field, by
+ * body field such as "maturity" or "unit_price": what the rule the value breaks asks, or what the
+ * field takes when the schema rejected it. Any other failure gives an empty map.
  */
-export function lotErrors(error: Error | null): Map<string, string> {
+export function lotErrors(error: Error | null, type?: BondType): Map<string, string> {
   const errors = new Map<string, string>();
   if (!(error instanceof ApiError) || error.status !== 422) return errors;
-  for (const { location } of error.rejected) {
+  for (const { location, rule } of error.rejected) {
     if (!location.startsWith("body.")) continue;
     const field = location.slice("body.".length);
-    errors.set(field, lotFieldMessages[field] ?? "Valor inválido.");
+    errors.set(
+      field,
+      rule ? lotRuleMessage(rule, type) : (lotFieldMessages[field] ?? "Valor inválido."),
+    );
   }
   return errors;
 }

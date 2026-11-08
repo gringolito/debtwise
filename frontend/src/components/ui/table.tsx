@@ -1,16 +1,38 @@
 "use client";
 
+import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+const tableContainerVariants = cva("relative w-full overflow-x-auto", {
+  variants: {
+    variant: {
+      default: "",
+      /** A white panel whose rows read like an inset grouped list's. */
+      grouped: "rounded-lg border bg-card",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
+
+const tableVariants = cva("w-full caption-bottom", {
+  variants: {
+    variant: {
+      default: "text-callout",
+      grouped: "text-body tabular-nums",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
+
+function Table({
+  className,
+  variant,
+  ...props
+}: React.ComponentProps<"table"> & VariantProps<typeof tableVariants>) {
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-callout", className)}
-        {...props}
-      />
+    <div data-slot="table-container" className={tableContainerVariants({ variant })}>
+      <table data-slot="table" className={cn(tableVariants({ variant }), className)} {...props} />
     </div>
   );
 }
@@ -39,37 +61,91 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   );
 }
 
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+const tableRowVariants = cva("border-b transition-colors", {
+  variants: {
+    variant: {
+      default:
+        "hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted aria-[current=date]:bg-accent-tint",
+      /** A grouped table's row, which nothing selects. */
+      grouped: "",
+      /** A grouped table's row the owner has to check, tinted with a caution bar on its edge. */
+      caution: "bg-caution-tint shadow-[inset_4px_0_0_var(--color-caution)]",
+    },
+  },
+  defaultVariants: { variant: "default" },
+});
+
+function TableRow({
+  className,
+  variant,
+  ...props
+}: React.ComponentProps<"tr"> & VariantProps<typeof tableRowVariants>) {
   return (
-    <tr
-      data-slot="table-row"
-      className={cn(
-        "border-b transition-colors hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted aria-[current=date]:bg-accent-tint",
-        className,
-      )}
-      {...props}
-    />
+    <tr data-slot="table-row" className={cn(tableRowVariants({ variant }), className)} {...props} />
   );
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+const tableHeadVariants = cva(
+  "align-middle whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+  {
+    variants: {
+      variant: {
+        default: "h-10 px-2 font-medium",
+        /** A grouped table's column header, in the footnote caps of a section header. */
+        grouped:
+          "h-11 px-4 text-footnote font-normal tracking-wide text-muted-foreground uppercase",
+        /** A grouped table's row header, read as the row's label. */
+        "grouped-row": "px-4 py-3.5 font-normal",
+      },
+      align: {
+        start: "text-left",
+        end: "text-right",
+      },
+    },
+    defaultVariants: { variant: "default", align: "start" },
+  },
+);
+
+function TableHead({
+  className,
+  variant,
+  align,
+  ...props
+}: Omit<React.ComponentProps<"th">, "align"> & VariantProps<typeof tableHeadVariants>) {
   return (
     <th
       data-slot="table-head"
-      className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
-        className,
-      )}
+      className={cn(tableHeadVariants({ variant, align }), className)}
       {...props}
     />
   );
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+const tableCellVariants = cva("[&:has([role=checkbox])]:pr-0", {
+  variants: {
+    variant: {
+      default: "p-2 align-middle whitespace-nowrap",
+      /** A grouped table's cell, whose notes wrap under its value. */
+      grouped: "px-4 py-3.5 align-top",
+    },
+    align: {
+      start: "text-left",
+      end: "text-right",
+    },
+  },
+  defaultVariants: { variant: "default", align: "start" },
+});
+
+function TableCell({
+  className,
+  variant,
+  align,
+  ...props
+}: Omit<React.ComponentProps<"td">, "align"> & VariantProps<typeof tableCellVariants>) {
   return (
     <td
       data-slot="table-cell"
-      className={cn("p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0", className)}
+      className={cn(tableCellVariants({ variant, align }), className)}
       {...props}
     />
   );

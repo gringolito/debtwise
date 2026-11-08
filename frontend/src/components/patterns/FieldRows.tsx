@@ -43,9 +43,15 @@ function RowText({ id, label, hint, message }: RowTextProps) {
   );
 }
 
-interface InputRowProps
-  extends Omit<React.ComponentProps<"input">, "value" | "onChange" | "prefix">,
-    Omit<RowTextProps, "id"> {
+interface InputRowProps extends Omit<InlineInputProps, "prefix">, Omit<RowTextProps, "id"> {
+  /** The unit before the value, such as "R$". */
+  prefix?: string;
+  /** The unit after the value, such as "% ao mês". */
+  suffix?: ReactNode;
+}
+
+interface InlineInputProps
+  extends Omit<React.ComponentProps<typeof Input>, "value" | "onChange" | "variant"> {
   value: string;
   onChange: (value: string) => void;
   /**
@@ -53,38 +59,27 @@ interface InputRowProps
    * inputToMoney reads.
    */
   grouped?: boolean;
-  /** The unit before the value, such as "R$". */
-  prefix?: string;
-  /** The unit after the value, such as "% ao mês". */
-  suffix?: ReactNode;
+}
+
+/** InlineInput is a value typed in place, as on a grouped list row or a table cell. */
+export function InlineInput({ value, onChange, grouped = false, ...props }: InlineInputProps) {
+  const typed = useTypedValue(value, onChange, grouped);
+
+  return <Input {...typed} variant="inline" {...props} />;
 }
 
 /** InputRow is a grouped list row whose value the owner types in place. */
-export function InputRow({
-  label,
-  hint,
-  message,
-  value,
-  onChange,
-  grouped = false,
-  prefix,
-  suffix,
-  ...props
-}: InputRowProps) {
+export function InputRow({ label, hint, message, prefix, suffix, ...props }: InputRowProps) {
   const id = useId();
   const text = { id, label, hint, message };
-  const typed = useTypedValue(value, onChange, grouped);
-
   return (
     <GroupedListItem>
       <GroupedListRow>
         <RowText {...text} />
         <span className="flex shrink-0 items-baseline gap-1">
           {prefix !== undefined && <span className="text-muted-foreground">{prefix}</span>}
-          <Input
-            {...typed}
+          <InlineInput
             id={id}
-            variant="inline"
             aria-invalid={message !== undefined || undefined}
             aria-describedby={describedBy(text)}
             {...props}

@@ -16,6 +16,8 @@ const buttonVariants = cva(
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         plain: "text-muted-foreground hover:text-foreground",
         "plain-inverse": "text-graphite-muted-foreground hover:text-graphite-foreground",
+        /** A destructive text action, such as "Excluir" beside "Editar" in a page's header. */
+        "plain-destructive": "text-destructive hover:text-destructive/80",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
         link: "text-accent underline-offset-4 hover:underline",

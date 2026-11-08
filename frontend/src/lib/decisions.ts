@@ -42,18 +42,6 @@ export function isZero(decimal: string): boolean {
   return ZERO.test(decimal);
 }
 
-/**
- * advantageText writes an Advantage signed, with the option it favours: ifPositive when it is above
- * zero, ifNegative when below.
- */
-export function advantageText(advantage: string, ifPositive: string, ifNegative: string): string {
-  if (isZero(advantage)) {
-    return `${formatMoney(advantage.replace("-", ""))}, sem diferença entre ${ifPositive} e ${ifNegative}`;
-  }
-  if (advantage.startsWith("-")) return `${formatMoney(advantage)}, a favor de ${ifNegative}`;
-  return `+${formatMoney(advantage)}, a favor de ${ifPositive}`;
-}
-
 export type UnavailableReason = NonNullable<Verdict["unavailable"]>;
 
 export const unavailableReasons: Record<UnavailableReason, string> = {
@@ -69,11 +57,6 @@ export const unavailableLabels: Record<UnavailableReason, string> = {
   amount_too_small: "Valor pequeno demais",
 };
 
-export const earlySaleVerdicts: Record<NonNullable<EarlySaleCheck["verdict"]>, string> = {
-  sell: "Vender agora",
-  hold: "Manter até o vencimento",
-};
-
 export const earlySaleUnavailableReasons: Record<
   NonNullable<EarlySaleCheck["unavailable"]>,
   string
@@ -81,6 +64,16 @@ export const earlySaleUnavailableReasons: Record<
   missing_ipca: unavailableReasons.missing_ipca,
   no_market_value: "O Tesouro Direto não informa um preço de venda para este título.",
   matured: "O título deste lote já venceu.",
+};
+
+/** earlySaleUnavailableLabels say in a few words, in a list row, why a check has no scenarios. */
+export const earlySaleUnavailableLabels: Record<
+  NonNullable<EarlySaleCheck["unavailable"]>,
+  string
+> = {
+  missing_ipca: "Aguardando o IPCA",
+  no_market_value: "Sem preço de venda",
+  matured: "Vencido",
 };
 
 /** verdictKey tells the verdicts of one decision apart: one per bond. */

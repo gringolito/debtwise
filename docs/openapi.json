@@ -532,13 +532,16 @@
         "additionalProperties": false,
         "properties": {
           "code": {
-            "description": "The rule of the mortgage the value breaks, present when it breaks one rather than the schema. message says what the rule asks in English.",
+            "description": "The rule of the mortgage or of a lot the value breaks, present when it breaks one rather than the schema. message says what the rule asks in English.",
             "enum": [
               "not_positive",
               "before_contract",
               "before_today",
               "no_row_from_first_installment",
-              "repeated_date"
+              "repeated_date",
+              "not_after_purchase",
+              "not_maturity_day",
+              "after_today"
             ],
             "type": "string"
           },
@@ -1052,6 +1055,19 @@
         },
         "required": [
           "lots"
+        ],
+        "type": "object"
+      },
+      "LotPreview": {
+        "additionalProperties": false,
+        "properties": {
+          "cost": {
+            "description": "What the lot costs: its unit price times its quantity, rounded to centavos, in reais, as a decimal string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cost"
         ],
         "type": "object"
       },
@@ -2672,6 +2688,48 @@
           }
         },
         "summary": "Import lots",
+        "tags": [
+          "Lots"
+        ]
+      }
+    },
+    "/lots/preview": {
+      "post": {
+        "description": "Shows what a lot would cost, without recording it.",
+        "operationId": "preview-lot",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotPreview"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Preview a lot",
         "tags": [
           "Lots"
         ]

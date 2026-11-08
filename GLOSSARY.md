@@ -158,6 +158,12 @@ and their early sale checks differ.
 _Avoid_: Investment (also the act of investing), position (all the lots of a bond together),
 aporte (the money put in, not what it bought)
 
+**Amount Invested** (valor investido):
+What a lot cost: its unit price times its quantity, rounded to centavos. It is the lot's gross value
+at purchase, before any tax or fee.
+_Avoid_: Aporte (the money put in, not the lot it bought), market value (what the lot would fetch
+today)
+
 **Coupon** (cupom):
 An interest payment a bond makes before maturity. It is cash that comes back early, which a
 comparison has to put somewhere.
