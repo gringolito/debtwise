@@ -112,10 +112,10 @@ describe("the registered mortgage", () => {
     await openPage();
 
     expect(screen.getByLabelText("Data do contrato")).toHaveValue("2023-12-10");
-    expect(screen.getByLabelText("Valor financiado")).toHaveValue("60000,00");
+    expect(screen.getByLabelText("Valor financiado")).toHaveValue("60.000,00");
     expect(screen.getByLabelText("Prazo")).toHaveValue("6");
     expect(screen.getByLabelText("Primeira prestação")).toHaveValue("2024-01-10");
-    expect(screen.getByLabelText("Valor de avaliação")).toHaveValue("100000,00");
+    expect(screen.getByLabelText("Valor de avaliação")).toHaveValue("100.000,00");
     expect(screen.getByRole("radio", { name: "SAC" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "Nenhum" })).toBeChecked();
     expect(changes("Juros do contrato")).toEqual([
@@ -248,16 +248,43 @@ describe("saving", () => {
   });
 
   it.each([
-    ["1.250.000,00", "1250000.00"],
-    ["1.250.000", "1250000"],
-  ])("sends money typed as %s as %s", async (typed, sent) => {
+    ["1.250.000,00", "1.250.000,00", "1250000.00"],
+    ["1.250.000", "1.250.000", "1250000"],
+    ["1250000,5", "1.250.000,5", "1250000.5"],
+    ["60000.00", "60000.00", "60000.00"],
+  ])("shows money typed as %s as %s and sends it as %s", async (typed, shown, sent) => {
     const requests = await openPage({ onSave: rejected([]) });
 
     fill("Valor financiado", typed);
+    expect(screen.getByLabelText("Valor financiado")).toHaveValue(shown);
     save();
 
     await screen.findByRole("alert");
     expect(putBodies(requests)).toEqual([{ ...registeredTerms, original_amount: sent }]);
+  });
+
+  it("groups the thousands of every amount typed, in place and in the sheets", async () => {
+    const requests = await openPage({ onSave: () => registeredMortgage });
+
+    fill("Valor de avaliação", "1250000");
+    expect(screen.getByLabelText("Valor de avaliação")).toHaveValue("1.250.000");
+    const sheet = openChange(/^Taxa de administração/);
+    fill("Valor", "1250", sheet);
+    expect(within(sheet).getByLabelText("Valor")).toHaveValue("1.250");
+    finish(sheet);
+    expect(changes("Taxas")).toEqual([
+      "Taxa de administração a partir de 10/12/2023, R$ 1.250,00 por mês",
+    ]);
+    save();
+
+    await savedPage();
+    expect(putBodies(requests)).toEqual([
+      {
+        ...registeredTerms,
+        appraisal_value: "1250000",
+        fees: [{ effective_from: "2023-12-10", amount: "1250" }],
+      },
+    ]);
   });
 
   it("says plainly that saving failed when the server breaks", async () => {

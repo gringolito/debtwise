@@ -205,6 +205,7 @@ function ContractForm({ mortgage }: { mortgage: RegisteredMortgage }) {
             />
             <InputRow
               label="Valor financiado"
+              grouped
               prefix="R$"
               inputMode="decimal"
               placeholder="0,00"
@@ -230,6 +231,7 @@ function ContractForm({ mortgage }: { mortgage: RegisteredMortgage }) {
             />
             <InputRow
               label="Valor de avaliação"
+              grouped
               prefix="R$"
               inputMode="decimal"
               placeholder="0,00"

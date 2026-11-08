@@ -28,6 +28,7 @@ export function ContractStep({ values, set, messageOf }: StepProps) {
       <InputRow
         label="Valor financiado"
         hint="Quanto o banco emprestou, sem a entrada."
+        grouped
         prefix="R$"
         inputMode="decimal"
         placeholder="0,00"

@@ -191,7 +191,7 @@ describe("editing a prepayment", () => {
     );
     const form = await edit("15/03/2024");
     expect(within(form).getByLabelText("Data")).toHaveValue("2024-03-15");
-    expect(within(form).getByLabelText("Valor")).toHaveValue("12500,50");
+    expect(within(form).getByLabelText("Valor")).toHaveValue("12.500,50");
     expect(within(form).getByLabelText("Efeito")).toHaveValue("lower_installment");
     fill(form, "Data", "2024-01-20");
     fill(form, "Valor", "13.000,00");

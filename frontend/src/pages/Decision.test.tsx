@@ -66,7 +66,7 @@ describe("arriving with an amount in the address", () => {
     renderAt("/decidir?valor=10000&comparar=true");
 
     await verdictRegion("Tesouro Prefixado 2029");
-    expect(within(await decisionForm()).getByLabelText("Valor")).toHaveValue("10000");
+    expect(within(await decisionForm()).getByLabelText("Valor")).toHaveValue("10.000");
     expect(requests.map((r) => [r.method, new URL(r.url).pathname, r.body])).toEqual([
       ["POST", "/api/decisions", { amount: "10000", effect: "shorten_term" }],
     ]);
@@ -76,7 +76,7 @@ describe("arriving with an amount in the address", () => {
     const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
     renderAt("/decidir?valor=1234.5");
 
-    expect(within(await decisionForm()).getByLabelText("Valor")).toHaveValue("1234,5");
+    expect(within(await decisionForm()).getByLabelText("Valor")).toHaveValue("1.234,5");
     expect(requests).toEqual([]);
   });
 

@@ -38,6 +38,7 @@ export function InsuranceStep({ values, set, messageOf }: StepProps) {
           <InputRow
             label="Valor de avaliação"
             hint="O valor do imóvel definido pelo banco no contrato."
+            grouped
             prefix="R$"
             inputMode="decimal"
             placeholder="0,00"
@@ -95,6 +96,7 @@ export function InsuranceStep({ values, set, messageOf }: StepProps) {
                   key={insurance}
                   label={`${insurance} cobrado`}
                   hint={derived.needsBase ? needsBase : undefined}
+                  grouped
                   prefix="R$"
                   inputMode="decimal"
                   placeholder="0,00"
@@ -117,6 +119,7 @@ export function InsuranceStep({ values, set, messageOf }: StepProps) {
         <GroupedList>
           <InputRow
             label="Taxa de administração"
+            grouped
             prefix="R$"
             suffix="por mês"
             inputMode="decimal"

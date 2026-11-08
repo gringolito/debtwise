@@ -116,6 +116,7 @@ function InsuranceFields({
               ? undefined
               : (firstCharge.hint ?? "Preencha para calcular a taxa pelo valor cobrado.")
           }
+          grouped
           prefix="R$"
           inputMode="decimal"
           className="w-24"
@@ -133,6 +134,7 @@ function FeeFields({ row, update, messageOf }: FieldsProps<FeeRow>) {
   return (
     <InputRow
       label="Valor"
+      grouped
       prefix="R$"
       suffix="por mês"
       inputMode="decimal"
