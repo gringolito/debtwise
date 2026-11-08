@@ -35,6 +35,11 @@ export interface ContractRateRow extends EffectiveRow {
   rate: string;
   basis: Basis;
   poupancaAdditional: boolean;
+  /**
+   * The rate and basis as registered, with the server's conversion of that rate to the other basis.
+   * The conversion holds only while the row's rate and basis are still the registered ones.
+   */
+  registered?: { rate: string; basis: Basis; equivalent: string };
 }
 
 export interface MonthlyRateRow extends EffectiveRow {
@@ -116,13 +121,21 @@ export function valuesFromMortgage(mortgage: RegisteredMortgage): FormValues {
     amortizationSystem: mortgage.amortization_system,
     indexer: mortgage.indexer,
     appraisalValue: moneyToInput(mortgage.appraisal_value),
-    contractRates: mortgage.contract_rates.map((r) => ({
-      id: nextRowId(),
-      effectiveFrom: r.effective_from,
-      rate: fractionToPercent(r.basis === "nominal" ? r.nominal : r.effective),
-      basis: r.basis,
-      poupancaAdditional: r.poupanca_additional,
-    })),
+    contractRates: mortgage.contract_rates.map((r) => {
+      const rate = fractionToPercent(r.basis === "nominal" ? r.nominal : r.effective);
+      return {
+        id: nextRowId(),
+        effectiveFrom: r.effective_from,
+        rate,
+        basis: r.basis,
+        poupancaAdditional: r.poupanca_additional,
+        registered: {
+          rate,
+          basis: r.basis,
+          equivalent: r.basis === "nominal" ? r.effective : r.nominal,
+        },
+      };
+    }),
     mipRates: monthlyRows(mortgage.mip_rates),
     dfiRates: monthlyRows(mortgage.dfi_rates),
     fees: mortgage.fees.map((f) => ({

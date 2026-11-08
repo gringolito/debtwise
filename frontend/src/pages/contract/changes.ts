@@ -1,4 +1,4 @@
-import { formatDate, formatMoney, inputToMoney } from "@/lib/format";
+import { formatDate, formatMoney, formatRate, inputToMoney } from "@/lib/format";
 import {
   blankContractRate,
   blankFee,
@@ -78,11 +78,19 @@ export function typedPercent(text: string): string {
   return `${integer},${fraction.padEnd(2, "0")}`;
 }
 
-/** A contract rate as the list reads it: "9,50 % ao ano · efetiva + poupança". */
+const basisNames = { effective: "efetiva", nominal: "nominal" } as const;
+
+/**
+ * A contract rate as the list reads it: "9,50 % ao ano · efetiva + poupança". A rate still as
+ * registered also says what it equals in the other basis, as the server converted it.
+ */
 export function rateValue(row: ContractRateRow): string {
-  const basis = row.basis === "effective" ? "efetiva" : "nominal";
   const poupanca = row.poupancaAdditional ? " + poupança" : "";
-  return `${typedPercent(row.rate)} % ao ano · ${basis}${poupanca}`;
+  const value = `${typedPercent(row.rate)} % ao ano · ${basisNames[row.basis]}${poupanca}`;
+  const { registered } = row;
+  if (registered?.rate !== row.rate || registered.basis !== row.basis) return value;
+  const other = row.basis === "effective" ? "nominal" : "effective";
+  return `${value} · equivale a ${formatRate(registered.equivalent)} ${basisNames[other]}`;
 }
 
 const PLAIN_DECIMAL = /^\d+(\.\d+)?$/;

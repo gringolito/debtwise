@@ -128,7 +128,7 @@ describe("the registered mortgage", () => {
     expect(screen.getByRole("radio", { name: "SAC" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "Nenhum" })).toBeChecked();
     expect(changes("Juros do contrato")).toEqual([
-      "A partir de 10/12/2023, 12,00 % ao ano · nominal",
+      "A partir de 10/12/2023, 12,00 % ao ano · nominal · equivale a 12,682503% efetiva",
     ]);
     expect(changes("Seguros")).toEqual([
       "MIP a partir de 10/12/2023, 0,03 % ao mês",
@@ -153,11 +153,47 @@ describe("the registered mortgage", () => {
     await openPage({ mortgage: { ...registeredMortgage, contract_rates: effectiveRate } });
 
     expect(changes("Juros do contrato")).toEqual([
-      "A partir de 10/12/2023, 12,00 % ao ano · efetiva",
+      "A partir de 10/12/2023, 12,00 % ao ano · efetiva · equivale a 11,37% nominal",
     ]);
     const sheet = openChange(/^A partir de 10\/12\/2023/);
     expect(within(sheet).getByLabelText("Taxa")).toHaveValue("12");
     expect(within(sheet).getByRole("radio", { name: "Efetiva" })).toBeChecked();
+  });
+
+  it("drops the equivalent rate once the owner changes the rate", async () => {
+    await openPage({ mortgage: { ...registeredMortgage, contract_rates: effectiveRate } });
+
+    const sheet = openChange(/^A partir de 10\/12\/2023/);
+    fill("Taxa", "13", sheet);
+    finish(sheet);
+    expect(changes("Juros do contrato")).toEqual([
+      "A partir de 10/12/2023, 13,00 % ao ano · efetiva",
+    ]);
+  });
+
+  it("shows the server's equivalent of the saved rate when the contract opens again", async () => {
+    const saved: RegisteredMortgage = {
+      ...registeredMortgage,
+      contract_rates: [{ ...effectiveRate[0], effective: "0.13", nominal: "0.1228" }],
+    };
+    stubMortgageApi({
+      mortgage: { ...registeredMortgage, contract_rates: effectiveRate },
+      onSave: () => saved,
+    });
+    renderAt("/financiamento/editar");
+    await screen.findByRole("button", { name: "Salvar" });
+
+    const sheet = openChange(/^A partir de 10\/12\/2023/);
+    fill("Taxa", "13", sheet);
+    finish(sheet);
+    save();
+    await savedPage();
+    fireEvent.click(screen.getByRole("link", { name: "Editar contrato" }));
+    await screen.findByRole("button", { name: "Salvar" });
+
+    expect(changes("Juros do contrato")).toEqual([
+      "A partir de 10/12/2023, 13,00 % ao ano · efetiva · equivale a 12,28% nominal",
+    ]);
   });
 
   it("shows a rate with more than two decimal places in full", async () => {
@@ -197,7 +233,7 @@ describe("the registered mortgage", () => {
     });
 
     expect(changes("Juros do contrato")).toEqual([
-      "A partir de 10/12/2023, 10,00 % ao ano · nominal",
+      "A partir de 10/12/2023, 10,00 % ao ano · nominal · equivale a 10,4713% efetiva",
     ]);
     expect(changes("Seguros")).toEqual([
       "MIP a partir de 10/12/2023, 50,00 % ao mês",
@@ -361,7 +397,7 @@ describe("cancelling", () => {
       "Taxa de administração a partir de 10/12/2023, R$ 12,50 por mês",
     ]);
     expect(changes("Juros do contrato")).toEqual([
-      "A partir de 10/12/2023, 12,00 % ao ano · nominal",
+      "A partir de 10/12/2023, 12,00 % ao ano · nominal · equivale a 12,682503% efetiva",
     ]);
     save();
 
@@ -425,7 +461,7 @@ describe("the poupança part of a contract rate", () => {
     });
 
     expect(changes("Juros do contrato")).toEqual([
-      "A partir de 10/12/2023, 6,00 % ao ano · nominal + poupança",
+      "A partir de 10/12/2023, 6,00 % ao ano · nominal + poupança · equivale a 6,17% efetiva",
     ]);
     const sheet = openChange(/^A partir de 10\/12\/2023/);
     expect(within(sheet).getByLabelText("Taxa")).toHaveValue("6");
@@ -507,7 +543,7 @@ describe("adding and removing changes", () => {
     finish(sheet);
 
     expect(changes("Juros do contrato")).toEqual([
-      "A partir de 10/12/2023, 12,00 % ao ano · nominal",
+      "A partir de 10/12/2023, 12,00 % ao ano · nominal · equivale a 12,682503% efetiva",
       "A partir de 10/01/2025, 10,00 % ao ano · nominal",
     ]);
     expect(changes("Seguros")).toEqual([
@@ -649,8 +685,8 @@ describe("adding and removing changes", () => {
     removeChange(/^Taxa de administração a partir de 10\/06\/2024/);
 
     expect(changes("Juros do contrato")).toEqual([
-      "A partir de 10/12/2023, 12,00 % ao ano · nominal",
-      "A partir de 10/01/2025, 9,00 % ao ano · nominal",
+      "A partir de 10/12/2023, 12,00 % ao ano · nominal · equivale a 12,68% efetiva",
+      "A partir de 10/01/2025, 9,00 % ao ano · nominal · equivale a 9,38% efetiva",
     ]);
     expect(changes("Taxas")).toEqual([
       "Taxa de administração a partir de 10/12/2023, R$ 12,50 por mês",
