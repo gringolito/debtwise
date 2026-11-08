@@ -171,6 +171,31 @@ describe("the registered mortgage", () => {
     ]);
   });
 
+  it("shows the server's equivalent of the saved rate when the contract opens again", async () => {
+    const saved: RegisteredMortgage = {
+      ...registeredMortgage,
+      contract_rates: [{ ...effectiveRate[0], effective: "0.13", nominal: "0.1228" }],
+    };
+    stubMortgageApi({
+      mortgage: { ...registeredMortgage, contract_rates: effectiveRate },
+      onSave: () => saved,
+    });
+    renderAt("/financiamento/editar");
+    await screen.findByRole("button", { name: "Salvar" });
+
+    const sheet = openChange(/^A partir de 10\/12\/2023/);
+    fill("Taxa", "13", sheet);
+    finish(sheet);
+    save();
+    await savedPage();
+    fireEvent.click(screen.getByRole("link", { name: "Editar contrato" }));
+    await screen.findByRole("button", { name: "Salvar" });
+
+    expect(changes("Juros do contrato")).toEqual([
+      "A partir de 10/12/2023, 13,00 % ao ano · efetiva · equivale a 12,28% nominal",
+    ]);
+  });
+
   it("shows a rate with more than two decimal places in full", async () => {
     await openPage({
       mortgage: {
