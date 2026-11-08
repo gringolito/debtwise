@@ -1,4 +1,4 @@
-import type { BondQuote } from "@/lib/api";
+import type { BondQuote, RegisteredMortgage } from "@/lib/api";
 import { formatRate } from "@/lib/format";
 
 export type BondType = BondQuote["type"];
@@ -24,4 +24,12 @@ export function bondLabel({ type, maturity }: Pick<BondQuote, "type" | "maturity
 /** bondRate writes a yearly rate the way Tesouro does: IPCA+ ones as a real rate over IPCA. */
 export function bondRate(type: BondType, rate: string): string {
   return bondKinds[type].ipcaLinked ? `IPCA + ${formatRate(rate)}` : formatRate(rate);
+}
+
+/**
+ * comparesWith says whether a decision compares a bond of this type against prepaying a mortgage
+ * corrected by indexer: IPCA+ bonds for an IPCA mortgage, prefixados otherwise (ADR-0007).
+ */
+export function comparesWith(type: BondType, indexer: RegisteredMortgage["indexer"]): boolean {
+  return bondKinds[type].ipcaLinked === (indexer === "ipca");
 }

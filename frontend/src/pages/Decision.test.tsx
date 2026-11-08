@@ -439,7 +439,7 @@ describe("the other bonds", () => {
     expect(within(otherBonds()).getByText("− R$ 250,30")).toHaveClass("text-destructive");
     expect(
       within(otherBonds()).getByRole("link", { name: "Ver projeções do IPCA" }),
-    ).toHaveAttribute("href", "/mercado");
+    ).toHaveAttribute("href", "/mercado/indices/ipca");
   });
 
   it("compares the least amount that buys a bond the owner's amount is too small for", async () => {
@@ -785,7 +785,7 @@ describe("a decision that compares no bond", () => {
     ).toBeInTheDocument();
     expect(within(panel).getByRole("link", { name: "Ver projeções do IPCA" })).toHaveAttribute(
       "href",
-      "/mercado",
+      "/mercado/indices/ipca",
     );
   });
 

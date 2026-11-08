@@ -23,7 +23,9 @@ export function NoComparisonFix({
     case "missing_ipca":
       return (
         <Button variant="link" size="inline" asChild>
-          <Link to="/mercado">Ver projeções do IPCA</Link>
+          <Link to="/mercado/indices/$index" params={{ index: "ipca" }}>
+            Ver projeções do IPCA
+          </Link>
         </Button>
       );
     case "no_bond":

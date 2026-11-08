@@ -81,11 +81,18 @@ export interface StaleSource {
   refreshedAt?: string;
 }
 
-/** staleSources names the market data a verdict reads that is not fresh, bonds and Focus first. */
-export function staleSources({ bonds, focus, indexes }: VerdictMarketData): StaleSource[] {
+/**
+ * staleSources names the market data that is not fresh, bonds and Focus first, out of the kinds of
+ * it given: all of those a verdict reads, or those a screen shows.
+ */
+export function staleSources({
+  bonds,
+  focus,
+  indexes = [],
+}: Partial<VerdictMarketData>): StaleSource[] {
   return [
-    { name: "Preços dos títulos", ...bonds },
-    { name: "Expectativas do Focus", ...focus },
+    ...(bonds ? [{ name: "Preços dos títulos", ...bonds }] : []),
+    ...(focus ? [{ name: "Expectativas do Focus", ...focus }] : []),
     ...indexes.map((index) => ({ ...index, name: indexNames[index.index] })),
   ]
     .filter((source) => source.status !== "fresh")

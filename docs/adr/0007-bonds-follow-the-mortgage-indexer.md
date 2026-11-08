@@ -34,3 +34,6 @@ and checked for an early sale, because the owner holds them whatever the mortgag
 - Valuing an NTN-B needs its VNA, which Tesouro computes from IBGE's IPCA index numbers. The monthly
   variations in SGS 433 are rounded to two places and drift from it by a few cents.
 - Changing the mortgage's indexer changes the bonds a decision offers.
+- Mercado's Títulos lists the bonds a decision offers first. The frontend applies the rule to the
+  catalogue itself (`comparesWith` in `frontend/src/lib/bondKinds.ts`), so a change to the rule
+  changes it there too.
