@@ -211,6 +211,37 @@ derives the rate. "Concluir" keeps the change on the page until "Salvar"; an exi
 has "Remover mudança" in the destructive style. A Footnote under the lists says each change holds
 from its date until the next one.
 
+## Mercado
+
+The Large Title "Mercado" over the Índices and Títulos segmented control. Under it, one Callout line
+in secondary grey says where the section's data comes from and the day it was last updated, and a
+caution Footnote with a clock icon names each source shown that is not fresh, with the day of its
+last update ("Selic diária de 04/11.") or "indisponível". Mercado has no refresh action; updating
+market data lives in Ajustes.
+
+- Índices: one inset grouped list with a drill-in row per index the server publishes. A row has the
+  index's name and a one-line Callout on what it is, a 120px sparkline of the year up to its latest
+  value, graphite, and the year after it, dashed `#AEAEB2`, then the latest value with its unit
+  ("0,1683% ao mês") over its month or date in Footnote grey. The mortgage's indexer carries a small
+  "Seu financiamento" tag, strong-accent Footnote on the tint, the one tag in the app, and its line
+  reads "Corrige o saldo do seu financiamento".
+- An index's page: an accent "‹ Mercado" back link, the index's name as the Large Title and one
+  Callout sentence on it, then the latest value as a hero figure with its month or date in a white
+  panel. The panel shows that one figure: a 12-month total would be arithmetic on index values,
+  which the frontend leaves to the server. Under it, "Histórico e projeção" on a white panel with a
+  1 ano / 5 anos / 10 anos segmented control: the published values over that many years and the
+  projection over half as many ahead, with the chart conventions of Financiamento. TR and the
+  poupança yield are drawn by the months from the 1st to the 1st, as their daily periods zigzag.
+  Last, under a "Projeção" header, the methods the index offers as selectable rows, each with one
+  line on what it assumes; choosing one saves it at once, and a Footnote says the projection
+  changes the future balance and the comparisons in Decidir. The poupança yield's section says
+  what its projection derives from, linking TR and Selic meta.
+- Títulos: the bonds a decision compares with the mortgage (ADR-0007) under "Comparáveis com seu
+  financiamento", then "Outros títulos" as one collapsed row naming them ("Tesouro IPCA+ e outros ·
+  3 títulos") that opens their table. Each table has the bond, its maturity in grey, and a Compra
+  and a Venda column, each with the rate over the unit price in Footnote grey; a bond Tesouro
+  doesn't sell reads "Fora de oferta" under Compra.
+
 ## Voice
 
 Direct, warm, second person ("você"), one sentence per explanation, deeper detail behind "Saiba

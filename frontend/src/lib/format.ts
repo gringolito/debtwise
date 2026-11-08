@@ -84,6 +84,11 @@ export function formatDateTime(instant: string): string {
   return `${dateFormat.format(date)} ${timeFormat.format(date)}`;
 }
 
+/** formatInstantDate writes the owner's calendar day of an instant: "06/11/2026". */
+export function formatInstantDate(instant: string): string {
+  return dateFormat.format(new Date(instant));
+}
+
 // Intl formats a decimal string exactly, and the input conversions below move digits around.
 
 const moneyFormat = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });

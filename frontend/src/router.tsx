@@ -2,18 +2,22 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  notFound,
   Outlet,
   type Router,
   type RouterHistory,
 } from "@tanstack/react-router";
+import { isIndexName } from "@/lib/marketIndexes";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { Bonds } from "@/pages/Bonds";
+import { Bonds } from "@/pages/market/Bonds";
+import { IndexDetail } from "@/pages/market/IndexDetail";
+import { Indexes } from "@/pages/market/Indexes";
+import { Market } from "@/pages/Market";
 import { Contract } from "@/pages/Contract";
 import { Dashboard } from "@/pages/Dashboard";
 import { Decision } from "@/pages/Decision";
 import { EarlySale } from "@/pages/EarlySale";
 import { ImportLots } from "@/pages/ImportLots";
-import { Indexes } from "@/pages/Indexes";
 import { Lots } from "@/pages/Lots";
 import { Mortgage } from "@/pages/Mortgage";
 import { NotFound } from "@/pages/NotFound";
@@ -103,15 +107,7 @@ const decisionRoute = createRoute({
 const marketRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/mercado",
-  component: () => (
-    <SectionLayout
-      label="Mercado"
-      sections={[
-        { to: "/mercado", label: "Índices" },
-        { to: "/mercado/titulos", label: "Títulos" },
-      ]}
-    />
-  ),
+  component: Market,
 });
 
 const indexesRoute = createRoute({
@@ -124,6 +120,15 @@ const bondsRoute = createRoute({
   getParentRoute: () => marketRoute,
   path: "/titulos",
   component: Bonds,
+});
+
+const indexRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/mercado/indices/$index",
+  component: IndexDetail,
+  beforeLoad: ({ params }) => {
+    if (!isIndexName(params.index)) throw notFound();
+  },
 });
 
 const settingsRoute = createRoute({
@@ -141,6 +146,7 @@ const routeTree = rootRoute.addChildren([
     importLotsRoute,
     decisionRoute,
     marketRoute.addChildren([indexesRoute, bondsRoute]),
+    indexRoute,
     settingsRoute,
   ]),
 ]);
