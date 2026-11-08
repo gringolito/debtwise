@@ -18,6 +18,7 @@ import { amortizationSystemLabels } from "@/lib/mortgageForm";
 import { useMortgage, useStatements } from "@/lib/mortgageQueries";
 import { DeleteMortgage } from "@/pages/settings/DeleteMortgage";
 import { MarketDataSection } from "@/pages/settings/MarketDataSection";
+import { ProjectionsSection } from "@/pages/settings/ProjectionsSection";
 
 const SOURCE_CODE_URL = "https://github.com/gringolito/debtwise";
 
@@ -94,6 +95,7 @@ export function Settings() {
       </PageHeader>
       <MortgageSection mortgage={data} />
       <MarketDataSection />
+      <ProjectionsSection />
       <AboutSection />
       <DeleteMortgage />
     </Page>

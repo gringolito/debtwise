@@ -317,10 +317,10 @@ market data lives in Ajustes.
   1 ano / 5 anos / 10 anos segmented control: the published values over that many years and the
   projection over half as many ahead, with the chart conventions of Financiamento. TR and the
   poupança yield are drawn by the months from the 1st to the 1st, as their daily periods zigzag.
-  Last, under a "Projeção" header, the methods the index offers as selectable rows, each with one
-  line on what it assumes; choosing one saves it at once, and a Footnote says the projection
-  changes the future balance and the comparisons in Decidir. The poupança yield's section says
-  what its projection derives from, linking TR and Selic meta.
+  Last, under a "Projeção" header, the method the index is projected by as one drill-in row with a
+  line on what it assumes, opening Ajustes, where the method is chosen; a Footnote says the
+  projection changes the future balance and the comparisons in Decidir. The poupança yield's
+  section says what its projection derives from, linking TR and Selic meta.
 - Títulos: the bonds a decision compares with the mortgage (ADR-0007) under "Comparáveis com seu
   financiamento", then "Outros títulos" as one collapsed row naming them ("Tesouro IPCA+ e outros ·
   3 títulos") that opens their table. Each table has the bond, its maturity in grey, and a Compra
@@ -341,6 +341,11 @@ The Large Title "Ajustes" over inset grouped lists:
   ago. Under the list, "Atualizar agora" as an accent text action on the left and "O DebtWise
   atualiza tudo automaticamente todos os dias." in Footnote grey on the right; while a refresh
   runs, a spinner and "Atualizando…" in secondary grey take the action's place.
+- Projeções: one drill-in row per index that offers a choice of projection methods, with the
+  method as its value ("Média dos últimos 12 meses"). A row opens a modal sheet titled with the
+  index, listing the methods as selectable rows with a line on what each assumes; picking one saves
+  it and closes the sheet. A Footnote under the list says the projection changes the future
+  balance and the comparisons in Decidir.
 - Sobre: "Código-fonte", opening the repository. The mockup's "Versão" row is left out until the
   server reports its version, and its "Aparência" section with "Tema" until a dark palette is
   designed.

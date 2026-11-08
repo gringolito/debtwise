@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { MarketDataStatus } from "@/lib/api";
+import type { MarketDataStatus, ProjectionMethods } from "@/lib/api";
 import { text } from "@/test/dom";
 import { registeredMortgage, statements } from "@/test/mortgageFixtures";
 import { stubMortgageApi } from "@/test/mortgageApi";
@@ -21,13 +21,25 @@ const FRESH_STATUS: MarketDataStatus = {
   bonds: { status: "fresh", refreshed_at: at(7, 9, 15) },
 };
 
+const METHODS: ProjectionMethods = {
+  methods: [
+    { index: "tr", method: "trailing_12", offered: ["trailing_12", "trailing_60"] },
+    { index: "selic_target", method: "focus", offered: ["focus", "trailing_12", "trailing_60"] },
+    { index: "ipca", method: "focus", offered: ["focus", "trailing_12", "trailing_60"] },
+  ],
+};
+
 type Routes = NonNullable<Parameters<typeof stubMortgageApi>[0]>["routes"];
 
 function stubAjustes(routes: Routes = {}) {
   return stubMortgageApi({
     mortgage: registeredMortgage,
     statements,
-    routes: { "GET /api/market-data/status": () => Response.json(FRESH_STATUS), ...routes },
+    routes: {
+      "GET /api/market-data/status": () => Response.json(FRESH_STATUS),
+      "GET /api/indexes/projection-methods": () => Response.json(METHODS),
+      ...routes,
+    },
   });
 }
 
@@ -181,6 +193,77 @@ describe("the market data", () => {
     fireEvent.click(within(panel).getByRole("button", { name: "Tentar novamente" }));
 
     expect(await sourceRows()).toHaveLength(3);
+  });
+});
+
+describe("the projections", () => {
+  const rows = async () =>
+    within(await within(await section("Projeções")).findByRole("list"))
+      .getAllByRole("button")
+      .map(text);
+
+  it("lists how each index with a choice is projected", async () => {
+    stubAjustes();
+    renderAt("/ajustes");
+
+    expect(await rows()).toEqual([
+      "TRMédia dos últimos 12 meses",
+      "Selic metaMediana do Focus (BCB)",
+      "IPCAMediana do Focus (BCB)",
+    ]);
+  });
+
+  it("saves the method picked in the sheet and shows it on the row", async () => {
+    const requests = stubAjustes({
+      "PUT /api/indexes/tr/projection-method": () =>
+        Response.json({
+          index: "tr",
+          method: "trailing_60",
+          offered: ["trailing_12", "trailing_60"],
+        }),
+    });
+    renderAt("/ajustes");
+
+    fireEvent.click(await screen.findByRole("button", { name: /^TR/ }));
+    const sheet = within(await screen.findByRole("dialog", { name: "TR" }));
+    expect(
+      sheet
+        .getAllByRole("radio")
+        .map((radio) => [
+          text(radio.closest("label") as Element),
+          radio.getAttribute("aria-checked"),
+        ]),
+    ).toEqual([
+      ["Média dos últimos 12 mesesRepete a média do último ano.", "true"],
+      ["Média dos últimos 60 mesesSuaviza variações recentes com a média de cinco anos.", "false"],
+    ]);
+    fireEvent.click(sheet.getByRole("radio", { name: "Média dos últimos 60 meses" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect((await rows())[0]).toBe("TRMédia dos últimos 60 meses");
+    expect(requests.filter((r) => r.method === "PUT").map((r) => [r.url, r.body])).toEqual([
+      [
+        new URL("/api/indexes/tr/projection-method", window.location.origin).href,
+        { method: "trailing_60" },
+      ],
+    ]);
+  });
+
+  it("keeps the sheet open with the saved method when the save fails", async () => {
+    stubAjustes({
+      "PUT /api/indexes/tr/projection-method": () =>
+        problem(500, "Internal Server Error", "unexpected failure"),
+    });
+    renderAt("/ajustes");
+
+    fireEvent.click(await screen.findByRole("button", { name: /^TR/ }));
+    const sheet = within(await screen.findByRole("dialog", { name: "TR" }));
+    fireEvent.click(sheet.getByRole("radio", { name: "Média dos últimos 60 meses" }));
+
+    expect(await sheet.findByRole("alert")).toHaveTextContent(
+      "Não foi possível salvar o método de projeção.",
+    );
+    expect(sheet.getByRole("radio", { name: "Média dos últimos 12 meses" })).toBeChecked();
   });
 });
 
