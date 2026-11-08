@@ -66,7 +66,7 @@ describe("arriving with an amount in the address", () => {
     renderAt("/decidir?valor=10000&comparar=true");
 
     await verdictRegion("Tesouro Prefixado 2029");
-    expect(within(await decisionForm()).getByLabelText("Valor")).toHaveValue("10000");
+    expect(within(await decisionForm()).getByLabelText("Valor")).toHaveValue("10.000");
     expect(requests.map((r) => [r.method, new URL(r.url).pathname, r.body])).toEqual([
       ["POST", "/api/decisions", { amount: "10000", effect: "shorten_term" }],
     ]);
@@ -76,7 +76,7 @@ describe("arriving with an amount in the address", () => {
     const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
     renderAt("/decidir?valor=1234.5");
 
-    expect(within(await decisionForm()).getByLabelText("Valor")).toHaveValue("1234,5");
+    expect(within(await decisionForm()).getByLabelText("Valor")).toHaveValue("1.234,5");
     expect(requests).toEqual([]);
   });
 
@@ -678,8 +678,8 @@ describe("a decision the server rejects", () => {
   it("shows the reason next to each field the server rejects", async () => {
     stubDecisions(() =>
       problem(422, "Unprocessable Entity", "validation failed", [
-        { location: "body.amount", message: "must be greater than zero" },
-        { location: "body.date", message: "must not be before today" },
+        { location: "body.amount", message: "must be greater than zero", code: "not_positive" },
+        { location: "body.date", message: "must not be before today", code: "before_today" },
       ]),
     );
     renderAt("/decidir");

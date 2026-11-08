@@ -45,6 +45,7 @@ import type {
   DecisionInput,
   EarlySaleCheck,
   EarlySaleCheckList,
+  ErrorDetail,
   ErrorModel,
   IndexHistory,
   IndexProjection,
@@ -141,16 +142,28 @@ export type ProjectionMethodName = ProjectionMethod["method"];
 // shares the API's origin.
 client.setConfig({ baseUrl: new URL("/api", globalThis.location.href).toString() });
 
+/** A rule of the mortgage that a value can break, by the code the API names it with. */
+export type Rule = NonNullable<ErrorDetail["code"]>;
+
+/** One rejected value of a problem response: where it is, as `body.fees[1].amount`, and the rule of
+ * the mortgage it breaks, unless the schema rejected it. */
+export interface RejectedValue {
+  location: string;
+  rule?: Rule;
+}
+
 /** ApiError is a failed call; `status` is unset when the server never answered. */
 export class ApiError extends Error {
   readonly status: number | undefined;
-  /** The `location` of each error detail of a problem response, e.g. `body.fees[1].amount`. */
-  readonly locations: string[];
+  /** The error details of a problem response that name a location. */
+  readonly rejected: RejectedValue[];
 
   constructor(status: number | undefined, problem: ErrorModel | undefined) {
     super(problem?.detail ?? `request failed with status ${status}`);
     this.status = status;
-    this.locations = (problem?.errors ?? []).flatMap((e) => (e.location ? [e.location] : []));
+    this.rejected = (problem?.errors ?? []).flatMap((e) =>
+      e.location ? [{ location: e.location, rule: e.code }] : [],
+    );
   }
 }
 

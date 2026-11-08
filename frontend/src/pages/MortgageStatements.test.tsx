@@ -227,7 +227,7 @@ describe("a statement the server rejects", () => {
     fill(form, "Saldo informado", "60.000,00");
 
     expect(
-      await within(form).findByText("A data não pode ser anterior à data do contrato."),
+      await within(form).findByText("Não pode ser antes da data do contrato."),
     ).toBeInTheDocument();
     expect(within(form).getByLabelText("Data do extrato")).toBeInvalid();
   });
@@ -278,7 +278,7 @@ describe("editing a statement", () => {
 
     const form = await openEditSheet("10/04/2024");
     expect(within(form).getByLabelText("Data do extrato")).toHaveValue("2024-04-10");
-    expect(within(form).getByLabelText("Saldo informado")).toHaveValue("19500,00");
+    expect(within(form).getByLabelText("Saldo informado")).toHaveValue("19.500,00");
     fill(form, "Data do extrato", "2024-01-20");
     fill(form, "Saldo informado", "52.000,00");
     await waitFor(() =>

@@ -1,7 +1,8 @@
 import { type FormEvent, useState } from "react";
 import { DeleteEventDialog } from "@/components/mortgage/DeleteEventDialog";
 import { Drift } from "@/components/mortgage/Drift";
-import { SheetInputRow, SheetValueRow } from "@/components/mortgage/SheetFields";
+import { SheetValueRow } from "@/components/mortgage/SheetFields";
+import { InputRow } from "@/components/patterns/FieldRows";
 import { GroupedList } from "@/components/patterns/GroupedList";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -103,20 +104,22 @@ export function StatementSheet({ statement, onClose }: StatementSheetProps) {
             </Alert>
           )}
           <GroupedList>
-            <SheetInputRow
+            <InputRow
               label="Data do extrato"
               type="date"
               value={values.date}
               onChange={(date) => change({ ...values, date })}
-              error={errors.get("date")}
+              message={errors.get("date")}
             />
-            <SheetInputRow
+            <InputRow
               label="Saldo informado"
+              grouped
+              prefix="R$"
               inputMode="decimal"
               placeholder="0,00"
               value={values.outstandingBalance}
               onChange={(outstandingBalance) => change({ ...values, outstandingBalance })}
-              error={errors.get("outstanding_balance")}
+              message={errors.get("outstanding_balance")}
             />
           </GroupedList>
           {answer && (

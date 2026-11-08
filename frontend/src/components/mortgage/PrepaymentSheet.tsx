@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { DeleteEventDialog } from "@/components/mortgage/DeleteEventDialog";
-import { SheetInputRow, SheetNote } from "@/components/mortgage/SheetFields";
+import { SheetNote } from "@/components/mortgage/SheetFields";
+import { InputRow } from "@/components/patterns/FieldRows";
 import {
   GroupedList,
   GroupedListHeader,
@@ -140,20 +141,22 @@ export function PrepaymentSheet({ prepayment, onClose }: PrepaymentSheetProps) {
             </Alert>
           )}
           <GroupedList>
-            <SheetInputRow
+            <InputRow
               label="Data"
               type="date"
               value={values.date}
               onChange={(date) => change({ ...values, date })}
-              error={errors.get("date")}
+              message={errors.get("date")}
             />
-            <SheetInputRow
+            <InputRow
               label="Valor"
+              grouped
+              prefix="R$"
               inputMode="decimal"
               placeholder="0,00"
               value={values.amount}
               onChange={(amount) => change({ ...values, amount })}
-              error={errors.get("amount")}
+              message={errors.get("amount")}
             />
           </GroupedList>
           <GroupedListSection>

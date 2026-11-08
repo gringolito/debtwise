@@ -109,6 +109,11 @@ Large Title at semibold weight. The wordmark is Title 2. These seven sizes are t
 - Inset grouped lists: white 12px-radius panels, 52px rows with inset hairlines, label left, value
   right, chevron for drill-in. Section headers are Footnote uppercase in secondary grey.
 - Editable values inside sentences are underlined in the soft accent.
+- Values the owner types in place sit right-aligned on their row as borderless inputs, with the
+  unit ("R$", "meses", "% ao mês") in secondary grey beside them. A value the server rejected turns
+  red and its message, in Portuguese, sits under the row's label in red Footnote; a whole list the
+  server rejected carries its message in red Footnote under the list. A rejection the screen has no
+  words for reads "Valor inválido.".
 - Segmented controls for two- or three-way choices: a translucent grey track with the selected
   segment raised in white. A destination split into sections, such as Mercado (Índices,
   Títulos) and Investimentos (Compras, Venda antecipada), switches them with a segmented control
@@ -183,6 +188,28 @@ The review shows the schedule the server computes for the typed terms before any
 When the server rejects the terms, on the review or on "Concluir", the owner goes back to the
 first step that asks for a rejected field, with "Confira os campos destacados." above it and each
 rejected field marked.
+
+## Contrato
+
+The contract opens from Financiamento as a settings page: a "Financiamento" back link in the strong
+accent above the Large Title "Contrato", with a plain "Cancelar" and the graphite "Salvar" on the
+title's right. "Salvar" sends every term at once and returns to Financiamento; "Cancelar" and the
+back link discard what was changed. The sections are inset grouped lists:
+
+- Contrato: data do contrato, valor financiado, prazo, primeira prestação and valor de avaliação,
+  typed in place.
+- Cálculo: the amortization system (SAC, Price) and the balance correction (TR, IPCA, Nenhum) as
+  segmented controls on their rows.
+- Juros do contrato, Seguros (MIP and DFI together, MIP first) and Taxas: one drill-in row per
+  dated change, named by where it starts ("MIP a partir de 15/03/2023") with its value on the
+  right, in date order, and an accent "Adicionar mudança" text action under the list.
+
+A change opens in a modal sheet: its start date, its value and, for a contract rate, the basis as a
+segmented control and the poupança part as a toggle. A new insurance change picks MIP or DFI first.
+The change in force at the first installment also offers what the insurance charged on it, which
+derives the rate. "Concluir" keeps the change on the page until "Salvar"; an existing change also
+has "Remover mudança" in the destructive style. A Footnote under the lists says each change holds
+from its date until the next one.
 
 ## Voice
 

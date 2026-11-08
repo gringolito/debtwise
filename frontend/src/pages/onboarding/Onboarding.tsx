@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ApiError } from "@/lib/api";
-import { invalidLocations, withFirstChargeRates } from "@/lib/mortgageForm";
+import { rejections, withFirstChargeRates } from "@/lib/mortgageForm";
 import { usePreviewSchedule, useSaveMortgage } from "@/lib/mortgageQueries";
 import {
   LAST_TERMS_STEP,
@@ -83,8 +83,9 @@ export function Onboarding() {
   const save = useSaveMortgage();
   const navigate = useNavigate();
 
-  const invalid = invalidLocations(failure?.error ?? null);
-  const isInvalid = (...locations: string[]) => locations.some((l) => invalid.has(l));
+  const rejected = rejections(failure?.error ?? null);
+  const messageOf = (...locations: string[]) =>
+    locations.map((location) => rejected.get(location)).find((message) => message !== undefined);
 
   const set: StepProps["set"] = (key, value) => {
     // The API names rows by position, so once a row is added or removed its answer is out of date.
@@ -97,7 +98,7 @@ export function Onboarding() {
   const fail = (error: Error, at: number, action: Failure["action"]) => {
     const owner =
       error instanceof ApiError && error.status === 422
-        ? stepOf(invalidLocations(error))
+        ? stepOf(rejections(error).keys())
         : undefined;
     setFailure({ error, step: owner ?? at, action });
     setStep(owner ?? at);
@@ -159,7 +160,7 @@ export function Onboarding() {
       onBack={() => setStep(step - 1)}
       alert={alert}
     >
-      <Fields values={values} set={set} isInvalid={isInvalid} />
+      <Fields values={values} set={set} messageOf={messageOf} />
     </StepFrame>
   );
 }

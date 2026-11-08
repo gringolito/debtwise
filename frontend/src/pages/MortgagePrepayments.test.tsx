@@ -218,14 +218,14 @@ describe("a prepayment the server rejects", () => {
     fill(form, "Data", "2023-12-09");
     fill(form, "Valor", "0");
 
-    await within(form).findByText("Informe um valor maior que zero.");
+    await within(form).findByText("Precisa ser maior que zero.");
     expect(within(form).getByLabelText("Data")).toBeInvalid();
     expect(within(form).getByLabelText("Data")).toHaveAccessibleDescription(
-      "A data não pode ser anterior à data do contrato.",
+      "Não pode ser antes da data do contrato.",
     );
     expect(within(form).getByLabelText("Valor")).toBeInvalid();
     expect(within(form).getByLabelText("Valor")).toHaveAccessibleDescription(
-      "Informe um valor maior que zero.",
+      "Precisa ser maior que zero.",
     );
     expect(within(form).queryByRole("status")).toBeNull();
     fireEvent.click(within(form).getByRole("button", { name: "Registrar" }));
@@ -275,7 +275,7 @@ describe("editing a prepayment", () => {
 
     const form = await openEditSheet("15/03/2024");
     expect(within(form).getByLabelText("Data")).toHaveValue("2024-03-15");
-    expect(within(form).getByLabelText("Valor")).toHaveValue("12500,50");
+    expect(within(form).getByLabelText("Valor")).toHaveValue("12.500,50");
     expect(within(form).getByRole("radio", { name: "Reduzir prestação" })).toBeChecked();
     fill(form, "Data", "2024-01-20");
     fill(form, "Valor", "13.000,00");
@@ -325,7 +325,7 @@ describe("editing a prepayment", () => {
     fill(form, "Valor", "0");
     fireEvent.click(within(form).getByRole("button", { name: "Salvar" }));
 
-    await within(form).findByText("Informe um valor maior que zero.");
+    await within(form).findByText("Precisa ser maior que zero.");
     expect(within(form).getByLabelText("Valor")).toBeInvalid();
     expect(within(form).getByLabelText("Data")).toBeValid();
   });

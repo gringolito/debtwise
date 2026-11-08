@@ -6,6 +6,7 @@ import {
   type StatementInput,
 } from "@/lib/api";
 import { inputToMoney, moneyToInput } from "@/lib/format";
+import { rejections } from "@/lib/mortgageForm";
 
 export type PrepaymentEffect = Prepayment["effect"];
 
@@ -64,25 +65,14 @@ export function statementInput(values: StatementValues): StatementInput {
   return { date: values.date, outstanding_balance: inputToMoney(values.outstandingBalance) };
 }
 
-const fieldMessages: Record<string, string> = {
-  date: "A data não pode ser anterior à data do contrato.",
-  amount: "Informe um valor maior que zero.",
-};
-
 /**
  * prepaymentErrors reads a rejected prepayment as what the owner sees next to each field, by body
- * field such as "date" or "amount". Any other failure, one that names a field with a 5xx included,
- * gives an empty map.
+ * field such as "date" or "amount": what the rule it breaks asks, by the rule's code. Any other
+ * failure, one that names a field with a 5xx included, gives an empty map.
  */
 export function prepaymentErrors(error: Error | null): Map<string, string> {
-  const errors = new Map<string, string>();
-  if (!(error instanceof ApiError) || error.status !== 422) return errors;
-  for (const location of error.locations) {
-    if (!location.startsWith("body.")) continue;
-    const field = location.slice("body.".length);
-    errors.set(field, fieldMessages[field] ?? "Valor inválido.");
-  }
-  return errors;
+  if (!(error instanceof ApiError) || error.status !== 422) return new Map();
+  return rejections(error);
 }
 
 /** statementErrors is prepaymentErrors for a statement, whose date can also be taken (409). */

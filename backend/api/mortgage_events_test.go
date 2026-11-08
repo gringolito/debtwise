@@ -480,6 +480,101 @@ func TestInvalidEventIsRejected(t *testing.T) {
 	}
 }
 
+// ruleDetail is an error detail as a client that matches the rule a value breaks reads it.
+type ruleDetail struct {
+	Location string `json:"location"`
+	Code     string `json:"code"`
+}
+
+// A value that breaks a rule of the mortgage names the rule by its code, which a schema error
+// leaves out.
+func TestRuleViolationsNameTheRuleTheyBreak(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+		want   []ruleDetail
+	}{
+		{
+			name:   "terms breaking every rule they have",
+			method: http.MethodPut,
+			path:   "/mortgage",
+			body: withField(t, "dfi_rates", `[
+				{"effective_from": "2024-02-01", "rate": "0.0001"},
+				{"effective_from": "2024-02-01", "rate": "0.0002"}
+			]`),
+			want: []ruleDetail{
+				{"body.dfi_rates", "no_row_from_first_installment"},
+				{"body.dfi_rates[1].effective_from", "repeated_date"},
+			},
+		},
+		{
+			name:   "terms with nothing borrowed",
+			method: http.MethodPut,
+			path:   "/mortgage",
+			body:   withField(t, "original_amount", `"0"`),
+			want:   []ruleDetail{{"body.original_amount", "not_positive"}},
+		},
+		{
+			name:   "terms due before the contract",
+			method: http.MethodPut,
+			path:   "/mortgage",
+			body:   withField(t, "contract_date", `"2024-01-11"`),
+			want:   []ruleDetail{{"body.first_installment_date", "before_contract"}},
+		},
+		{
+			name:   "prepayment of nothing before the contract",
+			method: http.MethodPost,
+			path:   "/mortgage/prepayments",
+			body:   `{"date": "2023-12-10", "amount": "0", "effect": "shorten_term"}`,
+			want: []ruleDetail{
+				{"body.date", "before_contract"},
+				{"body.amount", "not_positive"},
+			},
+		},
+		{
+			name:   "statement before the contract",
+			method: http.MethodPost,
+			path:   "/mortgage/statements",
+			body:   `{"date": "2023-12-10", "outstanding_balance": "60000.00"}`,
+			want:   []ruleDetail{{"body.date", "before_contract"}},
+		},
+		{
+			name:   "terms the schema rejects",
+			method: http.MethodPut,
+			path:   "/mortgage",
+			body:   withField(t, "term_months", "0"),
+			want:   []ruleDetail{{"body.term_months", ""}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			rec := serve(t, registered(t), tt.method, tt.path, tt.body)
+
+			require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
+			assert.Equal(t, "application/problem+json", rec.Header().Get("Content-Type"))
+
+			var problem struct {
+				Title  string       `json:"title"`
+				Status int          `json:"status"`
+				Detail string       `json:"detail"`
+				Errors []ruleDetail `json:"errors"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &problem))
+			assert.Equal(t, "Unprocessable Entity", problem.Title)
+			assert.Equal(t, http.StatusUnprocessableEntity, problem.Status)
+			assert.Equal(t, "validation failed", problem.Detail)
+			assert.Equal(t, tt.want, problem.Errors)
+		})
+	}
+}
+
 // A statement on a date that already has one conflicts with it, and changes nothing.
 func TestSecondStatementOnADateConflicts(t *testing.T) {
 	t.Parallel()

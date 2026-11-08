@@ -144,7 +144,8 @@ describe("setting up the mortgage", () => {
   async function fillEveryStep() {
     await start();
     fill("Data do contrato", "2023-12-10");
-    fill("Valor financiado", "60.000,00");
+    fill("Valor financiado", "60000,00");
+    expect(screen.getByLabelText("Valor financiado")).toHaveValue("60.000,00");
     fill("Prazo", "6");
     fill("Primeira prestação", "2024-01-10");
     next();

@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import type { Rule } from "@/lib/api";
 import { registeredMortgage } from "./mortgageFixtures";
 
 export interface RecordedRequest {
@@ -73,7 +74,7 @@ export function problem(
   status: number,
   title: string,
   detail: string,
-  errors?: { location: string; message: string }[],
+  errors?: { location: string; message: string; code?: Rule }[],
 ): Response {
   return new Response(JSON.stringify({ title, status, detail, errors }), {
     status,
