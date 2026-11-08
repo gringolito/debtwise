@@ -35,6 +35,7 @@ type verdict struct {
 	Unavailable   string            `json:"unavailable,omitempty" enum:"missing_ipca,amount_too_small" doc:"Why the verdict has no scenarios. missing_ipca: the IPCA the bond's VNA follows is not available yet; amount_too_small: the amount buys less than a hundredth of the bond. Absent when it has them."`
 	UnitPrice     string            `json:"unit_price,omitempty" doc:"The price of one bond at the rate for settlement on the date, in reais, as a decimal string. Absent when the verdict is unavailable for missing_ipca."`
 	Quantity      string            `json:"quantity,omitempty" doc:"How many bonds the amount buys, in hundredths of a bond, as a decimal string. Absent when the verdict is unavailable for missing_ipca."`
+	MinimumAmount string            `json:"minimum_amount,omitempty" doc:"The smallest amount that buys a hundredth of the bond at the unit price, in reais, as a decimal string. Only when the verdict is unavailable for amount_too_small."`
 	Advantage     string            `json:"advantage,omitempty" doc:"The invest scenario's net worth on the horizon less the prepay scenario's, in reais, as a decimal string. Positive favours investing. Absent when the verdict is unavailable."`
 	AvoidedCost   string            `json:"avoided_cost,omitempty" doc:"What prepaying the amount saves by the horizon beyond the amount itself, in reais, as a decimal string. Absent when the verdict is unavailable."`
 	BreakEvenRate string            `json:"break_even_rate,omitempty" doc:"The yearly bond rate, as a decimal fraction of at most 10 places, at which buying the bond with the amount on the date gives an advantage within a centavo of zero; where the hundredths the amount buys make the advantage jump over zero, the lowest rate at which it is positive. For ntn_b_principal and ntn_b it is the real rate over IPCA, priced through the VNA of the date. Absent when the verdict is unavailable or has no_break_even."`
@@ -69,6 +70,7 @@ type cashFlow struct {
 	Held               string               `json:"held" doc:"The cash set aside that day because nothing is owed to prepay with it, in reais, as a decimal string. Negative when the scenario's installment is above the status quo's."`
 	Redeemed           *lotAmount           `json:"redeemed,omitempty" doc:"The bond's Maturity Value paid that day. Only on the horizon of a decision's invest scenario and an early sale check's hold scenario."`
 	OutstandingBalance string               `json:"outstanding_balance" doc:"What is owed once the day's flows are done, in reais, as a decimal string."`
+	NetWorth           string               `json:"net_worth" doc:"The scenario's net worth once the day's flows are done: the cash held by then and the bond's net value, its accrual value before the horizon and its Maturity Value on it, less the outstanding balance, in reais, as a decimal string."`
 }
 
 type cashFlowInstallment struct {
@@ -213,6 +215,10 @@ func newVerdict(v comparison.Verdict, status marketdata.Status) verdict {
 
 	out.UnitPrice, out.Quantity = v.UnitPrice.String(), v.Quantity.String()
 
+	if v.Unavailable == comparison.AmountTooSmall {
+		out.MinimumAmount = v.MinimumAmount.String()
+	}
+
 	if v.Unavailable != "" {
 		return out
 	}
@@ -271,6 +277,7 @@ func newScenario(s comparison.Scenario) scenario {
 			Prepaid:            f.Prepaid.String(),
 			Held:               f.Held.String(),
 			OutstandingBalance: f.OutstandingBalance.String(),
+			NetWorth:           f.NetWorth.String(),
 		}
 
 		if f.Sold != nil {

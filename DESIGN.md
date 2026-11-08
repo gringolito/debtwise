@@ -141,9 +141,10 @@ Large Title at semibold weight. The wordmark is Title 2. These seven sizes are t
 - Unknown addresses open a full-screen page without the sidebar: the wordmark top left, "404" as a
   hero figure in tertiary grey, "Esta página não existe", "O endereço pode ter mudado." and a
   graphite "Voltar ao início".
-- Market data freshness is shown next to what it affects: on Início, a Footnote directly under the
-  answer card, in caution orange with a clock icon, naming each source the answer reads that is
-  not fresh with the date of its last update, then an "Atualizar" text action.
+- Market data freshness is shown next to what it affects: on Início and Decidir, a Footnote
+  directly under the answer or verdict card, in caution orange with a clock icon, naming each
+  source the answer reads that is not fresh with the date of its last update, then an
+  "Atualizar" text action.
 - Checklists, such as Início's "Próximos passos", are inset grouped lists: a step still to do is an
   empty tertiary circle and a chevron; a done step has an accent check, its label struck through in
   secondary grey and "Concluído" as its value. Green stays reserved for signed money.
@@ -249,6 +250,44 @@ control switches Compras and Venda antecipada. With no lot, the page shows only 
   table, each value editable in place. A row whose bond name wasn't recognised is tinted
   caution-tint with an orange bar on its edge, its bond picker holds the suggested bond, and an
   orange note asks to confirm it.
+
+## Decidir
+
+The Large Title "Decidir" with "Amortizar ou investir? Compare usando o mesmo dinheiro." under it,
+then a white panel with the question as a sentence and the graphite "Comparar" on its right: "Se
+eu tiver R$ 10.000,00 hoje para reduzir o prazo". The amount, the date and the effect are
+editable values: the amount is typed in place with its thousands grouped, "hoje" opens a date
+input and reads "em 15/12/2026" once a date is chosen, and the effect ("reduzir o prazo",
+"reduzir a prestação") is a select. A value the server rejected turns red and its message sits
+under the sentence in red Footnote. Arriving from Início fills in the amount and, from "Ver
+comparação", compares it at once.
+
+- The verdict is a white panel with the bond of the highest advantage: which option ends with more
+  in Footnote uppercase secondary grey ("Investir rende mais", "Amortizar rende mais"), the bond's
+  name in Title 2, the signed advantage as the hero figure, green when investing wins and red when
+  prepaying does, "em relação a amortizar, até" the maturity in Callout, and under a hairline an
+  info icon and the break-even rate ("Empata com amortizar se a taxa cair para IPCA + 5,12%."), or
+  which option wins across the whole range of rates. The mockup's tinted pill with a dot above the
+  bond is a plain Footnote here, as green is only for signed money.
+- "Patrimônio ao longo do tempo": a white panel with each scenario's net worth from the decision's
+  date to the maturity, "Amortizar" in graphite at 2px and "Investir" in the chart accent at
+  2.5px, a dot legend on the title's right, dashed horizontal grid lines and years on the axis. The
+  mockup's tag with the advantage at the end of the lines is left out, as the card states it.
+- Detalhes: an inset grouped list with today's rate, the bond's price, the quantity bought and the
+  cost prepaying avoids, then "Ver cenários", which opens both scenarios' figures on the horizon
+  and every cash flow.
+- Outros títulos: an inset grouped list of the other bonds ranked by their signed advantage, each
+  row with the bond's name, its rate in secondary grey and a chevron; picking one puts it on the
+  card. A bond with no comparison follows with why in a few words as its value ("Valor pequeno
+  demais", "Aguardando o IPCA") and no chevron, and under its name one Footnote sentence on why
+  and the same fix as an accent text action as the panel below.
+- A Footnote centered at the bottom names the projections the verdict reads and closes with "O
+  DebtWise compara; a decisão é sua."
+- With no bond to compare, a centered white panel replaces the results: an info icon on a grey
+  tile, a Title 2 that names why, one Callout sentence and the fix as an accent text action. A too
+  small amount offers "Usar" the least amount that buys any bond, and compares it; a missing IPCA
+  points to the IPCA projections in Mercado; no bond on offer for the mortgage's indexer points to
+  the bonds on offer.
 
 ## Voice
 

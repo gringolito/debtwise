@@ -28,8 +28,14 @@ const hold: Scenario = {
   outstanding_balance: "0.00",
   bond: maturityValue,
   cash_flows: [
-    { date: "2026-11-06", ...quiet, outstanding_balance: "250000.00" },
-    { date: "2035-05-15", ...quiet, redeemed: maturityValue, outstanding_balance: "0.00" },
+    { date: "2026-11-06", ...quiet, outstanding_balance: "250000.00", net_worth: "-210000.00" },
+    {
+      date: "2035-05-15",
+      ...quiet,
+      redeemed: maturityValue,
+      outstanding_balance: "0.00",
+      net_worth: "41380.00",
+    },
   ],
 };
 const sell: Scenario = {
@@ -43,8 +49,9 @@ const sell: Scenario = {
       sold: ipca2035.values?.market,
       prepaid: "18204.10",
       outstanding_balance: "231795.90",
+      net_worth: "-219795.90",
     },
-    { date: "2035-05-15", ...quiet, outstanding_balance: "0.00" },
+    { date: "2035-05-15", ...quiet, outstanding_balance: "0.00", net_worth: "39240.00" },
   ],
 };
 

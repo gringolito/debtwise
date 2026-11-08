@@ -57,6 +57,9 @@ type Verdict struct {
 	UnitPrice   decimal.Decimal
 	Quantity    decimal.Decimal
 	Unavailable Unavailable
+	// MinimumAmount is the smallest amount that buys the smallest fraction of the bond at
+	// UnitPrice, rounded up to the centavo. It is set only when AmountTooSmall.
+	MinimumAmount decimal.Decimal
 	// Advantage is the investing scenario's net worth on the horizon less the prepaying one's.
 	Advantage decimal.Decimal
 	// AvoidedCost is what prepaying the amount saves by the horizon, beyond the amount itself.
@@ -112,6 +115,11 @@ type CashFlow struct {
 	Redeemed *bonds.Amount
 	// OutstandingBalance is what is owed once the day's flows are done.
 	OutstandingBalance decimal.Decimal
+	// NetWorth is the scenario's net worth once the day's flows are done: the cash held by then
+	// and the bond's net value, its Accrual before the horizon and its Maturity Value on it, less
+	// the OutstandingBalance. It is set only on a decision's final verdict and an early sale
+	// check's scenarios.
+	NetWorth decimal.Decimal
 }
 
 var (
@@ -177,6 +185,7 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 
 	if v.Quantity.Cmp(smallestFraction) < 0 {
 		v.Unavailable = AmountTooSmall
+		v.MinimumAmount = price.Mul(smallestFraction).CeilCents()
 
 		return v, nil
 	}
@@ -190,6 +199,17 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 
 	v.Invest = invest
 	v.Prepay = c.scenario(statusQuo, c.decision.Amount, zero, zero, nil, nil, nil)
+
+	lot := c.lot(rate, price, v.Quantity)
+
+	accrued, err := c.accruals(v.Invest, lot)
+	if err != nil {
+		return unavailable(v, err)
+	}
+
+	v.Invest.valueFlows(accrued)
+	v.Prepay.valueFlows(nil)
+
 	v.Advantage = v.Invest.NetWorth.Sub(v.Prepay.NetWorth)
 	v.AvoidedCost = statusQuo.Balance.Sub(v.Prepay.OutstandingBalance).Add(v.Prepay.Cash).Sub(c.decision.Amount)
 
@@ -198,6 +218,10 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 	}
 	for _, coupon := range valuation.Coupons {
 		methods = append(methods, coupon.ProjectedBy)
+	}
+
+	for _, a := range accrued {
+		methods = append(methods, a.ProjectedBy)
 	}
 
 	v.ProjectedBy = projectedBy(methods...)
@@ -216,10 +240,15 @@ func (c comparer) quantity(price decimal.Decimal) decimal.Decimal {
 	return c.decision.Amount.Quo(price).TruncateQuantity()
 }
 
+// lot is the bond bought with the decision's amount on its date at rate for price each.
+func (c comparer) lot(rate, price, quantity decimal.Decimal) bonds.Lot {
+	return bonds.Lot{Bond: c.bond, PurchaseDate: c.decision.Date, Rate: rate, UnitPrice: price, Quantity: quantity}
+}
+
 // invest follows the decision's amount spent on quantity bonds bought at rate for price each, and
 // what that leaves held as cash.
 func (c comparer) invest(statusQuo mortgage.Planned, rate, price, quantity decimal.Decimal) (Scenario, bonds.Valuation, error) {
-	lot := bonds.Lot{Bond: c.bond, PurchaseDate: c.decision.Date, Rate: rate, UnitPrice: price, Quantity: quantity}
+	lot := c.lot(rate, price, quantity)
 
 	valuation, err := lot.Value(c.decision.Date, c.market.Taxes, c.market.IPCA, nil)
 	if err != nil {
@@ -229,6 +258,43 @@ func (c comparer) invest(statusQuo mortgage.Planned, rate, price, quantity decim
 	cost := price.Mul(quantity).RoundCents()
 
 	return c.scenario(statusQuo, zero, cost, c.decision.Amount.Sub(cost), nil, valuation.Coupons, &valuation.Maturity), valuation, nil
+}
+
+// accruals returns the net Accrual of lot on each day of the scenario's cash flows that is before
+// the horizon, in date order. It reads the lot's coupons once, so the break-even search, which
+// compares only the horizon, doesn't call it.
+func (c comparer) accruals(s Scenario, lot bonds.Lot) ([]bonds.Amount, error) {
+	var dates []time.Time
+
+	for _, f := range s.CashFlows {
+		if f.Redeemed == nil {
+			dates = append(dates, f.Date)
+		}
+	}
+
+	return lot.Accruals(dates, c.market.Taxes, c.market.IPCA)
+}
+
+// valueFlows sets the net worth of each of the scenario's cash flows: the cash held through it and
+// the bond's net value, less what is owed. The bond is worth its Maturity Value on the horizon and
+// the next of accrued, the Accrual on each day before it, until then; accrued is empty when the
+// scenario holds none.
+func (s *Scenario) valueFlows(accrued []bonds.Amount) {
+	held := zero
+
+	for i := range s.CashFlows {
+		f := &s.CashFlows[i]
+		held = held.Add(f.Held)
+		f.NetWorth = held.Sub(f.OutstandingBalance)
+
+		switch {
+		case f.Redeemed != nil:
+			f.NetWorth = f.NetWorth.Add(f.Redeemed.Net)
+		case len(accrued) > 0:
+			f.NetWorth = f.NetWorth.Add(accrued[0].Net)
+			accrued = accrued[1:]
+		}
+	}
 }
 
 // unavailable returns v marked as missing the IPCA when err says so, and err otherwise.

@@ -82,6 +82,10 @@ export type CashFlow = {
      */
     invested: string;
     /**
+     * The scenario's net worth once the day's flows are done: the cash held by then and the bond's net value, its accrual value before the horizon and its Maturity Value on it, less the outstanding balance, in reais, as a decimal string.
+     */
+    net_worth: string;
+    /**
      * What is owed once the day's flows are done, in reais, as a decimal string.
      */
     outstanding_balance: string;
@@ -1168,6 +1172,10 @@ export type Verdict = {
      * The date the bond matures: the horizon both scenarios are valued on.
      */
     maturity: string;
+    /**
+     * The smallest amount that buys a hundredth of the bond at the unit price, in reais, as a decimal string. Only when the verdict is unavailable for amount_too_small.
+     */
+    minimum_amount?: string;
     /**
      * Why no yearly bond rate from 0% to 100% is a break-even rate. below_range: investing wins even at 0%; above_range: prepaying wins even at 100%. Absent when the verdict has a break_even_rate or is unavailable.
      */

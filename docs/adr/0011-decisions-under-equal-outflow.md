@@ -24,13 +24,21 @@ The bond is bought at the buy rate of its quote, at the unit price Tesouro's met
 rate for settlement on the decision's date: the VNA projected to that date for an NTN-B Principal.
 The quantity is the amount over the unit price, truncated at the hundredth of a bond Tesouro Direto
 sells, and costs that quantity times the unit price, rounded to centavos. An amount that buys less
-than a hundredth has no verdict.
+than a hundredth has no scenarios, and its verdict names the smallest amount that buys a hundredth
+instead: a hundredth of the unit price, rounded up to the centavo.
 
 On the horizon each scenario is worth the bond's net Maturity Value (ADR-0010), its cash, less the
 outstanding balance: after the installments due by then and the events dated on or before it,
 without interest accrued since the last installment. The advantage is the invest scenario's worth
 less the prepay scenario's. The avoided cost is the prepay scenario's worth less the status quo's,
 less the amount: what the prepaid amount would have cost by the horizon had it stayed owed.
+
+Each scenario is also worth something on every date of its cash flows, its net worth there: the cash
+held through that date, less the outstanding balance it leaves, and the bond. Before the horizon
+the bond is valued as if sold that day at its contracted rate, its Accrual Value net of the IOF,
+income tax and custody fee ADR-0010 charges a sale; on the horizon it is the net Maturity Value. A
+scenario without a bond holds none. The last date's net worth is the scenario's worth on the
+horizon. The break-even search compares only that, so it doesn't value the bond on the other dates.
 
 The break-even rate is the yearly bond rate, from 0% to 100% and of at most 10 decimal places, at
 which the same decision gives an advantage within a centavo of zero: the bond bought at the unit
