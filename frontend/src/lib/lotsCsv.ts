@@ -114,7 +114,7 @@ export function importErrors(error: Error | null, rows: ImportedRow[]): InvalidR
   for (const row of rows) {
     if (row.problem) messages.set(row, new Set([problemMessages[row.problem]]));
   }
-  for (const location of error.locations) {
+  for (const { location } of error.rejected) {
     const match = lotLocation.exec(location);
     const row = match && rows[Number(match[1])];
     if (!match || !row) continue;

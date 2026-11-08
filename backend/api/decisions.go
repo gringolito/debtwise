@@ -145,7 +145,7 @@ func readDecision(ctx context.Context, mortgages Mortgages, body decisionInput, 
 
 	violations := prepayment.Validate(terms)
 	if prepayment.Date.Before(today) {
-		violations = append(violations, mortgage.Violation{Field: "date", Reason: "must not be before today"})
+		violations = append(violations, mortgage.Violation{Field: "date", Rule: mortgage.RuleBeforeToday})
 	}
 
 	d := comparison.Decision{Amount: prepayment.Amount, Date: prepayment.Date, Effect: prepayment.Effect}

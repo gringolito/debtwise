@@ -190,7 +190,7 @@ describe("editing a statement", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Editar extrato de 10/04/2024" }));
     const form = await edit("10/04/2024");
     expect(within(form).getByLabelText("Data")).toHaveValue("2024-04-10");
-    expect(within(form).getByLabelText("Saldo informado")).toHaveValue("19500,00");
+    expect(within(form).getByLabelText("Saldo informado")).toHaveValue("19.500,00");
     fill(form, "Data", "2024-01-20");
     fill(form, "Saldo informado", "52.000,00");
     fireEvent.click(within(form).getByRole("button", { name: "Salvar" }));

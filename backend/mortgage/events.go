@@ -52,11 +52,11 @@ func (p Prepayment) Validate(terms Terms) []Violation {
 	var violations []Violation
 
 	if p.Date.Before(terms.ContractDate) {
-		violations = append(violations, Violation{"date", notBeforeContract})
+		violations = append(violations, Violation{"date", RuleBeforeContract})
 	}
 
 	if p.Amount.Cmp(decimal.Decimal{}) <= 0 {
-		violations = append(violations, Violation{"amount", "must be greater than zero"})
+		violations = append(violations, Violation{"amount", RuleNotPositive})
 	}
 
 	return violations
@@ -66,7 +66,7 @@ func (p Prepayment) Validate(terms Terms) []Violation {
 // is not negative.
 func (s Statement) Validate(terms Terms) []Violation {
 	if s.Date.Before(terms.ContractDate) {
-		return []Violation{{"date", notBeforeContract}}
+		return []Violation{{"date", RuleBeforeContract}}
 	}
 
 	return nil
