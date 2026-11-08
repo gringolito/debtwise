@@ -4,7 +4,7 @@ import type { RegisteredMortgage } from "@/lib/api";
 import { stubMortgageApi } from "@/test/mortgageApi";
 import { registeredMortgage, trMortgage } from "@/test/mortgageFixtures";
 import { renderAt } from "@/test/renderAt";
-import { problem, stubRoutes } from "@/test/stubServer";
+import { problem } from "@/test/stubServer";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -647,40 +647,34 @@ describe("adding and removing changes", () => {
   });
 });
 
-// Until the onboarding registers the first mortgage, the page starts from blank terms.
-describe("without a registered mortgage", () => {
-  it("starts from one blank change of each list and sends the blank terms as typed", async () => {
-    const requests = await openPage({ mortgage: undefined, onSave: rejected([]) });
+describe("text the API cannot read", () => {
+  it("is sent as typed for the API to reject, and an empty term as no number", async () => {
+    const requests = await openPage({ onSave: rejected([]) });
 
-    expect(screen.getByLabelText("Valor financiado")).toHaveValue("");
-    expect(screen.getByRole("radio", { name: "SAC" })).toBeChecked();
-    expect(screen.getByRole("radio", { name: "Nenhum" })).toBeChecked();
-    expect(changes("Juros do contrato")).toEqual(["Sem data, — % ao ano · nominal"]);
-    expect(changes("Seguros")).toEqual(["MIP sem data, — % ao mês", "DFI sem data, — % ao mês"]);
-    expect(changes("Taxas")).toEqual(["Taxa de administração sem data, — por mês"]);
     fill("Valor financiado", "muito");
-    const sheet = openChange(/^Sem data/);
+    fill("Prazo", "");
+    const sheet = openChange(/^A partir de 10\/12\/2023/);
     fill("Taxa", "alta", sheet);
     finish(sheet);
-    expect(changes("Juros do contrato")).toEqual(["Sem data, alta % ao ano · nominal"]);
+    expect(changes("Juros do contrato")).toEqual([
+      "A partir de 10/12/2023, alta % ao ano · nominal",
+    ]);
     save();
 
     await screen.findByRole("alert");
     expect(putBodies(requests)).toEqual([
       {
-        contract_date: "",
+        ...registeredTerms,
         original_amount: "muito",
         term_months: null,
-        first_installment_date: "",
-        amortization_system: "sac",
-        indexer: "none",
-        appraisal_value: "",
         contract_rates: [
-          { effective_from: "", rate: "alta", basis: "nominal", poupanca_additional: false },
+          {
+            effective_from: "2023-12-10",
+            rate: "alta",
+            basis: "nominal",
+            poupanca_additional: false,
+          },
         ],
-        mip_rates: [{ effective_from: "", rate: "" }],
-        dfi_rates: [{ effective_from: "", rate: "" }],
-        fees: [{ effective_from: "", amount: "" }],
       },
     ]);
   });
@@ -1135,40 +1129,5 @@ describe("the insurance charged on the first installment", () => {
     finish(sheet);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(changes("Seguros")).toContain("DFI a partir de 10/12/2023, 0,0335 % ao mês");
-  });
-});
-
-describe("loading the contract", () => {
-  it("shows skeletons until the server answers", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(() => new Promise<Response>(() => {})),
-    );
-
-    renderAt("/financiamento/editar");
-
-    expect(await screen.findByRole("status", { name: "Carregando contrato" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Salvar" })).not.toBeInTheDocument();
-  });
-
-  it("says it could not load the contract, and shows it once a retry loads it", async () => {
-    let failing = true;
-    stubRoutes({
-      "GET /api/mortgage": () =>
-        failing
-          ? problem(500, "Internal Server Error", "unexpected failure")
-          : Response.json(registeredMortgage),
-    });
-    renderAt("/financiamento/editar");
-
-    const panel = await screen.findByRole("alert");
-    expect(within(panel).getByRole("heading")).toHaveTextContent(
-      "Não foi possível carregar o contrato",
-    );
-    expect(screen.queryByRole("button", { name: "Salvar" })).not.toBeInTheDocument();
-    failing = false;
-    fireEvent.click(within(panel).getByRole("button", { name: "Tentar novamente" }));
-
-    expect(await screen.findByLabelText("Valor financiado")).toHaveValue("60000,00");
   });
 });

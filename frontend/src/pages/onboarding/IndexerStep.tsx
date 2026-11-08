@@ -5,9 +5,9 @@ import type { Indexer } from "@/lib/mortgageForm";
 import { indexerChoices } from "@/lib/onboarding";
 import type { StepProps } from "@/pages/onboarding/StepFrame";
 
-export function IndexerStep({ values, set, isInvalid }: StepProps) {
+export function IndexerStep({ values, set, messageOf }: StepProps) {
   const id = useId();
-  const invalid = isInvalid("indexer");
+  const invalid = messageOf("indexer") !== undefined;
   return (
     <div className="flex flex-col gap-4">
       <div className="overflow-hidden rounded-lg border bg-card">

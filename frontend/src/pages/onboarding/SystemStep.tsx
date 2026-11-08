@@ -27,9 +27,9 @@ const choices: SystemChoice[] = [
   },
 ];
 
-export function SystemStep({ values, set, isInvalid }: StepProps) {
+export function SystemStep({ values, set, messageOf }: StepProps) {
   const id = useId();
-  const invalid = isInvalid("amortization_system");
+  const invalid = messageOf("amortization_system") !== undefined;
   return (
     <div className="flex flex-col gap-4">
       <RadioGroup

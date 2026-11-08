@@ -1,5 +1,5 @@
 import { GroupedList } from "@/components/patterns/GroupedList";
-import { InputRow } from "@/pages/onboarding/fields";
+import { InputRow } from "@/components/patterns/FieldRows";
 import type { StepProps } from "@/pages/onboarding/StepFrame";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -14,7 +14,7 @@ function termInYears(text: string): string | undefined {
   return rest === 0 ? `(${years})` : `(${years} e ${plural(rest, "mês", "meses")})`;
 }
 
-export function ContractStep({ values, set, isInvalid }: StepProps) {
+export function ContractStep({ values, set, messageOf }: StepProps) {
   const years = termInYears(values.termMonths);
   return (
     <GroupedList>
@@ -23,7 +23,7 @@ export function ContractStep({ values, set, isInvalid }: StepProps) {
         type="date"
         value={values.contractDate}
         onChange={(value) => set("contractDate", value)}
-        invalid={isInvalid("contract_date")}
+        message={messageOf("contract_date")}
       />
       <InputRow
         label="Valor financiado"
@@ -33,7 +33,7 @@ export function ContractStep({ values, set, isInvalid }: StepProps) {
         placeholder="0,00"
         value={values.originalAmount}
         onChange={(value) => set("originalAmount", value)}
-        invalid={isInvalid("original_amount")}
+        message={messageOf("original_amount")}
       />
       <InputRow
         label="Prazo"
@@ -42,14 +42,14 @@ export function ContractStep({ values, set, isInvalid }: StepProps) {
         suffix={years ? `meses ${years}` : "meses"}
         value={values.termMonths}
         onChange={(value) => set("termMonths", value)}
-        invalid={isInvalid("term_months")}
+        message={messageOf("term_months")}
       />
       <InputRow
         label="Primeira prestação"
         type="date"
         value={values.firstInstallmentDate}
         onChange={(value) => set("firstInstallmentDate", value)}
-        invalid={isInvalid("first_installment_date")}
+        message={messageOf("first_installment_date")}
       />
     </GroupedList>
   );

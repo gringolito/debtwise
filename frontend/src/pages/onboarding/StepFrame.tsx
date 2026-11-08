@@ -9,8 +9,8 @@ import { STEP_COUNT } from "@/lib/onboarding";
 export interface StepProps {
   values: FormValues;
   set: <K extends keyof FormValues>(key: K, value: FormValues[K]) => void;
-  /** Whether the API rejected any of these locations, as "contract_rates[1].rate". */
-  isInvalid: (...locations: string[]) => boolean;
+  /** The message for the first of these locations the API rejected, as "contract_rates[1].rate". */
+  messageOf: (...locations: string[]) => string | undefined;
 }
 
 interface StepFrameProps {

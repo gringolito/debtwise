@@ -2,7 +2,6 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeftIcon, PlusIcon } from "lucide-react";
 import { type FormEvent, type ReactNode, useId, useState } from "react";
 import { Page, PageHeader, PageTitle } from "@/components/layout/Page";
-import { ErrorPanel } from "@/components/patterns/ErrorPanel";
 import { ChoiceRow, InputRow } from "@/components/patterns/FieldRows";
 import {
   GroupedList,
@@ -22,7 +21,6 @@ import { indexNames } from "@/lib/indexNames";
 import {
   type AmortizationSystem,
   amortizationSystemLabels,
-  emptyValues,
   type FormValues,
   type Indexer,
   rejections,
@@ -44,7 +42,6 @@ import {
   typedMoney,
   typedPercent,
 } from "@/pages/contract/changes";
-import { ContractSkeleton } from "@/pages/contract/ContractSkeleton";
 import { useChangeEditor } from "@/pages/contract/useChangeEditor";
 
 const indexerChoices: { value: Indexer; label: string }[] = [
@@ -140,10 +137,8 @@ function ListMessage({ className, ...props }: React.ComponentProps<"p">) {
 
 const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-function ContractForm({ mortgage }: { mortgage: RegisteredMortgage | null }) {
-  const [values, setValues] = useState(() =>
-    mortgage ? valuesFromMortgage(mortgage) : emptyValues(),
-  );
+function ContractForm({ mortgage }: { mortgage: RegisteredMortgage }) {
+  const [values, setValues] = useState(() => valuesFromMortgage(mortgage));
   const save = useSaveMortgage();
   const navigate = useNavigate();
   const messages = rejections(save.error);
@@ -348,26 +343,8 @@ function ContractForm({ mortgage }: { mortgage: RegisteredMortgage | null }) {
 
 /** Contract is the Contrato page, where the owner edits the registered mortgage's terms. */
 export function Contract() {
-  const mortgage = useMortgage();
-
-  if (mortgage.isError) {
-    return (
-      <Page>
-        <ContractHeader />
-        <ErrorPanel
-          title="Não foi possível carregar o contrato"
-          onRetry={() => void mortgage.refetch()}
-        />
-      </Page>
-    );
-  }
-  if (mortgage.isPending) {
-    return (
-      <Page>
-        <ContractHeader />
-        <ContractSkeleton />
-      </Page>
-    );
-  }
-  return <ContractForm mortgage={mortgage.data} />;
+  const { data } = useMortgage();
+  // MortgageGate opens the app only once the mortgage is loaded and registered.
+  if (!data) return null;
+  return <ContractForm mortgage={data} />;
 }

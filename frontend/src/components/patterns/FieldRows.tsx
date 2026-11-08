@@ -10,39 +10,41 @@ import { Switch } from "@/components/ui/switch";
 interface RowTextProps {
   id: string;
   label: string;
+  /** One sentence under the label on what to give. */
   hint?: string;
+  /** Why the value was rejected; unset while it is valid. */
   message?: string;
 }
 
 const describedBy = ({ id, hint, message }: RowTextProps) =>
-  message !== undefined ? `${id}-message` : hint !== undefined ? `${id}-hint` : undefined;
+  [
+    message === undefined ? undefined : `${id}-message`,
+    hint === undefined ? undefined : `${id}-hint`,
+  ]
+    .filter(Boolean)
+    .join(" ") || undefined;
 
 function RowText({ id, label, hint, message }: RowTextProps) {
   return (
     <GroupedListLabel className="flex flex-col gap-0.5">
       <label htmlFor={id}>{label}</label>
-      {message !== undefined ? (
+      {hint !== undefined && (
+        <span id={`${id}-hint`} className="text-footnote text-muted-foreground">
+          {hint}
+        </span>
+      )}
+      {message !== undefined && (
         <span id={`${id}-message`} className="text-footnote text-destructive">
           {message}
         </span>
-      ) : (
-        hint !== undefined && (
-          <span id={`${id}-hint`} className="text-footnote text-muted-foreground">
-            {hint}
-          </span>
-        )
       )}
     </GroupedListLabel>
   );
 }
 
 interface InputRowProps
-  extends Omit<React.ComponentProps<"input">, "value" | "onChange" | "prefix"> {
-  label: string;
-  /** One sentence under the label on what to type, while the value is not rejected. */
-  hint?: string;
-  /** Why the value was rejected, in place of the hint; unset while it is valid. */
-  message?: string;
+  extends Omit<React.ComponentProps<"input">, "value" | "onChange" | "prefix">,
+    Omit<RowTextProps, "id"> {
   value: string;
   onChange: (value: string) => void;
   /** The unit before the value, such as "R$". */
@@ -86,16 +88,14 @@ export function InputRow({
   );
 }
 
-interface SwitchRowProps extends Omit<React.ComponentProps<typeof Switch>, "id"> {
-  label: string;
-  /** Why the value was rejected; unset while it is valid. */
-  message?: string;
-}
+interface SwitchRowProps
+  extends Omit<React.ComponentProps<typeof Switch>, "id">,
+    Omit<RowTextProps, "id"> {}
 
 /** SwitchRow is a grouped list row that turns something on or off. */
-export function SwitchRow({ label, message, ...props }: SwitchRowProps) {
+export function SwitchRow({ label, hint, message, ...props }: SwitchRowProps) {
   const id = useId();
-  const text = { id, label, message };
+  const text = { id, label, hint, message };
   return (
     <GroupedListItem>
       <GroupedListRow>

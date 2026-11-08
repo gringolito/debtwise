@@ -6,7 +6,7 @@ import {
 } from "@/components/patterns/GroupedList";
 import { Button } from "@/components/ui/button";
 import { firstChargeOf, type Insurance, insuranceFields, rowLocation } from "@/lib/mortgageForm";
-import { InputRow } from "@/pages/onboarding/fields";
+import { InputRow } from "@/components/patterns/FieldRows";
 import type { StepProps } from "@/pages/onboarding/StepFrame";
 
 const insurances: { insurance: Insurance; label: string; hint: string; needsBase: string }[] = [
@@ -24,7 +24,7 @@ const insurances: { insurance: Insurance; label: string; hint: string; needsBase
   },
 ];
 
-export function InsuranceStep({ values, set, isInvalid }: StepProps) {
+export function InsuranceStep({ values, set, messageOf }: StepProps) {
   const [fromFirstInstallment, setFromFirstInstallment] = useState(
     () => values.firstInstallmentMip !== "" || values.firstInstallmentDfi !== "",
   );
@@ -43,7 +43,7 @@ export function InsuranceStep({ values, set, isInvalid }: StepProps) {
             placeholder="0,00"
             value={values.appraisalValue}
             onChange={(value) => set("appraisalValue", value)}
-            invalid={isInvalid("appraisal_value")}
+            message={messageOf("appraisal_value")}
           />
         </GroupedList>
       </GroupedListSection>
@@ -65,7 +65,7 @@ export function InsuranceStep({ values, set, isInvalid }: StepProps) {
                 suffix="% ao mês"
                 value={row.rate}
                 onChange={(rate) => set(rates, [{ ...row, rate }])}
-                invalid={isInvalid(rates, rowLocation(rates, 0, "rate"))}
+                message={messageOf(rates, rowLocation(rates, 0, "rate"))}
               />
             );
           })}
@@ -100,8 +100,10 @@ export function InsuranceStep({ values, set, isInvalid }: StepProps) {
                   placeholder="0,00"
                   value={values[charge]}
                   onChange={(value) => set(charge, value)}
-                  invalid={
+                  message={
                     !derived.needsBase && values[charge].trim() !== "" && derived.rate === undefined
+                      ? "Valor inválido."
+                      : undefined
                   }
                 />
               );
@@ -122,7 +124,7 @@ export function InsuranceStep({ values, set, isInvalid }: StepProps) {
             placeholder="0,00"
             value={fee.amount}
             onChange={(amount) => set("fees", [{ ...fee, amount }])}
-            invalid={isInvalid("fees", rowLocation("fees", 0, "amount"))}
+            message={messageOf("fees", rowLocation("fees", 0, "amount"))}
           />
         </GroupedList>
       </GroupedListSection>
