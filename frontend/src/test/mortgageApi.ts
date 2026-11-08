@@ -38,6 +38,8 @@ interface MortgageApiOptions {
   prepaymentPreview?: (input: PrepaymentPreviewInput) => PrepaymentPreview;
   /** What a statement preview answers once the body passes validation. */
   statementPreview?: (input: StatementPreviewInput) => StatementPreview;
+  /** Endpoints the screen under test reads too, or answers that replace the fake's own. */
+  routes?: Parameters<typeof stubRoutes>[0];
 }
 
 interface FieldError {
@@ -74,6 +76,7 @@ export function stubMortgageApi({
     drift: input.outstanding_balance,
     within_rounding: false,
   }),
+  routes = {},
 }: MortgageApiOptions = {}) {
   let registered = mortgage ?? null;
   let served = initialSchedule;
@@ -255,5 +258,6 @@ export function stubMortgageApi({
       changed();
       return new Response(null, { status: 204 });
     },
+    ...routes,
   });
 }

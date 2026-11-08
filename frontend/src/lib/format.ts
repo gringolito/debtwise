@@ -79,9 +79,14 @@ const dateFormat = new Intl.DateTimeFormat("pt-BR", {
   year: "numeric",
 });
 
-export function formatDateTime(instant: string): string {
+/**
+ * formatLastUpdate says when an instant was in the owner's time zone, for a "last updated" line:
+ * "hoje às 08:00" on the day of `now`, "em 01/11/2026" before it.
+ */
+export function formatLastUpdate(instant: string, now = new Date()): string {
   const date = new Date(instant);
-  return `${dateFormat.format(date)} ${timeFormat.format(date)}`;
+  const day = dateFormat.format(date);
+  return day === dateFormat.format(now) ? `hoje às ${timeFormat.format(date)}` : `em ${day}`;
 }
 
 /** formatInstantDate writes the owner's calendar day of an instant: "06/11/2026". */

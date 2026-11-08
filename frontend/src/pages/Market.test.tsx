@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   BondCatalogue,
@@ -10,6 +10,7 @@ import type {
   ProjectionMethods,
   RegisteredMortgage,
 } from "@/lib/api";
+import { text } from "@/test/dom";
 import { ipcaMortgage, trMortgage } from "@/test/mortgageFixtures";
 import { renderAt } from "@/test/renderAt";
 import { problem, type RecordedRequest, stubRoutes } from "@/test/stubServer";
@@ -113,9 +114,6 @@ interface Backend {
   methods: ProjectionMethods;
   catalogue: BondCatalogue;
 }
-
-const origin = window.location.origin;
-const get = (path: string) => ({ method: "GET", url: new URL(path, origin).href });
 
 // `routes` replaces or adds handlers; a replacement must use the key it replaces, as the first
 // matching route answers.
@@ -345,7 +343,7 @@ describe("an index's page", () => {
     expect(
       await screen.findByRole("img", { name: "Histórico de Selic diária" }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("radiogroup", { name: "Projeção" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Projeção" })).not.toBeInTheDocument();
   });
 
   it("names the stale data it shows", async () => {
@@ -374,7 +372,7 @@ describe("an index's page", () => {
 
     renderAt("/mercado/indices/tr");
 
-    await screen.findByRole("radiogroup", { name: "Projeção" });
+    await screen.findByRole("region", { name: "Projeção" });
     expect(screen.queryByText(/Expectativas do Focus/)).not.toBeInTheDocument();
   });
 
@@ -412,71 +410,18 @@ describe("an index's page", () => {
 });
 
 describe("projection method", () => {
-  const choices = () => screen.findByRole("radiogroup", { name: "Projeção" });
-
-  it("offers the index's methods with the current one chosen", async () => {
+  it("says how the index is projected and leads to Ajustes to change it", async () => {
     stubBackend();
 
     renderAt("/mercado/indices/tr");
 
-    const group = within(await choices());
-    expect(group.getAllByRole("radio").map((radio) => radio.getAttribute("aria-checked"))).toEqual([
-      "true",
-      "false",
-    ]);
-    expect(group.getByRole("radio", { name: "Média dos últimos 12 meses" })).toBeChecked();
-    expect(group.getByRole("radio", { name: "Média dos últimos 60 meses" })).toBeInTheDocument();
-  });
+    const section = within(await screen.findByRole("region", { name: "Projeção" }));
+    expect(section.queryByRole("radio")).not.toBeInTheDocument();
+    const link = section.getByRole("link");
+    expect(text(link)).toBe("Média dos últimos 12 mesesRepete a média do último ano.");
+    fireEvent.click(link);
 
-  it("saves the chosen method and reloads the projection shown", async () => {
-    const requests = stubBackend(
-      {},
-      {
-        "PUT /api/indexes/tr/projection-method": () =>
-          Response.json({
-            index: "tr",
-            method: "trailing_60",
-            offered: ["trailing_12", "trailing_60"],
-          }),
-      },
-    );
-
-    renderAt("/mercado/indices/tr");
-    const group = within(await choices());
-    const loaded = requests.length;
-    fireEvent.click(group.getByRole("radio", { name: "Média dos últimos 60 meses" }));
-
-    await waitFor(() =>
-      expect(group.getByRole("radio", { name: "Média dos últimos 60 meses" })).toBeChecked(),
-    );
-    await waitFor(() => expect(group.getByRole("radio", { name: /60 meses/ })).toBeEnabled());
-    expect(requests.slice(loaded)).toEqual([
-      {
-        method: "PUT",
-        url: new URL("/api/indexes/tr/projection-method", origin).href,
-        body: { method: "trailing_60" },
-      },
-      get("/api/indexes/tr/projection"),
-    ]);
-  });
-
-  it("says the method could not be saved and keeps the saved one", async () => {
-    stubBackend(
-      {},
-      {
-        "PUT /api/indexes/tr/projection-method": () =>
-          problem(422, "Unprocessable Entity", "trailing_60 is not offered"),
-      },
-    );
-
-    renderAt("/mercado/indices/tr");
-    const group = within(await choices());
-    fireEvent.click(group.getByRole("radio", { name: "Média dos últimos 60 meses" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Não foi possível salvar o método de projeção.",
-    );
-    expect(group.getByRole("radio", { name: "Média dos últimos 12 meses" })).toBeChecked();
+    expect(await screen.findByRole("heading", { level: 1, name: "Ajustes" })).toBeInTheDocument();
   });
 
   it("says what the poupança yield's projection derives from", async () => {

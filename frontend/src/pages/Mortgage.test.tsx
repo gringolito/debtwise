@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CorrectionIndex, Schedule, ScheduledInstallment } from "@/lib/api";
 import { rowTexts, text } from "@/test/dom";
@@ -288,11 +288,11 @@ describe("the installments of an indexed mortgage", () => {
 
     const alert = await screen.findByRole("alert");
     expect(text(alert)).toBe(
-      "Faltam valores de TR para 1 mês. Esse mês não foi corrigido. Atualize os dados de mercado na página Índices.",
+      "Faltam valores de TR para 1 mês. Esse mês não foi corrigido. Atualize os dados de mercado em Ajustes.",
     );
-    expect(within(alert).getByRole("link", { name: "Índices" })).toHaveAttribute(
+    expect(within(alert).getByRole("link", { name: "Ajustes" })).toHaveAttribute(
       "href",
-      "/mercado",
+      "/ajustes",
     );
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(
@@ -332,7 +332,7 @@ describe("the installments of an indexed mortgage", () => {
     renderAt("/financiamento");
 
     expect(text(await screen.findByRole("alert"))).toBe(
-      "Faltam valores de TR para 2 meses. Esses meses não foram corrigidos. Atualize os dados de mercado na página Índices.",
+      "Faltam valores de TR para 2 meses. Esses meses não foram corrigidos. Atualize os dados de mercado em Ajustes.",
     );
   });
 
@@ -345,7 +345,7 @@ describe("the installments of an indexed mortgage", () => {
       "Correção R$ 108,30 TR Sem índice 10/12/2023 a 10/01/2024 TR Sem índice 10/01/2024 a 10/02/2024 TR 0,2166% 10/02/2024 a 10/03/2024 Taxa de juros 12,682503% a.a. MIP R$ 18,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
     );
     expect(text(await screen.findByRole("alert"))).toBe(
-      "Faltam valores de TR para 2 meses. Esses meses não foram corrigidos. Atualize os dados de mercado na página Índices.",
+      "Faltam valores de TR para 2 meses. Esses meses não foram corrigidos. Atualize os dados de mercado em Ajustes.",
     );
   });
 
@@ -380,11 +380,11 @@ describe("the installments of an indexed mortgage", () => {
 
     const alert = await screen.findByRole("alert");
     expect(text(alert)).toBe(
-      "Faltam valores de Selic meta para 1 mês. A taxa de juros desse mês não inclui o adicional da poupança. Atualize os dados de mercado na página Índices.",
+      "Faltam valores de Selic meta para 1 mês. A taxa de juros desse mês não inclui o adicional da poupança. Atualize os dados de mercado em Ajustes.",
     );
-    expect(within(alert).getByRole("link", { name: "Índices" })).toHaveAttribute(
+    expect(within(alert).getByRole("link", { name: "Ajustes" })).toHaveAttribute(
       "href",
-      "/mercado",
+      "/ajustes",
     );
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect(
@@ -404,7 +404,7 @@ describe("the installments of an indexed mortgage", () => {
     renderAt("/financiamento");
 
     expect(text(await screen.findByRole("alert"))).toBe(
-      "Faltam valores de Selic meta para 2 meses. A taxa de juros desses meses não inclui o adicional da poupança. Atualize os dados de mercado na página Índices.",
+      "Faltam valores de Selic meta para 2 meses. A taxa de juros desses meses não inclui o adicional da poupança. Atualize os dados de mercado em Ajustes.",
     );
   });
 
@@ -422,58 +422,9 @@ describe("the installments of an indexed mortgage", () => {
 
     await installmentsTable();
     expect(screen.getAllByRole("alert").map(text)).toEqual([
-      "Faltam valores de TR para 1 mês. Esse mês não foi corrigido. Atualize os dados de mercado na página Índices.",
-      "Faltam valores de Selic meta para 1 mês. A taxa de juros desse mês não inclui o adicional da poupança. Atualize os dados de mercado na página Índices.",
+      "Faltam valores de TR para 1 mês. Esse mês não foi corrigido. Atualize os dados de mercado em Ajustes.",
+      "Faltam valores de Selic meta para 1 mês. A taxa de juros desse mês não inclui o adicional da poupança. Atualize os dados de mercado em Ajustes.",
     ]);
-  });
-});
-
-describe("deleting the mortgage", () => {
-  it("asks for confirmation, deletes and then opens the onboarding", async () => {
-    const requests = stubMortgageApi({ mortgage: registeredMortgage });
-    renderAt("/financiamento");
-
-    fireEvent.click(await screen.findByRole("button", { name: "Excluir financiamento" }));
-    const dialog = await screen.findByRole("alertdialog", { name: "Excluir financiamento?" });
-    expect(requests.some((req) => req.method === "DELETE")).toBe(false);
-    fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
-
-    expect(
-      await screen.findByRole("heading", { name: "Seu financiamento, com clareza." }),
-    ).toBeInTheDocument();
-    expect(requests.filter((req) => req.method === "DELETE")).toHaveLength(1);
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
-  });
-
-  it("keeps the mortgage when the owner cancels", async () => {
-    const requests = stubMortgageApi({ mortgage: registeredMortgage });
-    renderAt("/financiamento");
-
-    fireEvent.click(await screen.findByRole("button", { name: "Excluir financiamento" }));
-    const dialog = await screen.findByRole("alertdialog");
-    fireEvent.click(within(dialog).getByRole("button", { name: "Cancelar" }));
-
-    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
-    expect(requests.some((req) => req.method === "DELETE")).toBe(false);
-    expect(screen.getByRole("table", { name: "Prestações" })).toBeInTheDocument();
-  });
-
-  it("says so when the server refuses to delete", async () => {
-    stubRoutes({
-      "GET /api/mortgage": () => Response.json(registeredMortgage),
-      "GET /api/mortgage/schedule": () => Response.json(schedule),
-      "DELETE /api/mortgage": () => problem(500, "Internal Server Error", "unexpected failure"),
-    });
-    renderAt("/financiamento");
-
-    fireEvent.click(await screen.findByRole("button", { name: "Excluir financiamento" }));
-    const dialog = await screen.findByRole("alertdialog");
-    fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
-
-    expect(
-      await screen.findByText("Não foi possível excluir o financiamento."),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("table", { name: "Prestações" })).toBeInTheDocument();
   });
 });
 
@@ -517,7 +468,8 @@ describe("a schedule that changed on the server", () => {
     renderAt("/financiamento");
     expect(await screen.findByText("R$ 10.640,50")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Excluir financiamento" }));
+    fireEvent.click(screen.getByRole("link", { name: "Ajustes" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Excluir financiamento" }));
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
     await completeOnboarding();
@@ -542,7 +494,8 @@ describe("prepayments and statements of a mortgage deleted and registered again"
     fireEvent.click(screen.getByRole("radio", { name: "Extratos" }));
     expect(await screen.findByText("R$ 41.000,00")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Excluir financiamento" }));
+    fireEvent.click(screen.getByRole("link", { name: "Ajustes" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Excluir financiamento" }));
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
     await completeOnboarding();

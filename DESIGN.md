@@ -87,9 +87,10 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
   insurance and fee in `#AEAEB2`.
 - Signed money is the only place for gain/loss colors, and the accent is never used for it: green
   `#248A3D` for gains, red `#D70015` for losses and destructive actions, both only on white. Orange
-  `#B25000` only for stale market data. The two exceptions are a statement's difference on
+  `#B25000` only for stale market data. The three exceptions are a statement's difference on
   Financiamento, green with a check when it is within rounding and orange with a dot when it is
-  drift, and an imported row whose bond name wasn't recognised, flagged in orange.
+  drift, an imported row whose bond name wasn't recognised, flagged in orange, and the freshness
+  dot of each market data source on Ajustes, green when fresh and orange otherwise.
 
 ## Typography
 
@@ -135,6 +136,12 @@ Large Title at semibold weight. The wordmark is Title 2. These seven sizes are t
   plain "Cancelar" right; the content is inset grouped lists; the primary button spans the width.
 - Loading shows skeletons: blocks the shape of the content, in graphite at 5% so they read on both
   the canvas and white panels, pulsing gently.
+- Confirmations of a deletion: a centered 400px white panel with the sheet shadow over the page
+  dimmed and blurred as for a modal sheet, its content centered: the Headline question ("Excluir
+  financiamento?"), one Callout sentence in secondary grey on what goes and what stays, then two
+  full-width buttons stacked, the action in solid red with white text and "Cancelar" in graphite
+  text on the canvas gray. Deleting the mortgage, the deletion that takes the most with it, also
+  shows a red "!" in a red-tint disc above the question.
 - A screen that fails to load shows a white error panel in place of its content: a cloud-off icon
   in a grey circle, a Headline saying what could not load, "Verifique sua conexão. Seus dados
   estão salvos." in Callout, and a graphite "Tentar novamente" that retries the failed request.
@@ -310,22 +317,48 @@ market data lives in Ajustes.
   1 ano / 5 anos / 10 anos segmented control: the published values over that many years and the
   projection over half as many ahead, with the chart conventions of Financiamento. TR and the
   poupança yield are drawn by the months from the 1st to the 1st, as their daily periods zigzag.
-  Last, under a "Projeção" header, the methods the index offers as selectable rows, each with one
-  line on what it assumes; choosing one saves it at once, and a Footnote says the projection
-  changes the future balance and the comparisons in Decidir. The poupança yield's section says
-  what its projection derives from, linking TR and Selic meta.
+  Last, under a "Projeção" header, the method the index is projected by as one drill-in row with a
+  line on what it assumes, opening Ajustes, where the method is chosen; a Footnote says the
+  projection changes the future balance and the comparisons in Decidir. The poupança yield's
+  section says what its projection derives from, linking TR and Selic meta.
 - Títulos: the bonds a decision compares with the mortgage (ADR-0007) under "Comparáveis com seu
   financiamento", then "Outros títulos" as one collapsed row naming them ("Tesouro IPCA+ e outros ·
   3 títulos") that opens their table. Each table has the bond, its maturity in grey, and a Compra
   and a Venda column, each with the rate over the unit price in Footnote grey; a bond Tesouro
   doesn't sell reads "Fora de oferta" under Compra.
 
+## Ajustes
+
+The Large Title "Ajustes" over inset grouped lists:
+
+- Financiamento: "Contrato", whose value sums the contract up ("R$ 480.000,00 · SAC · TR"), opens
+  Contrato; "Extratos do banco", whose value counts them ("3 registrados"), opens Financiamento on
+  Extratos.
+- Dados de mercado: one row per source, "Índices (Banco Central)", "Expectativas (Focus)" and
+  "Preços dos títulos (Tesouro Direto)", with its last update in Footnote grey ("Atualizado hoje
+  às 08:00", "Atualizado em 01/11/2026", or "Nunca atualizado") and its freshness dot. The indexes
+  share a row, which reads as the least fresh of them with the update of the one updated longest
+  ago. Under the list, "Atualizar agora" as an accent text action on the left and "O DebtWise
+  atualiza tudo automaticamente todos os dias." in Footnote grey on the right; while a refresh
+  runs, a spinner and "Atualizando…" in secondary grey take the action's place.
+- Projeções: one drill-in row per index that offers a choice of projection methods, with the
+  method as its value ("Média dos últimos 12 meses"). A row opens a modal sheet titled with the
+  index, listing the methods as selectable rows with a line on what each assumes; picking one saves
+  it and closes the sheet. A Footnote under the list says the projection changes the future
+  balance and the comparisons in Decidir.
+- Sobre: "Código-fonte", opening the repository. The mockup's "Versão" row is left out until the
+  server reports its version, and its "Aparência" section with "Tema" until a dark palette is
+  designed.
+- Last, "Excluir financiamento" as a full-width row in red text alone in its panel, which asks for
+  confirmation, deletes the mortgage with its prepayments and statements, keeps the lots, and
+  opens the onboarding.
+
 ## Voice
 
 Direct, warm, second person ("você"), one sentence per explanation, deeper detail behind "Saiba
 mais". Use the domain words: financiamento, prestação, amortização extraordinária, saldo devedor,
 projeção, decisão. Avoid dívida, simulação, previsão. Results are conditional ("Na projeção
-atual…"). Never expose server state or refresh mechanics.
+atual…"). Server state and refresh mechanics appear only on Ajustes and in the stale-data notes.
 
 ## Sample data for mockups
 

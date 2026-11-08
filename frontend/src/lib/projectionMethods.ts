@@ -7,6 +7,10 @@ export const projectionMethodLabels: Record<ProjectionMethodName, string> = {
   focus: "Mediana do Focus (BCB)",
 };
 
+/** What choosing a projection method changes, said under every place that shows the choice. */
+export const projectionMethodsEffect =
+  "A projeção muda o saldo devedor futuro e as comparações em Decidir.";
+
 /** projectedByText names each projected index with the method that projected it. */
 export function projectedByText(methods: ProjectedBy[]): string {
   return methods

@@ -11,7 +11,7 @@ import { indexNames } from "@/lib/indexNames";
 import { indexPeriodProse, indexValueText, marketIndexes } from "@/lib/marketIndexes";
 import { useIndexHistory, useIndexProjection, useProjectionMethods } from "@/lib/marketQueries";
 import { IndexChart } from "@/pages/market/IndexChart";
-import { PoupancaDerivation, ProjectionChoice } from "@/pages/market/ProjectionChoice";
+import { PoupancaDerivation, ProjectionSummary } from "@/pages/market/Projection";
 import { StaleSourcesNote } from "@/pages/marketdata/StaleSourcesNote";
 import { useMarketData } from "@/pages/marketdata/useMarketData";
 
@@ -74,7 +74,7 @@ function Detail({
       {index === "poupanca_yield" ? (
         <PoupancaDerivation methods={methods.methods} />
       ) : (
-        chosen && <ProjectionChoice projection={chosen} />
+        chosen && <ProjectionSummary projection={chosen} />
       )}
     </>
   );
