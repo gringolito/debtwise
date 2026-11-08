@@ -72,65 +72,65 @@ func TestLotValidateReturnsEveryRuleTheLotBreaksInFieldOrder(t *testing.T) {
 		{
 			name: "purchased after today",
 			edit: func(l *bonds.Lot) { l.PurchaseDate = date(2026, time.October, 28) },
-			want: []bonds.Violation{{Field: "purchase_date", Reason: "must not be after today"}},
+			want: []bonds.Violation{{Field: "purchase_date", Rule: bonds.RuleAfterToday}},
 		},
 		{
 			name: "maturing on the purchase date",
 			edit: func(l *bonds.Lot) { l.Bond.Maturity = l.PurchaseDate },
 			want: []bonds.Violation{
-				{Field: "maturity", Reason: "must be after the purchase date"},
-				{Field: "maturity", Reason: "must be the 1st of a month"},
+				{Field: "maturity", Rule: bonds.RuleNotAfterPurchase},
+				{Field: "maturity", Rule: bonds.RuleNotMaturityDay},
 			},
 		},
 		{
 			name: "maturing before the purchase date",
 			edit: func(l *bonds.Lot) { l.Bond.Maturity = date(2026, time.October, 1) },
-			want: []bonds.Violation{{Field: "maturity", Reason: "must be after the purchase date"}},
+			want: []bonds.Violation{{Field: "maturity", Rule: bonds.RuleNotAfterPurchase}},
 		},
 		{
 			name: "LTN not maturing on the 1st",
 			edit: func(l *bonds.Lot) { l.Bond.Maturity = date(2030, time.January, 2) },
-			want: []bonds.Violation{{Field: "maturity", Reason: "must be the 1st of a month"}},
+			want: []bonds.Violation{{Field: "maturity", Rule: bonds.RuleNotMaturityDay}},
 		},
 		{
 			name: "NTN-F maturing on the 15th",
 			edit: func(l *bonds.Lot) { l.Bond = bonds.Bond{Type: bonds.NTNF, Maturity: date(2030, time.January, 15)} },
-			want: []bonds.Violation{{Field: "maturity", Reason: "must be the 1st of January or July"}},
+			want: []bonds.Violation{{Field: "maturity", Rule: bonds.RuleNotMaturityDay}},
 		},
 		{
 			name: "NTN-F maturing on the 1st of another month",
 			edit: func(l *bonds.Lot) { l.Bond = bonds.Bond{Type: bonds.NTNF, Maturity: date(2030, time.March, 1)} },
-			want: []bonds.Violation{{Field: "maturity", Reason: "must be the 1st of January or July"}},
+			want: []bonds.Violation{{Field: "maturity", Rule: bonds.RuleNotMaturityDay}},
 		},
 		{
 			name: "NTN-B Principal maturing on the 1st",
 			edit: func(l *bonds.Lot) { l.Bond = bonds.Bond{Type: bonds.NTNBPrincipal, Maturity: date(2035, time.May, 1)} },
-			want: []bonds.Violation{{Field: "maturity", Reason: "must be the 15th of a month"}},
+			want: []bonds.Violation{{Field: "maturity", Rule: bonds.RuleNotMaturityDay}},
 		},
 		{
 			name: "NTN-B maturing on the 14th",
 			edit: func(l *bonds.Lot) { l.Bond = bonds.Bond{Type: bonds.NTNB, Maturity: date(2040, time.August, 14)} },
-			want: []bonds.Violation{{Field: "maturity", Reason: "must be the 15th of a month"}},
+			want: []bonds.Violation{{Field: "maturity", Rule: bonds.RuleNotMaturityDay}},
 		},
 		{
 			name: "unit price of zero",
 			edit: func(l *bonds.Lot) { l.UnitPrice = mustDecimal(t, "0") },
-			want: []bonds.Violation{{Field: "unit_price", Reason: "must be greater than zero"}},
+			want: []bonds.Violation{{Field: "unit_price", Rule: bonds.RuleNotPositive}},
 		},
 		{
 			name: "negative unit price",
 			edit: func(l *bonds.Lot) { l.UnitPrice = mustDecimal(t, "-700") },
-			want: []bonds.Violation{{Field: "unit_price", Reason: "must be greater than zero"}},
+			want: []bonds.Violation{{Field: "unit_price", Rule: bonds.RuleNotPositive}},
 		},
 		{
 			name: "quantity of zero",
 			edit: func(l *bonds.Lot) { l.Quantity = mustDecimal(t, "0.00") },
-			want: []bonds.Violation{{Field: "quantity", Reason: "must be greater than zero"}},
+			want: []bonds.Violation{{Field: "quantity", Rule: bonds.RuleNotPositive}},
 		},
 		{
 			name: "negative quantity",
 			edit: func(l *bonds.Lot) { l.Quantity = mustDecimal(t, "-1") },
-			want: []bonds.Violation{{Field: "quantity", Reason: "must be greater than zero"}},
+			want: []bonds.Violation{{Field: "quantity", Rule: bonds.RuleNotPositive}},
 		},
 		{
 			name: "everything wrong at once",
@@ -141,11 +141,11 @@ func TestLotValidateReturnsEveryRuleTheLotBreaksInFieldOrder(t *testing.T) {
 				l.Quantity = mustDecimal(t, "-1")
 			},
 			want: []bonds.Violation{
-				{Field: "maturity", Reason: "must be after the purchase date"},
-				{Field: "maturity", Reason: "must be the 1st of a month"},
-				{Field: "purchase_date", Reason: "must not be after today"},
-				{Field: "unit_price", Reason: "must be greater than zero"},
-				{Field: "quantity", Reason: "must be greater than zero"},
+				{Field: "maturity", Rule: bonds.RuleNotAfterPurchase},
+				{Field: "maturity", Rule: bonds.RuleNotMaturityDay},
+				{Field: "purchase_date", Rule: bonds.RuleAfterToday},
+				{Field: "unit_price", Rule: bonds.RuleNotPositive},
+				{Field: "quantity", Rule: bonds.RuleNotPositive},
 			},
 		},
 	}

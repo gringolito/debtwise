@@ -10,6 +10,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
+	"github.com/gringolito/debtwise/backend/bonds"
 	"github.com/gringolito/debtwise/backend/indexes"
 	"github.com/gringolito/debtwise/backend/mortgage"
 )
@@ -441,58 +442,83 @@ func replacedID(replaces *int64) int64 {
 	return *replaces
 }
 
-// ruleViolations is the 422 for values that break a rule of the mortgage: Huma's problem document,
-// with each error naming the rule it breaks by its code.
+// ruleViolations is the 422 for values that break a rule of the mortgage or of a lot: Huma's
+// problem document, with each error that breaks a rule naming it by its code. Errors also holds the
+// schema errors a request can have next to them, which have no code.
 type ruleViolations struct {
 	huma.ErrorModel
 
-	Errors []ruleViolation `json:"errors"`
+	Errors []any `json:"errors"`
 }
 
 type ruleViolation struct {
-	Location string        `json:"location"`
-	Message  string        `json:"message"`
-	Code     mortgage.Rule `json:"code"`
+	Location string `json:"location"`
+	Message  string `json:"message"`
+	Code     string `json:"code"`
+}
+
+// rule is a rule of the mortgage or of a lot.
+type rule interface {
+	~string
+	Reason() string
+}
+
+func newRuleViolation[R rule](location string, r R) ruleViolation {
+	return ruleViolation{Location: location, Message: r.Reason(), Code: string(r)}
+}
+
+// rulesFailure returns a 422 listing details, which are rule violations and schema errors, or nil
+// when there are none.
+func rulesFailure(details []any) error {
+	if len(details) == 0 {
+		return nil
+	}
+
+	return &ruleViolations{
+		Title:  http.StatusText(http.StatusUnprocessableEntity),
+		Status: http.StatusUnprocessableEntity,
+		Detail: "validation failed",
+		Errors: details,
+	}
 }
 
 // violationsFailure returns a 422 listing violations, or nil when there are none.
 func violationsFailure(violations []mortgage.Violation) error {
-	if len(violations) == 0 {
-		return nil
-	}
-
-	problem := &ruleViolations{
-		Title:  http.StatusText(http.StatusUnprocessableEntity),
-		Status: http.StatusUnprocessableEntity,
-		Detail: "validation failed",
-	}
+	details := make([]any, 0, len(violations))
 	for _, v := range violations {
-		problem.Errors = append(problem.Errors, ruleViolation{
-			Location: "body." + v.Field,
-			Message:  v.Rule.Reason(),
-			Code:     v.Rule,
-		})
+		details = append(details, newRuleViolation("body."+v.Field, v.Rule))
 	}
 
-	return problem
+	return rulesFailure(details)
 }
 
 // documentRuleCode declares the code of the rule a value breaks on the ErrorDetail schema every
 // error response refers to, which forbids undeclared properties.
 func documentRuleCode(registry huma.Registry) {
-	rules := mortgage.Rules()
+	var enum []any
 
-	enum := make([]any, 0, len(rules))
-	for _, rule := range rules {
-		enum = append(enum, string(rule))
+	seen := make(map[string]bool)
+	add := func(code string) {
+		if !seen[code] {
+			seen[code] = true
+			enum = append(enum, code)
+		}
+	}
+
+	for _, r := range mortgage.Rules() {
+		add(string(r))
+	}
+
+	for _, r := range bonds.Rules() {
+		add(string(r))
 	}
 
 	ref := registry.Schema(reflect.TypeFor[huma.ErrorDetail](), true, "").Ref
 	registry.SchemaFromRef(ref).Properties["code"] = &huma.Schema{
 		Type: huma.TypeString,
 		Enum: enum,
-		Description: "The rule of the mortgage the value breaks, present when it breaks one rather " +
-			"than the schema. message says what the rule asks in English.",
+		Description: "The rule of the mortgage or of a lot the value breaks, present when it breaks " +
+			"one rather than the schema. message says what the rule asks in English.",
 	}
 }
 

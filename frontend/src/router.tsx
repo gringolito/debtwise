@@ -6,19 +6,22 @@ import {
   type Router,
   type RouterHistory,
 } from "@tanstack/react-router";
-import { SectionLayout } from "@/components/layout/SectionLayout";
 import { Bonds } from "@/pages/Bonds";
 import { Contract } from "@/pages/Contract";
 import { Dashboard } from "@/pages/Dashboard";
 import { Decision } from "@/pages/Decision";
-import { EarlySale } from "@/pages/EarlySale";
 import { ImportLots } from "@/pages/ImportLots";
 import { Indexes } from "@/pages/Indexes";
-import { Lots } from "@/pages/Lots";
+import { Investments } from "@/pages/Investments";
+import { EarlySales } from "@/pages/investments/EarlySales";
+import { Purchases } from "@/pages/investments/Purchases";
+import { LotDetail } from "@/pages/LotDetail";
 import { Mortgage } from "@/pages/Mortgage";
 import { NotFound } from "@/pages/NotFound";
 import { MortgageGate } from "@/pages/onboarding/MortgageGate";
 import { Settings } from "@/pages/Settings";
+import { validateEffectSearch } from "@/lib/investments";
+import { SectionLayout } from "@/components/layout/SectionLayout";
 
 const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFound });
 
@@ -49,27 +52,27 @@ const contractRoute = createRoute({
 const investmentsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/investimentos",
-  component: () => (
-    <SectionLayout
-      label="Investimentos"
-      sections={[
-        { to: "/investimentos", label: "Compras" },
-        { to: "/investimentos/venda-antecipada", label: "Venda antecipada" },
-      ]}
-    />
-  ),
+  component: Investments,
 });
 
-const lotsRoute = createRoute({
+const purchasesRoute = createRoute({
   getParentRoute: () => investmentsRoute,
   path: "/",
-  component: Lots,
+  component: Purchases,
 });
 
 const earlySaleRoute = createRoute({
   getParentRoute: () => investmentsRoute,
   path: "/venda-antecipada",
-  component: EarlySale,
+  component: EarlySales,
+  validateSearch: validateEffectSearch,
+});
+
+const lotRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/investimentos/compras/$lotId",
+  component: LotDetail,
+  validateSearch: validateEffectSearch,
 });
 
 const importLotsRoute = createRoute({
@@ -137,7 +140,8 @@ const routeTree = rootRoute.addChildren([
     homeRoute,
     mortgageRoute,
     contractRoute,
-    investmentsRoute.addChildren([lotsRoute, earlySaleRoute]),
+    investmentsRoute.addChildren([purchasesRoute, earlySaleRoute]),
+    lotRoute,
     importLotsRoute,
     decisionRoute,
     marketRoute.addChildren([indexesRoute, bondsRoute]),

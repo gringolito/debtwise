@@ -1,12 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { ClockIcon } from "lucide-react";
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
-import type { Decision, Verdict, VerdictMarketData } from "@/lib/api";
-import { bestVerdict, staleSources } from "@/lib/dashboard";
+import type { Decision, Verdict } from "@/lib/api";
+import { bestVerdict } from "@/lib/dashboard";
 import { isZero, verdictTitle } from "@/lib/decisions";
-import { formatDate, formatInstantDayMonth, formatMoney } from "@/lib/format";
-import { useMarketData } from "@/pages/marketdata/useMarketData";
+import { formatDate, formatMoney } from "@/lib/format";
+import { StaleNote } from "@/pages/marketdata/StaleNote";
 
 function answer(best: Verdict & { advantage: string }): { title: string; detail: React.ReactNode } {
   const bond = verdictTitle(best);
@@ -40,37 +39,6 @@ function answer(best: Verdict & { advantage: string }): { title: string; detail:
       </>
     ),
   };
-}
-
-function StaleNote({ marketData }: { marketData: VerdictMarketData }) {
-  const { refresh, refreshing } = useMarketData();
-  const sources = staleSources(marketData);
-  if (sources.length === 0) return null;
-  return (
-    <p className="flex flex-wrap items-center gap-x-1.5 px-1 text-footnote text-caution">
-      <ClockIcon aria-hidden="true" strokeWidth={1.5} className="size-4" />
-      <span>
-        {sources
-          .map(({ name, refreshedAt }) =>
-            refreshedAt
-              ? `${name} de ${formatInstantDayMonth(refreshedAt)}.`
-              : `${name} indisponível.`,
-          )
-          .join(" ")}
-      </span>{" "}
-      {refreshing || refresh.isPending ? (
-        <span>Atualizando…</span>
-      ) : (
-        <button
-          type="button"
-          className="font-medium underline underline-offset-2"
-          onClick={() => refresh.mutate()}
-        >
-          Atualizar
-        </button>
-      )}
-    </p>
-  );
 }
 
 /**

@@ -26,8 +26,40 @@ type Lot struct {
 // Violation is a rule a lot breaks. Field names the field it concerns in the snake_case the API
 // uses, such as "purchase_date".
 type Violation struct {
-	Field  string
-	Reason string
+	Field string
+	Rule  Rule
+}
+
+// Rule is a rule of a lot that a value can break, named by a code a client can match.
+type Rule string
+
+// The rules of a lot.
+const (
+	RuleNotAfterPurchase Rule = "not_after_purchase"
+	RuleNotMaturityDay   Rule = "not_maturity_day"
+	RuleAfterToday       Rule = "after_today"
+	RuleNotPositive      Rule = "not_positive"
+)
+
+// Rules returns every rule, in the order the API documents them.
+func Rules() []Rule {
+	return []Rule{RuleNotAfterPurchase, RuleNotMaturityDay, RuleAfterToday, RuleNotPositive}
+}
+
+// Reason says what the rule asks, in English, for API consumers.
+func (r Rule) Reason() string {
+	switch r {
+	case RuleNotAfterPurchase:
+		return "must be after the purchase date"
+	case RuleNotMaturityDay:
+		return "must be a date Tesouro matures this type of bond on"
+	case RuleAfterToday:
+		return "must not be after today"
+	case RuleNotPositive:
+		return "must be greater than zero"
+	default:
+		return ""
+	}
 }
 
 // Taxes are the income tax, IOF and custody fee tables, each row in effect from its date on.
@@ -107,47 +139,41 @@ func (l Lot) Validate(today time.Time) []Violation {
 	var violations []Violation
 
 	if !l.Bond.Maturity.After(l.PurchaseDate) {
-		violations = append(violations, Violation{"maturity", "must be after the purchase date"})
+		violations = append(violations, Violation{"maturity", RuleNotAfterPurchase})
 	}
 
-	if reason := maturityDayReason(l.Bond); reason != "" {
-		violations = append(violations, Violation{"maturity", reason})
+	if !maturesOnADayOf(l.Bond) {
+		violations = append(violations, Violation{"maturity", RuleNotMaturityDay})
 	}
 
 	if l.PurchaseDate.After(today) {
-		violations = append(violations, Violation{"purchase_date", "must not be after today"})
+		violations = append(violations, Violation{"purchase_date", RuleAfterToday})
 	}
 
 	if l.UnitPrice.Cmp(decimal.Decimal{}) <= 0 {
-		violations = append(violations, Violation{"unit_price", "must be greater than zero"})
+		violations = append(violations, Violation{"unit_price", RuleNotPositive})
 	}
 
 	if l.Quantity.Cmp(decimal.Decimal{}) <= 0 {
-		violations = append(violations, Violation{"quantity", "must be greater than zero"})
+		violations = append(violations, Violation{"quantity", RuleNotPositive})
 	}
 
 	return violations
 }
 
-// maturityDayReason says why the maturity of bond isn't a date Tesouro matures that type of bond
-// on, and is empty when it is, or when the type is unknown.
-func maturityDayReason(bond Bond) string {
+// maturesOnADayOf reports whether the maturity of bond is a date Tesouro matures that type of bond
+// on; a bond of an unknown type does.
+func maturesOnADayOf(bond Bond) bool {
 	month, day := bond.Maturity.Month(), bond.Maturity.Day()
 
 	switch bond.Type {
 	case LTN:
-		if day != 1 {
-			return "must be the 1st of a month"
-		}
+		return day == 1
 	case NTNF:
-		if day != 1 || (month != time.January && month != time.July) {
-			return "must be the 1st of January or July"
-		}
+		return day == 1 && (month == time.January || month == time.July)
 	case NTNBPrincipal, NTNB:
-		if day != 15 {
-			return "must be the 15th of a month"
-		}
+		return day == 15
 	}
 
-	return ""
+	return true
 }
