@@ -74,6 +74,7 @@ const hold: Scenario = {
       prepaid: "0.00",
       held: "0.00",
       outstanding_balance: "15000.00",
+      net_worth: "-5400.00",
     },
     {
       date: "2029-01-01",
@@ -82,6 +83,7 @@ const hold: Scenario = {
       held: "0.00",
       redeemed: maturity,
       outstanding_balance: "0.00",
+      net_worth: "9407.00",
     },
   ],
 };
@@ -98,6 +100,7 @@ const sell: Scenario = {
       prepaid: "7462.69",
       held: "0.00",
       outstanding_balance: "7537.31",
+      net_worth: "-7537.31",
     },
     {
       date: "2029-01-01",
@@ -105,6 +108,7 @@ const sell: Scenario = {
       prepaid: "0.00",
       held: "0.00",
       outstanding_balance: "0.00",
+      net_worth: "10012.50",
     },
   ],
 };

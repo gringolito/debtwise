@@ -549,6 +549,46 @@ func TestLotValueOfAnNTNFOnACouponDateAccruesNoCustodyFee(t *testing.T) {
 	assert.Len(t, valuation.Coupons, 5)
 }
 
+// Accruals values the lot on many dates at once, each as Value's Accrual: the NTN-F lot above is
+// worth 3,158.92 net on its coupon date of 2026-07-01 and 3,254.13 on 2026-10-26, whichever order
+// the dates come in.
+func TestLotAccrualsValuesEachDateAsItsAccrual(t *testing.T) {
+	t.Parallel()
+
+	lot := bonds.Lot{
+		Bond:         bonds.Bond{Type: bonds.NTNF, Maturity: date(2028, time.January, 1)},
+		PurchaseDate: date(2025, time.March, 3),
+		Rate:         mustDecimal(t, "0.1200"),
+		UnitPrice:    mustDecimal(t, "985.321456"),
+		Quantity:     mustDecimal(t, "3.25"),
+	}
+
+	got, err := lot.Accruals([]time.Time{date(2026, time.October, 26), date(2026, time.July, 1)}, seededTaxes(t), bonds.IPCA{})
+	require.NoError(t, err)
+	require.Len(t, got, 2)
+
+	assert.Equal(t,
+		amountView{Gross: "3284.85", IOF: "0.00", IncomeTax: "28.61", CustodyFee: "2.11", Net: "3254.13"}, viewAmount(got[0]))
+	assert.Equal(t,
+		amountView{Gross: "3167.34", IOF: "0.00", IncomeTax: "8.42", CustodyFee: "0.00", Net: "3158.92"}, viewAmount(got[1]))
+}
+
+// A lot has no Accrual from its maturity on, only its Maturity Value, and an unknown bond type has
+// no valuation.
+func TestLotAccrualsFailsOnOrAfterMaturityAndForABondOfAnUnknownType(t *testing.T) {
+	t.Parallel()
+
+	lot := ltnLot(t, date(2026, time.January, 1))
+
+	_, err := lot.Accruals([]time.Time{date(2029, time.December, 31), lot.Bond.Maturity}, seededTaxes(t), bonds.IPCA{})
+	require.Error(t, err)
+
+	lot.Bond.Type = "selic"
+
+	_, err = lot.Accruals([]time.Time{date(2026, time.October, 26)}, seededTaxes(t), bonds.IPCA{})
+	require.Error(t, err)
+}
+
 // A coupon pays no IOF, even within 30 days of the purchase. The NTN-F lot above bought on
 // 2025-06-16 at its PU at 12.00% that day, R$ 1,004.048996 (R$ 3,263.16 in all), is paid its first
 // coupon 15 days later. Its yield is only 3,119.24 + 158.63 − 3,263.16 = 14.71, the interest of

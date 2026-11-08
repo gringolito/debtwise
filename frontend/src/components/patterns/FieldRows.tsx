@@ -1,12 +1,12 @@
-import { type ReactNode, useId, useLayoutEffect, useRef } from "react";
+import { type ReactNode, useId } from "react";
 import {
   GroupedListItem,
   GroupedListLabel,
   GroupedListRow,
 } from "@/components/patterns/GroupedList";
+import { useTypedValue } from "@/components/patterns/useTypedValue";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { groupThousands } from "@/lib/format";
 
 interface RowTextProps {
   id: string;
@@ -59,17 +59,6 @@ interface InputRowProps
   suffix?: ReactNode;
 }
 
-// Where the caret goes in formatted text: after as many characters other than group dots as were
-// before it in what the owner typed.
-function caretIn(formatted: string, typed: string, caret: number): number {
-  const kept = typed.slice(0, caret).replaceAll(".", "").length;
-  let position = 0;
-  for (let seen = 0; position < formatted.length && seen < kept; position++) {
-    if (formatted[position] !== ".") seen++;
-  }
-  return position;
-}
-
 /** InputRow is a grouped list row whose value the owner types in place. */
 export function InputRow({
   label,
@@ -84,23 +73,7 @@ export function InputRow({
 }: InputRowProps) {
   const id = useId();
   const text = { id, label, hint, message };
-  const input = useRef<HTMLInputElement>(null);
-  const caret = useRef<number | null>(null);
-
-  useLayoutEffect(() => {
-    if (caret.current === null) return;
-    input.current?.setSelectionRange(caret.current, caret.current);
-    caret.current = null;
-  });
-
-  const change = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const typed = event.target.value;
-    const next = grouped ? groupThousands(typed, value) : typed;
-    if (next !== typed) {
-      caret.current = caretIn(next, typed, event.target.selectionStart ?? typed.length);
-    }
-    onChange(next);
-  };
+  const typed = useTypedValue(value, onChange, grouped);
 
   return (
     <GroupedListItem>
@@ -109,11 +82,9 @@ export function InputRow({
         <span className="flex shrink-0 items-baseline gap-1">
           {prefix !== undefined && <span className="text-muted-foreground">{prefix}</span>}
           <Input
-            ref={input}
+            {...typed}
             id={id}
             variant="inline"
-            value={value}
-            onChange={change}
             aria-invalid={message !== undefined || undefined}
             aria-describedby={describedBy(text)}
             {...props}

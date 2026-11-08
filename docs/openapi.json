@@ -128,6 +128,10 @@
             "description": "What the bond cost, in reais, as a decimal string.",
             "type": "string"
           },
+          "net_worth": {
+            "description": "The scenario's net worth once the day's flows are done: the cash held by then and the bond's net value, its accrual value before the horizon and its Maturity Value on it, less the outstanding balance, in reais, as a decimal string.",
+            "type": "string"
+          },
           "outstanding_balance": {
             "description": "What is owed once the day's flows are done, in reais, as a decimal string.",
             "type": "string"
@@ -150,7 +154,8 @@
           "invested",
           "prepaid",
           "held",
-          "outstanding_balance"
+          "outstanding_balance",
+          "net_worth"
         ],
         "type": "object"
       },
@@ -1873,6 +1878,10 @@
           "maturity": {
             "description": "The date the bond matures: the horizon both scenarios are valued on.",
             "format": "date",
+            "type": "string"
+          },
+          "minimum_amount": {
+            "description": "The smallest amount that buys a hundredth of the bond at the unit price, in reais, as a decimal string. Only when the verdict is unavailable for amount_too_small.",
             "type": "string"
           },
           "no_break_even": {

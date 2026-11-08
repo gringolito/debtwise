@@ -39,6 +39,7 @@ const flow = (date: string, outstanding_balance: string): CashFlow => ({
   prepaid: "0.00",
   held: "0.00",
   outstanding_balance,
+  net_worth: "0.00",
 });
 
 const scenario: Scenario = {

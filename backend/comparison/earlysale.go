@@ -138,6 +138,18 @@ func (c comparer) earlySale(l bonds.Lot, sell *bonds.Price) (EarlySaleCheck, err
 	statusQuo := c.plan(zero, nil, nil)
 	check.Hold = c.scenario(statusQuo, zero, zero, zero, nil, coupons, &valuation.Maturity)
 	check.Sell = c.scenario(statusQuo, c.decision.Amount, zero, zero, valuation.Market, nil, nil)
+
+	accrued, err := c.accruals(check.Hold, l)
+	if err != nil {
+		return EarlySaleCheck{}, err
+	}
+
+	for _, a := range accrued {
+		methods = append(methods, a.ProjectedBy)
+	}
+
+	check.Hold.valueFlows(accrued)
+	check.Sell.valueFlows(nil)
 	check.Advantage = check.Hold.NetWorth.Sub(check.Sell.NetWorth)
 	check.ProjectedBy = projectedBy(append(methods, readBy(statusQuo), check.Hold.projectedBy, check.Sell.projectedBy)...)
 

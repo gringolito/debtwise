@@ -13,3 +13,8 @@ func (x Decimal) RoundCents() Decimal {
 func (x Decimal) TruncateCents() Decimal {
 	return x.quantize(2, apd.RoundDown)
 }
+
+// CeilCents rounds money up to centavos, as the smallest amount that covers a price.
+func (x Decimal) CeilCents() Decimal {
+	return x.quantize(2, apd.RoundCeiling)
+}

@@ -55,6 +55,7 @@ type decisionFlow struct {
 	Held               string               `json:"held"`
 	Redeemed           *decisionAmount      `json:"redeemed"`
 	OutstandingBalance string               `json:"outstanding_balance"`
+	NetWorth           string               `json:"net_worth"`
 }
 
 type decisionScenario struct {
@@ -77,6 +78,7 @@ type decisionVerdict struct {
 	Rate          string            `json:"rate"`
 	Unavailable   string            `json:"unavailable"`
 	UnitPrice     string            `json:"unit_price"`
+	MinimumAmount string            `json:"minimum_amount"`
 	Quantity      string            `json:"quantity"`
 	Advantage     string            `json:"advantage"`
 	AvoidedCost   string            `json:"avoided_cost"`
@@ -96,17 +98,34 @@ type decisionResult struct {
 }
 
 // installmentFlow is a cash flow on an installment's due date.
-func installmentFlow(day string, number int, balance string) decisionFlow {
+func installmentFlow(day string, number int, balance, netWorth string) decisionFlow {
 	return decisionFlow{
 		Date: day, Installment: &decisionInstallment{Number: number, Amount: "1000.00"},
-		Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: balance,
+		Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: balance, NetWorth: netWorth,
 	}
 }
 
 // heldFlow is the 1,000.00 installment of the status quo held on its due date once the mortgage is
 // paid off.
-func heldFlow(day string) decisionFlow {
-	return decisionFlow{Date: day, Invested: "0.00", Prepaid: "0.00", Held: "1000.00", OutstandingBalance: "0.00"}
+func heldFlow(day, netWorth string) decisionFlow {
+	return decisionFlow{Date: day, Invested: "0.00", Prepaid: "0.00", Held: "1000.00", OutstandingBalance: "0.00", NetWorth: netWorth}
+}
+
+// withoutNetWorths returns the scenario with its cash flows' net worths cleared, and those net
+// worths in order, so a test reads the flows apart from the net worths it checks one by one.
+func withoutNetWorths(s decisionScenario) (decisionScenario, []string) {
+	worths := make([]string, 0, len(s.CashFlows))
+	flows := make([]decisionFlow, 0, len(s.CashFlows))
+
+	for _, f := range s.CashFlows {
+		worths = append(worths, f.NetWorth)
+		f.NetWorth = ""
+		flows = append(flows, f)
+	}
+
+	s.CashFlows = flows
+
+	return s, worths
 }
 
 func (s server) decide(t *testing.T, body string) decisionResult {
@@ -165,49 +184,60 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	assert.Equal(t, decisionScenario{
 		NetWorth: "5000.00", Cash: "5000.00", OutstandingBalance: "0.00",
 		CashFlows: []decisionFlow{
-			{Date: "2026-10-28", Invested: "0.00", Prepaid: "5000.00", Held: "0.00", OutstandingBalance: "10000.00"},
-			installmentFlow("2026-11-10", 10, "9000.00"),
-			installmentFlow("2026-12-10", 11, "8000.00"),
-			installmentFlow("2027-01-10", 12, "7000.00"),
-			installmentFlow("2027-02-10", 13, "6000.00"),
-			installmentFlow("2027-03-10", 14, "5000.00"),
-			installmentFlow("2027-04-10", 15, "4000.00"),
-			installmentFlow("2027-05-10", 16, "3000.00"),
-			installmentFlow("2027-06-10", 17, "2000.00"),
-			installmentFlow("2027-07-10", 18, "1000.00"),
-			installmentFlow("2027-08-10", 19, "0.00"),
-			heldFlow("2027-09-10"),
-			heldFlow("2027-10-10"),
-			heldFlow("2027-11-10"),
-			heldFlow("2027-12-10"),
-			heldFlow("2028-01-10"),
-			{Date: "2029-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "0.00"},
+			{Date: "2026-10-28", Invested: "0.00", Prepaid: "5000.00", Held: "0.00", OutstandingBalance: "10000.00", NetWorth: "-10000.00"},
+			installmentFlow("2026-11-10", 10, "9000.00", "-9000.00"),
+			installmentFlow("2026-12-10", 11, "8000.00", "-8000.00"),
+			installmentFlow("2027-01-10", 12, "7000.00", "-7000.00"),
+			installmentFlow("2027-02-10", 13, "6000.00", "-6000.00"),
+			installmentFlow("2027-03-10", 14, "5000.00", "-5000.00"),
+			installmentFlow("2027-04-10", 15, "4000.00", "-4000.00"),
+			installmentFlow("2027-05-10", 16, "3000.00", "-3000.00"),
+			installmentFlow("2027-06-10", 17, "2000.00", "-2000.00"),
+			installmentFlow("2027-07-10", 18, "1000.00", "-1000.00"),
+			installmentFlow("2027-08-10", 19, "0.00", "0.00"),
+			heldFlow("2027-09-10", "1000.00"),
+			heldFlow("2027-10-10", "2000.00"),
+			heldFlow("2027-11-10", "3000.00"),
+			heldFlow("2027-12-10", "4000.00"),
+			heldFlow("2028-01-10", "5000.00"),
+			{Date: "2029-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "0.00", NetWorth: "5000.00"},
 		},
 	}, *v.Prepay)
 
 	require.NotNil(t, v.Invest)
+
+	invest, worths := withoutNetWorths(*v.Invest)
 	assert.Equal(t, decisionScenario{
 		NetWorth: "6229.89", Cash: "5.15", OutstandingBalance: "0.00", Bond: maturity,
 		CashFlows: []decisionFlow{
 			{Date: "2026-10-28", Invested: "4994.85", Prepaid: "0.00", Held: "5.15", OutstandingBalance: "15000.00"},
-			installmentFlow("2026-11-10", 10, "14000.00"),
-			installmentFlow("2026-12-10", 11, "13000.00"),
-			installmentFlow("2027-01-10", 12, "12000.00"),
-			installmentFlow("2027-02-10", 13, "11000.00"),
-			installmentFlow("2027-03-10", 14, "10000.00"),
-			installmentFlow("2027-04-10", 15, "9000.00"),
-			installmentFlow("2027-05-10", 16, "8000.00"),
-			installmentFlow("2027-06-10", 17, "7000.00"),
-			installmentFlow("2027-07-10", 18, "6000.00"),
-			installmentFlow("2027-08-10", 19, "5000.00"),
-			installmentFlow("2027-09-10", 20, "4000.00"),
-			installmentFlow("2027-10-10", 21, "3000.00"),
-			installmentFlow("2027-11-10", 22, "2000.00"),
-			installmentFlow("2027-12-10", 23, "1000.00"),
-			installmentFlow("2028-01-10", 24, "0.00"),
+			installmentFlow("2026-11-10", 10, "14000.00", ""),
+			installmentFlow("2026-12-10", 11, "13000.00", ""),
+			installmentFlow("2027-01-10", 12, "12000.00", ""),
+			installmentFlow("2027-02-10", 13, "11000.00", ""),
+			installmentFlow("2027-03-10", 14, "10000.00", ""),
+			installmentFlow("2027-04-10", 15, "9000.00", ""),
+			installmentFlow("2027-05-10", 16, "8000.00", ""),
+			installmentFlow("2027-06-10", 17, "7000.00", ""),
+			installmentFlow("2027-07-10", 18, "6000.00", ""),
+			installmentFlow("2027-08-10", 19, "5000.00", ""),
+			installmentFlow("2027-09-10", 20, "4000.00", ""),
+			installmentFlow("2027-10-10", 21, "3000.00", ""),
+			installmentFlow("2027-11-10", 22, "2000.00", ""),
+			installmentFlow("2027-12-10", 23, "1000.00", ""),
+			installmentFlow("2028-01-10", 24, "0.00", ""),
 			{Date: "2029-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "0.00"},
 		},
-	}, *v.Invest)
+	}, invest)
+
+	// Right after buying, the 5.15 held and the 4,994.85 bond leave the owner 10,000.00 below the
+	// 15,000.00 owed, as prepaying does. Each installment then pays 1,000.00 off, and the bond is
+	// worth its Accrual net of IOF, income tax and custody fee that day, which the figures in
+	// Python's decimal module reproduce, up to its Maturity Value on the horizon.
+	assert.Equal(t, []string{
+		"-10000.00", "-8993.77", "-7947.05", "-6910.15", "-5872.90", "-4835.23", "-3793.39", "-2749.14", "-1705.11",
+		"-660.60", "382.26", "1427.65", "2471.40", "3529.46", "4575.46", "5621.88", "6229.89",
+	}, worths)
 }
 
 // Quoted back as the LTN's buy rate, the Break-even Rate the API answers leaves investing and
@@ -321,12 +351,14 @@ func TestAnNTNFVerdictListsEachCouponItPrepays(t *testing.T) {
 	}
 
 	require.NotNil(t, v.Invest)
+
+	invest, worths := withoutNetWorths(*v.Invest)
 	assert.Equal(t, decisionScenario{
 		NetWorth: "10384.51", Cash: "4611.16", OutstandingBalance: "0.00", Bond: maturity,
 		CashFlows: []decisionFlow{
 			{Date: "2026-10-28", Invested: "4994.73", Prepaid: "0.00", Held: "5.27", OutstandingBalance: "15000.00"},
-			installmentFlow("2026-11-10", 10, "14000.00"),
-			installmentFlow("2026-12-10", 11, "13000.00"),
+			installmentFlow("2026-11-10", 10, "14000.00", ""),
+			installmentFlow("2026-12-10", 11, "13000.00", ""),
 			coupon("2027-01-01", "23.62", "1.82", "251.31", "251.31", "0.00", "12748.69"),
 			installment("2027-01-10", 12, "980.67", "19.33", "0.00", "11748.69"),
 			installment("2027-02-10", 13, "979.06", "20.94", "0.00", "10748.69"),
@@ -362,7 +394,13 @@ func TestAnNTNFVerdictListsEachCouponItPrepays(t *testing.T) {
 			held("2036-07-01", "40.64", "5.85", "230.26"),
 			{Date: "2037-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "0.00"},
 		},
-	}, *v.Invest)
+	}, invest)
+
+	// Right after buying, the 5.27 held and the bond at its cost leave the owner 10,000.00 below
+	// the 15,000.00 owed; on the horizon, the scenario's net worth.
+	require.Len(t, worths, 37)
+	assert.Equal(t, "-10000.00", worths[0])
+	assert.Equal(t, "10384.51", worths[len(worths)-1])
 }
 
 // An IPCA mortgage is compared with the NTN-B Principal and the NTN-B on offer, whose VNA needs
@@ -444,7 +482,8 @@ func TestADecisionReadsTheSelicTargetAPoupancaLinkedRateNeeds(t *testing.T) {
 }
 
 // 7.71 buys less than a hundredth of the bonds on offer, at 772.001684 an LTN and 880.904015 an
-// NTN-F, so their verdicts have the price and no scenarios.
+// NTN-F, so their verdicts have the price and no scenarios. They name the smallest amount that
+// buys a hundredth: 7.72001684 and 8.80904015 rounded up to the centavo.
 func TestAnAmountBelowAHundredthOfTheBondHasNoScenarios(t *testing.T) {
 	t.Parallel()
 
@@ -460,11 +499,11 @@ func TestAnAmountBelowAHundredthOfTheBondHasNoScenarios(t *testing.T) {
 		Verdicts: []decisionVerdict{
 			{
 				Type: "ltn", Maturity: "2029-01-01", Rate: "0.1276", Unavailable: "amount_too_small",
-				UnitPrice: "772.001684", Quantity: "0.00", ProjectedBy: []projectedBy{}, MarketData: marketData,
+				UnitPrice: "772.001684", MinimumAmount: "7.73", Quantity: "0.00", ProjectedBy: []projectedBy{}, MarketData: marketData,
 			},
 			{
 				Type: "ntn_f", Maturity: "2037-01-01", Rate: "0.1288", Unavailable: "amount_too_small",
-				UnitPrice: "880.904015", Quantity: "0.00", ProjectedBy: []projectedBy{}, MarketData: marketData,
+				UnitPrice: "880.904015", MinimumAmount: "8.81", Quantity: "0.00", ProjectedBy: []projectedBy{}, MarketData: marketData,
 			},
 		},
 	}, got)

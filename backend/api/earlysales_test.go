@@ -86,10 +86,10 @@ func earlySaleFlowOf(f decisionFlow) earlySaleFlow {
 func TestEarlySaleChecksListEveryLotRankedByAdvantage(t *testing.T) {
 	t.Parallel()
 
-	sellInstallment := func(day string, number int, amount, prepaid, balance string) earlySaleFlow {
+	sellInstallment := func(day string, number int, amount, prepaid, balance, netWorth string) earlySaleFlow {
 		return earlySaleFlowOf(decisionFlow{
 			Date: day, Installment: &decisionInstallment{Number: number, Amount: amount},
-			Invested: "0.00", Prepaid: prepaid, Held: "0.00", OutstandingBalance: balance,
+			Invested: "0.00", Prepaid: prepaid, Held: "0.00", OutstandingBalance: balance, NetWorth: netWorth,
 		})
 	}
 
@@ -99,13 +99,13 @@ func TestEarlySaleChecksListEveryLotRankedByAdvantage(t *testing.T) {
 	}{
 		{
 			effect:   "shorten_term",
-			november: sellInstallment("2026-11-10", 10, "928.88", "71.12", "9217.64"),
-			december: sellInstallment("2026-12-10", 11, "921.76", "78.24", "8217.64"),
+			november: sellInstallment("2026-11-10", 10, "928.88", "71.12", "9217.64", "-9217.64"),
+			december: sellInstallment("2026-12-10", 11, "921.76", "78.24", "8217.64", "-8217.64"),
 		},
 		{
 			effect:   "lower_installment",
-			november: sellInstallment("2026-11-10", 10, "681.18", "318.82", "9217.64"),
-			december: sellInstallment("2026-12-10", 11, "658.40", "341.60", "8217.64"),
+			november: sellInstallment("2026-11-10", 10, "681.18", "318.82", "9217.64", "-9217.64"),
+			december: sellInstallment("2026-12-10", 11, "658.40", "341.60", "8217.64", "-8217.64"),
 		},
 	}
 
@@ -167,19 +167,19 @@ func TestEarlySaleChecksListEveryLotRankedByAdvantage(t *testing.T) {
 				Hold: &earlySaleScenario{
 					NetWorth: "-8113.23", Cash: "0.00", OutstandingBalance: "13000.00", Bond: maturity,
 					CashFlows: []earlySaleFlow{
-						earlySaleFlowOf(decisionFlow{Date: "2026-10-28", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "15000.00"}),
-						earlySaleFlowOf(installmentFlow("2026-11-10", 10, "14000.00")),
-						earlySaleFlowOf(installmentFlow("2026-12-10", 11, "13000.00")),
-						earlySaleFlowOf(decisionFlow{Date: "2027-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "13000.00"}),
+						earlySaleFlowOf(decisionFlow{Date: "2026-10-28", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "15000.00", NetWorth: "-10216.88"}),
+						earlySaleFlowOf(installmentFlow("2026-11-10", 10, "14000.00", "-9200.89")),
+						earlySaleFlowOf(installmentFlow("2026-12-10", 11, "13000.00", "-8158.51")),
+						earlySaleFlowOf(decisionFlow{Date: "2027-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "13000.00", NetWorth: "-8113.23"}),
 					},
 				},
 				Sell: &earlySaleScenario{
 					NetWorth: "-8217.64", Cash: "0.00", OutstandingBalance: "8217.64",
 					CashFlows: []earlySaleFlow{
-						{decisionFlow{Date: "2026-10-28", Invested: "0.00", Prepaid: "4782.36", Held: "0.00", OutstandingBalance: "10217.64"}, sold},
+						{decisionFlow{Date: "2026-10-28", Invested: "0.00", Prepaid: "4782.36", Held: "0.00", OutstandingBalance: "10217.64", NetWorth: "-10217.64"}, sold},
 						tt.november,
 						tt.december,
-						earlySaleFlowOf(decisionFlow{Date: "2027-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "8217.64"}),
+						earlySaleFlowOf(decisionFlow{Date: "2027-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "8217.64", NetWorth: "-8217.64"}),
 					},
 				},
 				ProjectedBy: []projectedBy{}, MarketData: none,
@@ -246,14 +246,14 @@ func TestAnIPCAPlusLotIsCheckedAgainstAMortgageWithoutIPCA(t *testing.T) {
 	sold := &decisionAmount{Gross: "4500.00", IOF: "0.00", IncomeTax: "100.00", CustodyFee: "0.00", Net: "4400.00", ProjectedBy: []projectedBy{}}
 	maturity := &decisionAmount{Gross: "4577.78", IOF: "0.00", IncomeTax: "101.11", CustodyFee: "0.00", Net: "4476.67", ProjectedBy: trailing}
 	coupon := &decisionAmount{Gross: "127.34", IOF: "0.00", IncomeTax: "25.47", CustodyFee: "0.00", Net: "101.87", ProjectedBy: trailing}
-	installment := func(day string, number int, amount, prepaid, held, balance string) earlySaleFlow {
+	installment := func(day string, number int, amount, prepaid, held, balance, netWorth string) earlySaleFlow {
 		return earlySaleFlowOf(decisionFlow{
 			Date: day, Installment: &decisionInstallment{Number: number, Amount: amount},
-			Invested: "0.00", Prepaid: prepaid, Held: held, OutstandingBalance: balance,
+			Invested: "0.00", Prepaid: prepaid, Held: held, OutstandingBalance: balance, NetWorth: netWorth,
 		})
 	}
-	held := func(day string) earlySaleFlow {
-		return earlySaleFlowOf(decisionFlow{Date: day, Invested: "0.00", Prepaid: "0.00", Held: "1000.00", OutstandingBalance: "0.00"})
+	held := func(day, netWorth string) earlySaleFlow {
+		return earlySaleFlowOf(decisionFlow{Date: day, Invested: "0.00", Prepaid: "0.00", Held: "1000.00", OutstandingBalance: "0.00", NetWorth: netWorth})
 	}
 
 	assert.Equal(t, earlySale{Date: "2012-01-03", Effect: "shorten_term", Check: earlySaleCheck{
@@ -262,38 +262,38 @@ func TestAnIPCAPlusLotIsCheckedAgainstAMortgageWithoutIPCA(t *testing.T) {
 		Hold: &earlySaleScenario{
 			NetWorth: "2578.54", Cash: "0.00", OutstandingBalance: "1898.13", Bond: maturity,
 			CashFlows: []earlySaleFlow{
-				earlySaleFlowOf(decisionFlow{Date: "2012-01-03", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "13000.00"}),
-				installment("2012-01-10", 12, "1000.00", "0.00", "0.00", "12000.00"),
-				installment("2012-02-10", 13, "1000.00", "0.00", "0.00", "11000.00"),
-				installment("2012-03-10", 14, "1000.00", "0.00", "0.00", "10000.00"),
-				installment("2012-04-10", 15, "1000.00", "0.00", "0.00", "9000.00"),
-				installment("2012-05-10", 16, "1000.00", "0.00", "0.00", "8000.00"),
-				earlySaleFlowOf(decisionFlow{Date: "2012-05-15", Invested: "0.00", Coupon: coupon, Prepaid: "101.87", Held: "0.00", OutstandingBalance: "7898.13"}),
-				installment("2012-06-10", 17, "987.27", "12.73", "0.00", "6898.13"),
-				installment("2012-07-10", 18, "985.45", "14.55", "0.00", "5898.13"),
-				installment("2012-08-10", 19, "983.02", "16.98", "0.00", "4898.13"),
-				installment("2012-09-10", 20, "979.63", "20.37", "0.00", "3898.13"),
-				installment("2012-10-10", 21, "974.53", "25.47", "0.00", "2898.13"),
-				installment("2012-11-10", 22, "966.04", "33.96", "0.00", "1898.13"),
-				earlySaleFlowOf(decisionFlow{Date: "2012-11-15", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "1898.13"}),
+				earlySaleFlowOf(decisionFlow{Date: "2012-01-03", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "13000.00", NetWorth: "-8633.90"}),
+				installment("2012-01-10", 12, "1000.00", "0.00", "0.00", "12000.00", "-7629.64"),
+				installment("2012-02-10", 13, "1000.00", "0.00", "0.00", "11000.00", "-6610.71"),
+				installment("2012-03-10", 14, "1000.00", "0.00", "0.00", "10000.00", "-5591.90"),
+				installment("2012-04-10", 15, "1000.00", "0.00", "0.00", "9000.00", "-4572.57"),
+				installment("2012-05-10", 16, "1000.00", "0.00", "0.00", "8000.00", "-3553.45"),
+				earlySaleFlowOf(decisionFlow{Date: "2012-05-15", Invested: "0.00", Coupon: coupon, Prepaid: "101.87", Held: "0.00", OutstandingBalance: "7898.13", NetWorth: "-3550.23"}),
+				installment("2012-06-10", 17, "987.27", "12.73", "0.00", "6898.13", "-2523.11"),
+				installment("2012-07-10", 18, "985.45", "14.55", "0.00", "5898.13", "-1503.74"),
+				installment("2012-08-10", 19, "983.02", "16.98", "0.00", "4898.13", "-484.05"),
+				installment("2012-09-10", 20, "979.63", "20.37", "0.00", "3898.13", "535.64"),
+				installment("2012-10-10", 21, "974.53", "25.47", "0.00", "2898.13", "1555.31"),
+				installment("2012-11-10", 22, "966.04", "33.96", "0.00", "1898.13", "2575.32"),
+				earlySaleFlowOf(decisionFlow{Date: "2012-11-15", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "1898.13", NetWorth: "2578.54"}),
 			},
 		},
 		Sell: &earlySaleScenario{
 			NetWorth: "2400.00", Cash: "2400.00", OutstandingBalance: "0.00",
 			CashFlows: []earlySaleFlow{
-				{decisionFlow{Date: "2012-01-03", Invested: "0.00", Prepaid: "4400.00", Held: "0.00", OutstandingBalance: "8600.00"}, sold},
-				installment("2012-01-10", 12, "955.56", "44.44", "0.00", "7600.00"),
-				installment("2012-02-10", 13, "950.00", "50.00", "0.00", "6600.00"),
-				installment("2012-03-10", 14, "942.86", "57.14", "0.00", "5600.00"),
-				installment("2012-04-10", 15, "933.33", "66.67", "0.00", "4600.00"),
-				installment("2012-05-10", 16, "920.00", "80.00", "0.00", "3600.00"),
-				installment("2012-06-10", 17, "900.00", "100.00", "0.00", "2600.00"),
-				installment("2012-07-10", 18, "866.67", "133.33", "0.00", "1600.00"),
-				installment("2012-08-10", 19, "800.00", "200.00", "0.00", "600.00"),
-				installment("2012-09-10", 20, "600.00", "0.00", "400.00", "0.00"),
-				held("2012-10-10"),
-				held("2012-11-10"),
-				earlySaleFlowOf(decisionFlow{Date: "2012-11-15", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "0.00"}),
+				{decisionFlow{Date: "2012-01-03", Invested: "0.00", Prepaid: "4400.00", Held: "0.00", OutstandingBalance: "8600.00", NetWorth: "-8600.00"}, sold},
+				installment("2012-01-10", 12, "955.56", "44.44", "0.00", "7600.00", "-7600.00"),
+				installment("2012-02-10", 13, "950.00", "50.00", "0.00", "6600.00", "-6600.00"),
+				installment("2012-03-10", 14, "942.86", "57.14", "0.00", "5600.00", "-5600.00"),
+				installment("2012-04-10", 15, "933.33", "66.67", "0.00", "4600.00", "-4600.00"),
+				installment("2012-05-10", 16, "920.00", "80.00", "0.00", "3600.00", "-3600.00"),
+				installment("2012-06-10", 17, "900.00", "100.00", "0.00", "2600.00", "-2600.00"),
+				installment("2012-07-10", 18, "866.67", "133.33", "0.00", "1600.00", "-1600.00"),
+				installment("2012-08-10", 19, "800.00", "200.00", "0.00", "600.00", "-600.00"),
+				installment("2012-09-10", 20, "600.00", "0.00", "400.00", "0.00", "400.00"),
+				held("2012-10-10", "1400.00"),
+				held("2012-11-10", "2400.00"),
+				earlySaleFlowOf(decisionFlow{Date: "2012-11-15", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "0.00", NetWorth: "2400.00"}),
 			},
 		},
 		ProjectedBy: trailing,

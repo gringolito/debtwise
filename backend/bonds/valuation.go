@@ -51,8 +51,42 @@ func (l Lot) Value(on time.Time, taxes Taxes, ipca IPCA, sell *Price) (Valuation
 	return valuation, nil
 }
 
+// Accruals returns the lot's Accrual on each of dates, which must be before its bond's maturity: its
+// value at its contracted rate for settlement on the date, settled as a sale, as Value returns for
+// the date. It reads the lot's coupons once for all of them.
+func (l Lot) Accruals(dates []time.Time, taxes Taxes, ipca IPCA) ([]Amount, error) {
+	switch l.Bond.Type {
+	case LTN, NTNF, NTNBPrincipal, NTNB:
+	default:
+		return nil, fmt.Errorf("bonds: accruals of lot %d: no valuation for a bond of type %q", l.ID, l.Bond.Type)
+	}
+
+	v := valuer{lot: l, taxes: taxes, coupons: l.couponDates(), vnas: newVNASource(ipca)}
+
+	if _, err := v.pay(); err != nil {
+		return nil, fmt.Errorf("bonds: accruals of lot %d: %w", l.ID, err)
+	}
+
+	amounts := make([]Amount, 0, len(dates))
+
+	for _, on := range dates {
+		if !on.Before(l.Bond.Maturity) {
+			return nil, fmt.Errorf("bonds: accruals of lot %d: %s is not before maturity", l.ID, on.Format(time.DateOnly))
+		}
+
+		amount, err := v.settledAccrual(on)
+		if err != nil {
+			return nil, fmt.Errorf("bonds: accruals of lot %d on %s: %w", l.ID, on.Format(time.DateOnly), err)
+		}
+
+		amounts = append(amounts, amount)
+	}
+
+	return amounts, nil
+}
+
 // valuer values one lot against the tax tables. bases holds the lot's cost basis after each of its
-// coupons, with the projection methods it depends on, once value has read them.
+// coupons, with the projection methods it depends on, once pay has read them.
 type valuer struct {
 	lot     Lot
 	taxes   Taxes
@@ -61,14 +95,16 @@ type valuer struct {
 	vnas    *vnaSource
 }
 
-func (v *valuer) value(on time.Time, sell *Price) (Valuation, error) {
-	valuation := Valuation{On: on}
+// pay returns the lot's coupon payments, and reads the lot's cost basis after each of them.
+func (v *valuer) pay() ([]CouponPayment, error) {
+	var payments []CouponPayment
+
 	basis := priced{gross: v.lot.cost()}
 
 	for _, date := range v.coupons {
 		coupon, err := v.coupon(date, basis)
 		if err != nil {
-			return Valuation{}, err
+			return nil, err
 		}
 
 		if principal := coupon.gross.Sub(coupon.gain); principal.Cmp(decimal.Decimal{}) > 0 {
@@ -76,16 +112,38 @@ func (v *valuer) value(on time.Time, sell *Price) (Valuation, error) {
 		}
 
 		v.bases = append(v.bases, basis)
-		valuation.Coupons = append(valuation.Coupons, CouponPayment{Date: date, Amount: v.settle(coupon)})
+		payments = append(payments, CouponPayment{Date: date, Amount: v.settle(coupon)})
 	}
 
+	return payments, nil
+}
+
+// settledAccrual is the lot's Accrual on date: its value at its contracted rate, settled as a sale.
+func (v valuer) settledAccrual(date time.Time) (Amount, error) {
+	accrual, err := v.accrual(date)
+	if err != nil {
+		return Amount{}, err
+	}
+
+	return v.settle(v.sale(date, accrual)), nil
+}
+
+func (v *valuer) value(on time.Time, sell *Price) (Valuation, error) {
+	valuation := Valuation{On: on}
+
+	coupons, err := v.pay()
+	if err != nil {
+		return Valuation{}, err
+	}
+
+	valuation.Coupons = coupons
+
 	if on.Before(v.lot.Bond.Maturity) {
-		accrual, err := v.accrual(on)
+		amount, err := v.settledAccrual(on)
 		if err != nil {
 			return Valuation{}, err
 		}
 
-		amount := v.settle(v.sale(on, accrual))
 		valuation.Accrual = &amount
 
 		if sell != nil {
