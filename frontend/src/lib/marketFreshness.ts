@@ -9,12 +9,12 @@ export interface SourceFreshness {
   refreshedAt?: string;
 }
 
-/** What each freshness means, read after the last update by those who cannot see its dot. */
+/** What each freshness means, as its dot says it to assistive technology. */
 export const freshnessLabels: Record<Freshness, string> = {
-  fresh: "em dia",
-  stale: "desatualizado",
-  failed: "a última atualização falhou",
-  missing: "indisponível",
+  fresh: "Em dia",
+  stale: "Desatualizado",
+  failed: "A última atualização falhou",
+  missing: "Indisponível",
 };
 
 // Least fresh last, so a group of sources reads as its least fresh one.

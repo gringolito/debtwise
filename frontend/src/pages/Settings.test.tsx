@@ -33,9 +33,18 @@ function stubAjustes(routes: Routes = {}) {
 
 const section = (name: string) => screen.findByRole("region", { name });
 
+const dotColors = { "bg-positive": "green", "bg-caution": "orange" } as const;
+
+/** sourceRows reads each source's row: its text, then what its dot says and its color. */
 async function sourceRows() {
   const list = await within(await section("Dados de mercado")).findByRole("list");
-  return within(list).getAllByRole("listitem").map(text);
+  return within(list)
+    .getAllByRole("listitem")
+    .map((row) => {
+      const dot = within(row).getByRole("img");
+      const color = Object.entries(dotColors).find(([name]) => dot.classList.contains(name));
+      return [text(row), dot.getAttribute("aria-label"), color?.[1]];
+    });
 }
 
 beforeEach(() => {
@@ -83,9 +92,9 @@ describe("the market data", () => {
     renderAt("/ajustes");
 
     expect(await sourceRows()).toEqual([
-      "Índices (Banco Central)Atualizado em 04/11/2026, desatualizado",
-      "Expectativas (Focus)Atualizado em 01/11/2026, a última atualização falhou",
-      "Preços dos títulos (Tesouro Direto)Nunca atualizado, indisponível",
+      ["Índices (Banco Central)Atualizado em 04/11/2026", "Desatualizado", "orange"],
+      ["Expectativas (Focus)Atualizado em 01/11/2026", "A última atualização falhou", "orange"],
+      ["Preços dos títulos (Tesouro Direto)Nunca atualizado", "Indisponível", "orange"],
     ]);
   });
 
@@ -94,9 +103,9 @@ describe("the market data", () => {
     renderAt("/ajustes");
 
     expect(await sourceRows()).toEqual([
-      "Índices (Banco Central)Atualizado hoje às 07:45, em dia",
-      "Expectativas (Focus)Atualizado hoje às 08:05, em dia",
-      "Preços dos títulos (Tesouro Direto)Atualizado hoje às 09:15, em dia",
+      ["Índices (Banco Central)Atualizado hoje às 07:45", "Em dia", "green"],
+      ["Expectativas (Focus)Atualizado hoje às 08:05", "Em dia", "green"],
+      ["Preços dos títulos (Tesouro Direto)Atualizado hoje às 09:15", "Em dia", "green"],
     ]);
   });
 
@@ -104,8 +113,10 @@ describe("the market data", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date(2026, 10, 7, 10, 30));
     const refreshed: MarketDataStatus = {
-      ...FRESH_STATUS,
+      refreshing: false,
       indexes: FRESH_STATUS.indexes.map((s) => ({ ...s, refreshed_at: at(7, 10, 31) })),
+      focus: { status: "fresh", refreshed_at: at(7, 10, 32) },
+      bonds: { status: "fresh", refreshed_at: at(7, 10, 33) },
     };
     // The refresh runs for one read of the status after it starts.
     let phase: "idle" | "running" | "done" = "idle";
@@ -132,7 +143,11 @@ describe("the market data", () => {
     await vi.advanceTimersByTimeAsync(4000);
 
     expect(await within(market).findByRole("button", { name: "Atualizar agora" })).toBeEnabled();
-    expect((await sourceRows())[0]).toBe("Índices (Banco Central)Atualizado hoje às 10:31, em dia");
+    expect(await sourceRows()).toEqual([
+      ["Índices (Banco Central)Atualizado hoje às 10:31", "Em dia", "green"],
+      ["Expectativas (Focus)Atualizado hoje às 10:32", "Em dia", "green"],
+      ["Preços dos títulos (Tesouro Direto)Atualizado hoje às 10:33", "Em dia", "green"],
+    ]);
     expect(requests.filter((r) => r.method === "POST")).toHaveLength(1);
   });
 

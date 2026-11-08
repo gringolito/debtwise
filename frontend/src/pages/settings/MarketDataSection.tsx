@@ -25,10 +25,10 @@ function SourceRow({ name, status, refreshedAt }: SourceFreshness) {
         <GroupedListLabel>{name}</GroupedListLabel>
         <GroupedListValue className="text-footnote">
           {refreshedAt ? `Atualizado ${formatLastUpdate(refreshedAt)}` : "Nunca atualizado"}
-          <span className="sr-only">{`, ${freshnessLabels[status]}`}</span>
         </GroupedListValue>
         <span
-          aria-hidden="true"
+          role="img"
+          aria-label={freshnessLabels[status]}
           className={cn(
             "size-2 shrink-0 rounded-full",
             status === "fresh" ? "bg-positive" : "bg-caution",
