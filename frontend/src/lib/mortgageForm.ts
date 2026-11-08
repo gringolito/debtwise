@@ -3,11 +3,11 @@ import {
   type ContractRate,
   type MortgageTerms,
   type RegisteredMortgage,
-  type Rule,
 } from "@/lib/api";
 import { fractionToPercent, inputToMoney, moneyToInput, percentToFraction } from "@/lib/format";
 import { indexNames } from "@/lib/indexNames";
 import { rateFromCharge } from "@/lib/insuranceRate";
+import { ruleMessages } from "@/lib/rules";
 
 export type Basis = ContractRate["basis"];
 export type AmortizationSystem = MortgageTerms["amortization_system"];
@@ -241,15 +241,6 @@ export function termsFromValues(values: FormValues): MortgageTerms {
     })),
   };
 }
-
-/** What each rule of the mortgage asks, in the owner's words. */
-const ruleMessages: Record<Rule, string> = {
-  not_positive: "Precisa ser maior que zero.",
-  before_contract: "Não pode ser antes da data do contrato.",
-  before_today: "Não pode ser antes de hoje.",
-  no_row_from_first_installment: "Uma mudança precisa valer desde a primeira prestação.",
-  repeated_date: "Outra mudança já começa nesta data.",
-};
 
 /**
  * rejections maps what the API rejected to the message the owner reads there: what the rule the

@@ -1,7 +1,7 @@
 import { Trash2Icon, TriangleAlertIcon } from "lucide-react";
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { InlineInput } from "@/components/patterns/FieldRows";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import type { BondQuote } from "@/lib/api";
 import { bondLabel } from "@/lib/bondKinds";
@@ -32,13 +32,21 @@ const editableFields: {
   field: EditableField;
   label: string;
   inputMode?: "decimal";
+  /** Whether the value is a number whose thousands are grouped as the owner types. */
+  grouped?: boolean;
   /** Wide enough for the longest value the column usually holds. */
   width: string;
 }[] = [
   { field: "purchaseDate", label: "Data da compra", width: "w-28" },
   { field: "rate", label: "Taxa", inputMode: "decimal", width: "w-20" },
-  { field: "unitPrice", label: "Preço unitário", inputMode: "decimal", width: "w-28" },
-  { field: "quantity", label: "Quantidade", inputMode: "decimal", width: "w-20" },
+  {
+    field: "unitPrice",
+    label: "Preço unitário",
+    inputMode: "decimal",
+    grouped: true,
+    width: "w-28",
+  },
+  { field: "quantity", label: "Quantidade", inputMode: "decimal", grouped: true, width: "w-20" },
 ];
 
 interface ImportPreviewProps {
@@ -133,20 +141,17 @@ export function ImportPreview({
                 )}
               </TableCell>
               {!row.malformed &&
-                editableFields.map(({ field, label, inputMode, width }) => (
+                editableFields.map(({ field, label, inputMode, grouped, width }) => (
                   <TableCell key={field} variant="grouped">
                     <div className={width}>
-                      <Input
-                        variant="inline"
+                      <InlineInput
                         className="w-full"
                         aria-label={`${label} da linha ${row.line}`}
                         inputMode={inputMode}
+                        grouped={grouped}
                         value={row[field]}
-                        onChange={(event) =>
-                          onChange(index, {
-                            ...preview,
-                            row: { ...row, [field]: event.target.value },
-                          })
+                        onChange={(value) =>
+                          onChange(index, { ...preview, row: { ...row, [field]: value } })
                         }
                       />
                     </div>

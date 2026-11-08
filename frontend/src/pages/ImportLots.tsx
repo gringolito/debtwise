@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ApiError, bondsKey, fetchBonds } from "@/lib/api";
 import { matchBond } from "@/lib/bondMatch";
+import { groupThousands } from "@/lib/format";
 import { useImportLots } from "@/lib/lotQueries";
 import { type ImportedRow, importErrors, importedRow, readLotsCsv } from "@/lib/lotsCsv";
 
@@ -51,7 +52,12 @@ export function ImportLots() {
     setRevised(new Set());
     setFile({ name: picked.name, rows: rows.length });
     setPreview(
-      rows.map((row) => {
+      rows.map((read) => {
+        const row = {
+          ...read,
+          unitPrice: groupThousands(read.unitPrice),
+          quantity: groupThousands(read.quantity),
+        };
         const match = matchBond(row.bond, bonds);
         return "exact" in match
           ? { row, exact: true, bond: match.exact }

@@ -46,7 +46,7 @@ function stubImport(
 }
 
 /** reject answers an import with a 422 for each rejection. */
-const reject = (rejections: { location: string; message: string }[]) => () =>
+const reject = (rejections: NonNullable<Parameters<typeof problem>[3]>) => () =>
   problem(422, "Unprocessable Entity", "validation failed", rejections);
 
 /** pickFile gives the file input a file with contents once the catalogue has loaded. */
@@ -418,6 +418,37 @@ describe("importing purchases from a spreadsheet", () => {
     ]);
   });
 
+  it("groups the thousands of prices and quantities from the file and as the owner types", async () => {
+    const requests = stubImport();
+    renderAt("/investimentos/importar");
+
+    await chooseFile([header, "Tesouro IPCA+ 2035;12/05/2024;6,21;2012,34;1500"].join("\n"));
+    const price = screen.getByLabelText("Preço unitário da linha 2");
+    expect(price).toHaveValue("2.012,34");
+    expect(screen.getByLabelText("Quantidade da linha 2")).toHaveValue("1.500");
+
+    fireEvent.change(price, { target: { value: "20123,4" } });
+    expect(price).toHaveValue("20.123,4");
+    fireEvent.click(screen.getByRole("button", { name: "Importar 1 compra" }));
+
+    await waitFor(() =>
+      expect(posted(requests)).toEqual([
+        {
+          lots: [
+            {
+              type: "ntn_b_principal",
+              maturity: "2035-05-15",
+              purchase_date: "2024-05-12",
+              rate: "0.0621",
+              unit_price: "20123.4",
+              quantity: "1500",
+            },
+          ],
+        },
+      ]),
+    );
+  });
+
   it("offers to import a single purchase in the singular", async () => {
     stubImport();
     renderAt("/investimentos/importar");
@@ -458,7 +489,11 @@ describe("importing purchases from a spreadsheet", () => {
         { location: "body.lots[0].type", message: 'expected value to be one of "ltn, ntn_f"' },
         { location: "body.lots[0].maturity", message: "expected string to be RFC 3339 date" },
         { location: "body.lots[1].maturity", message: "expected string to be RFC 3339 date" },
-        { location: "body.lots[3].purchase_date", message: "must not be after today" },
+        {
+          location: "body.lots[3].purchase_date",
+          message: "must not be after today",
+          code: "after_today",
+        },
         { location: "body.lots[4].rate", message: "expected string to match pattern" },
         { location: "body.lots[4].quantity", message: "expected string to match pattern" },
         { location: "body.lots[5].type", message: 'expected value to be one of "ltn, ntn_f"' },
@@ -497,9 +532,7 @@ describe("importing purchases from a spreadsheet", () => {
     expect(messagesOf(2)).toEqual(["Título fora do catálogo."]);
     expect(messagesOf(3)).toEqual(["Título fora do catálogo."]);
     expect(messagesOf(4)).toEqual([]);
-    expect(messagesOf(5)).toEqual([
-      "Informe a data da compra (dd/mm/aaaa), que não pode ser futura.",
-    ]);
+    expect(messagesOf(5)).toEqual(["Data da compra: não pode ser depois de hoje."]);
     expect(messagesOf(6)).toEqual([
       "Informe uma taxa de 0% a menos de 100% ao ano.",
       "Informe uma quantidade maior que zero, com até 2 casas decimais.",

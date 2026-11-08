@@ -51,7 +51,7 @@ export function LotSheet({ lot, onClose, onSaved }: LotSheetProps) {
   const add = useAddLot();
   const edit = useEditLot();
   const save = lot ? edit : add;
-  const errors = lotErrors(save.error);
+  const errors = lotErrors(save.error, values.type);
 
   const typed = lotPreviewInput(values);
   const preview = useLotPreview(lotPreviewInput(useDebouncedValue(values)));
@@ -190,6 +190,7 @@ export function LotSheet({ lot, onClose, onSaved }: LotSheetProps) {
               <InputRow
                 label="Preço unitário"
                 inputMode="decimal"
+                grouped
                 placeholder="0,00"
                 prefix="R$"
                 value={values.unitPrice}
@@ -199,6 +200,7 @@ export function LotSheet({ lot, onClose, onSaved }: LotSheetProps) {
               <InputRow
                 label="Quantidade"
                 inputMode="decimal"
+                grouped
                 placeholder="0"
                 value={values.quantity}
                 onChange={(quantity) => change({ ...values, quantity })}

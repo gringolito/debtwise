@@ -90,6 +90,9 @@ describe("adding a purchase", () => {
     await pickBond(form, "Tesouro IPCA+ 2035", "ntn_b_principal 2035-05-15");
     fillPurchase(form);
     expect(within(form).getByText("IPCA +")).toBeInTheDocument();
+    fill(form, "Quantidade", "1250");
+    expect(within(form).getByLabelText("Quantidade")).toHaveValue("1.250");
+    fill(form, "Quantidade", "8");
     fireEvent.click(within(form).getByRole("button", { name: "Adicionar" }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved));
@@ -263,7 +266,11 @@ describe("a rejected purchase", () => {
       "POST /api/lots": () =>
         problem(422, "Unprocessable Entity", "validation failed", [
           { location: "body.unit_price", message: "expected number > 0" },
-          { location: "body.maturity", message: "must be after the purchase" },
+          {
+            location: "body.maturity",
+            message: "must be after the purchase date",
+            code: "not_after_purchase",
+          },
         ]),
     });
     renderSheet();
@@ -277,7 +284,7 @@ describe("a rejected purchase", () => {
     expect(within(form).getByLabelText("Preço unitário")).toBeInvalid();
     expect(within(form).getByLabelText("Título")).toBeInvalid();
     expect(within(form).getByLabelText("Título")).toHaveAccessibleDescription(
-      "O vencimento deve ser posterior à compra e cair no dia 1 (Prefixado) ou no dia 15 (IPCA+).",
+      "Precisa ser depois da data da compra.",
     );
     expect(within(form).getByLabelText("Quantidade")).toBeValid();
     expect(within(form).queryByRole("alert")).toBeNull();
@@ -292,7 +299,11 @@ describe("a rejected purchase", () => {
       "GET /api/bonds": () => Response.json({ bonds: catalogue }),
       "POST /api/lots": () =>
         problem(422, "Unprocessable Entity", "validation failed", [
-          { location: "body.maturity", message: "must be on day 1" },
+          {
+            location: "body.maturity",
+            message: "must be a date Tesouro matures this type of bond on",
+            code: "not_maturity_day",
+          },
         ]),
     });
     renderSheet();
@@ -303,6 +314,9 @@ describe("a rejected purchase", () => {
     fireEvent.click(within(form).getByRole("button", { name: "Adicionar" }));
 
     await waitFor(() => expect(within(form).getByLabelText("Vencimento")).toBeInvalid());
+    expect(within(form).getByLabelText("Vencimento")).toHaveAccessibleDescription(
+      "O Tesouro Prefixado vence no dia 1 de um mês.",
+    );
     expect(within(form).getByLabelText("Título")).toBeValid();
     expect(within(form).getByLabelText("Tipo")).toBeValid();
   });
