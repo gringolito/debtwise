@@ -159,6 +159,18 @@ export type NoComparison =
   | { reason: "missing_ipca" }
   | { reason: "no_bond" };
 
+/** noComparisonOf says why one verdict compares nothing; undefined for a compared verdict. */
+export function noComparisonOf({
+  unavailable,
+  minimum_amount: minimumAmount,
+}: Verdict): NoComparison | undefined {
+  if (unavailable === "missing_ipca") return { reason: "missing_ipca" };
+  if (unavailable === "amount_too_small" && minimumAmount !== undefined) {
+    return { reason: "amount_too_small", minimumAmount };
+  }
+  return undefined;
+}
+
 /**
  * noComparisons says why a decision with no compared verdict has none, the reason the owner can
  * fix first. A too small amount names the least amount that buys any of the bonds.

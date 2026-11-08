@@ -7,6 +7,7 @@ import { problem, type RecordedRequest, stubRoutes } from "@/test/stubServer";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 const freshMarketData: VerdictMarketData = {
@@ -207,12 +208,13 @@ const otherBonds = () => screen.getByRole("region", { name: "Outros títulos" })
 const asked = (requests: RecordedRequest[]) =>
   requests.filter((r) => r.method === "POST").map((r) => r.body);
 
-/** The text of each part of each row of a grouped list: its label and its value. */
+/** The text of each part of each row of a grouped list: its label, any notes under it, its value. */
 const rows = (list: HTMLElement) =>
   within(list)
     .getAllByRole("listitem")
     .map((item) =>
       Array.from(item.firstElementChild?.children ?? [])
+        .flatMap((cell) => (cell.children.length > 1 ? Array.from(cell.children) : [cell]))
         .map(text)
         .filter(Boolean),
     );
@@ -414,18 +416,43 @@ describe("the other bonds", () => {
     market_data: freshMarketData,
   };
 
-  it("ranks the others by their signed advantage, then those with no comparison and why", async () => {
+  it("ranks the others by their signed advantage, then those with no comparison, why and what to try", async () => {
     await compare([missingIpca, ntnbPrincipalVerdict, tooSmall, ltn2031, ltnVerdict]);
 
     await verdictCard("Tesouro Prefixado 2029");
     expect(rows(otherBonds())).toEqual([
       ["Tesouro Prefixado 2031 · 12,76%", "+ R$ 80,00"],
       ["Tesouro IPCA+ 2032 · IPCA + 6,72%", "− R$ 250,30"],
-      ["Tesouro IPCA+ 2035 · IPCA + 6,88%", "Aguardando o IPCA"],
-      ["Tesouro Prefixado com Juros Semestrais 2035 · 13,91%", "Valor pequeno demais"],
+      [
+        "Tesouro IPCA+ 2035 · IPCA + 6,88%",
+        "Depende de um IPCA que ainda não foi divulgado nem pode ser projetado.",
+        "Ver projeções do IPCA",
+        "Aguardando o IPCA",
+      ],
+      [
+        "Tesouro Prefixado com Juros Semestrais 2035 · 13,91%",
+        "Compra a partir de R$ 8,81.",
+        "Usar R$ 8,81",
+        "Valor pequeno demais",
+      ],
     ]);
     expect(within(otherBonds()).getByText("− R$ 250,30")).toHaveClass("text-destructive");
-    expect(within(otherBonds()).getAllByRole("button")).toHaveLength(2);
+    expect(
+      within(otherBonds()).getByRole("link", { name: "Ver projeções do IPCA" }),
+    ).toHaveAttribute("href", "/mercado");
+  });
+
+  it("compares the least amount that buys a bond the owner's amount is too small for", async () => {
+    const requests = await compare([tooSmall, ltnVerdict]);
+    await verdictCard("Tesouro Prefixado 2029");
+
+    fireEvent.click(within(otherBonds()).getByRole("button", { name: /^Usar R\$\s8,81$/ }));
+
+    await screen.findByDisplayValue("8,81");
+    expect(asked(requests)).toEqual([
+      { amount: "10000", effect: "shorten_term" },
+      { amount: "8.81", effect: "shorten_term" },
+    ]);
   });
 
   it("puts the bond the owner picks on the card", async () => {
@@ -437,6 +464,41 @@ describe("the other bonds", () => {
     const card = await verdictCard("Tesouro IPCA+ 2032");
     expect(within(card).getByText("− R$ 250,30")).toBeInTheDocument();
     expect(rows(otherBonds())).toEqual([["Tesouro Prefixado 2029 · 12,76%", "+ R$ 1.234,56"]]);
+  });
+
+  it("charts the net worth of the bond on the card", async () => {
+    // jsdom lays nothing out, and a chart with no size draws no lines.
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+      DOMRect.fromRect({ width: 800, height: 256 }),
+    );
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(800);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(256);
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(800);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(256);
+    const lower = (scenario: Scenario): Scenario => ({
+      ...scenario,
+      cash_flows: scenario.cash_flows.map((flow) => ({ ...flow, net_worth: "-200000.00" })),
+    });
+    await compare([
+      ltnVerdict,
+      { ...ntnbPrincipalVerdict, invest: lower(invest), prepay: lower(prepay) },
+    ]);
+    await verdictCard("Tesouro Prefixado 2029");
+    const chart = screen.getByRole("img", { name: /^Patrimônio ao amortizar e ao investir/ });
+    const curves = () =>
+      Array.from(chart.querySelectorAll("path.recharts-line-curve")).map((path) => [
+        path.getAttribute("stroke"),
+        path.getAttribute("d"),
+      ]);
+    const shown = curves();
+    expect(shown.map(([stroke]) => stroke)).toEqual(["var(--color-prepay)", "var(--color-invest)"]);
+    expect(shown[0][1]).not.toEqual(shown[1][1]);
+
+    fireEvent.click(within(otherBonds()).getByRole("button", { name: /Tesouro IPCA\+ 2032/ }));
+
+    await verdictCard("Tesouro IPCA+ 2032");
+    const picked = curves();
+    expect(picked[0][1]).toEqual(picked[1][1]);
   });
 
   it("leaves the list out when the card holds the only bond", async () => {
@@ -536,6 +598,20 @@ describe("the details of the verdict on the card", () => {
         "R$ 151.000,00",
       ],
     ]);
+    expect(
+      rowTexts(within(investing).getByRole("table", { name: "Valor no vencimento de Investir" })),
+    ).toEqual([
+      ["Valor", "Bruto", "IOF", "IR", "Taxa de custódia", "Líquido", "Projeção"],
+      [
+        "Valor no vencimento",
+        "R$ 13.500,00",
+        "R$ 0,00",
+        "R$ 525,00",
+        "R$ 98,00",
+        "R$ 12.877,00",
+        "—",
+      ],
+    ]);
     const prepaying = screen.getByRole("region", { name: "Amortizar" });
     expect(rowTexts(within(prepaying).getByRole("table", { name: "Resumo de Amortizar" }))).toEqual(
       [
@@ -544,9 +620,105 @@ describe("the details of the verdict on the card", () => {
         ["Saldo devedor no horizonte", "R$ 150.000,00"],
       ],
     );
+    expect(within(prepaying).queryByRole("table", { name: /^Valor no vencimento/ })).toBeNull();
+    expect(
+      rowTexts(within(prepaying).getByRole("table", { name: "Fluxo de caixa de Amortizar" })),
+    ).toEqual([
+      cashFlowHeader,
+      ["27/10/2026", ...dash(9), "R$ 0,00", "R$ 10.000,00", "R$ 0,00", ...dash(7), "R$ 180.000,00"],
+      [
+        "05/11/2026",
+        "2",
+        "IPCA 0,43% out/2026",
+        "R$ 293,98",
+        "R$ 1.421,14",
+        "R$ 800,40",
+        "R$ 42,60",
+        "R$ 30,00",
+        "R$ 25,00",
+        "R$ 2.613,12",
+        "R$ 0,00",
+        "R$ 0,00",
+        "R$ 0,00",
+        ...dash(7),
+        "R$ 179.493,30",
+      ],
+      ["01/01/2029", ...dash(9), "R$ 0,00", "R$ 0,00", "R$ 10.642,44", ...dash(7), "R$ 150.000,00"],
+    ]);
 
     fireEvent.click(screen.getByRole("button", { name: "Ocultar cenários" }));
     expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("shows each coupon of the bond with its taxes, prepaid on its date, and marks a projected one", async () => {
+    const coupon = (net: string, projected: boolean) => ({
+      gross: "296.41",
+      iof: "0.00",
+      income_tax: "61.13",
+      custody_fee: "5.85",
+      net,
+      projected_by: projected ? [{ index: "ipca" as const, method: "focus" as const }] : [],
+    });
+    await compare([
+      {
+        ...ntnbPrincipalVerdict,
+        type: "ntn_b",
+        maturity: "2037-05-15",
+        invest: {
+          ...invest,
+          cash_flows: [
+            {
+              date: "2026-11-15",
+              invested: "0.00",
+              coupon: coupon("229.43", false),
+              prepaid: "229.43",
+              held: "0.00",
+              outstanding_balance: "188970.17",
+              net_worth: "-178000.00",
+            },
+            {
+              date: "2027-05-15",
+              invested: "0.00",
+              coupon: coupon("229.43", true),
+              prepaid: "0.00",
+              held: "229.43",
+              outstanding_balance: "0.00",
+              net_worth: "10229.43",
+            },
+          ],
+        },
+      },
+    ]);
+    await verdictCard("Tesouro IPCA+ com Juros Semestrais 2037");
+    fireEvent.click(screen.getByRole("button", { name: "Ver cenários" }));
+
+    const investing = screen.getByRole("region", { name: "Investir" });
+    const couponCells = ["Cupom", "R$ 296,41", "R$ 0,00", "R$ 61,13", "R$ 5,85", "R$ 229,43"];
+    expect(
+      rowTexts(within(investing).getByRole("table", { name: "Fluxo de caixa de Investir" })),
+    ).toEqual([
+      cashFlowHeader,
+      [
+        "15/11/2026",
+        ...dash(9),
+        "R$ 0,00",
+        "R$ 229,43",
+        "R$ 0,00",
+        ...couponCells,
+        "—",
+        "R$ 188.970,17",
+      ],
+      [
+        "15/05/2027",
+        ...dash(9),
+        "R$ 0,00",
+        "R$ 0,00",
+        "R$ 229,43",
+        ...couponCells,
+        "ProjetadoIPCA: Mediana do Focus (BCB)",
+        "R$ 0,00",
+      ],
+    ]);
   });
 });
 
@@ -646,10 +818,10 @@ describe("a decision the server rejects", () => {
     fill("Valor", "0");
     fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
 
-    expect(await screen.findByLabelText("Valor")).toHaveAccessibleDescription(
+    await screen.findByText("A data não pode ser antes de hoje.");
+    expect(screen.getByLabelText("Valor")).toHaveAccessibleDescription(
       "Informe um valor maior que zero.",
     );
-    await screen.findByText("A data não pode ser antes de hoje.");
     expect(screen.getByLabelText("Valor")).toBeInvalid();
     expect(screen.getByRole("button", { name: "Data: hoje" })).toHaveAccessibleDescription(
       "A data não pode ser antes de hoje.",

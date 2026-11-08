@@ -239,8 +239,9 @@ comparação", compares it at once.
   and every cash flow.
 - Outros títulos: an inset grouped list of the other bonds ranked by their signed advantage, each
   row with the bond's name, its rate in secondary grey and a chevron; picking one puts it on the
-  card. A bond with no comparison follows with why in a few words ("Valor pequeno demais",
-  "Aguardando o IPCA") and no chevron.
+  card. A bond with no comparison follows with why in a few words as its value ("Valor pequeno
+  demais", "Aguardando o IPCA") and no chevron, and under its name one Footnote sentence on why
+  and the same fix as an accent text action as the panel below.
 - A Footnote centered at the bottom names the projections the verdict reads and closes with "O
   DebtWise compara; a decisão é sua."
 - With no bond to compare, a centered white panel replaces the results: an info icon on a grey

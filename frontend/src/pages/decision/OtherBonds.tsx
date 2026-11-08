@@ -15,12 +15,16 @@ import {
   type ComparedVerdict,
   type Favoured,
   favoured,
+  type NoComparison,
+  noComparisonOf,
   signedAdvantage,
   unavailableLabels,
   verdictKey,
   verdictTitle,
 } from "@/lib/decisions";
+import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { NoComparisonFix } from "@/pages/decision/NoComparisonPanel";
 
 const colors: Record<Favoured, string> = {
   invest: "text-positive",
@@ -28,15 +32,55 @@ const colors: Record<Favoured, string> = {
   even: "text-foreground",
 };
 
-function BondLabel({ verdict }: { verdict: Verdict }) {
+function BondName({ verdict }: { verdict: Verdict }) {
   return (
-    <GroupedListLabel>
+    <span>
       {verdictTitle(verdict)}
       <span className="text-callout text-muted-foreground">
         {" · "}
         {bondRate(verdict.type, verdict.rate)}
       </span>
-    </GroupedListLabel>
+    </span>
+  );
+}
+
+// One sentence on why a bond in the list is not compared.
+function note(why: NoComparison): string {
+  switch (why.reason) {
+    case "amount_too_small":
+      return `Compra a partir de ${formatMoney(why.minimumAmount)}.`;
+    case "missing_ipca":
+      return "Depende de um IPCA que ainda não foi divulgado nem pode ser projetado.";
+    case "no_bond":
+      return "";
+  }
+}
+
+function UnavailableRow({
+  verdict,
+  onUseAmount,
+}: {
+  verdict: Verdict;
+  onUseAmount: (amount: string) => void;
+}) {
+  const why = noComparisonOf(verdict);
+  return (
+    <GroupedListRow className="items-start">
+      <GroupedListLabel className="flex flex-col items-start gap-1">
+        <BondName verdict={verdict} />
+        {why && (
+          <>
+            <span className="text-footnote text-muted-foreground">{note(why)}</span>
+            <NoComparisonFix why={why} onUseAmount={onUseAmount} />
+          </>
+        )}
+      </GroupedListLabel>
+      {verdict.unavailable && (
+        <GroupedListValue className="text-callout">
+          {unavailableLabels[verdict.unavailable]}
+        </GroupedListValue>
+      )}
+    </GroupedListRow>
   );
 }
 
@@ -46,13 +90,16 @@ interface OtherBondsProps {
   /** The verdicts with no comparison, each with why. */
   unavailable: Verdict[];
   onSelect: (verdict: ComparedVerdict) => void;
+  /** Puts the amount in the sentence and compares it. */
+  onUseAmount: (amount: string) => void;
 }
 
 /**
  * OtherBonds lists the bonds besides the one on the verdict card, ranked by their Advantage, and
- * opens the one the owner picks on the card. The bonds with no comparison follow, with why.
+ * opens the one the owner picks on the card. The bonds with no comparison follow, with why and
+ * what to try.
  */
-export function OtherBonds({ compared, unavailable, onSelect }: OtherBondsProps) {
+export function OtherBonds({ compared, unavailable, onSelect, onUseAmount }: OtherBondsProps) {
   const headerId = useId();
   if (compared.length === 0 && unavailable.length === 0) return null;
   return (
@@ -63,7 +110,9 @@ export function OtherBonds({ compared, unavailable, onSelect }: OtherBondsProps)
           <GroupedListItem key={verdictKey(verdict)}>
             <GroupedListRow asChild>
               <button type="button" onClick={() => onSelect(verdict)}>
-                <BondLabel verdict={verdict} />
+                <GroupedListLabel>
+                  <BondName verdict={verdict} />
+                </GroupedListLabel>
                 <GroupedListValue
                   className={cn("font-medium", colors[favoured(verdict.advantage)])}
                 >
@@ -76,14 +125,7 @@ export function OtherBonds({ compared, unavailable, onSelect }: OtherBondsProps)
         ))}
         {unavailable.map((verdict) => (
           <GroupedListItem key={verdictKey(verdict)}>
-            <GroupedListRow>
-              <BondLabel verdict={verdict} />
-              {verdict.unavailable && (
-                <GroupedListValue className="text-callout">
-                  {unavailableLabels[verdict.unavailable]}
-                </GroupedListValue>
-              )}
-            </GroupedListRow>
+            <UnavailableRow verdict={verdict} onUseAmount={onUseAmount} />
           </GroupedListItem>
         ))}
       </GroupedList>

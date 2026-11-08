@@ -5,7 +5,14 @@ import { Button } from "@/components/ui/button";
 import { type NoComparison, unavailableReasons } from "@/lib/decisions";
 import { formatMoney } from "@/lib/format";
 
-function Fix({ why, onUseAmount }: { why: NoComparison; onUseAmount: (amount: string) => void }) {
+/** NoComparisonFix is what the owner can do about why a bond is not compared, as a text action. */
+export function NoComparisonFix({
+  why,
+  onUseAmount,
+}: {
+  why: NoComparison;
+  onUseAmount: (amount: string) => void;
+}) {
   switch (why.reason) {
     case "amount_too_small":
       return (
@@ -67,7 +74,7 @@ export function NoComparisonPanel({ why, onUseAmount }: NoComparisonPanelProps) 
         {title}
       </h2>
       <p className="mb-8 max-w-md text-callout text-muted-foreground">{text}</p>
-      <Fix why={why} onUseAmount={onUseAmount} />
+      <NoComparisonFix why={why} onUseAmount={onUseAmount} />
     </section>
   );
 }

@@ -92,6 +92,7 @@ export function Comparison({ decision, onUseAmount }: ComparisonProps) {
           setSelectedKey(verdictKey(verdict));
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
+        onUseAmount={onUseAmount}
       />
       <p className="text-center text-footnote text-muted-foreground">
         {selected.projected_by.length === 0
