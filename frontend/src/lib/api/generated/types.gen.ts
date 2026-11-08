@@ -786,9 +786,82 @@ export type PrepaymentInput = {
 
 export type PrepaymentList = {
     /**
-     * Every prepayment recorded on the mortgage, in date order.
+     * How many installments fewer the schedule has because of all the prepayments together.
      */
-    prepayments: Array<Prepayment>;
+    months_shortened: number;
+    /**
+     * Every prepayment recorded on the mortgage, in date order, each with what it changed in the schedule. Only this list carries what each changed.
+     */
+    prepayments: Array<PrepaymentOutcome>;
+    /**
+     * Sum of every prepayment's amount, in reais, as a decimal string.
+     */
+    total_amount: string;
+};
+
+export type PrepaymentOutcome = {
+    /**
+     * Amount prepaid, in reais, as a decimal string.
+     */
+    amount: string;
+    /**
+     * Date the prepayment was made.
+     */
+    date: string;
+    /**
+     * What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.
+     */
+    effect: 'shorten_term' | 'lower_installment';
+    /**
+     * The prepayment's ID.
+     */
+    id: number;
+    /**
+     * How much lower the first installment due after the prepayment is because of it, in reais, as a decimal string. Zero when no installment is due after it.
+     */
+    installment_reduction: string;
+    /**
+     * How many installments fewer the schedule has because of this prepayment.
+     */
+    months_shortened: number;
+};
+
+export type PrepaymentPreview = {
+    /**
+     * Amount of the first installment due after the previewed prepayment's date in the schedule as recorded, in reais, as a decimal string. Absent when none is due after it.
+     */
+    current_installment?: string;
+    /**
+     * Date the mortgage is paid off in the schedule as recorded: the due date of its last installment.
+     */
+    current_payoff_date: string;
+    /**
+     * Amount of that same installment with the previewed prepayment, in reais, as a decimal string. Absent when the mortgage no longer has it.
+     */
+    installment?: string;
+    /**
+     * Date the mortgage is paid off with the previewed prepayment: the due date of its last installment.
+     */
+    payoff_date: string;
+};
+
+export type PrepaymentPreviewInput = {
+    /**
+     * Amount prepaid, in reais, as a decimal string.
+     */
+    amount: string;
+    /**
+     * Date the prepayment was made.
+     */
+    date: string;
+    /**
+     * What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.
+     */
+    effect: 'shorten_term' | 'lower_installment';
+    /**
+     * ID of the recorded prepayment the previewed one would replace, when previewing an edit. Absent when previewing a new prepayment.
+     */
+    replaces?: number;
 };
 
 export type ProjectedBy = {
@@ -1016,6 +1089,10 @@ export type StatementDrift = {
      * Outstanding balance the bank reported, in reais, as a decimal string.
      */
     outstanding_balance: string;
+    /**
+     * Whether the drift is small enough to be the rounding the bank and the schedule do differently, rather than a sign that the contract terms no longer match the bank's.
+     */
+    within_rounding: boolean;
 };
 
 export type StatementInput = {
@@ -1034,6 +1111,36 @@ export type StatementList = {
      * Every statement recorded on the mortgage, in date order, each with its drift from the schedule. Only this list carries the drift.
      */
     statements: Array<StatementDrift>;
+};
+
+export type StatementPreview = {
+    /**
+     * Outstanding balance the schedule would show on the statement's date, in reais, as a decimal string.
+     */
+    computed_balance: string;
+    /**
+     * The reported balance minus the computed one, in reais, as a decimal string. Positive when the bank says more is owed.
+     */
+    drift: string;
+    /**
+     * Whether the drift is small enough to be the rounding the bank and the schedule do differently, rather than a sign that the contract terms no longer match the bank's.
+     */
+    within_rounding: boolean;
+};
+
+export type StatementPreviewInput = {
+    /**
+     * Date of the outstanding balance the bank reported.
+     */
+    date: string;
+    /**
+     * Outstanding balance the bank reported, in reais, as a decimal string.
+     */
+    outstanding_balance: string;
+    /**
+     * ID of the recorded statement the previewed one would replace, when previewing an edit. Absent when previewing a new statement.
+     */
+    replaces?: number;
 };
 
 export type Verdict = {
@@ -1700,6 +1807,31 @@ export type AddPrepaymentResponses = {
 
 export type AddPrepaymentResponse = AddPrepaymentResponses[keyof AddPrepaymentResponses];
 
+export type PreviewPrepaymentData = {
+    body: PrepaymentPreviewInput;
+    path?: never;
+    query?: never;
+    url: '/mortgage/prepayments/preview';
+};
+
+export type PreviewPrepaymentErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type PreviewPrepaymentError = PreviewPrepaymentErrors[keyof PreviewPrepaymentErrors];
+
+export type PreviewPrepaymentResponses = {
+    /**
+     * OK
+     */
+    200: PrepaymentPreview;
+};
+
+export type PreviewPrepaymentResponse = PreviewPrepaymentResponses[keyof PreviewPrepaymentResponses];
+
 export type DeletePrepaymentData = {
     body?: never;
     path: {
@@ -1859,6 +1991,31 @@ export type AddStatementResponses = {
 };
 
 export type AddStatementResponse = AddStatementResponses[keyof AddStatementResponses];
+
+export type PreviewStatementData = {
+    body: StatementPreviewInput;
+    path?: never;
+    query?: never;
+    url: '/mortgage/statements/preview';
+};
+
+export type PreviewStatementErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type PreviewStatementError = PreviewStatementErrors[keyof PreviewStatementErrors];
+
+export type PreviewStatementResponses = {
+    /**
+     * OK
+     */
+    200: StatementPreview;
+};
+
+export type PreviewStatementResponse = PreviewStatementResponses[keyof PreviewStatementResponses];
 
 export type DeleteStatementData = {
     body?: never;

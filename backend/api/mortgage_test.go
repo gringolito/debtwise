@@ -487,12 +487,12 @@ func TestIndexedScheduleFailsWithoutTheIndexHistory(t *testing.T) {
 }
 
 // Replaying a mortgage reads the Focus expectations and the projection methods, whatever its
-// indexer, so failing to read either fails the schedule and the statements' drifts.
+// indexer, so failing to read either fails the schedule and the lists that show their effects.
 func TestReplayFailsWithoutTheExpectationsOrTheProjectionMethods(t *testing.T) {
 	t.Parallel()
 
 	tables := []string{"focus_selic", "focus_ipca_monthly", "focus_ipca_annual", "projection_methods"}
-	paths := []string{"/mortgage/schedule", "/mortgage/statements"}
+	paths := []string{"/mortgage/schedule", "/mortgage/statements", "/mortgage/prepayments"}
 
 	for _, table := range tables {
 		for _, path := range paths {

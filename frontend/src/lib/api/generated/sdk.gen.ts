@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddLotData, AddLotErrors, AddLotResponses, AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, CheckEarlySaleData, CheckEarlySaleErrors, CheckEarlySaleResponses, CheckEarlySalesData, CheckEarlySalesErrors, CheckEarlySalesResponses, DecideData, DecideErrors, DecideResponses, DeleteLotData, DeleteLotErrors, DeleteLotResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditLotData, EditLotErrors, EditLotResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, ImportLotsData, ImportLotsErrors, ImportLotsResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListLotsData, ListLotsErrors, ListLotsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, PreviewLotData, PreviewLotErrors, PreviewLotResponses, PreviewMortgageScheduleData, PreviewMortgageScheduleErrors, PreviewMortgageScheduleResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
+import type { AddLotData, AddLotErrors, AddLotResponses, AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, CheckEarlySaleData, CheckEarlySaleErrors, CheckEarlySaleResponses, CheckEarlySalesData, CheckEarlySalesErrors, CheckEarlySalesResponses, DecideData, DecideErrors, DecideResponses, DeleteLotData, DeleteLotErrors, DeleteLotResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditLotData, EditLotErrors, EditLotResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, ImportLotsData, ImportLotsErrors, ImportLotsResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListLotsData, ListLotsErrors, ListLotsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, PreviewLotData, PreviewLotErrors, PreviewLotResponses, PreviewMortgageScheduleData, PreviewMortgageScheduleErrors, PreviewMortgageScheduleResponses, PreviewPrepaymentData, PreviewPrepaymentErrors, PreviewPrepaymentResponses, PreviewStatementData, PreviewStatementErrors, PreviewStatementResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -210,7 +210,7 @@ export const saveMortgage = <ThrowOnError extends boolean = false>(options: Opti
 /**
  * List the prepayments
  *
- * Returns the prepayments recorded on the mortgage.
+ * Returns the prepayments recorded on the mortgage, each with how many installments it removed and how much it lowered the next installment.
  */
 export const listPrepayments = <ThrowOnError extends boolean = false>(options?: Options<ListPrepaymentsData, ThrowOnError>) => (options?.client ?? client).get<ListPrepaymentsResponses, ListPrepaymentsErrors, ThrowOnError>({ url: '/mortgage/prepayments', ...options });
 
@@ -221,6 +221,20 @@ export const listPrepayments = <ThrowOnError extends boolean = false>(options?: 
  */
 export const addPrepayment = <ThrowOnError extends boolean = false>(options: Options<AddPrepaymentData, ThrowOnError>) => (options.client ?? client).post<AddPrepaymentResponses, AddPrepaymentErrors, ThrowOnError>({
     url: '/mortgage/prepayments',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Preview a prepayment
+ *
+ * Shows what a prepayment would change in the schedule, without recording it. Give the ID of a recorded prepayment to preview an edit of it.
+ */
+export const previewPrepayment = <ThrowOnError extends boolean = false>(options: Options<PreviewPrepaymentData, ThrowOnError>) => (options.client ?? client).post<PreviewPrepaymentResponses, PreviewPrepaymentErrors, ThrowOnError>({
+    url: '/mortgage/prepayments/preview',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -284,6 +298,20 @@ export const listStatements = <ThrowOnError extends boolean = false>(options?: O
  */
 export const addStatement = <ThrowOnError extends boolean = false>(options: Options<AddStatementData, ThrowOnError>) => (options.client ?? client).post<AddStatementResponses, AddStatementErrors, ThrowOnError>({
     url: '/mortgage/statements',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Preview a statement
+ *
+ * Shows how far a statement's balance would be from the schedule, without recording it. Give the ID of a recorded statement to preview an edit of it.
+ */
+export const previewStatement = <ThrowOnError extends boolean = false>(options: Options<PreviewStatementData, ThrowOnError>) => (options.client ?? client).post<PreviewStatementResponses, PreviewStatementErrors, ThrowOnError>({
+    url: '/mortgage/statements/preview',
     ...options,
     headers: {
         'Content-Type': 'application/json',

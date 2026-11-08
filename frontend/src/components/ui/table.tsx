@@ -64,7 +64,8 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
 const tableRowVariants = cva("border-b transition-colors", {
   variants: {
     variant: {
-      default: "hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted",
+      default:
+        "hover:bg-muted/50 has-aria-expanded:bg-muted/50 data-[state=selected]:bg-muted aria-[current=date]:bg-accent-tint",
       /** A grouped table's row, which nothing selects. */
       grouped: "",
       /** A grouped table's row the owner has to check, tinted with a caution bar on its edge. */

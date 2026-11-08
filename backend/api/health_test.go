@@ -168,6 +168,7 @@ func TestOpenAPIContractIsServed(t *testing.T) {
 			get:    {OperationID: "list-prepayments"},
 			"post": {OperationID: "add-prepayment"},
 		},
+		"/mortgage/prepayments/preview": {"post": {OperationID: "preview-prepayment"}},
 		"/mortgage/prepayments/{id}": {
 			"put":    {OperationID: "edit-prepayment"},
 			"delete": {OperationID: "delete-prepayment"},
@@ -176,6 +177,7 @@ func TestOpenAPIContractIsServed(t *testing.T) {
 			get:    {OperationID: "list-statements"},
 			"post": {OperationID: "add-statement"},
 		},
+		"/mortgage/statements/preview": {"post": {OperationID: "preview-statement"}},
 		"/mortgage/statements/{id}": {
 			"put":    {OperationID: "edit-statement"},
 			"delete": {OperationID: "delete-statement"},
