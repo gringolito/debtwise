@@ -9,9 +9,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ApiError, bondsKey, fetchBonds } from "@/lib/api";
 import { matchBond } from "@/lib/bondMatch";
-import { groupThousands } from "@/lib/format";
 import { useImportLots } from "@/lib/lotQueries";
-import { type ImportedRow, importErrors, importedRow, readLotsCsv } from "@/lib/lotsCsv";
+import { asTyped, type ImportedRow, importErrors, importedRow, readLotsCsv } from "@/lib/lotsCsv";
 
 /** ReadFile is a lots file the owner picked: its name and how many rows it held. */
 interface ReadFile {
@@ -55,8 +54,9 @@ export function ImportLots() {
       rows.map((read) => {
         const row = {
           ...read,
-          unitPrice: groupThousands(read.unitPrice),
-          quantity: groupThousands(read.quantity),
+          rate: asTyped(read.rate),
+          unitPrice: asTyped(read.unitPrice),
+          quantity: asTyped(read.quantity),
         };
         const match = matchBond(row.bond, bonds);
         return "exact" in match

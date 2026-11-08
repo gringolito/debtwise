@@ -199,7 +199,7 @@ describe("importing purchases from a spreadsheet", () => {
         "Ações",
       ]);
       expect(previewValues(preview)).toEqual([
-        ["Tesouro Prefixado 2029", "02/01/2026", "12,76%", "R$ 771,26", "10", ""],
+        ["Tesouro Prefixado 2029", "02/01/2026", "12,76", "771,26", "10", ""],
         [
           "Tesouro Prefixado com Juros Semestrais 2031",
           "20/10/2026",
@@ -209,7 +209,7 @@ describe("importing purchases from a spreadsheet", () => {
           "",
         ],
         ["Tesouro Prefixado 2029", "15/06/2026", "13,1", "780", "3", ""],
-        ["Tesouro IPCA+ 2035", "10/03/2026", "6,84%", "R$ 2.256,93", "0,5", ""],
+        ["Tesouro IPCA+ 2035", "10/03/2026", "6,84", "2.256,93", "0,5", ""],
         ["Tesouro IPCA+ com Juros Semestrais 2037", "15/04/2026", "6,7", "4.629,32", "2", ""],
       ]);
       expect(screen.queryByText(/não reconhecido/)).toBeNull();
@@ -418,17 +418,18 @@ describe("importing purchases from a spreadsheet", () => {
     ]);
   });
 
-  it("groups the thousands of prices and quantities from the file and as the owner types", async () => {
+  it("writes the file's numbers in pt-BR, thousands grouped, and groups them as the owner types", async () => {
     const requests = stubImport();
     renderAt("/investimentos/importar");
 
-    await chooseFile([header, "Tesouro IPCA+ 2035;12/05/2024;6,21;2012,34;1500"].join("\n"));
-    const price = screen.getByLabelText("Preço unitário da linha 2");
-    expect(price).toHaveValue("2.012,34");
-    expect(screen.getByLabelText("Quantidade da linha 2")).toHaveValue("1.500");
+    await chooseFile([header, "Tesouro IPCA+ 2035;12/05/2024;6.21%;2012.34;1500"].join("\n"));
+    expect(screen.getByLabelText("Taxa da linha 2")).toHaveValue("6,21");
+    expect(screen.getByLabelText("Preço unitário da linha 2")).toHaveValue("2.012,34");
+    const quantity = screen.getByLabelText("Quantidade da linha 2");
+    expect(quantity).toHaveValue("1.500");
 
-    fireEvent.change(price, { target: { value: "20123,4" } });
-    expect(price).toHaveValue("20.123,4");
+    fireEvent.change(quantity, { target: { value: "15000" } });
+    expect(quantity).toHaveValue("15.000");
     fireEvent.click(screen.getByRole("button", { name: "Importar 1 compra" }));
 
     await waitFor(() =>
@@ -440,8 +441,8 @@ describe("importing purchases from a spreadsheet", () => {
               maturity: "2035-05-15",
               purchase_date: "2024-05-12",
               rate: "0.0621",
-              unit_price: "20123.4",
-              quantity: "1500",
+              unit_price: "2012.34",
+              quantity: "15000",
             },
           ],
         },

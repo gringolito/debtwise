@@ -1,6 +1,6 @@
 import { ApiError, type BondQuote, type LotInput } from "@/lib/api";
 import type { BondType } from "@/lib/bondKinds";
-import { inputToMoney, percentToFraction } from "@/lib/format";
+import { inputToMoney, moneyToInput, percentToFraction } from "@/lib/format";
 import { lotFieldMessages } from "@/lib/lots";
 import { lotRuleMessage } from "@/lib/rules";
 
@@ -78,6 +78,23 @@ export function importedRow(row: CsvRow, bond: BondQuote | null): ImportedRow {
       quantity: inputToMoney(row.quantity),
     },
   };
+}
+
+const PLAIN_DECIMAL = /^\d+(\.\d+)?$/;
+
+/**
+ * asTyped writes a number the file gives the way the owner types it, thousands grouped: "2012.34",
+ * "2012,34" and "R$ 2.012,34" all read "2.012,34", and "6,21%" reads "6,21". Text that is no
+ * number comes back as the file gives it, for the owner to fix.
+ */
+export function asTyped(text: string): string {
+  const decimal = inputToMoney(
+    text
+      .trim()
+      .replace(/^R\$\s*/, "")
+      .replace(/%$/, ""),
+  );
+  return PLAIN_DECIMAL.test(decimal) ? moneyToInput(decimal) : text;
 }
 
 /** InvalidRow is a row of the file the owner has to fix, with why. */
