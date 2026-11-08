@@ -62,7 +62,6 @@ export function BalanceCurve({
                 value: `Hoje (${formatMonth(today)})`,
                 position: "top",
                 fill: "var(--accent)",
-                fontSize: 13,
               }}
             />
           )}
