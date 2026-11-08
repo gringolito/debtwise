@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ipca2035 } from "./test/lotFixtures";
 import { registeredMortgage } from "./test/mortgageFixtures";
 import { renderAt } from "./test/renderAt";
 import { stubRoutes, stubServer } from "./test/stubServer";
@@ -67,7 +68,8 @@ describe("shell", () => {
     ["/mercado/", "Índices"],
     ["/investimentos/", "Compras"],
   ])("selects the section %s opens, trailing slash and all", async (path, section) => {
-    stubRoutes({});
+    // Investimentos shows its sections once it has a lot to show in them.
+    stubRoutes({ "GET /api/lots": () => Response.json({ lots: [ipca2035] }) });
 
     renderAt(path);
 

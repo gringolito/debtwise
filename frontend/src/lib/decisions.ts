@@ -52,11 +52,6 @@ export const unavailableReasons: Record<NonNullable<Verdict["unavailable"]>, str
   amount_too_small: "O valor compra menos que um centésimo do título. Informe um valor maior.",
 };
 
-export const earlySaleVerdicts: Record<NonNullable<EarlySaleCheck["verdict"]>, string> = {
-  sell: "Vender agora",
-  hold: "Manter até o vencimento",
-};
-
 export const earlySaleUnavailableReasons: Record<
   NonNullable<EarlySaleCheck["unavailable"]>,
   string
@@ -64,6 +59,16 @@ export const earlySaleUnavailableReasons: Record<
   missing_ipca: unavailableReasons.missing_ipca,
   no_market_value: "O Tesouro Direto não informa um preço de venda para este título.",
   matured: "O título deste lote já venceu.",
+};
+
+/** earlySaleUnavailableLabels say in a few words, in a list row, why a check has no scenarios. */
+export const earlySaleUnavailableLabels: Record<
+  NonNullable<EarlySaleCheck["unavailable"]>,
+  string
+> = {
+  missing_ipca: "Aguardando o IPCA",
+  no_market_value: "Sem preço de venda",
+  matured: "Vencido",
 };
 
 /**

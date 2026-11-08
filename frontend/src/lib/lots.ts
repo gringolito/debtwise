@@ -1,12 +1,6 @@
 import { ApiError, type Lot, type LotInput } from "@/lib/api";
-import { type BondType, bondKinds } from "@/lib/bondKinds";
-import {
-  formatDate,
-  fractionToPercent,
-  inputToMoney,
-  moneyToInput,
-  percentToFraction,
-} from "@/lib/format";
+import type { BondType } from "@/lib/bondKinds";
+import { fractionToPercent, inputToMoney, moneyToInput, percentToFraction } from "@/lib/format";
 
 /** LotFormValues is what the owner typed for a lot, as text, the way the inputs show it. */
 export interface LotFormValues {
@@ -51,9 +45,12 @@ export function lotInput(values: LotFormValues): LotInput {
   };
 }
 
-/** lotLabel names a lot for the owner: its bond and the day it was bought. */
-export function lotLabel({ type, maturity, purchase_date }: Lot): string {
-  return `${bondKinds[type].name} ${maturity.slice(0, 4)} (compra em ${formatDate(purchase_date)})`;
+/** lotPreviewInput is lotInput once the owner has filled every field, and undefined before. */
+export function lotPreviewInput(values: LotFormValues): LotInput | undefined {
+  const { maturity, purchaseDate, rate, unitPrice, quantity } = values;
+  return [maturity, purchaseDate, rate, unitPrice, quantity].every((text) => text.trim() !== "")
+    ? lotInput(values)
+    : undefined;
 }
 
 // The API's own reasons are English sentences for API consumers; the owner reads these.
