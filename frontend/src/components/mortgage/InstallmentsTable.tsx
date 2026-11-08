@@ -27,9 +27,9 @@ function MissingIndexWarning({ missing }: { missing: CorrectionIndex[] }) {
     <Alert variant="warning">
       <AlertDescription>
         Faltam valores de {indexNames[missing[0].index]} para {months} Atualize os dados de mercado
-        na página{" "}
-        <Link to="/mercado" className="underline">
-          Índices
+        em{" "}
+        <Link to="/ajustes" className="underline">
+          Ajustes
         </Link>
         .
       </AlertDescription>
@@ -47,9 +47,9 @@ function MissingRateWarning({ missing }: { missing: CorrectionIndex[] }) {
     <Alert variant="warning">
       <AlertDescription>
         Faltam valores de {indexNames[missing[0].index]} para {months} Atualize os dados de mercado
-        na página{" "}
-        <Link to="/mercado" className="underline">
-          Índices
+        em{" "}
+        <Link to="/ajustes" className="underline">
+          Ajustes
         </Link>
         .
       </AlertDescription>

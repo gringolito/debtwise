@@ -1,8 +1,7 @@
-import { Link } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { Page, PageHeader, PageTitle } from "@/components/layout/Page";
-import { DeleteMortgageDialog } from "@/components/mortgage/DeleteMortgageDialog";
 import { InstallmentsTable } from "@/components/mortgage/InstallmentsTable";
 import { PrepaymentSheet } from "@/components/mortgage/PrepaymentSheet";
 import { Prepayments } from "@/components/mortgage/Prepayments";
@@ -13,15 +12,17 @@ import { KeyFigure, KeyFigures } from "@/components/mortgage/KeyFigures";
 import { ErrorPanel } from "@/components/patterns/ErrorPanel";
 import { Loading } from "@/components/patterns/Loading";
 import { SegmentedControl, SegmentedControlItem } from "@/components/patterns/SegmentedControl";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Prepayment, RegisteredMortgage, Schedule, StatementDrift } from "@/lib/api";
 import { latestDue, nextDue, today } from "@/lib/dashboard";
 import { formatMoney, formatMonthYear } from "@/lib/format";
-import { useDeleteMortgage, useMortgage, useMortgageSchedule } from "@/lib/mortgageQueries";
+import { useMortgage, useMortgageSchedule } from "@/lib/mortgageQueries";
+import type { MortgageSearch } from "@/router";
 
-type Tab = "installments" | "prepayments" | "statements";
+const route = getRouteApi("/shell/financiamento");
+
+type Tab = NonNullable<MortgageSearch["secao"]> | "prestacoes";
 
 type Sheet =
   | { kind: "prepayment"; prepayment?: Prepayment }
@@ -37,20 +38,6 @@ function MortgageSkeleton() {
   );
 }
 
-function DeleteMortgage() {
-  const remove = useDeleteMortgage();
-  return (
-    <div className="flex flex-col items-start gap-2">
-      {remove.isError && (
-        <Alert variant="destructive">
-          <AlertDescription>Não foi possível excluir o financiamento.</AlertDescription>
-        </Alert>
-      )}
-      <DeleteMortgageDialog onConfirm={() => remove.mutate()} />
-    </div>
-  );
-}
-
 function MortgageDetails({
   mortgage,
   schedule,
@@ -58,7 +45,10 @@ function MortgageDetails({
   mortgage: RegisteredMortgage;
   schedule: Schedule;
 }) {
-  const [tab, setTab] = useState<Tab>("installments");
+  const tab: Tab = route.useSearch().secao ?? "prestacoes";
+  const navigate = route.useNavigate();
+  const setTab = (secao: Tab) =>
+    navigate({ search: secao === "prestacoes" ? {} : { secao }, replace: true });
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const date = today();
   const { installments } = schedule;
@@ -87,11 +77,11 @@ function MortgageDetails({
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <SegmentedControl value={tab} onValueChange={setTab} aria-label="Seção">
-            <SegmentedControlItem value="installments">Prestações</SegmentedControlItem>
-            <SegmentedControlItem value="prepayments">Amortizações</SegmentedControlItem>
-            <SegmentedControlItem value="statements">Extratos</SegmentedControlItem>
+            <SegmentedControlItem value="prestacoes">Prestações</SegmentedControlItem>
+            <SegmentedControlItem value="amortizacoes">Amortizações</SegmentedControlItem>
+            <SegmentedControlItem value="extratos">Extratos</SegmentedControlItem>
           </SegmentedControl>
-          {tab === "statements" ? (
+          {tab === "extratos" ? (
             <Button onClick={() => setSheet({ kind: "statement" })}>
               <PlusIcon aria-hidden="true" />
               Registrar extrato
@@ -103,17 +93,16 @@ function MortgageDetails({
             </Button>
           )}
         </div>
-        {tab === "installments" && (
+        {tab === "prestacoes" && (
           <InstallmentsTable installments={schedule.installments} current={current} />
         )}
-        {tab === "prepayments" && (
+        {tab === "amortizacoes" && (
           <Prepayments onEdit={(prepayment) => setSheet({ kind: "prepayment", prepayment })} />
         )}
-        {tab === "statements" && (
+        {tab === "extratos" && (
           <Statements onEdit={(statement) => setSheet({ kind: "statement", statement })} />
         )}
       </div>
-      <DeleteMortgage />
       {sheet?.kind === "prepayment" && (
         <PrepaymentSheet prepayment={sheet.prepayment} onClose={() => setSheet(null)} />
       )}

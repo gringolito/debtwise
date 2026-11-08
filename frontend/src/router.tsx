@@ -40,10 +40,17 @@ const homeRoute = createRoute({
   component: Dashboard,
 });
 
+/** Financiamento's sections other than Prestações, the one it opens on, by their address. */
+export interface MortgageSearch {
+  secao?: "amortizacoes" | "extratos";
+}
+
 const mortgageRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: "/financiamento",
   component: Mortgage,
+  validateSearch: (search: Record<string, unknown>): MortgageSearch =>
+    search.secao === "amortizacoes" || search.secao === "extratos" ? { secao: search.secao } : {},
 });
 
 const contractRoute = createRoute({

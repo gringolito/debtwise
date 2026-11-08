@@ -38,10 +38,10 @@ export function DeleteEventDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction variant="destructive" onClick={onConfirm}>
+          <AlertDialogAction variant="critical" onClick={onConfirm}>
             Excluir
           </AlertDialogAction>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
