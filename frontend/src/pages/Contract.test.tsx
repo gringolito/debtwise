@@ -7,8 +7,15 @@ import { renderAt } from "@/test/renderAt";
 import { problem } from "@/test/stubServer";
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
+
+/** Before the first installment Financiamento owes the amount financed, so it shows that figure. */
+function beforeFirstInstallment() {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2023-12-01T12:00:00"));
+}
 
 function fill(label: string, value: string, container: HTMLElement = document.body) {
   fireEvent.change(within(container).getByLabelText(label), { target: { value } });
@@ -70,8 +77,10 @@ async function openPage(options: Parameters<typeof stubMortgageApi>[0] = {}) {
   return requests;
 }
 
+/** savedPage is Financiamento's key figures, once the page is back. */
 async function savedPage() {
-  return screen.findByRole("region", { name: "Condições do contrato" });
+  await screen.findByRole("table", { name: "Prestações" });
+  return screen.getByText("Saldo devedor").closest("dl") as HTMLElement;
 }
 
 // registeredMortgage as the page sends it back when nothing changes.
@@ -203,9 +212,10 @@ describe("saving", () => {
   it("sends the edited terms and returns to Financiamento with the updated figures", async () => {
     const edited: RegisteredMortgage = { ...registeredMortgage, original_amount: "250000.00" };
     const requests = stubMortgageApi({ mortgage: registeredMortgage, onSave: () => edited });
+    beforeFirstInstallment();
     renderAt("/financiamento");
 
-    fireEvent.click(await screen.findByRole("link", { name: "Editar" }));
+    fireEvent.click(await screen.findByRole("link", { name: "Editar contrato" }));
     await screen.findByRole("button", { name: "Salvar" });
     fill("Data do contrato", "2023-12-11");
     fill("Valor financiado", "250.000,00");
@@ -302,6 +312,7 @@ describe("saving", () => {
 
 describe("cancelling", () => {
   it("returns to Financiamento without saving what was typed", async () => {
+    beforeFirstInstallment();
     const requests = await openPage();
 
     fill("Valor financiado", "1,00");

@@ -1,10 +1,9 @@
-import { type FormEvent, useState } from "react";
-import { DeleteEventDialog } from "@/components/mortgage/DeleteEventDialog";
-import { EventForm } from "@/components/mortgage/EventForm";
-import { TextField } from "@/components/mortgage/FormControls";
-import { Section } from "@/components/mortgage/Section";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ChevronRightIcon } from "lucide-react";
+import { Drift } from "@/components/mortgage/Drift";
+import { ErrorPanel } from "@/components/patterns/ErrorPanel";
+import { Loading } from "@/components/patterns/Loading";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -15,197 +14,104 @@ import {
 } from "@/components/ui/table";
 import type { StatementDrift } from "@/lib/api";
 import { formatDate, formatMoney } from "@/lib/format";
-import {
-  blankStatement,
-  type StatementValues,
-  statementErrors,
-  statementInput,
-  valuesFromStatement,
-} from "@/lib/mortgageEvents";
-import {
-  useAddStatement,
-  useDeleteStatement,
-  useEditStatement,
-  useStatements,
-} from "@/lib/mortgageQueries";
+import { useStatements } from "@/lib/mortgageQueries";
 
-interface StatementFieldsProps {
-  values: StatementValues;
-  onChange: (values: StatementValues) => void;
-  errors: Map<string, string>;
-}
+const columns = ["Data", "Saldo do banco", "Saldo calculado", "Diferença"];
 
-function StatementFields({ values, onChange, errors }: StatementFieldsProps) {
-  return (
-    <>
-      <TextField
-        label="Data"
-        type="date"
-        value={values.date}
-        onChange={(date) => onChange({ ...values, date })}
-        invalid={errors.has("date")}
-        message={errors.get("date")}
-      />
-      <TextField
-        label="Saldo informado"
-        inputMode="decimal"
-        value={values.outstandingBalance}
-        onChange={(outstandingBalance) => onChange({ ...values, outstandingBalance })}
-        invalid={errors.has("outstanding_balance")}
-        message={errors.get("outstanding_balance")}
-      />
-    </>
-  );
-}
-
-function NewStatementForm() {
-  const [values, setValues] = useState(blankStatement);
-  const add = useAddStatement();
-  const errors = statementErrors(add.error);
-
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    add.mutate(statementInput(values), { onSuccess: () => setValues(blankStatement) });
-  }
-
-  return (
-    <EventForm
-      aria-label="Registrar extrato"
-      failure={add.isError && errors.size === 0 ? "Não foi possível registrar o extrato." : null}
-      onSubmit={submit}
-    >
-      <StatementFields values={values} onChange={setValues} errors={errors} />
-      <Button type="submit" disabled={add.isPending}>
-        Registrar
-      </Button>
-    </EventForm>
-  );
-}
-
-function EditStatementForm({
-  statement,
-  onClose,
+function StatementTable({
+  statements,
+  onEdit,
 }: {
-  statement: StatementDrift;
-  onClose: () => void;
+  statements: StatementDrift[];
+  onEdit: (statement: StatementDrift) => void;
 }) {
-  const [values, setValues] = useState(() => valuesFromStatement(statement));
-  const edit = useEditStatement();
-  const errors = statementErrors(edit.error);
-
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    edit.mutate({ id: statement.id, input: statementInput(values) }, { onSuccess: onClose });
-  }
-
   return (
-    <EventForm
-      aria-label={`Editar extrato de ${formatDate(statement.date)}`}
-      failure={edit.isError && errors.size === 0 ? "Não foi possível salvar o extrato." : null}
-      onSubmit={submit}
-    >
-      <StatementFields values={values} onChange={setValues} errors={errors} />
-      <Button type="submit" disabled={edit.isPending}>
-        Salvar
-      </Button>
-      <Button type="button" variant="outline" onClick={onClose}>
-        Cancelar
-      </Button>
-    </EventForm>
-  );
-}
-
-interface StatementRowProps {
-  statement: StatementDrift;
-  onDelete: () => void;
-}
-
-function StatementRow({ statement, onDelete }: StatementRowProps) {
-  const [editing, setEditing] = useState(false);
-  const when = formatDate(statement.date);
-
-  if (editing) {
-    return (
-      <TableRow>
-        <TableCell colSpan={5}>
-          <EditStatementForm statement={statement} onClose={() => setEditing(false)} />
-        </TableCell>
-      </TableRow>
-    );
-  }
-  return (
-    <TableRow>
-      <TableCell>{when}</TableCell>
-      <TableCell>{formatMoney(statement.outstanding_balance)}</TableCell>
-      <TableCell>{formatMoney(statement.computed_balance)}</TableCell>
-      <TableCell>{formatMoney(statement.drift)}</TableCell>
-      <TableCell>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label={`Editar extrato de ${when}`}
-            onClick={() => setEditing(true)}
-          >
-            Editar
-          </Button>
-          <DeleteEventDialog
-            aria-label={`Excluir extrato de ${when}`}
-            title="Excluir extrato?"
-            description={`O extrato de ${when} será removido e a evolução do financiamento voltará a seguir o saldo calculado.`}
-            onConfirm={onDelete}
-          />
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function StatementList() {
-  const { data, isPending, isError } = useStatements();
-  const remove = useDeleteStatement();
-
-  if (isPending) return <p>Carregando extratos…</p>;
-  if (isError) return <p>Não foi possível carregar os extratos.</p>;
-  if (data.statements.length === 0) return <p>Nenhum extrato registrado.</p>;
-  return (
-    <>
-      {remove.isError && (
-        <Alert variant="destructive">
-          <AlertDescription>Não foi possível excluir o extrato.</AlertDescription>
-        </Alert>
-      )}
+    <div className="overflow-hidden rounded-lg border bg-card px-2">
       <Table aria-label="Extratos registrados">
         <TableHeader>
           <TableRow>
-            <TableHead>Data</TableHead>
-            <TableHead>Saldo informado</TableHead>
-            <TableHead>Saldo calculado</TableHead>
-            <TableHead>Diferença</TableHead>
-            <TableHead className="sr-only">Ações</TableHead>
+            {columns.map((column) => (
+              <TableHead key={column}>
+                <span className="text-footnote tracking-wide text-muted-foreground uppercase">
+                  {column}
+                </span>
+              </TableHead>
+            ))}
+            <TableHead>
+              <span className="sr-only">Ações</span>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.statements.map((statement) => (
-            <StatementRow
-              key={statement.id}
-              statement={statement}
-              onDelete={() => remove.mutate(statement.id)}
-            />
+          {statements.map((statement) => (
+            <TableRow key={statement.id}>
+              <TableCell>{formatDate(statement.date)}</TableCell>
+              <TableCell>{formatMoney(statement.outstanding_balance)}</TableCell>
+              <TableCell>
+                <span className="text-muted-foreground">
+                  {formatMoney(statement.computed_balance)}
+                </span>
+              </TableCell>
+              <TableCell>
+                <Drift amount={statement.drift} withinRounding={statement.within_rounding} />
+              </TableCell>
+              <TableCell className="w-10">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Editar extrato de ${formatDate(statement.date)}`}
+                  onClick={() => onEdit(statement)}
+                >
+                  <ChevronRightIcon aria-hidden="true" strokeWidth={1.5} />
+                </Button>
+              </TableCell>
+            </TableRow>
           ))}
         </TableBody>
       </Table>
-    </>
+    </div>
   );
 }
 
-export function Statements() {
+interface StatementsProps {
+  onEdit: (statement: StatementDrift) => void;
+}
+
+/** Statements compares each statement's balance with the schedule's, each one opening to edit it. */
+export function Statements({ onEdit }: StatementsProps) {
+  const { data, isPending, isError, refetch } = useStatements();
+
+  if (isPending) {
+    return (
+      <Loading label="Carregando extratos">
+        <Skeleton className="h-48" />
+      </Loading>
+    );
+  }
+  if (isError) {
+    return (
+      <ErrorPanel title="Não foi possível carregar os extratos" onRetry={() => void refetch()} />
+    );
+  }
   return (
-    <Section heading="Extratos">
-      <div className="flex flex-col gap-4">
-        <StatementList />
-        <NewStatementForm />
-      </div>
-    </Section>
+    <div className="flex flex-col gap-4">
+      <p className="text-callout text-muted-foreground">
+        Compare o saldo do extrato do banco com o calculado. A partir de cada extrato, o DebtWise
+        usa o saldo do banco.
+      </p>
+      {data.statements.length === 0 ? (
+        <p className="rounded-lg border bg-card px-6 py-10 text-center text-callout text-muted-foreground">
+          Nenhum extrato registrado.
+        </p>
+      ) : (
+        <>
+          <StatementTable statements={data.statements.toReversed()} onEdit={onEdit} />
+          <p className="px-1 text-footnote text-muted-foreground">
+            Diferenças de menos de um centavo a cada mil reais do saldo são arredondamento.
+            Diferenças maiores podem indicar uma taxa ou seguro desatualizado.
+          </p>
+        </>
+      )}
+    </div>
   );
 }

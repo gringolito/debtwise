@@ -1,13 +1,22 @@
-import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   fetchMortgage,
   fetchMortgageSchedule,
   fetchPrepayments,
   fetchStatements,
   type PrepaymentInput,
+  type PrepaymentPreviewInput,
   postPrepayment,
   postStatement,
   previewSchedule,
+  previewPrepayment,
+  previewStatement,
   putMortgage,
   putPrepayment,
   putStatement,
@@ -15,6 +24,7 @@ import {
   removePrepayment,
   removeStatement,
   type StatementInput,
+  type StatementPreviewInput,
 } from "@/lib/api";
 
 export const mortgageKey = ["mortgage"] as const;
@@ -37,6 +47,38 @@ export function usePrepayments() {
 
 export function useStatements() {
   return useQuery({ queryKey: statementsKey, queryFn: fetchStatements });
+}
+
+// A preview sits under its list's key, so dropping the list when the mortgage changes drops it too.
+// It keeps showing the last answer while the next one loads, and a rejected one is not retried.
+// Each answer carries the input it previewed, so a sheet can tell when it no longer matches what
+// the owner has since typed.
+
+/** usePrepaymentPreview previews input; it stays idle while input is undefined. */
+export function usePrepaymentPreview(input: PrepaymentPreviewInput | undefined) {
+  return useQuery({
+    queryKey: [...prepaymentsKey, "preview", input],
+    queryFn: async () => {
+      const previewed = input as PrepaymentPreviewInput;
+      return { input: previewed, preview: await previewPrepayment(previewed) };
+    },
+    enabled: input !== undefined,
+    placeholderData: keepPreviousData,
+    retry: false,
+  });
+}
+
+export function useStatementPreview(input: StatementPreviewInput | undefined) {
+  return useQuery({
+    queryKey: [...statementsKey, "preview", input],
+    queryFn: async () => {
+      const previewed = input as StatementPreviewInput;
+      return { input: previewed, preview: await previewStatement(previewed) };
+    },
+    enabled: input !== undefined,
+    placeholderData: keepPreviousData,
+    retry: false,
+  });
 }
 
 // The mortgage's own mutations settle the cache by hand first, so the next screen never shows the

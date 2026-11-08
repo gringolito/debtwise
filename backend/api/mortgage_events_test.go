@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"cmp"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -40,7 +41,8 @@ func TestPrepaymentsAreListedInDateOrder(t *testing.T) {
 
 	handler := registered(t)
 
-	assert.JSONEq(t, `{"prepayments": []}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
+	assert.JSONEq(t, `{"prepayments": [], "total_amount": "0.00", "months_shortened": 0}`,
+		do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 
 	assert.JSONEq(t, `{"id": 1, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment"}`,
 		do(t, handler, http.MethodPost, "/mortgage/prepayments",
@@ -51,10 +53,13 @@ func TestPrepaymentsAreListedInDateOrder(t *testing.T) {
 		`{"date": "2024-03-10", "amount": "250.00", "effect": "shorten_term"}`, http.StatusCreated)
 
 	assert.JSONEq(t, `{"prepayments": [
-		{"id": 2, "date": "2024-01-20", "amount": "1000.50", "effect": "shorten_term"},
-		{"id": 1, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment"},
-		{"id": 3, "date": "2024-03-10", "amount": "250.00", "effect": "shorten_term"}
-	]}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
+		{"id": 2, "date": "2024-01-20", "amount": "1000.50", "effect": "shorten_term",
+		 "months_shortened": 0, "installment_reduction": "210.40"},
+		{"id": 1, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment",
+		 "months_shortened": 0, "installment_reduction": "1719.17"},
+		{"id": 3, "date": "2024-03-10", "amount": "250.00", "effect": "shorten_term",
+		 "months_shortened": 0, "installment_reduction": "85.96"}
+	], "total_amount": "6250.50", "months_shortened": 0}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 }
 
 func TestPrepaymentIsEditedAndDeleted(t *testing.T) {
@@ -71,15 +76,18 @@ func TestPrepaymentIsEditedAndDeleted(t *testing.T) {
 			`{"date": "2024-02-10", "amount": "2000.00", "effect": "shorten_term"}`, http.StatusOK))
 
 	assert.JSONEq(t, `{"prepayments": [
-		{"id": 2, "date": "2024-02-10", "amount": "2000.00", "effect": "shorten_term"},
-		{"id": 1, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment"}
-	]}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
+		{"id": 2, "date": "2024-02-10", "amount": "2000.00", "effect": "shorten_term",
+		 "months_shortened": 0, "installment_reduction": "520.60"},
+		{"id": 1, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment",
+		 "months_shortened": 0, "installment_reduction": "1719.17"}
+	], "total_amount": "7000.00", "months_shortened": 0}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 
 	do(t, handler, http.MethodDelete, "/mortgage/prepayments/2", "", http.StatusNoContent)
 
 	assert.JSONEq(t, `{"prepayments": [
-		{"id": 1, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment"}
-	]}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
+		{"id": 1, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment",
+		 "months_shortened": 0, "installment_reduction": "1719.17"}
+	], "total_amount": "5000.00", "months_shortened": 0}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 }
 
 // Prepaying 20,000.00 on the 2nd installment's due date and keeping the 10,000.00 a month ends the
@@ -108,9 +116,15 @@ func TestPrepaymentIsReplayedInTheScheduleUntilDeleted(t *testing.T) {
 		 "prepaid": "0.00", "outstanding_balance": "0.00"}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/schedule", "", http.StatusOK))
 
+	assert.JSONEq(t, `{"prepayments": [
+		{"id": 1, "date": "2024-02-10", "amount": "20000.00", "effect": "shorten_term",
+		 "months_shortened": 2, "installment_reduction": "206.00"}
+	], "total_amount": "20000.00", "months_shortened": 2}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
+
 	do(t, handler, http.MethodDelete, "/mortgage/prepayments/1", "", http.StatusNoContent)
 
-	assert.JSONEq(t, `{"prepayments": []}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
+	assert.JSONEq(t, `{"prepayments": [], "total_amount": "0.00", "months_shortened": 0}`,
+		do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 	assert.JSONEq(t, original, do(t, handler, http.MethodGet, "/mortgage/schedule", "", http.StatusOK))
 }
 
@@ -131,9 +145,9 @@ func TestStatementsSetTheScheduleAndShowTheirDriftUntilDeleted(t *testing.T) {
 
 	assert.JSONEq(t, `{"statements": [
 		{"id": 2, "date": "2024-02-20", "outstanding_balance": "40123.45", "computed_balance": "40000.00",
-		 "drift": "123.45"},
+		 "drift": "123.45", "within_rounding": false},
 		{"id": 1, "date": "2024-05-15", "outstanding_balance": "10000.00", "computed_balance": "10030.86",
-		 "drift": "-30.86"}
+		 "drift": "-30.86", "within_rounding": false}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 
 	assert.JSONEq(t, `{"installments": [
@@ -161,7 +175,7 @@ func TestStatementsSetTheScheduleAndShowTheirDriftUntilDeleted(t *testing.T) {
 
 	assert.JSONEq(t, `{"statements": [
 		{"id": 2, "date": "2024-02-20", "outstanding_balance": "40123.45", "computed_balance": "40000.00",
-		 "drift": "123.45"}
+		 "drift": "123.45", "within_rounding": false}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 
 	do(t, handler, http.MethodDelete, "/mortgage/statements/2", "", http.StatusNoContent)
@@ -171,7 +185,8 @@ func TestStatementsSetTheScheduleAndShowTheirDriftUntilDeleted(t *testing.T) {
 }
 
 // The edited statement on March 20 restarts the schedule from 30,001.00, which the 4th and 5th
-// installments amortize to 10,000.33 by May 20. The statement on May 20 is left as it was.
+// installments amortize to 10,000.33 by May 20. The statement on May 20 is left as it was, its 0.33
+// over 0.001% of that.
 func TestStatementIsEdited(t *testing.T) {
 	t.Parallel()
 
@@ -189,9 +204,9 @@ func TestStatementIsEdited(t *testing.T) {
 
 	assert.JSONEq(t, `{"statements": [
 		{"id": 1, "date": "2024-03-20", "outstanding_balance": "30001.00", "computed_balance": "30000.00",
-		 "drift": "1.00"},
+		 "drift": "1.00", "within_rounding": false},
 		{"id": 2, "date": "2024-05-20", "outstanding_balance": "10000.00", "computed_balance": "10000.33",
-		 "drift": "-0.33"}
+		 "drift": "-0.33", "within_rounding": false}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 }
 
@@ -215,7 +230,7 @@ func TestStatementDriftFollowsIndexCorrections(t *testing.T) {
 
 	assert.JSONEq(t, `{"statements": [
 		{"id": 1, "date": "2024-02-20", "outstanding_balance": "40100.00", "computed_balance": "40087.62",
-		 "drift": "12.38"}
+		 "drift": "12.38", "within_rounding": false}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 }
 
@@ -231,17 +246,19 @@ func TestEventsGoWithTheMortgage(t *testing.T) {
 
 	do(t, handler, http.MethodPut, "/mortgage", withField(t, "term_months", "12"), http.StatusOK)
 	assert.JSONEq(t, `{"prepayments": [
-		{"id": 1, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment"}
-	]}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK), "editing the terms keeps them")
+		{"id": 1, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment",
+		 "months_shortened": 0, "installment_reduction": "608.05"}
+	], "total_amount": "5000.00", "months_shortened": 0}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK), "editing the terms keeps them")
 	assert.JSONEq(t, `{"statements": [
 		{"id": 1, "date": "2024-02-20", "outstanding_balance": "40123.45", "computed_balance": "50000.00",
-		 "drift": "-9876.55"}
+		 "drift": "-9876.55", "within_rounding": false}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK), "editing the terms keeps them")
 
 	do(t, handler, http.MethodDelete, "/mortgage", "", http.StatusNoContent)
 	do(t, handler, http.MethodPut, "/mortgage", sacMortgage, http.StatusOK)
 
-	assert.JSONEq(t, `{"prepayments": []}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
+	assert.JSONEq(t, `{"prepayments": [], "total_amount": "0.00", "months_shortened": 0}`,
+		do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 	assert.JSONEq(t, `{"statements": []}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 }
 
@@ -267,7 +284,7 @@ func TestEventsBeforeAMovedContractStillReplay(t *testing.T) {
 
 	assert.JSONEq(t, `{"statements": [
 		{"id": 1, "date": "2024-02-20", "outstanding_balance": "40123.45", "computed_balance": "60000.00",
-		 "drift": "-19876.55"}
+		 "drift": "-19876.55", "within_rounding": false}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 	assert.JSONEq(t, `{"installments": [
 		{"number": 1, "due_date": "2024-05-01", "correction": "0.00", "index_values": [], `+sacRate+`, "interest": "351.23",
@@ -304,11 +321,12 @@ func TestEventOnTheContractDateIsRecorded(t *testing.T) {
 		`{"date": "2023-12-11", "outstanding_balance": "55000.00"}`, http.StatusCreated)
 
 	assert.JSONEq(t, `{"prepayments": [
-		{"id": 1, "date": "2023-12-11", "amount": "5000.00", "effect": "lower_installment"}
-	]}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
+		{"id": 1, "date": "2023-12-11", "amount": "5000.00", "effect": "lower_installment",
+		 "months_shortened": 0, "installment_reduction": "0.00"}
+	], "total_amount": "5000.00", "months_shortened": 0}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 	assert.JSONEq(t, `{"statements": [
 		{"id": 1, "date": "2023-12-11", "outstanding_balance": "55000.00", "computed_balance": "55000.00",
-		 "drift": "0.00"}
+		 "drift": "0.00", "within_rounding": true}
 	]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 }
 
@@ -386,6 +404,44 @@ func TestInvalidEventIsRejected(t *testing.T) {
 			body:   `{"date": "2023-12-10", "outstanding_balance": "60000.00"}`,
 			want:   []errorDetail{{"body.date", "must not be before the contract date"}},
 		},
+		{
+			name:   "prepayment preview before the contract",
+			method: http.MethodPost,
+			path:   "/mortgage/prepayments/preview",
+			body:   `{"date": "2023-12-10", "amount": "0", "effect": "shorten_term"}`,
+			want: []errorDetail{
+				{"body.date", "must not be before the contract date"},
+				{"body.amount", "must be greater than zero"},
+			},
+		},
+		{
+			name:   "prepayment preview replacing one, below a centavo",
+			method: http.MethodPost,
+			path:   "/mortgage/prepayments/preview",
+			body:   `{"date": "2024-03-10", "amount": "10.001", "effect": "shorten_term", "replaces": 1}`,
+			want:   []errorDetail{{"body.amount", moneyPattern}},
+		},
+		{
+			name:   "statement preview replacing statement 0",
+			method: http.MethodPost,
+			path:   "/mortgage/statements/preview",
+			body:   `{"date": "2024-03-10", "outstanding_balance": "10.00", "replaces": 0}`,
+			want:   []errorDetail{{"body.replaces", "expected number >= 1"}},
+		},
+		{
+			name:   "statement preview before the contract",
+			method: http.MethodPost,
+			path:   "/mortgage/statements/preview",
+			body:   `{"date": "2023-12-10", "outstanding_balance": "60000.00"}`,
+			want:   []errorDetail{{"body.date", "must not be before the contract date"}},
+		},
+		{
+			name:   "negative statement preview",
+			method: http.MethodPost,
+			path:   "/mortgage/statements/preview",
+			body:   `{"date": "2024-03-10", "outstanding_balance": "-1.00"}`,
+			want:   []errorDetail{{"body.outstanding_balance", moneyPattern}},
+		},
 	}
 
 	for _, tt := range tests {
@@ -411,13 +467,14 @@ func TestInvalidEventIsRejected(t *testing.T) {
 			assert.Equal(t, tt.want, problem.Errors)
 
 			assert.JSONEq(t, `{"prepayments": [
-				{"id": 1, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment"}
-			]}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
+				{"id": 1, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment",
+				 "months_shortened": 0, "installment_reduction": "1719.16"}
+			], "total_amount": "5000.00", "months_shortened": 0}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 			assert.JSONEq(t, `{"statements": [
 				{"id": 1, "date": "2024-02-20", "outstanding_balance": "40123.45", "computed_balance": "40000.00",
-				 "drift": "123.45"},
+				 "drift": "123.45", "within_rounding": false},
 				{"id": 2, "date": "2024-05-20", "outstanding_balance": "10000.00", "computed_balance": "8364.19",
-				 "drift": "1635.81"}
+				 "drift": "1635.81", "within_rounding": false}
 			]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 		})
 	}
@@ -526,9 +583,17 @@ func TestSecondStatementOnADateConflicts(t *testing.T) {
 		name   string
 		method string
 		path   string
+		body   string
 	}{
 		{name: "recorded", method: http.MethodPost, path: "/mortgage/statements"},
 		{name: "moved onto another's date", method: http.MethodPut, path: "/mortgage/statements/2"},
+		{name: "previewed", method: http.MethodPost, path: "/mortgage/statements/preview"},
+		{
+			name:   "previewed moved onto another's date",
+			method: http.MethodPost,
+			path:   "/mortgage/statements/preview",
+			body:   `{"date": "2024-02-20", "outstanding_balance": "1.00", "replaces": 2}`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -541,7 +606,8 @@ func TestSecondStatementOnADateConflicts(t *testing.T) {
 			do(t, handler, http.MethodPost, "/mortgage/statements",
 				`{"date": "2024-05-20", "outstanding_balance": "10000.00"}`, http.StatusCreated)
 
-			rec := serve(t, handler, tt.method, tt.path, `{"date": "2024-02-20", "outstanding_balance": "1.00"}`)
+			rec := serve(t, handler, tt.method, tt.path,
+				cmp.Or(tt.body, `{"date": "2024-02-20", "outstanding_balance": "1.00"}`))
 
 			require.Equal(t, http.StatusConflict, rec.Code, rec.Body.String())
 
@@ -553,9 +619,9 @@ func TestSecondStatementOnADateConflicts(t *testing.T) {
 
 			assert.JSONEq(t, `{"statements": [
 				{"id": 1, "date": "2024-02-20", "outstanding_balance": "40123.45", "computed_balance": "40000.00",
-				 "drift": "123.45"},
+				 "drift": "123.45", "within_rounding": false},
 				{"id": 2, "date": "2024-05-20", "outstanding_balance": "10000.00", "computed_balance": "10030.86",
-				 "drift": "-30.86"}
+				 "drift": "-30.86", "within_rounding": false}
 			]}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 		})
 	}
@@ -587,6 +653,20 @@ func TestUnknownEventIsNotFound(t *testing.T) {
 			detail: "no such statement",
 		},
 		{name: "delete statement", method: http.MethodDelete, path: "/mortgage/statements/9", detail: "no such statement"},
+		{
+			name:   "preview replacing a prepayment",
+			method: http.MethodPost,
+			path:   "/mortgage/prepayments/preview",
+			body:   `{"date": "2024-03-10", "amount": "10.00", "effect": "shorten_term", "replaces": 9}`,
+			detail: "no such prepayment",
+		},
+		{
+			name:   "preview replacing a statement",
+			method: http.MethodPost,
+			path:   "/mortgage/statements/preview",
+			body:   `{"date": "2024-03-10", "outstanding_balance": "10.00", "replaces": 9}`,
+			detail: "no such statement",
+		},
 	}
 
 	for _, tt := range tests {
@@ -643,6 +723,18 @@ func TestEventsNeedAMortgage(t *testing.T) {
 			body:   `{"date": "2024-03-10", "outstanding_balance": "10.00"}`,
 		},
 		{name: "delete statement", method: http.MethodDelete, path: "/mortgage/statements/1"},
+		{
+			name:   "preview prepayment",
+			method: http.MethodPost,
+			path:   "/mortgage/prepayments/preview",
+			body:   `{"date": "2024-03-10", "amount": "10.00", "effect": "shorten_term"}`,
+		},
+		{
+			name:   "preview statement",
+			method: http.MethodPost,
+			path:   "/mortgage/statements/preview",
+			body:   `{"date": "2024-03-10", "outstanding_balance": "10.00"}`,
+		},
 	}
 
 	for _, tt := range tests {
@@ -707,6 +799,20 @@ func TestEventsFailWithoutTheirTables(t *testing.T) {
 			body:   `{"date": "2024-03-10", "outstanding_balance": "10.00"}`,
 		},
 		{name: "delete statement", table: "mortgage_statements", method: http.MethodDelete, path: "/mortgage/statements/1"},
+		{
+			name:   "preview prepayment",
+			table:  "mortgage_prepayments",
+			method: http.MethodPost,
+			path:   "/mortgage/prepayments/preview",
+			body:   `{"date": "2024-03-10", "amount": "10.00", "effect": "shorten_term"}`,
+		},
+		{
+			name:   "preview statement",
+			table:  "mortgage_statements",
+			method: http.MethodPost,
+			path:   "/mortgage/statements/preview",
+			body:   `{"date": "2024-03-10", "outstanding_balance": "10.00"}`,
+		},
 	}
 
 	for _, tt := range tests {

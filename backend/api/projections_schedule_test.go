@@ -367,12 +367,12 @@ func TestStatementDriftsReadTheClock(t *testing.T) {
 		{
 			name:  "installments that are not due yet are projected",
 			today: date(2026, time.October, 15),
-			want:  `"computed_balance": "15021.01", "drift": "4978.99"`,
+			want:  `"computed_balance": "15021.01", "drift": "4978.99", "within_rounding": false`,
 		},
 		{
 			name:  "installments due by today are not",
 			today: date(2026, time.December, 15),
-			want:  `"computed_balance": "15015.01", "drift": "4984.99"`,
+			want:  `"computed_balance": "15015.01", "drift": "4984.99", "within_rounding": false`,
 		},
 	}
 

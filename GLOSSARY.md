@@ -123,7 +123,8 @@ different figure)
 
 **Drift** (diferença):
 How far a statement's outstanding balance is from the one the schedule computed for its date. It
-shows whether DebtWise's model of the mortgage still tracks the contract.
+shows whether DebtWise's model of the mortgage still tracks the contract. A drift within rounding is
+small enough, against the balance, to be only how differently the bank and the schedule round.
 _Avoid_: Error (suggests the bank is wrong), discrepancy (doesn't say which figure is the
 reference)
 
