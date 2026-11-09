@@ -11,6 +11,7 @@
   "labels": ["dependencies", "renovate"],
   "dependencyDashboard": true,
   "rangeStrategy": "bump",
+  "postUpdateOptions": ["gomodTidy"],
 
   "description": "PR limits are disabled so pending updates are never silently queued out of sight.",
   "prConcurrentLimit": 0,
