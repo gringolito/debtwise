@@ -15,7 +15,10 @@ import (
 // ones before it: the 20,000.00 on February 10 ends the schedule two months early and takes 206.00
 // off the 3rd installment, which becomes 10,228.50. The 5,000.00 on March 10, after the 3rd
 // installment, leaves 5,000.00 for the 4th, the last: 5,075.00 where 10,127.50 was due. The
-// 100.00 after the last installment has none to change.
+// 100.00 after the last installment has none to change. The first saves 776.00: the 3rd to 6th
+// installments charge 41,132.00 without it and 20,356.00 with it, 20,000.00 of the difference
+// being the amount it took off. The second saves the 50.00 interest and 2.50 MIP it takes off the
+// 4th installment.
 func TestPrepaymentOutcomesAreListed(t *testing.T) {
 	t.Parallel()
 
@@ -29,12 +32,12 @@ func TestPrepaymentOutcomesAreListed(t *testing.T) {
 
 	assert.JSONEq(t, `{"prepayments": [
 		{"id": 1, "date": "2024-02-10", "amount": "20000.00", "effect": "shorten_term",
-		 "months_shortened": 2, "installment_reduction": "206.00"},
+		 "months_shortened": 2, "installment_reduction": "206.00", "money_saved": "776.00"},
 		{"id": 2, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment",
-		 "months_shortened": 0, "installment_reduction": "5052.50"},
+		 "months_shortened": 0, "installment_reduction": "5052.50", "money_saved": "52.50"},
 		{"id": 3, "date": "2024-12-01", "amount": "100.00", "effect": "shorten_term",
-		 "months_shortened": 0, "installment_reduction": "0.00"}
-	], "total_amount": "25100.00", "months_shortened": 2}`,
+		 "months_shortened": 0, "installment_reduction": "0.00", "money_saved": "0.00"}
+	], "total_amount": "25100.00", "months_shortened": 2, "money_saved": "828.50"}`,
 		do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 }
 
@@ -50,7 +53,7 @@ func TestPreviewsRecordNothing(t *testing.T) {
 	do(t, handler, http.MethodPost, "/mortgage/statements/preview",
 		`{"date": "2024-02-20", "outstanding_balance": "40123.45"}`, http.StatusOK)
 
-	assert.JSONEq(t, `{"prepayments": [], "total_amount": "0.00", "months_shortened": 0}`,
+	assert.JSONEq(t, `{"prepayments": [], "total_amount": "0.00", "months_shortened": 0, "money_saved": "0.00"}`,
 		do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 	assert.JSONEq(t, `{"statements": []}`, do(t, handler, http.MethodGet, "/mortgage/statements", "", http.StatusOK))
 	assert.JSONEq(t, schedule, do(t, handler, http.MethodGet, "/mortgage/schedule", "", http.StatusOK))
@@ -61,7 +64,12 @@ func TestPreviewsRecordNothing(t *testing.T) {
 // the 3rd installment charges to 5,000.00. Prepaying 45,000.00 pays off the 40,000.00 owed, so no
 // installment follows it, and 60,000.00 before the 1st installment pays everything off that day.
 // The recorded prepayment is the one of 20,000.00 that shortens the term, which leaves the 3rd
-// installment 10,228.50 and the schedule ending on April 10.
+// installment 10,228.50 and the schedule ending on April 10. The 3rd to 6th installments charge
+// 41,132.00, and what a prepayment saves is what the installments charge without it beyond what
+// they charge with it, less what it took off the balance: 20,356.00 when the term is shortened,
+// 20,611.00 when the installment is lowered, and 20,356.00 after the recorded prepayment. A
+// replacement saves what it would save once recorded, compared with the schedule without the one
+// it replaces.
 func TestPrepaymentIsPreviewed(t *testing.T) {
 	t.Parallel()
 
@@ -77,49 +85,51 @@ func TestPrepaymentIsPreviewed(t *testing.T) {
 			name: "shortening the term",
 			body: `{"date": "2024-02-10", "amount": "20000.00", "effect": "shorten_term"}`,
 			want: `{"current_payoff_date": "2024-06-10", "payoff_date": "2024-04-10",
-				"current_installment": "10434.50", "installment": "10228.50"}`,
+				"current_installment": "10434.50", "installment": "10228.50", "money_saved": "776.00"}`,
 		},
 		{
 			name: "lowering the installment",
 			body: `{"date": "2024-02-10", "amount": "20000.00", "effect": "lower_installment"}`,
 			want: `{"current_payoff_date": "2024-06-10", "payoff_date": "2024-06-10",
-				"current_installment": "10434.50", "installment": "5228.50"}`,
+				"current_installment": "10434.50", "installment": "5228.50", "money_saved": "521.00"}`,
 		},
 		{
 			name: "after the last installment",
 			body: `{"date": "2024-07-01", "amount": "1000.00", "effect": "shorten_term"}`,
-			want: `{"current_payoff_date": "2024-06-10", "payoff_date": "2024-06-10"}`,
+			want: `{"current_payoff_date": "2024-06-10", "payoff_date": "2024-06-10", "money_saved": "0.00"}`,
 		},
 		{
 			name: "paying off the mortgage",
 			body: `{"date": "2024-02-15", "amount": "45000.00", "effect": "shorten_term"}`,
-			want: `{"current_payoff_date": "2024-06-10", "payoff_date": "2024-02-10", "current_installment": "10434.50"}`,
+			want: `{"current_payoff_date": "2024-06-10", "payoff_date": "2024-02-10", "current_installment": "10434.50",
+				"money_saved": "1132.00"}`,
 		},
 		{
 			name: "paying off the mortgage before the 1st installment",
 			body: `{"date": "2023-12-20", "amount": "60000.00", "effect": "shorten_term"}`,
-			want: `{"current_payoff_date": "2024-06-10", "payoff_date": "2023-12-20", "current_installment": "10640.50"}`,
+			want: `{"current_payoff_date": "2024-06-10", "payoff_date": "2023-12-20", "current_installment": "10640.50",
+				"money_saved": "2310.00"}`,
 		},
 		{
 			name:     "besides a recorded prepayment",
 			recorded: true,
 			body:     recorded,
 			want: `{"current_payoff_date": "2024-04-10", "payoff_date": "2024-02-10",
-				"current_installment": "10228.50"}`,
+				"current_installment": "10228.50", "money_saved": "356.00"}`,
 		},
 		{
 			name:     "replacing a recorded prepayment with itself",
 			recorded: true,
 			body:     `{"date": "2024-02-10", "amount": "20000.00", "effect": "shorten_term", "replaces": 1}`,
 			want: `{"current_payoff_date": "2024-04-10", "payoff_date": "2024-04-10",
-				"current_installment": "10228.50", "installment": "10228.50"}`,
+				"current_installment": "10228.50", "installment": "10228.50", "money_saved": "776.00"}`,
 		},
 		{
 			name:     "replacing a recorded prepayment with another",
 			recorded: true,
 			body:     `{"date": "2024-02-10", "amount": "20000.00", "effect": "lower_installment", "replaces": 1}`,
 			want: `{"current_payoff_date": "2024-04-10", "payoff_date": "2024-06-10",
-				"current_installment": "10228.50", "installment": "5228.50"}`,
+				"current_installment": "10228.50", "installment": "5228.50", "money_saved": "521.00"}`,
 		},
 	}
 
@@ -241,22 +251,25 @@ func TestPreviewsAndOutcomesReadTheClock(t *testing.T) {
 		wantPrepayment string
 		wantStatement  string
 		wantReduction  string
+		wantSaved      string
 	}{
 		{
 			name:  "installments that are not due yet are projected",
 			today: date(2026, time.October, 15),
 			wantPrepayment: `{"current_payoff_date": "2027-02-01", "payoff_date": "2027-02-01",
-				"current_installment": "7809.37", "installment": "5208.85"}`,
+				"current_installment": "7809.37", "installment": "5208.85", "money_saved": "255.10"}`,
 			wantStatement: `{"computed_balance": "15021.01", "drift": "4978.99", "within_rounding": false}`,
 			wantReduction: "2600.52",
+			wantSaved:     "255.10",
 		},
 		{
 			name:  "installments due by today are not",
 			today: date(2026, time.December, 15),
 			wantPrepayment: `{"current_payoff_date": "2027-02-01", "payoff_date": "2027-02-01",
-				"current_installment": "7807.80", "installment": "5207.80"}`,
+				"current_installment": "7807.80", "installment": "5207.80", "money_saved": "251.52"}`,
 			wantStatement: `{"computed_balance": "15015.01", "drift": "4984.99", "within_rounding": false}`,
 			wantReduction: "2600.00",
+			wantSaved:     "251.52",
 		},
 	}
 
@@ -279,8 +292,8 @@ func TestPreviewsAndOutcomesReadTheClock(t *testing.T) {
 
 			assert.JSONEq(t, `{"prepayments": [
 				{"id": 1, "date": "2026-10-01", "amount": "10000.00", "effect": "lower_installment",
-				 "months_shortened": 0, "installment_reduction": "`+tt.wantReduction+`"}
-			], "total_amount": "10000.00", "months_shortened": 0}`,
+				 "months_shortened": 0, "installment_reduction": "`+tt.wantReduction+`", "money_saved": "`+tt.wantSaved+`"}
+			], "total_amount": "10000.00", "months_shortened": 0, "money_saved": "`+tt.wantSaved+`"}`,
 				do(t, s.handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 		})
 	}

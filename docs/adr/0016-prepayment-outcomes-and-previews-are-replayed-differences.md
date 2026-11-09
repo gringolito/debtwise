@@ -9,6 +9,15 @@ the installments of the replay with statements only minus those of the replay wi
 Where a prepayment leaves no installment of the number it is compared at, the whole installment is
 the reduction; where none is due after its date, the reduction is zero.
 
+A prepayment's money saved is the interest, insurance and fees it avoids: the installments of the
+replay without it, minus those of the replay with it, minus what it took off the balance, which is
+at most what was owed. Both replays leave out the statements dated on or after the prepayment, which
+report a balance it already lowered: kept in the replay without it, the first of them would take the
+prepayment's effect off that replay too, and the prepayment would save nothing past it, or less than
+nothing. The money saved is then what the prepayment saves from its date on, as known that day,
+under the current projection. The total is the sum over every prepayment, and a preview reports what
+the previewed prepayment would save once recorded.
+
 A preview replays a hypothetical event without storing it. A preview of an edit names the recorded
 event it replaces, which is left out of the replay, so the recorded schedule is compared with the
 one the edit would give. A statement preview refuses a date another statement has, as recording it
@@ -30,6 +39,9 @@ reports the verdict, so every screen draws the same line.
 - **Comparing each prepayment with the schedule without only that prepayment:** rejected. It
   gives each prepayment its marginal effect, which depends on the ones that follow it, so the
   outcomes again do not add up to the whole.
+- **Keeping the later statements in the replays of the money saved:** rejected. A statement after
+  a prepayment sets the replay without it to the balance the prepayment left, so the figure drops by
+  the whole amount prepaid and turns negative for most recorded prepayments.
 - **Storing each prepayment's outcome when it is recorded:** rejected. An edit to the terms or to
   any earlier event, or a newly published index value, would leave stored outcomes stale. Drift is
   computed on every read for the same reason (ADR-0008).

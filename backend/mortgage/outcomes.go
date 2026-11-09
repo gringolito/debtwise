@@ -18,6 +18,10 @@ type PrepaymentOutcome struct {
 	// is with the prepayment: nothing when no installment is due after it, and the whole
 	// installment when the prepayment leaves none with that number.
 	InstallmentReduction decimal.Decimal
+	// MoneySaved is the interest, insurance and fees the prepayment avoids: what the installments
+	// charge without it beyond what they charge with it, less what it took off the balance, which
+	// is at most what was owed. Both schedules leave out the statements from its date on.
+	MoneySaved decimal.Decimal
 }
 
 // Outcomes are what the prepayments of events changed, in the order of events.Prepayments.
@@ -28,6 +32,8 @@ type Outcomes struct {
 	// MonthsShortened is how many installments fewer the schedule has with every prepayment than
 	// with the statements alone. It is the sum of the prepayments' MonthsShortened.
 	MonthsShortened int
+	// MoneySaved is the sum of the prepayments' MoneySaved.
+	MoneySaved decimal.Decimal
 }
 
 // PrepaymentOutcomes returns what each prepayment of events changed (ADR-0016). Each is compared
@@ -38,30 +44,63 @@ func (t Terms) PrepaymentOutcomes(outlook indexes.Outlook, events Events, today 
 	outcomes := Outcomes{
 		Prepayments: make([]PrepaymentOutcome, 0, len(events.Prepayments)),
 		TotalAmount: decimal.Decimal{}.RoundCents(),
+		MoneySaved:  decimal.Decimal{}.RoundCents(),
 	}
 
-	replay := func(prepayments []Prepayment) []Installment {
-		return slices.Collect(t.Schedule(outlook, Events{Prepayments: prepayments, Statements: events.Statements}, today))
-	}
-
-	without := replay(nil)
-	statementsOnly := len(without)
+	without := t.replayFirst(outlook, events, today, 0)
+	statementsOnly := len(without.installments)
 
 	for i, p := range events.Prepayments {
-		with := replay(events.Prepayments[:i+1])
+		with := t.replayFirst(outlook, events, today, i+1)
+		saved := t.moneySaved(outlook, events, today, i)
 
 		outcomes.Prepayments = append(outcomes.Prepayments, PrepaymentOutcome{
 			Prepayment:           p,
-			MonthsShortened:      len(without) - len(with),
-			InstallmentReduction: installmentReduction(without, with, p.Date),
+			MonthsShortened:      len(without.installments) - len(with.installments),
+			InstallmentReduction: installmentReduction(without.installments, with.installments, p.Date),
+			MoneySaved:           saved,
 		})
 		outcomes.TotalAmount = outcomes.TotalAmount.Add(p.Amount)
+		outcomes.MoneySaved = outcomes.MoneySaved.Add(saved)
 		without = with
 	}
 
-	outcomes.MonthsShortened = statementsOnly - len(without)
+	outcomes.MonthsShortened = statementsOnly - len(without.installments)
 
 	return outcomes
+}
+
+// replayFirst replays the statements of events with only the first n of their prepayments.
+func (t Terms) replayFirst(outlook indexes.Outlook, events Events, today time.Time, n int) replayed {
+	return t.replay(outlook, Events{Prepayments: events.Prepayments[:n], Statements: events.Statements}, today)
+}
+
+// moneySaved returns what events.Prepayments[i] saves: what the installments charge without it
+// beyond what they charge with it, less what it took off the balance. Both replays have the
+// prepayments before it and the statements dated before it. A statement from its date on reports
+// a balance it already lowered, and would take its effect off the replay without it.
+func (t Terms) moneySaved(outlook indexes.Outlook, events Events, today time.Time, i int) decimal.Decimal {
+	day := events.Prepayments[i].Date
+	known := Events{
+		Statements: slices.DeleteFunc(slices.Clone(events.Statements), func(s Statement) bool { return !s.Date.Before(day) }),
+	}
+
+	known.Prepayments = events.Prepayments[:i]
+	without := t.replay(outlook, known, today)
+	known.Prepayments = events.Prepayments[:i+1]
+	with := t.replay(outlook, known, today)
+
+	return charged(without.installments).Sub(charged(with.installments)).Sub(with.prepaid.Sub(without.prepaid))
+}
+
+// charged returns the sum of the installments' amounts.
+func charged(installments []Installment) decimal.Decimal {
+	sum := decimal.Decimal{}.RoundCents()
+	for _, installment := range installments {
+		sum = sum.Add(installment.Amount)
+	}
+
+	return sum
 }
 
 // installmentReduction returns the first installment due after day in without, minus the

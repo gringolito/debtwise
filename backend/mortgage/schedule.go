@@ -111,6 +111,8 @@ type replayer struct {
 	drifts []Drift
 	// paidOffOn is the date of the event that left nothing owed, once one has.
 	paidOffOn time.Time
+	// prepaid is what the prepayments applied so far took off the balance.
+	prepaid decimal.Decimal
 	// prepaymentValues are the index values the updates at the prepayments applied so far read.
 	prepaymentValues []IndexValue
 	// rates are the contract rates with their fixed parts converted once.
@@ -134,6 +136,7 @@ func (t Terms) replayer(outlook indexes.Outlook, events Events, today time.Time)
 		today:       today,
 		events:      events.inOrder(),
 		balance:     t.OriginalAmount.RoundCents(),
+		prepaid:     decimal.Decimal{}.RoundCents(),
 		appraisal:   t.AppraisalValue,
 		term:        t.TermMonths,
 		rates:       chargedRates(t.ContractRates),
@@ -304,6 +307,8 @@ func (r *replayer) applyNext(paid int) decimal.Decimal {
 			r.paidOffOn = e.date
 		}
 	}
+
+	r.prepaid = r.prepaid.Add(prepaid)
 
 	return prepaid
 }
