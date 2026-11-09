@@ -322,8 +322,8 @@ func TestEventOnTheContractDateIsRecorded(t *testing.T) {
 
 	assert.JSONEq(t, `{"prepayments": [
 		{"id": 1, "date": "2023-12-11", "amount": "5000.00", "effect": "lower_installment",
-		 "months_shortened": 0, "installment_reduction": "0.00"}
-	], "total_amount": "5000.00", "months_shortened": 0}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
+		 "months_shortened": 0, "installment_reduction": "0.00", "money_saved": "181.25"}
+	], "total_amount": "5000.00", "months_shortened": 0, "money_saved": "181.25"}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 	assert.JSONEq(t, `{"statements": [
 		{"id": 1, "date": "2023-12-11", "outstanding_balance": "55000.00", "computed_balance": "55000.00",
 		 "drift": "0.00", "within_rounding": true}
@@ -468,8 +468,8 @@ func TestInvalidEventIsRejected(t *testing.T) {
 
 			assert.JSONEq(t, `{"prepayments": [
 				{"id": 1, "date": "2024-03-10", "amount": "5000.00", "effect": "lower_installment",
-				 "months_shortened": 0, "installment_reduction": "1719.16"}
-			], "total_amount": "5000.00", "months_shortened": 0}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
+				 "months_shortened": 0, "installment_reduction": "1719.16", "money_saved": "105.02"}
+			], "total_amount": "5000.00", "months_shortened": 0, "money_saved": "105.02"}`, do(t, handler, http.MethodGet, "/mortgage/prepayments", "", http.StatusOK))
 			assert.JSONEq(t, `{"statements": [
 				{"id": 1, "date": "2024-02-20", "outstanding_balance": "40123.45", "computed_balance": "40000.00",
 				 "drift": "123.45", "within_rounding": false},

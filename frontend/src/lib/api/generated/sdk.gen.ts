@@ -210,7 +210,7 @@ export const saveMortgage = <ThrowOnError extends boolean = false>(options: Opti
 /**
  * List the prepayments
  *
- * Returns the prepayments recorded on the mortgage, each with how many installments it removed and how much it lowered the next installment.
+ * Returns the prepayments recorded on the mortgage, each with how many installments it removed, how much it lowered the next installment and how much money it saved.
  */
 export const listPrepayments = <ThrowOnError extends boolean = false>(options?: Options<ListPrepaymentsData, ThrowOnError>) => (options?.client ?? client).get<ListPrepaymentsResponses, ListPrepaymentsErrors, ThrowOnError>({ url: '/mortgage/prepayments', ...options });
 

@@ -101,6 +101,27 @@ func TestPrepaymentOutcomesReplayTheStatements(t *testing.T) {
 	assert.Equal(t, totals{Amount: "19600.00", MonthsShortened: 2, MoneySaved: "706.00"}, got)
 }
 
+// A statement reports a balance the prepayments before it already took off, so the money a
+// prepayment saves is replayed without the statements on or after its date. The bank stating the
+// 20,000.00 the 20,000.00 on February 10 left, that day and after the 3rd installment, leaves it
+// saving the 720.00 it saves with no statement.
+func TestMoneySavedLeavesOutTheStatementsFromThePrepaymentsDate(t *testing.T) {
+	t.Parallel()
+
+	events := mortgage.Events{
+		Prepayments: []mortgage.Prepayment{prepayment(t, "2024-02-10", "20000.00", mortgage.ShortenTerm)},
+		Statements: []mortgage.Statement{
+			statement(t, "2024-02-10", "20000.00"),
+			statement(t, "2024-03-20", "10000.00"),
+		},
+	}
+
+	got := sacTerms(t).PrepaymentOutcomes(indexes.Outlook{}, events, time.Time{})
+
+	assert.Equal(t, "720.00", got.Prepayments[0].MoneySaved.String())
+	assert.Equal(t, "720.00", got.MoneySaved.String())
+}
+
 // A prepayment that pays off everything owed on January 20 leaves no 2nd installment: the schedule
 // ends after the 1st, 5 installments early, and the 10,510.00 it would have charged is not paid. It
 // takes the 50,000.00 owed, and saves the 1,500.00 interest and 50.00 in fees of the 2nd to 6th

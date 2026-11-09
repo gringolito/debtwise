@@ -20,7 +20,7 @@ type PrepaymentOutcome struct {
 	InstallmentReduction decimal.Decimal
 	// MoneySaved is the interest, insurance and fees the prepayment avoids: what the installments
 	// charge without it beyond what they charge with it, less what it took off the balance, which
-	// is at most what was owed.
+	// is at most what was owed. Both schedules leave out the statements from its date on.
 	MoneySaved decimal.Decimal
 }
 
@@ -52,7 +52,7 @@ func (t Terms) PrepaymentOutcomes(outlook indexes.Outlook, events Events, today 
 
 	for i, p := range events.Prepayments {
 		with := t.replayFirst(outlook, events, today, i+1)
-		saved := moneySaved(without, with)
+		saved := t.moneySaved(outlook, events, today, i)
 
 		outcomes.Prepayments = append(outcomes.Prepayments, PrepaymentOutcome{
 			Prepayment:           p,
@@ -75,9 +75,21 @@ func (t Terms) replayFirst(outlook indexes.Outlook, events Events, today time.Ti
 	return t.replay(outlook, Events{Prepayments: events.Prepayments[:n], Statements: events.Statements}, today)
 }
 
-// moneySaved returns what the installments of without charge beyond those of with, less what the
-// prepayment with adds took off the balance.
-func moneySaved(without, with replayed) decimal.Decimal {
+// moneySaved returns what events.Prepayments[i] saves: what the installments charge without it
+// beyond what they charge with it, less what it took off the balance. Both replays have the
+// prepayments before it and the statements dated before it. A statement from its date on reports
+// a balance it already lowered, and would take its effect off the replay without it.
+func (t Terms) moneySaved(outlook indexes.Outlook, events Events, today time.Time, i int) decimal.Decimal {
+	day := events.Prepayments[i].Date
+	known := Events{
+		Statements: slices.DeleteFunc(slices.Clone(events.Statements), func(s Statement) bool { return !s.Date.Before(day) }),
+	}
+
+	known.Prepayments = events.Prepayments[:i]
+	without := t.replay(outlook, known, today)
+	known.Prepayments = events.Prepayments[:i+1]
+	with := t.replay(outlook, known, today)
+
 	return charged(without.installments).Sub(charged(with.installments)).Sub(with.prepaid.Sub(without.prepaid))
 }
 

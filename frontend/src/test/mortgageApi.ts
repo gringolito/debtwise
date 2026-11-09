@@ -70,6 +70,7 @@ export function stubMortgageApi({
   prepaymentPreview = () => ({
     current_payoff_date: initialSchedule.installments.at(-1)?.due_date ?? "",
     payoff_date: initialSchedule.installments.at(-1)?.due_date ?? "",
+    money_saved: "0.00",
   }),
   statementPreview = (input) => ({
     computed_balance: "0.00",
@@ -122,6 +123,7 @@ export function stubMortgageApi({
     effect: input.effect,
     months_shortened: 0,
     installment_reduction: "0.00",
+    money_saved: "0.00",
   });
   const statementOf = (id: number, input: StatementInput): StatementDrift => ({
     id,

@@ -41,7 +41,7 @@ func (t Terms) PreviewPrepayment(outlook indexes.Outlook, events Events, today t
 	preview := PrepaymentPreview{
 		CurrentPayoff: current.payoffDate(),
 		Payoff:        with.payoffDate(),
-		MoneySaved:    moneySaved(t.replayFirst(outlook, previewed, today, at), t.replayFirst(outlook, previewed, today, at+1)),
+		MoneySaved:    t.moneySaved(outlook, previewed, today, at),
 	}
 
 	if next, found := firstDueAfter(current.installments, p.Date); found {

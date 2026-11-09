@@ -1410,6 +1410,10 @@
       "PrepaymentList": {
         "additionalProperties": false,
         "properties": {
+          "money_saved": {
+            "description": "Sum of every prepayment's money_saved, in reais, as a decimal string.",
+            "type": "string"
+          },
           "months_shortened": {
             "description": "How many installments fewer the schedule has because of all the prepayments together.",
             "format": "int64",
@@ -1430,7 +1434,8 @@
         "required": [
           "prepayments",
           "total_amount",
-          "months_shortened"
+          "months_shortened",
+          "money_saved"
         ],
         "type": "object"
       },
@@ -1463,6 +1468,10 @@
             "description": "How much lower the first installment due after the prepayment is because of it, in reais, as a decimal string. Zero when no installment is due after it.",
             "type": "string"
           },
+          "money_saved": {
+            "description": "The interest, insurance and fees the prepayment avoids under the current projection, in reais, as a decimal string: what the installments charge without it beyond what they charge with it, less what it took off the outstanding balance. Statements dated on or after the prepayment are left out of both, since they report a balance it already lowered.",
+            "type": "string"
+          },
           "months_shortened": {
             "description": "How many installments fewer the schedule has because of this prepayment.",
             "format": "int64",
@@ -1475,7 +1484,8 @@
           "amount",
           "effect",
           "months_shortened",
-          "installment_reduction"
+          "installment_reduction",
+          "money_saved"
         ],
         "type": "object"
       },
@@ -1495,6 +1505,10 @@
             "description": "Amount of that same installment with the previewed prepayment, in reais, as a decimal string. Absent when the mortgage no longer has it.",
             "type": "string"
           },
+          "money_saved": {
+            "description": "The money_saved the previewed prepayment would have once recorded, in place of the one it replaces, in reais, as a decimal string.",
+            "type": "string"
+          },
           "payoff_date": {
             "description": "Date the mortgage is paid off with the previewed prepayment: the due date of its last installment.",
             "format": "date",
@@ -1503,7 +1517,8 @@
         },
         "required": [
           "current_payoff_date",
-          "payoff_date"
+          "payoff_date",
+          "money_saved"
         ],
         "type": "object"
       },
@@ -3002,7 +3017,7 @@
     },
     "/mortgage/prepayments": {
       "get": {
-        "description": "Returns the prepayments recorded on the mortgage, each with how many installments it removed and how much it lowered the next installment.",
+        "description": "Returns the prepayments recorded on the mortgage, each with how many installments it removed, how much it lowered the next installment and how much money it saved.",
         "operationId": "list-prepayments",
         "responses": {
           "200": {

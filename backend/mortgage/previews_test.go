@@ -135,6 +135,20 @@ func TestPreviewPrepayment(t *testing.T) {
 				CurrentInstallment: "10410.00", Installment: "10210.00", MoneySaved: "720.00",
 			},
 		},
+		{
+			// The bank stated the 10,000.00 it leaves after the 3rd installment. Without the
+			// prepayment that statement would take it off anyway, so it is left out of what the
+			// prepayment saves.
+			name: "a statement after the prepayment leaves what it saves as it was",
+			recorded: mortgage.Events{
+				Statements: []mortgage.Statement{statement(t, "2024-03-20", "10000.00")},
+			},
+			previews: prepayment(t, "2024-02-10", "20000.00", mortgage.ShortenTerm),
+			want: previewed{
+				CurrentPayoff: "2024-06-10", Payoff: "2024-04-10",
+				CurrentInstallment: "10410.00", Installment: "10210.00", MoneySaved: "720.00",
+			},
+		},
 	}
 
 	for _, tt := range tests {

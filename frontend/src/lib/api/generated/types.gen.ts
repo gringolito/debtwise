@@ -802,6 +802,10 @@ export type PrepaymentInput = {
 
 export type PrepaymentList = {
     /**
+     * Sum of every prepayment's money_saved, in reais, as a decimal string.
+     */
+    money_saved: string;
+    /**
      * How many installments fewer the schedule has because of all the prepayments together.
      */
     months_shortened: number;
@@ -837,6 +841,10 @@ export type PrepaymentOutcome = {
      */
     installment_reduction: string;
     /**
+     * The interest, insurance and fees the prepayment avoids under the current projection, in reais, as a decimal string: what the installments charge without it beyond what they charge with it, less what it took off the outstanding balance. Statements dated on or after the prepayment are left out of both, since they report a balance it already lowered.
+     */
+    money_saved: string;
+    /**
      * How many installments fewer the schedule has because of this prepayment.
      */
     months_shortened: number;
@@ -855,6 +863,10 @@ export type PrepaymentPreview = {
      * Amount of that same installment with the previewed prepayment, in reais, as a decimal string. Absent when the mortgage no longer has it.
      */
     installment?: string;
+    /**
+     * The money_saved the previewed prepayment would have once recorded, in place of the one it replaces, in reais, as a decimal string.
+     */
+    money_saved: string;
     /**
      * Date the mortgage is paid off with the previewed prepayment: the due date of its last installment.
      */

@@ -119,6 +119,7 @@ describe("recording a prepayment", () => {
         payoff_date: "2024-05-10",
         current_installment: "10434.50",
         installment: "10434.50",
+        money_saved: "312.40",
       }),
     });
     setToday("2024-02-20");
@@ -166,8 +167,9 @@ describe("recording a prepayment", () => {
               payoff_date: "2024-06-10",
               current_installment: "10434.50",
               installment: "9184.45",
+              money_saved: "845.15",
             }
-          : { current_payoff_date: "2024-06-10", payoff_date: "2024-06-10" },
+          : { current_payoff_date: "2024-06-10", payoff_date: "2024-06-10", money_saved: "312.40" },
     });
     renderAt("/financiamento");
 

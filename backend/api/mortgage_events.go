@@ -36,7 +36,7 @@ type prepaymentOutcome struct {
 	Effect               string `json:"effect" enum:"shorten_term,lower_installment" doc:"What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments."`
 	MonthsShortened      int64  `json:"months_shortened" doc:"How many installments fewer the schedule has because of this prepayment."`
 	InstallmentReduction string `json:"installment_reduction" doc:"How much lower the first installment due after the prepayment is because of it, in reais, as a decimal string. Zero when no installment is due after it."`
-	MoneySaved           string `json:"money_saved" doc:"The interest, insurance and fees the prepayment avoids under the current projection, in reais, as a decimal string: what the installments charge without it beyond what they charge with it, less what it took off the outstanding balance."`
+	MoneySaved           string `json:"money_saved" doc:"The interest, insurance and fees the prepayment avoids under the current projection, in reais, as a decimal string: what the installments charge without it beyond what they charge with it, less what it took off the outstanding balance. Statements dated on or after the prepayment are left out of both, since they report a balance it already lowered."`
 }
 
 type prepaymentList struct {

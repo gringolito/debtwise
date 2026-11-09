@@ -399,6 +399,7 @@ export const prepayments: PrepaymentOutcome[] = [
     effect: "shorten_term",
     months_shortened: 1,
     installment_reduction: "0.00",
+    money_saved: "312.40",
   },
   {
     id: 2,
@@ -407,6 +408,7 @@ export const prepayments: PrepaymentOutcome[] = [
     effect: "lower_installment",
     months_shortened: 0,
     installment_reduction: "1250.05",
+    money_saved: "845.15",
   },
   {
     id: 3,
@@ -415,6 +417,7 @@ export const prepayments: PrepaymentOutcome[] = [
     effect: "shorten_term",
     months_shortened: 0,
     installment_reduction: "0.00",
+    money_saved: "41.27",
   },
 ];
 
