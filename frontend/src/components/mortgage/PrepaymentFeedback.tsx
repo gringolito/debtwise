@@ -69,6 +69,7 @@ function Recorded({
   const outcome = list.prepayments.find((recorded) => recorded.id === prepayment.id);
   if (!outcome) return null;
   const next = nextDue(after.installments, outcome.date);
+  const paidOff = !next && nextDue(before.installments, outcome.date) !== undefined;
   const payoff = payoffOf(after);
   const saved = (
     <CelebrationFigure lead="Na projeção atual, ela economiza" unit="em juros, seguros e taxas">
@@ -81,7 +82,7 @@ function Recorded({
     </CelebrationFact>
   );
 
-  if (!next) {
+  if (paidOff) {
     return (
       <Celebration variant="milestone" onClose={onClose}>
         <CelebrationTitle icon={KeyRoundIcon}>Financiamento quitado!</CelebrationTitle>
@@ -91,24 +92,26 @@ function Recorded({
       </Celebration>
     );
   }
+  const facts =
+    outcome.effect === "shorten_term" ? (
+      <>
+        {shortened}
+        {payoff && (
+          <CelebrationFact name="Quitação prevista">{formatMonthYear(payoff)}</CelebrationFact>
+        )}
+      </>
+    ) : (
+      next && (
+        <CelebrationFact name="Prestação">
+          <InstallmentChange before={before} after={next} />
+        </CelebrationFact>
+      )
+    );
   return (
     <Celebration onClose={onClose}>
       <CelebrationTitle>Amortização registrada!</CelebrationTitle>
       {saved}
-      <CelebrationFacts>
-        {outcome.effect === "shorten_term" ? (
-          <>
-            {shortened}
-            {payoff && (
-              <CelebrationFact name="Quitação prevista">{formatMonthYear(payoff)}</CelebrationFact>
-            )}
-          </>
-        ) : (
-          <CelebrationFact name="Prestação">
-            <InstallmentChange before={before} after={next} />
-          </CelebrationFact>
-        )}
-      </CelebrationFacts>
+      {facts && <CelebrationFacts>{facts}</CelebrationFacts>}
       <TotalNote list={list} />
     </Celebration>
   );

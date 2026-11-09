@@ -170,8 +170,8 @@ Large Title at semibold weight. The wordmark's text is Title 2. These seven size
   "Continuar". The panel springs up from below as it fades in, and only fades in when the device
   asks for reduced motion. A milestone, such as a mortgage paid off, also ripples soft-accent rings
   out of its icon. After a correction, such as an edited or deleted prepayment, the same panel
-  informs instead: no icon, the dialog's usual short fade, the figures as before → after where
-  they changed, and "Entendi".
+  informs instead: no icon and no animation, the figures as before → after where they changed, and
+  "Entendi".
 - A screen that fails to load shows a white error panel in place of its content: a cloud-off icon
   in a grey circle, a Headline saying what could not load, "Verifique sua conexão. Seus dados
   estão salvos." in Callout, and a graphite "Tentar novamente" that retries the failed request.

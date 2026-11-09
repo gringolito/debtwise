@@ -19,33 +19,48 @@ function DialogClose({ ...props }: React.ComponentProps<typeof DialogPrimitive.C
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
 }
 
+const dialogOverlayVariants = cva(
+  "fixed inset-0 isolate z-50 bg-foreground/30 supports-backdrop-filter:backdrop-blur-sm",
+  {
+    variants: {
+      motion: {
+        fade: "duration-150 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        none: "",
+      },
+    },
+    defaultVariants: {
+      motion: "fade",
+    },
+  },
+);
+
 function DialogOverlay({
   className,
+  motion,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+}: React.ComponentProps<typeof DialogPrimitive.Overlay> &
+  VariantProps<typeof dialogOverlayVariants>) {
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
-      className={cn(
-        "fixed inset-0 isolate z-50 bg-foreground/30 duration-150 supports-backdrop-filter:backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
-        className,
-      )}
+      className={cn(dialogOverlayVariants({ motion }), className)}
       {...props}
     />
   );
 }
 
 const dialogContentVariants = cva(
-  "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100%-4rem)] w-full -translate-x-1/2 -translate-y-1/2 flex-col gap-6 overflow-y-auto rounded-lg bg-popover p-8 text-popover-foreground shadow-sheet duration-150 outline-none data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+  "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100%-4rem)] w-full -translate-x-1/2 -translate-y-1/2 flex-col gap-6 overflow-y-auto rounded-lg bg-popover p-8 text-popover-foreground shadow-sheet outline-none",
   {
     variants: {
       variant: {
-        default: "max-w-[520px] data-open:zoom-in-95",
-        /** The neutral feedback after a change: centered, with the default transition. */
-        notice: "max-w-120 text-center data-open:zoom-in-95",
+        default:
+          "max-w-[520px] duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+        /** The neutral feedback after a change: centered, and it appears and goes without animation. */
+        notice: "max-w-120 text-center",
         /** A celebration springs up; when the device asks for reduced motion it only fades in. */
         celebration:
-          "max-w-120 text-center data-open:duration-700 motion-safe:data-open:zoom-in-75 motion-safe:data-open:slide-in-from-bottom-16 motion-safe:data-open:ease-spring",
+          "max-w-120 text-center duration-150 data-open:animate-in data-open:fade-in-0 data-open:duration-700 motion-safe:data-open:zoom-in-75 motion-safe:data-open:slide-in-from-bottom-16 motion-safe:data-open:ease-spring data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
       },
     },
     defaultVariants: {
@@ -64,7 +79,7 @@ function DialogContent({
   VariantProps<typeof dialogContentVariants>) {
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay motion={variant === "notice" ? "none" : "fade"} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(dialogContentVariants({ variant }), className)}

@@ -53,10 +53,10 @@ const rows = async () =>
     .getAllByRole("button")
     .map(text);
 
-/** feedback is the dialog that opens once a change is saved, after the sheet closed. */
+/** feedback is the dialog that opens as the sheet closes once a change is saved. */
 async function feedback(name: string) {
   await waitFor(() => expect(screen.queryByRole("form")).toBeNull());
-  return screen.findByRole("dialog", { name });
+  return screen.getByRole("dialog", { name });
 }
 
 async function dismiss(dialog: HTMLElement, button: string) {
@@ -323,6 +323,20 @@ describe("celebrating a recorded prepayment", () => {
       await dismiss(dialog, "Continuar");
     },
   );
+
+  it("celebrates no payoff when the mortgage was paid off before the prepayment", async () => {
+    stubMortgageApi({
+      mortgage: registeredMortgage,
+      schedule: { installments: schedule.installments.slice(0, 2) },
+    });
+    setToday("2024-02-20");
+    renderAt("/financiamento");
+
+    await record("Reduzir prazo");
+
+    const dialog = await feedback("Amortização registrada!");
+    expect(facts(dialog)).toEqual([["Quitação prevista", "fevereiro de 2024"]]);
+  });
 });
 
 describe("a prepayment the server rejects", () => {
