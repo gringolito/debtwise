@@ -1203,8 +1203,20 @@
       "MarketTotal": {
         "additionalProperties": false,
         "properties": {
+          "custody_fee": {
+            "description": "The custody fee taken from the gross total, in reais, as a decimal string.",
+            "type": "string"
+          },
           "gross": {
             "description": "The total before IOF, income tax and the custody fee, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "income_tax": {
+            "description": "The income tax taken from the gross total, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "iof": {
+            "description": "The IOF taken from the gross total, in reais, as a decimal string.",
             "type": "string"
           },
           "net": {
@@ -1214,6 +1226,9 @@
         },
         "required": [
           "gross",
+          "iof",
+          "income_tax",
+          "custody_fee",
           "net"
         ],
         "type": "object"

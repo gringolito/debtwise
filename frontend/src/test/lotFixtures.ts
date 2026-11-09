@@ -1,6 +1,7 @@
 import type {
   EarlySaleCheck,
   LotAmount,
+  LotList,
   LotValued,
   MarketDataStatus,
   VerdictMarketData,
@@ -124,7 +125,7 @@ export function uncheckable(
 
 interface InvestmentsStub {
   lots: LotValued[];
-  marketValue?: { gross: string; net: string };
+  marketValue?: LotList["market_value"];
   /** The checks answered for each effect; both effects answer `checks` when it is an array. */
   checks?: EarlySaleCheck[] | Record<PrepaymentEffect, EarlySaleCheck[]>;
   routes?: Parameters<typeof stubRoutes>[0];

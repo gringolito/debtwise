@@ -6,6 +6,7 @@ import {
   Line,
   LineChart,
   ReferenceLine,
+  usePlotArea,
   XAxis,
   YAxis,
 } from "recharts";
@@ -29,9 +30,9 @@ const TREND_CONFIG = {
 } satisfies ChartConfig;
 
 const COMPOSITION_CONFIG = {
-  amortization: { label: "Amortização", color: "var(--chart-mortgage)" },
-  interest: { label: "Juros", color: "var(--accent-soft)" },
-  charges: { label: "Seguros e taxa", color: "var(--chart-projection)" },
+  amortization: { label: "Amortização", color: "var(--chart-amortization)" },
+  interest: { label: "Juros", color: "var(--chart-interest)" },
+  charges: { label: "Seguros e taxa", color: "var(--chart-charges)" },
 } satisfies ChartConfig;
 
 const tickFormat = new Intl.NumberFormat("pt-BR", { notation: "compact" });
@@ -53,6 +54,26 @@ function PrepaymentDot({ cx, cy, index, stroke, payload }: DotProps) {
   if (!payload?.prepaid || cx === undefined || cy === undefined) return <g key={index} />;
   return (
     <circle key={index} cx={cx} cy={cy} r={4} fill="var(--card)" stroke={stroke} strokeWidth={2} />
+  );
+}
+
+/**
+ * TodayLabel sits above the plot on the side of the today line with more room, so it never runs
+ * into the value axis' top tick or past the plot's right edge.
+ */
+function TodayLabel({ x, y, value }: { x?: number; y?: number; value?: string }) {
+  const plot = usePlotArea();
+  if (x === undefined || y === undefined || !plot) return null;
+  const leftward = x > plot.x + plot.width / 2;
+  return (
+    <text
+      x={leftward ? x - 4 : x + 4}
+      y={y}
+      textAnchor={leftward ? "end" : "start"}
+      fill="var(--accent)"
+    >
+      {value}
+    </text>
   );
 }
 
@@ -139,7 +160,7 @@ export function ScheduleChart({
           label={{
             value: `Hoje (${formatMonthYear(today)})`,
             position: "top",
-            fill: "var(--accent)",
+            content: <TodayLabel />,
           }}
         />
       )}

@@ -19,16 +19,22 @@ afterEach(() => {
 const rowsOf = (group: HTMLElement) => within(group).getAllByRole("link").map(words);
 
 describe("Compras", () => {
-  it("totals the net Market Value and lists each lot under its bond, maturing first", async () => {
+  it("shows the net Market Value with what each deduction took off the gross, and lists each lot under its bond", async () => {
     stubInvestments({
       lots: [ipca2035, prefixado2029, ipca2035Again],
-      marketValue: { gross: "34800.12", net: "33016.50" },
+      marketValue: {
+        gross: "34800.12",
+        iof: "70.50",
+        income_tax: "1700.00",
+        custody_fee: "13.12",
+        net: "33016.50",
+      },
     });
     renderAt("/investimentos");
 
-    const total = await screen.findByRole("region", { name: "Valor de mercado líquido" });
+    const total = await screen.findByRole("region", { name: "Valor de mercado" });
     expect(words(total)).toBe(
-      "Valor de mercado líquido R$ 33.016,50 Bruto R$ 34.800,12 · já descontados IR, IOF e custódia 1 compra sem valor de mercado ficou fora do total.",
+      "Valor de mercado R$ 33.016,50 Líquido, se vender tudo hoje Bruto R$ 34.800,12 IR − R$ 1.700,00 IOF − R$ 70,50 Custódia − R$ 13,12 1 compra sem valor de mercado ficou fora do total.",
     );
 
     const groups = screen.getAllByRole("region").filter((region) => region !== total);
@@ -36,10 +42,10 @@ describe("Compras", () => {
       "Tesouro Prefixado com Juros Semestrais 2029",
       "Tesouro IPCA+ 2035",
     ]);
-    expect(rowsOf(groups[0])).toEqual(["Compra em 10/01/2025 11,85% Sem preço de venda"]);
+    expect(rowsOf(groups[0])).toEqual(["Compra em 10/01/2025 · 11,85% Sem preço de venda"]);
     expect(rowsOf(groups[1])).toEqual([
-      "Compra em 12/05/2024 IPCA + 6,21% R$ 18.204,10",
-      "Compra em 18/11/2024 IPCA + 6,45% R$ 14.812,40",
+      "Compra em 12/05/2024 · IPCA + 6,21% R$ 18.204,10",
+      "Compra em 18/11/2024 · IPCA + 6,45% R$ 14.812,40",
     ]);
   });
 
@@ -53,8 +59,8 @@ describe("Compras", () => {
     const group = await screen.findByRole("region", { name: "Tesouro IPCA+ 2035" });
     await waitFor(() =>
       expect(rowsOf(group)).toEqual([
-        "Compra em 12/05/2024 IPCA + 6,21% Manter até o vencimento R$ 18.204,10",
-        "Compra em 18/11/2024 IPCA + 6,45% Vender e amortizar renderia + R$ 120,00 R$ 14.812,40",
+        "Compra em 12/05/2024 · IPCA + 6,21% Manter até o vencimento R$ 18.204,10",
+        "Compra em 18/11/2024 · IPCA + 6,45% Vender e amortizar renderia + R$ 120,00 R$ 14.812,40",
       ]),
     );
     expect(within(group).getByText("+ R$ 120,00")).toHaveClass("text-positive");
@@ -65,7 +71,7 @@ describe("Compras", () => {
     renderAt("/investimentos");
 
     const group = await screen.findByRole("region", { name: "Tesouro IPCA+ 2045" });
-    expect(rowsOf(group)).toEqual(["Compra em 01/06/2026 IPCA + 6,88% Aguardando o IPCA"]);
+    expect(rowsOf(group)).toEqual(["Compra em 01/06/2026 · IPCA + 6,88% Aguardando o IPCA"]);
     expect(screen.getByText("Nenhuma compra tem valor de mercado hoje.")).toBeInTheDocument();
   });
 
@@ -143,7 +149,7 @@ describe("Compras", () => {
     const group = await screen.findByRole("region", { name: "Tesouro Prefixado 2029" });
     await waitFor(() =>
       expect(rowsOf(group)).toEqual([
-        "Compra em 10/01/2025 11,85% Vender e amortizar renderia + R$ 55,00 Sem preço de venda",
+        "Compra em 10/01/2025 · 11,85% Vender e amortizar renderia + R$ 55,00 Sem preço de venda",
       ]),
     );
   });

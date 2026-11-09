@@ -452,7 +452,7 @@ describe("Títulos", () => {
       .slice(1)
       .map((row) => row.textContent?.replace(/\s/g, " "));
 
-  it("lists first the bonds comparable with a TR mortgage, with their quotes", async () => {
+  it("lists the comparable bonds on offer, then those off offer, then the other bonds", async () => {
     stubBackend();
 
     renderAt("/mercado");
@@ -461,9 +461,32 @@ describe("Títulos", () => {
     await screen.findByRole("table", { name: "Comparáveis com seu financiamento" });
     expect(tableRows("Comparáveis com seu financiamento")).toEqual([
       "Tesouro Prefixado 202901/01/202912,15%R$ 789,4013,00%R$ 1.234,56",
-      "Tesouro Prefixado com Juros Semestrais 203101/01/2031Fora de oferta13,00%R$ 1.234,56",
     ]);
     expect(screen.getByText("Taxas e preços do Tesouro Direto em 14/04/2024.")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual([
+      "Comparáveis com seu financiamento",
+      "Comparáveis fora de oferta",
+      "Outros títulos",
+    ]);
+
+    const offOffer = within(screen.getByRole("region", { name: "Comparáveis fora de oferta" }));
+    const toggle = offOffer.getByRole("button", {
+      name: "Tesouro Prefixado com Juros Semestrais · 1 título",
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+
+    const table = screen.getByRole("table", { name: "Comparáveis fora de oferta" });
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual(["Título", "Vencimento", "Venda"]);
+    expect(tableRows("Comparáveis fora de oferta")).toEqual([
+      "Tesouro Prefixado com Juros Semestrais 203101/01/203113,00%R$ 1.234,56",
+    ]);
   });
 
   it("keeps the other bonds in a collapsed group", async () => {

@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CorrectionIndex, ScheduledInstallment } from "@/lib/api";
 import { formatDate, formatMoney, formatRate } from "@/lib/format";
 import { indexNames } from "@/lib/indexNames";
@@ -60,28 +61,47 @@ function MissingRateWarning({ missing }: { missing: CorrectionIndex[] }) {
 // The spaces keep the text readable when copied or read out as one line.
 function Detail({ name, children }: { name: string; children: React.ReactNode }) {
   return (
-    <div className="flex gap-1.5">
-      <dt>{name}</dt> <dd className="flex flex-wrap gap-x-1.5 text-foreground">{children}</dd>{" "}
+    <div className="flex flex-col gap-0.5">
+      <dt>{name}</dt>{" "}
+      <dd className="flex items-center gap-1.5 text-callout text-foreground">{children}</dd>{" "}
     </div>
+  );
+}
+
+/** Readings opens, under an info icon, the index readings a figure of the installment comes from. */
+function Readings({ label, indexValues }: { label: string; indexValues: CorrectionIndex[] }) {
+  if (indexValues.length === 0) return null;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          className="rounded-full text-accent outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <InfoIcon aria-hidden="true" strokeWidth={1.5} className="size-4" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <div className="flex flex-col gap-2">
+          <IndexCell indexValues={indexValues} />
+        </div>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
 function InstallmentDetails({ installment }: { installment: ScheduledInstallment }) {
   return (
-    <div className="flex items-start gap-2 px-2 py-1 text-footnote text-muted-foreground">
-      <InfoIcon aria-hidden="true" strokeWidth={1.5} className="mt-0.5 size-4 text-accent" />
-      <dl className="flex flex-wrap gap-x-6 gap-y-2">
+    <TooltipProvider>
+      <dl className="flex flex-wrap gap-x-10 gap-y-4 px-2 py-1 text-footnote text-muted-foreground">
         <Detail name="Correção">
-          {formatMoney(installment.correction)}{" "}
-          {installment.index_values.length > 0 && (
-            <IndexCell indexValues={installment.index_values} />
-          )}
+          {formatMoney(installment.correction)}
+          <Readings label="Índices da correção" indexValues={installment.index_values} />
         </Detail>
         <Detail name="Taxa de juros">
-          {formatRate(installment.rate)} a.a.{" "}
-          {installment.rate_index_values.length > 0 && (
-            <IndexCell indexValues={installment.rate_index_values} />
-          )}
+          {formatRate(installment.rate)} a.a.
+          <Readings label="Índices da taxa de juros" indexValues={installment.rate_index_values} />
         </Detail>
         <Detail name="MIP">{formatMoney(installment.mip)}</Detail>
         <Detail name="DFI">{formatMoney(installment.dfi)}</Detail>
@@ -90,7 +110,7 @@ function InstallmentDetails({ installment }: { installment: ScheduledInstallment
           <Detail name="Amortização extraordinária">{formatMoney(installment.prepaid)}</Detail>
         )}
       </dl>
-    </div>
+    </TooltipProvider>
   );
 }
 

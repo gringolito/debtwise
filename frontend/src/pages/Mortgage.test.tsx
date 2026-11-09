@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CorrectionIndex, Schedule, ScheduledInstallment } from "@/lib/api";
 import { rowTexts, text } from "@/test/dom";
@@ -26,6 +26,7 @@ import { problem, stubRoutes } from "@/test/stubServer";
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 /** setToday fakes only the clock, so timers and the server stub keep running. */
@@ -152,6 +153,34 @@ describe("the summary of the mortgage", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Composição" }));
     expect(screen.getByRole("region", { name: "Composição da prestação" })).toBeInTheDocument();
   });
+
+  it.each([
+    ["early in the term, to its right", "2024-01-01", "start"],
+    ["late in the term, to its left", "2024-06-01", "end"],
+  ])("labels today %s, toward the room the plot has", async (_, today, anchor) => {
+    // jsdom lays nothing out, and a chart with no size draws nothing.
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+      DOMRect.fromRect({ width: 800, height: 256 }),
+    );
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(800);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(256);
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(800);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(256);
+    stubMortgageApi({ mortgage: registeredMortgage });
+    setToday(today);
+    renderAt("/financiamento");
+
+    const chart = within(
+      await screen.findByRole("region", { name: "Saldo devedor ao longo do tempo" }),
+    );
+    const label = await chart.findByText(/^Hoje \(/);
+    const lineX = Number(
+      document.querySelector(".recharts-reference-line line")?.getAttribute("x1"),
+    );
+    expect(label).toHaveAttribute("text-anchor", anchor);
+    const labelX = Number(label.getAttribute("x"));
+    expect(anchor === "start" ? labelX > lineX : labelX < lineX).toBe(true);
+  });
 });
 
 describe("the installments of the mortgage", () => {
@@ -246,28 +275,39 @@ describe("the installments of the mortgage", () => {
 });
 
 describe("the installments of an indexed mortgage", () => {
-  async function detailsOf(number: number) {
+  async function detailsRow(number: number) {
     const table = await installmentsTable();
     const button = within(table).getByRole("button", { name: `Detalhes da prestação ${number}` });
     if (button.getAttribute("aria-expanded") === "false") fireEvent.click(button);
-    const row = button.closest("tr")?.nextElementSibling as HTMLElement;
-    return text(row);
+    return button.closest("tr")?.nextElementSibling as HTMLElement;
   }
 
-  it("shows each correction with the index value and period behind it", async () => {
+  const detailsOf = async (number: number) => text(await detailsRow(number));
+
+  /** readingsOf opens the info tooltip of an installment's figure and reads the index values in it. */
+  async function readingsOf(number: number, figure: "correção" | "taxa de juros") {
+    const row = await detailsRow(number);
+    const trigger = within(row).queryByRole("button", { name: `Índices da ${figure}` });
+    if (!trigger) return undefined;
+    act(() => trigger.focus());
+    const readings = text(await screen.findByRole("tooltip"));
+    act(() => trigger.blur());
+    await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+    return readings;
+  }
+
+  it("shows each correction's figures, with the index value and period behind it on hover", async () => {
     stubMortgageApi({ mortgage: trMortgage, schedule: trSchedule });
     setToday("2024-03-01");
     renderAt("/financiamento");
 
     expect(await detailsOf(1)).toBe(
-      "Correção R$ 32,34 TR 0,0539% 10/12/2023 a 10/01/2024 Taxa de juros 12,682503% a.a. MIP R$ 18,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
+      "Correção R$ 32,34 Taxa de juros 12,682503% a.a. MIP R$ 18,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
     );
-    expect(await detailsOf(2)).toBe(
-      "Correção R$ 0,00 TR Sem índice 10/01/2024 a 10/02/2024 Taxa de juros 12,682503% a.a. MIP R$ 15,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
-    );
-    expect(await detailsOf(3)).toBe(
-      "Correção R$ 0,00 Taxa de juros 12,682503% a.a. MIP R$ 12,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
-    );
+    expect(await readingsOf(1, "correção")).toBe("TR 0,0539% 10/12/2023 a 10/01/2024");
+    expect(await readingsOf(2, "correção")).toBe("TR Sem índice 10/01/2024 a 10/02/2024");
+    expect(await readingsOf(3, "correção")).toBeUndefined();
+    expect(await readingsOf(1, "taxa de juros")).toBeUndefined();
   });
 
   it("shows an IPCA value with the month it is for", async () => {
@@ -275,9 +315,7 @@ describe("the installments of an indexed mortgage", () => {
     setToday("2024-01-01");
     renderAt("/financiamento");
 
-    expect(await detailsOf(1)).toBe(
-      "Correção R$ 336,00 IPCA 0,56% dez/2023 Taxa de juros 12,682503% a.a. MIP R$ 18,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
-    );
+    expect(await readingsOf(1, "correção")).toBe("IPCA 0,56% dez/2023");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -341,8 +379,8 @@ describe("the installments of an indexed mortgage", () => {
     setToday("2024-03-01");
     renderAt("/financiamento");
 
-    expect(await detailsOf(1)).toBe(
-      "Correção R$ 108,30 TR Sem índice 10/12/2023 a 10/01/2024 TR Sem índice 10/01/2024 a 10/02/2024 TR 0,2166% 10/02/2024 a 10/03/2024 Taxa de juros 12,682503% a.a. MIP R$ 18,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
+    expect(await readingsOf(1, "correção")).toBe(
+      "TR Sem índice 10/12/2023 a 10/01/2024 TR Sem índice 10/01/2024 a 10/02/2024 TR 0,2166% 10/02/2024 a 10/03/2024",
     );
     expect(text(await screen.findByRole("alert"))).toBe(
       "Faltam valores de TR para 2 meses. Esses meses não foram corrigidos. Atualize os dados de mercado em Ajustes.",
@@ -354,8 +392,11 @@ describe("the installments of an indexed mortgage", () => {
     setToday("2024-03-01");
     renderAt("/financiamento");
 
-    expect(await detailsOf(3)).toBe(
-      "Correção R$ 7,50 TR 0,0150% Projetado 10/02/2024 a 10/03/2024 TR: Média dos últimos 12 meses Taxa de juros 11,91% a.a. Selic meta 10,50% Projetado 29/02/2024 Selic meta: Mediana do Focus (BCB) MIP R$ 12,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
+    expect(await readingsOf(3, "correção")).toBe(
+      "TR 0,0150% Projetado 10/02/2024 a 10/03/2024 TR: Média dos últimos 12 meses",
+    );
+    expect(await readingsOf(3, "taxa de juros")).toBe(
+      "Selic meta 10,50% Projetado 29/02/2024 Selic meta: Mediana do Focus (BCB)",
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -366,11 +407,10 @@ describe("the installments of an indexed mortgage", () => {
     renderAt("/financiamento");
 
     expect(await detailsOf(1)).toBe(
-      "Correção R$ 32,34 TR 0,0539% 10/12/2023 a 10/01/2024 Taxa de juros 12,33778% a.a. Selic meta 11,75% 06/12/2023 MIP R$ 18,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
+      "Correção R$ 32,34 Taxa de juros 12,33778% a.a. MIP R$ 18,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
     );
-    expect(await detailsOf(2)).toBe(
-      "Correção R$ 0,00 Taxa de juros 6,17% a.a. Selic meta Sem índice 31/01/2024 MIP R$ 12,00 DFI R$ 10,00 Taxa de administração R$ 12,50",
-    );
+    expect(await readingsOf(1, "taxa de juros")).toBe("Selic meta 11,75% 06/12/2023");
+    expect(await readingsOf(2, "taxa de juros")).toBe("Selic meta Sem índice 31/01/2024");
   });
 
   it("warns apart from the correction warning that the rate lacks Selic target values", async () => {
