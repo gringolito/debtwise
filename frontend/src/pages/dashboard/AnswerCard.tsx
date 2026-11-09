@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useId } from "react";
+import investIllustration from "@/assets/answer-invest.webp";
+import prepayIllustration from "@/assets/answer-prepay.webp";
 import { Button } from "@/components/ui/button";
 import type { Decision, Verdict } from "@/lib/api";
 import { bestVerdict } from "@/lib/dashboard";
@@ -7,7 +9,18 @@ import { isZero, verdictTitle } from "@/lib/decisions";
 import { formatDate, formatMoney } from "@/lib/format";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
 
-function answer(best: Verdict & { advantage: string }): { title: string; detail: React.ReactNode } {
+type Winner = "invest" | "prepay";
+
+const illustrations: Record<Winner, string> = {
+  invest: investIllustration,
+  prepay: prepayIllustration,
+};
+
+function answer(best: Verdict & { advantage: string }): {
+  title: string;
+  detail: React.ReactNode;
+  winner?: Winner;
+} {
   const bond = verdictTitle(best);
   const horizon = formatDate(best.maturity);
   const amount = (
@@ -29,6 +42,7 @@ function answer(best: Verdict & { advantage: string }): { title: string; detail:
           {amount} a mais do que investir em {bond}, até {horizon}.
         </>
       ),
+      winner: "prepay",
     };
   }
   return {
@@ -38,7 +52,19 @@ function answer(best: Verdict & { advantage: string }): { title: string; detail:
         {amount} a mais do que amortizar, até {horizon}.
       </>
     ),
+    winner: "invest",
   };
+}
+
+function Illustration({ winner }: { winner: Winner }) {
+  return (
+    <div aria-hidden="true" className="relative hidden shrink-0 md:block">
+      <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-accent-soft px-3 py-0.5 text-footnote font-semibold whitespace-nowrap text-graphite shadow-glow">
+        Melhor opção
+      </span>
+      <img src={illustrations[winner]} alt="" className="size-40 object-contain drop-shadow-glow" />
+    </div>
+  );
 }
 
 /**
@@ -56,30 +82,39 @@ export function AnswerCard({ decision }: { decision: Decision }) {
     <div className="flex flex-col gap-2">
       <section
         aria-labelledby={titleId}
-        className="flex flex-col gap-2 rounded-lg bg-graphite p-6 text-graphite-foreground"
+        className="rounded-lg glass-graphite p-8 text-graphite-foreground"
       >
-        <p className="text-footnote tracking-wide text-graphite-muted-foreground uppercase">
-          Na projeção atual, para {formatMoney(decision.amount)} hoje
-        </p>
-        <h2 id={titleId} className="text-title-2">
-          {stated?.title ?? "Amortizar ou investir? Veja a comparação."}
-        </h2>
-        <p className="text-callout text-graphite-muted-foreground">
-          {stated?.detail ?? "Compare antes de registrar sua próxima amortização."}
-        </p>
-        <div className="mt-4 flex items-center gap-2">
-          <Button variant="inverse" asChild>
-            <Link to="/decidir" search={{ valor, comparar: true }}>
-              {stated ? "Ver comparação" : "Comparar agora"}
-            </Link>
-          </Button>
-          {stated && (
-            <Button variant="plain-inverse" asChild>
-              <Link to="/decidir" search={{ valor }}>
-                Mudar valor
-              </Link>
-            </Button>
-          )}
+        <div className="flex items-center justify-between gap-8">
+          <div className="flex max-w-120 flex-col gap-2">
+            <p className="flex items-center gap-2 text-footnote tracking-wide text-graphite-muted-foreground uppercase">
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-accent-soft shadow-glow"
+              />
+              Na projeção atual, para {formatMoney(decision.amount)} hoje
+            </p>
+            <h2 id={titleId} className="text-title-2">
+              {stated?.title ?? "Amortizar ou investir? Veja a comparação."}
+            </h2>
+            <p className="text-callout text-graphite-muted-foreground">
+              {stated?.detail ?? "Compare antes de registrar sua próxima amortização."}
+            </p>
+            <div className="mt-4 flex items-center gap-2">
+              <Button variant="inverse" asChild>
+                <Link to="/decidir" search={{ valor, comparar: true }}>
+                  {stated ? "Ver comparação" : "Comparar agora"}
+                </Link>
+              </Button>
+              {stated && (
+                <Button variant="plain-inverse" asChild>
+                  <Link to="/decidir" search={{ valor }}>
+                    Mudar valor
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </div>
+          {stated?.winner && <Illustration winner={stated.winner} />}
         </div>
       </section>
       {best && <StaleNote marketData={best.market_data} />}

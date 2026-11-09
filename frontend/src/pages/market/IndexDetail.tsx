@@ -49,7 +49,7 @@ function Detail({
   return (
     <>
       <div className="flex flex-col gap-2">
-        <section aria-label="Último valor" className="rounded-lg border bg-card p-6">
+        <section aria-label="Último valor" className="rounded-lg glass p-6">
           {latest ? (
             <>
               <p className="text-hero-figure tabular-nums">{indexValueText(index, latest.value)}</p>

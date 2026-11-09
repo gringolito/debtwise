@@ -54,7 +54,7 @@ export function Prepayments({ onEdit }: PrepaymentsProps) {
   }
   if (data.prepayments.length === 0) {
     return (
-      <p className="rounded-lg border bg-card px-6 py-10 text-center text-callout text-muted-foreground">
+      <p className="rounded-lg glass px-6 py-10 text-center text-callout text-muted-foreground">
         Nenhuma amortização registrada.
       </p>
     );

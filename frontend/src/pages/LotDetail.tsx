@@ -85,7 +85,7 @@ function Detail({ lot }: { lot: LotValued }) {
       {lot.values ? (
         <KeyFigures lot={lot} values={lot.values} />
       ) : (
-        <p className="rounded-lg border bg-card p-6 text-body">
+        <p className="rounded-lg glass p-6 text-body">
           Os valores desta compra dependem de um número-índice do IPCA que ainda não foi divulgado
           nem pode ser projetado.
         </p>
@@ -141,7 +141,7 @@ export function LotDetail() {
       ) : !lots.isSuccess ? (
         <DetailSkeleton />
       ) : (
-        <section className="flex flex-col items-center gap-2 rounded-lg border bg-card p-12 text-center">
+        <section className="flex flex-col items-center gap-2 rounded-lg glass p-12 text-center">
           <h1 className="text-headline">Esta compra não existe</h1>
           <p className="text-callout text-muted-foreground">Ela pode ter sido excluída.</p>
         </section>

@@ -45,7 +45,7 @@ export function WorthChart({ verdict }: { verdict: ComparedVerdict }) {
   );
   const title = "Patrimônio ao longo do tempo";
   return (
-    <section aria-label={title} className="flex flex-col gap-6 rounded-lg border bg-card p-6">
+    <section aria-label={title} className="flex flex-col gap-6 rounded-lg glass p-6">
       <header className="flex items-center justify-between gap-4">
         <h2 className="text-headline">{title}</h2>
         <Legend />

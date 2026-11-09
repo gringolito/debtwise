@@ -22,10 +22,7 @@ function MarketTotal({ lots: { lots, market_value } }: { lots: LotList }) {
   const titleId = useId();
   const leftOut = leftOutOfMarketTotal(lots, today());
   return (
-    <section
-      aria-labelledby={titleId}
-      className="flex flex-col gap-1 rounded-lg border bg-card p-6"
-    >
+    <section aria-labelledby={titleId} className="flex flex-col gap-1 rounded-lg glass p-6">
       <h2 id={titleId} className="text-footnote tracking-wide text-muted-foreground uppercase">
         Valor de mercado líquido
       </h2>

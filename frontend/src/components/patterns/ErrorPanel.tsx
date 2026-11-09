@@ -20,7 +20,7 @@ export function ErrorPanel({
     <section
       role="alert"
       className={cn(
-        "flex min-h-110 flex-col items-center justify-center rounded-lg border bg-card p-12 text-center",
+        "flex min-h-110 flex-col items-center justify-center rounded-lg glass p-12 text-center",
         className,
       )}
       {...props}

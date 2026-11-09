@@ -141,7 +141,7 @@ export function ImportLots() {
           )}
           {file ? (
             <>
-              <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
+              <div className="flex items-center gap-3 rounded-lg glass px-4 py-3">
                 <FileTextIcon
                   aria-hidden="true"
                   strokeWidth={1.5}
@@ -163,7 +163,7 @@ export function ImportLots() {
                 </Button>
               </div>
               {preview.length === 0 ? (
-                <p className="rounded-lg border bg-card p-6 text-callout text-muted-foreground">
+                <p className="rounded-lg glass p-6 text-callout text-muted-foreground">
                   Nenhuma compra para importar.
                 </p>
               ) : (
@@ -177,7 +177,7 @@ export function ImportLots() {
               )}
             </>
           ) : (
-            <div className="flex flex-col items-start gap-6 rounded-lg border bg-card p-6">
+            <div className="flex flex-col items-start gap-6 rounded-lg glass p-6">
               <p className="text-callout text-muted-foreground">
                 Use um arquivo CSV com uma linha de cabeçalho e, em cada linha, Título (como no
                 Tesouro Direto, por exemplo “Tesouro IPCA+ 2035”), Data da compra (dd/mm/aaaa), Taxa

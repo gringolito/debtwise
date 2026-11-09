@@ -15,7 +15,7 @@ const route = getRouteApi("/shell/decidir");
 function ComparisonSkeleton() {
   return (
     <Loading label="Comparando">
-      <div className="flex flex-col gap-3 rounded-lg border bg-card p-8">
+      <div className="flex flex-col gap-3 rounded-lg glass p-8">
         <Skeleton className="h-4 w-36" />
         <Skeleton className="h-7 w-56" />
         <Skeleton className="mt-2 h-14 w-80" />

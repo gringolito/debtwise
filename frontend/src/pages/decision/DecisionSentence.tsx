@@ -96,7 +96,7 @@ export function DecisionSentence({
     <form
       aria-label="Decisão"
       onSubmit={submit}
-      className="flex flex-col gap-3 rounded-lg border bg-card px-6 py-5"
+      className="flex flex-col gap-3 rounded-lg glass px-6 py-5"
     >
       <div className="flex items-center justify-between gap-6">
         <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-2 text-body">

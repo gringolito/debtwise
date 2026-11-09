@@ -26,7 +26,7 @@ function Figure({ label, amount, note }: { label: string; amount?: LotAmount; no
 /** KeyFigures are a lot's net Market, Accrual and Maturity Values side by side. */
 export function KeyFigures({ lot, values }: { lot: LotValued; values: LotValues }) {
   return (
-    <dl className="flex gap-6 rounded-lg border bg-card p-6">
+    <dl className="flex gap-6 rounded-lg glass p-6">
       <Figure
         label="Valor a mercado"
         amount={values.market}
@@ -111,7 +111,7 @@ export function Coupons({ coupons }: { coupons: LotCoupon[] }) {
     <GroupedListSection>
       <GroupedListHeader id={titleId}>Cupons</GroupedListHeader>
       {coupons.length === 0 ? (
-        <p className="rounded-lg border bg-card px-4 py-3.5 text-muted-foreground">
+        <p className="rounded-lg glass px-4 py-3.5 text-muted-foreground">
           Nenhum cupom antes do vencimento.
         </p>
       ) : (

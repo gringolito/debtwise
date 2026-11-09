@@ -55,13 +55,25 @@ reports, and the owner decides. Every visual choice should lower anxiety about a
 
 ## Materiality and mental model
 
-The feel of a first-party Apple app (Wallet, Apple Card, Stocks, System Settings). One idea per
-screen. White panels over a soft canvas; hierarchy comes from typography and whitespace. No
-gradients, no floating pills, no badge dots, no stock illustrations, no emoji. Hairline separators
-for structure; whisper-soft shadows (`0 8px 24px rgba(0,0,0,0.08)`) only for sheets and popovers.
+The feel of a first-party Apple app (Wallet, Apple Card, Stocks, System Settings) in Liquid Glass.
+One idea per screen. Frosted glass panels over a soft canvas; hierarchy comes from typography and
+whitespace. Hairline separators for structure inside panels.
 
-Graphite is the signature: primary buttons and at most one card per screen are near-black
-`#1D1D1F`, like a premium card. A graphite surface carries only white and grey text, such as the
+- Glass panels are white at 72% with a 24px backdrop blur, a white rim at 85% instead of a grey
+  border, an inset white highlight along the top and a near-invisible drop shadow
+  (`0 10px 30px -5px rgba(0,0,0,0.04)`). Every panel on a page is glass; panels inside a modal sheet
+  or dialog, and selectable cards, stay plain white.
+- The canvas carries three faint radial washes: the soft accent top left, a cool blue right and a
+  pale grey at the bottom. They are the only gradients outside the graphite card.
+- The sidebar is glass too: white at 75% with a 28px blur and a hairline at 6% black on its right.
+- Sheets and popovers keep the whisper-soft sheet shadow (`0 8px 24px rgba(0,0,0,0.08)`).
+- No floating pills, badge dots, stock illustrations or emoji, except on Início's answer card as
+  described there.
+
+Graphite is the signature: primary buttons and at most one card per screen are near-black, like a
+premium card. The graphite card is glass as well: a diagonal gradient from `#202226` to `#141518`
+at 92–96%, a white rim at 18%, a deep shadow and a 1px rim light along its top edge that fades in
+from white to the soft accent. A graphite surface carries only white and grey text, such as the
 Início hero that states the current suggestion. Any card that shows a colored result (a green gain,
 a red loss, a caution note) is a white panel instead, such as the verdict on Decidir. Graphite never
 fills the sidebar, summary panels or page backgrounds.
@@ -70,14 +82,15 @@ fills the sidebar, summary panels or page backgrounds.
 
 The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reassuring, collaborative.
 
-- Canvas `#F5F5F7`, a light neutral gray; panels `#FFFFFF`, text `#1D1D1F`. The
-  canvas stays a neutral gray: the accent appears only in its accent roles below.
+- Canvas `#F5F5F7`, a light neutral gray under the washes above; panels white glass, text
+  `#1D1D1F`. The accent appears only in its accent roles below and the faint top-left wash.
 - Secondary text is `#6E6E73` on white and `#A1A1A6` on graphite. Calm comes from restraint, not
   from faint text. `#AEAEB2` (tertiary) marks what is placeholder, disabled or set back:
   placeholders, disabled states, projections, a checklist step still to do and the 404 figure. Text
   the owner has to read is secondary grey or darker.
 - **Primary buttons are graphite** with white text, 12px radius, 44px tall. On a graphite card the
-  button inverts to white with graphite text. One primary button per screen.
+  button inverts to white with graphite text, lifted by a soft shadow and a white inner highlight.
+  One primary button per screen.
 - Accent roles:
   - `#82C7B7` (soft) for selected borders, progress bars, toggles and icon fills.
   - `#E8F5F1` (tint) for selected card backgrounds, the selected sidebar item and highlighted rows.
@@ -100,18 +113,18 @@ Inter as the SF Pro stand-in for everything, including large figures, with tabul
 Title 34 bold for page titles, Title 2 22 semibold for sections, Headline 17 semibold, Body 17,
 Callout 15 for explanations, Footnote 13 for metadata. Key figures use a 56px semibold hero figure
 when a screen has one figure alone; figures sharing a row, such as the Início summary panels, use
-Large Title at semibold weight. The wordmark is Title 2. These seven sizes are the whole scale.
+Large Title at semibold weight. The wordmark's text is Title 2. These seven sizes are the whole scale.
 
 ## Layout and components
 
-- Desktop canvas 1280px. Left sidebar 240px on the canvas color, separated by a hairline, with only
-  the "DebtWise" wordmark (no subtitle, no badge) and these items with thin line icons: Início,
-  Financiamento, Investimentos, Decidir; a hairline; Mercado; and Ajustes pinned at the bottom.
-  The current item, including on its sub-pages, has the tint background and the strong accent
-  label and icon; the others are Callout in secondary grey. No top bar, no footer.
+- Desktop canvas 1280px. Left glass sidebar 240px with only the logo, the Debtwise symbol at 32px
+  beside "Debtwise" in Title 2 (no subtitle, no badge), and these items with thin line icons:
+  Início, Financiamento, Investimentos, Decidir; a hairline; Mercado; and Ajustes pinned at the
+  bottom. The current item, including on its sub-pages, has the tint background and the strong
+  accent label and icon; the others are Callout in secondary grey. No top bar, no footer.
 - Content column max 880px, centered, 40px top margin. 8px grid; 16px inside rows, 24px between
   groups, 40px between sections.
-- Inset grouped lists: white 12px-radius panels, 52px rows with inset hairlines, label left, value
+- Inset grouped lists: glass 12px-radius panels, 52px rows with inset hairlines, label left, value
   right, chevron for drill-in. Section headers are Footnote uppercase in secondary grey.
 - Editable values inside sentences are underlined in the soft accent.
 - Values the owner types in place sit right-aligned on their row as borderless inputs, with the
@@ -165,12 +178,15 @@ The Large Title "Início" over the weekday and date in Callout grey ("Domingo, 8
 then:
 
 - The answer card, the screen's one graphite card, for R$ 10.000,00 prepaid today to shorten the
-  term: "Na projeção atual, para R$ 10.000,00 hoje" in Footnote uppercase grey, the better option
-  as a Title 2 ("Investir em Tesouro Prefixado 2029 rende mais", "Amortizar rende mais", or that
-  both give the same), and a Callout line with the advantage in semibold white and the horizon. A
-  white "Ver comparação" opens Decidir with the amount and compares at once; a plain "Mudar valor"
-  opens it with the amount to change. With no verdict to state, the card reads "Amortizar ou
-  investir? Veja a comparação." with "Comparar agora". The stale-data note sits under the card.
+  term: a glowing soft-accent dot before "Na projeção atual, para R$ 10.000,00 hoje" in Footnote
+  uppercase grey, the better option as a Title 2 ("Investir em Tesouro Prefixado 2029 rende mais",
+  "Amortizar rende mais", or that both give the same), and a Callout line with the advantage in
+  semibold white and the horizon. A white "Ver comparação" opens Decidir with the amount and
+  compares at once; a plain "Mudar valor" opens it with the amount to change. On its right, when
+  one option wins, a 160px glass illustration of it, a rising bar chart for investing or a house
+  with a downward arrow for prepaying, under a soft-accent "Melhor opção" pill; a tie shows none.
+  With no verdict to state, the card reads "Amortizar ou investir? Veja a comparação." with
+  "Comparar agora". The stale-data note sits under the card.
 - Two white summary panels side by side, each titled in Footnote uppercase grey, with its figure in
   Large Title semibold under a Callout label and a hairline drill-in row at the bottom:
   - Financiamento: "Saldo devedor", "Quitação prevista em março de 2058", a soft-accent progress

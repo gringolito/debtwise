@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function PanelSkeleton() {
   return (
-    <div className="flex flex-col gap-2 rounded-lg border bg-card p-6">
+    <div className="flex flex-col gap-2 rounded-lg glass p-6">
       <Skeleton className="h-4 w-28" />
       <Skeleton className="mt-2 h-10 w-48" />
       <Skeleton className="h-4 w-40" />
@@ -34,7 +34,7 @@ export function DashboardSkeleton() {
       </div>
       <div className="flex flex-col gap-2">
         <Skeleton className="h-4 w-32" />
-        <div className="flex flex-col rounded-lg border bg-card">
+        <div className="flex flex-col rounded-lg glass">
           {[0, 1].map((row) => (
             <div key={row} className="flex items-center gap-4 px-4 py-3">
               <Skeleton className="size-8" />

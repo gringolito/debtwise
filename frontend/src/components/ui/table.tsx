@@ -9,7 +9,7 @@ const tableContainerVariants = cva("relative w-full overflow-x-auto", {
     variant: {
       default: "",
       /** A white panel whose rows read like an inset grouped list's. */
-      grouped: "rounded-lg border bg-card",
+      grouped: "rounded-lg glass",
     },
   },
   defaultVariants: { variant: "default" },
