@@ -149,6 +149,21 @@ func TestPreviewPrepayment(t *testing.T) {
 				CurrentInstallment: "10410.00", Installment: "10210.00", MoneySaved: "720.00",
 			},
 		},
+		{
+			// Replacing the 5,000.00 on March 20 after the recorded 20,000.00 compares it with the
+			// schedule that has the 20,000.00: it saves the 50.00 interest it takes off the 4th.
+			name: "replacing a later prepayment compares it with the ones before it",
+			recorded: mortgage.Events{Prepayments: []mortgage.Prepayment{
+				recorded,
+				{ID: 2, Date: date(t, "2024-03-20"), Amount: dec(t, "5000.00"), Effect: mortgage.LowerInstallment},
+			}},
+			previews: prepayment(t, "2024-03-20", "5000.00", mortgage.LowerInstallment),
+			replaces: 2,
+			want: previewed{
+				CurrentPayoff: "2024-04-10", Payoff: "2024-04-10",
+				CurrentInstallment: "5060.00", Installment: "5060.00", MoneySaved: "50.00",
+			},
+		},
 	}
 
 	for _, tt := range tests {
