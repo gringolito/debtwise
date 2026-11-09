@@ -216,7 +216,7 @@ describe("a lot's detail", () => {
       name: "Tesouro Prefixado com Juros Semestrais 2029",
     });
     expect(within(remaining).getAllByRole("link").map(words)).toEqual([
-      "Compra em 10/01/2025 11,85% Sem preço de venda",
+      "Compra em 10/01/2025 · 11,85% Sem preço de venda",
     ]);
     expect(screen.queryByRole("region", { name: "Tesouro IPCA+ 2035" })).toBeNull();
     expect(

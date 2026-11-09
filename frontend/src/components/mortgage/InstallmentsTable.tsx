@@ -58,10 +58,19 @@ function MissingRateWarning({ missing }: { missing: CorrectionIndex[] }) {
 }
 
 // The spaces keep the text readable when copied or read out as one line.
-function Detail({ name, children }: { name: string; children: React.ReactNode }) {
+function Detail({
+  name,
+  value,
+  note,
+}: {
+  name: string;
+  value: React.ReactNode;
+  note?: React.ReactNode;
+}) {
   return (
-    <div className="flex gap-1.5">
-      <dt>{name}</dt> <dd className="flex flex-wrap gap-x-1.5 text-foreground">{children}</dd>{" "}
+    <div className="flex flex-col gap-0.5">
+      <dt>{name}</dt> <dd className="text-callout text-foreground">{value}</dd>{" "}
+      {note && <dd className="flex flex-col gap-1">{note}</dd>}{" "}
     </div>
   );
 }
@@ -69,25 +78,31 @@ function Detail({ name, children }: { name: string; children: React.ReactNode })
 function InstallmentDetails({ installment }: { installment: ScheduledInstallment }) {
   return (
     <div className="flex items-start gap-2 px-2 py-1 text-footnote text-muted-foreground">
-      <InfoIcon aria-hidden="true" strokeWidth={1.5} className="mt-0.5 size-4 text-accent" />
-      <dl className="flex flex-wrap gap-x-6 gap-y-2">
-        <Detail name="Correção">
-          {formatMoney(installment.correction)}{" "}
-          {installment.index_values.length > 0 && (
-            <IndexCell indexValues={installment.index_values} />
-          )}
-        </Detail>
-        <Detail name="Taxa de juros">
-          {formatRate(installment.rate)} a.a.{" "}
-          {installment.rate_index_values.length > 0 && (
-            <IndexCell indexValues={installment.rate_index_values} />
-          )}
-        </Detail>
-        <Detail name="MIP">{formatMoney(installment.mip)}</Detail>
-        <Detail name="DFI">{formatMoney(installment.dfi)}</Detail>
-        <Detail name="Taxa de administração">{formatMoney(installment.fee)}</Detail>
+      <InfoIcon aria-hidden="true" strokeWidth={1.5} className="mt-px size-4 text-accent" />
+      <dl className="flex flex-wrap gap-x-10 gap-y-4">
+        <Detail
+          name="Correção"
+          value={formatMoney(installment.correction)}
+          note={
+            installment.index_values.length > 0 && (
+              <IndexCell indexValues={installment.index_values} />
+            )
+          }
+        />
+        <Detail
+          name="Taxa de juros"
+          value={`${formatRate(installment.rate)} a.a.`}
+          note={
+            installment.rate_index_values.length > 0 && (
+              <IndexCell indexValues={installment.rate_index_values} />
+            )
+          }
+        />
+        <Detail name="MIP" value={formatMoney(installment.mip)} />
+        <Detail name="DFI" value={formatMoney(installment.dfi)} />
+        <Detail name="Taxa de administração" value={formatMoney(installment.fee)} />
         {!isZero(installment.prepaid) && (
-          <Detail name="Amortização extraordinária">{formatMoney(installment.prepaid)}</Detail>
+          <Detail name="Amortização extraordinária" value={formatMoney(installment.prepaid)} />
         )}
       </dl>
     </div>

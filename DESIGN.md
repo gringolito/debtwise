@@ -23,6 +23,9 @@ colors:
   chart-mortgage: '#1D1D1F'
   chart-investment: '#4E9E8C'
   chart-projection: '#AEAEB2'
+  chart-amortization: '#4E9E8C'
+  chart-interest: '#C7C7CC'
+  chart-charges: '#8E8E93'
 typography:
   large-title: { fontFamily: Inter, fontSize: 34px, fontWeight: '700', lineHeight: 41px, letterSpacing: '-0.022em' }
   title-2: { fontFamily: Inter, fontSize: 22px, fontWeight: '600', lineHeight: 28px, letterSpacing: '-0.017em' }
@@ -97,9 +100,10 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
   - `#2A7A6A` (strong) only for text-weight uses: links, the selected sidebar label and icon, text
     buttons.
 - Charts: the mortgage ("Amortizar") series is graphite, the investment ("Investir") series is
-  `#4E9E8C` at 2.5px, projections are dashed `#AEAEB2`. A dotted strong-accent line marks today.
-  Financiamento's "Composição" stacks amortization in graphite, interest in the soft accent and
-  insurance and fee in `#AEAEB2`.
+  `#4E9E8C` at 2.5px, projections are dashed `#AEAEB2`. A dotted strong-accent line marks today;
+  its label sits above the plot on the side of the line with more room, clear of the value axis.
+  Financiamento's "Composição" stacks amortization in `#4E9E8C`, interest in light grey `#C7C7CC`
+  and insurance and fee in mid grey `#8E8E93`, so what pays the home off stands out from its cost.
 - Signed money is the only place for gain/loss colors, and the accent is never used for it: green
   `#248A3D` for gains, red `#D70015` for losses and destructive actions, both only on white. Orange
   `#B25000` only for stale market data. The three exceptions are a statement's difference on
@@ -215,7 +219,8 @@ Amortizações and Extratos in a segmented control with the page's one primary b
   gradients. A hollow ring marks each installment a prepayment followed.
 - Prestações shows six rows around the current installment, which has the tint background and an
   "Atual" label in the strong accent and starts expanded; a row's chevron expands its correction,
-  rate, insurance and fee. "Ver todas as N prestações" shows every row.
+  rate, insurance and fee as columns, each a Footnote label over its value, with the index readings
+  behind the correction and the rate under them. "Ver todas as N prestações" shows every row.
 - Amortizações shows the total prepaid and the months the term shrank in a summary panel above an
   inset grouped list, newest first, each row drilling into the sheet that edits or deletes it.
 - Extratos compares the bank's balance with the calculated one, newest first.
@@ -284,11 +289,13 @@ A lot is a "compra". Investimentos opens on Compras; once a lot is recorded, the
 "Importar planilha" as an accent text action and a graphite "Adicionar compra", and a segmented
 control switches Compras and Venda antecipada. With no lot, the page shows only its empty state.
 
-- Compras: a white panel with "Valor de mercado líquido" as a hero figure and the gross total in
-  Callout under it, then a group per bond, the bonds maturing first leading, under a Headline with
-  the bond's name. Each lot is a row with "Compra em" its date, its rate in Callout, what its early
-  sale check favours in Footnote ("Manter até o vencimento", or "Vender e amortizar renderia" and
-  the gain in green), and its net Market Value, or why it has none, as the value.
+- Compras: a white panel titled "Valor de mercado" with the net total as a hero figure, "Líquido, se
+  vender tudo hoje" in Callout under it and, under a hairline, the gross total and what IR, IOF and
+  custody take off it. Then a group per bond, the bonds maturing first leading, under a Headline
+  with the bond's name. Each lot is a two-line row: "Compra em" its date with its rate in Callout
+  grey beside it, then what its early sale check favours in Footnote ("Manter até o vencimento", or
+  "Vender e amortizar renderia" and the gain in green), and its net Market Value, or why it has
+  none, as the value.
 - A lot's detail: an accent "‹ Investimentos" back link, the bond's name as the Large Title with
   "Editar" and a red "Excluir", one line on the purchase, then the net Market, Accrual and Maturity
   Values side by side in one white panel. Under it, a white panel on the early sale with its own
@@ -372,11 +379,12 @@ market data lives in Ajustes.
   line on what it assumes, opening Ajustes, where the method is chosen; a Footnote says the
   projection changes the future balance and the comparisons in Decidir. The poupança yield's
   section says what its projection derives from, linking TR and Selic meta.
-- Títulos: the bonds a decision compares with the mortgage (ADR-0007) under "Comparáveis com seu
-  financiamento", then "Outros títulos" as one collapsed row naming them ("Tesouro IPCA+ e outros ·
-  3 títulos") that opens their table. Each table has the bond, its maturity in grey, and a Compra
-  and a Venda column, each with the rate over the unit price in Footnote grey; a bond Tesouro
-  doesn't sell reads "Fora de oferta" under Compra.
+- Títulos: the bonds a decision compares with the mortgage (ADR-0007) that Tesouro sells today under
+  "Comparáveis com seu financiamento", then "Comparáveis fora de oferta" and "Outros títulos", each
+  one collapsed row naming its bonds ("Tesouro IPCA+ e outros · 3 títulos") that opens their table.
+  Each table has the bond, its maturity in grey, and a Compra and a Venda column, each with the rate
+  over the unit price in Footnote grey; the off-offer table has no Compra column, and a bond
+  Tesouro doesn't sell reads "Fora de oferta" under Compra in Outros títulos.
 
 ## Ajustes
 

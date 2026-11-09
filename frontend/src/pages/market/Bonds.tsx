@@ -42,16 +42,26 @@ function Side({ type, price }: { type: BondQuote["type"]; price?: BondQuote["sel
   );
 }
 
-function BondsTable({ bonds, label }: { bonds: BondQuote[]; label: string }) {
+function BondsTable({
+  bonds,
+  label,
+  buyable = true,
+}: {
+  bonds: BondQuote[];
+  label: string;
+  buyable?: boolean;
+}) {
   return (
     <Table variant="grouped" aria-label={label}>
       <TableHeader>
         <TableRow variant="grouped">
           <TableHead variant="grouped">Título</TableHead>
           <TableHead variant="grouped">Vencimento</TableHead>
-          <TableHead variant="grouped" align="end">
-            Compra
-          </TableHead>
+          {buyable && (
+            <TableHead variant="grouped" align="end">
+              Compra
+            </TableHead>
+          )}
           <TableHead variant="grouped" align="end">
             Venda
           </TableHead>
@@ -66,9 +76,11 @@ function BondsTable({ bonds, label }: { bonds: BondQuote[]; label: string }) {
             <TableCell variant="grouped">
               <span className="text-muted-foreground">{formatDate(bond.maturity)}</span>
             </TableCell>
-            <TableCell variant="grouped" align="end">
-              <Side type={bond.type} price={bond.buy} />
-            </TableCell>
+            {buyable && (
+              <TableCell variant="grouped" align="end">
+                <Side type={bond.type} price={bond.buy} />
+              </TableCell>
+            )}
             <TableCell variant="grouped" align="end">
               <Side type={bond.type} price={bond.sell} />
             </TableCell>
@@ -86,11 +98,20 @@ function othersSummary(bonds: BondQuote[]): string {
   return `${named} · ${bonds.length} ${bonds.length === 1 ? "título" : "títulos"}`;
 }
 
-function Others({ bonds }: { bonds: BondQuote[] }) {
+/** CollapsedBonds keeps a group of bonds behind a row that names them, closed at first. */
+function CollapsedBonds({
+  title,
+  bonds,
+  buyable,
+}: {
+  title: string;
+  bonds: BondQuote[];
+  buyable?: boolean;
+}) {
   const id = useId();
   return (
     <GroupedListSection aria-labelledby={id}>
-      <GroupedListHeader id={id}>Outros títulos</GroupedListHeader>
+      <GroupedListHeader id={id}>{title}</GroupedListHeader>
       <Collapsible>
         <GroupedList>
           <GroupedListItem>
@@ -106,7 +127,7 @@ function Others({ bonds }: { bonds: BondQuote[] }) {
         </GroupedList>
         <CollapsibleContent>
           <div className="pt-2">
-            <BondsTable bonds={bonds} label="Outros títulos" />
+            <BondsTable bonds={bonds} label={title} buyable={buyable} />
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -116,7 +137,7 @@ function Others({ bonds }: { bonds: BondQuote[] }) {
 
 /**
  * Bonds is Mercado's Títulos: the Tesouro Direto catalogue, the bonds a decision compares with the
- * mortgage first and the rest in a collapsed group.
+ * mortgage first, those of them Tesouro doesn't sell today and the rest each in a collapsed group.
  */
 export function Bonds() {
   const { status } = useMarketData();
@@ -149,6 +170,8 @@ export function Bonds() {
   const refreshedAt = status.data.bonds.refreshed_at;
   const catalogue = bonds.data.bonds;
   const comparable = catalogue.filter((b) => comparesWith(b.type, mortgage.indexer));
+  const offered = comparable.filter((b) => b.buy);
+  const notOffered = comparable.filter((b) => !b.buy);
   const others = catalogue.filter((b) => !comparesWith(b.type, mortgage.indexer));
 
   return (
@@ -164,13 +187,16 @@ export function Bonds() {
       {catalogue.length === 0 && (
         <p className="text-callout text-muted-foreground">Nenhum título disponível.</p>
       )}
-      {comparable.length > 0 && (
+      {offered.length > 0 && (
         <GroupedListSection aria-labelledby={id}>
           <GroupedListHeader id={id}>Comparáveis com seu financiamento</GroupedListHeader>
-          <BondsTable bonds={comparable} label="Comparáveis com seu financiamento" />
+          <BondsTable bonds={offered} label="Comparáveis com seu financiamento" />
         </GroupedListSection>
       )}
-      {others.length > 0 && <Others bonds={others} />}
+      {notOffered.length > 0 && (
+        <CollapsedBonds title="Comparáveis fora de oferta" bonds={notOffered} buyable={false} />
+      )}
+      {others.length > 0 && <CollapsedBonds title="Outros títulos" bonds={others} />}
     </div>
   );
 }

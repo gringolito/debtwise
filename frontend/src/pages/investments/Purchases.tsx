@@ -12,6 +12,7 @@ import {
 import type { EarlySaleCheck, LotList, LotValued } from "@/lib/api";
 import { bondRate } from "@/lib/bondKinds";
 import { today } from "@/lib/dashboard";
+import { subtractDecimals } from "@/lib/decimals";
 import { useEarlySaleChecks } from "@/lib/earlySaleQueries";
 import { formatDate, formatMoney } from "@/lib/format";
 import { checkOf, groupByBond, leftOutOfMarketTotal, saleGain } from "@/lib/investments";
@@ -22,24 +23,38 @@ function MarketTotal({ lots: { lots, market_value } }: { lots: LotList }) {
   const titleId = useId();
   const leftOut = leftOutOfMarketTotal(lots, today());
   return (
-    <section aria-labelledby={titleId} className="flex flex-col gap-1 rounded-lg glass p-6">
-      <h2 id={titleId} className="text-footnote tracking-wide text-muted-foreground uppercase">
-        Valor de mercado líquido
-      </h2>
-      {market_value ? (
-        <>
-          <p className="text-hero-figure tabular-nums">{formatMoney(market_value.net)}</p>
+    <section aria-labelledby={titleId} className="flex flex-col gap-4 rounded-lg glass p-6">
+      <div className="flex flex-col gap-1">
+        <h2 id={titleId} className="text-footnote tracking-wide text-muted-foreground uppercase">
+          Valor de mercado
+        </h2>
+        {market_value ? (
+          <>
+            <p className="text-hero-figure tabular-nums">{formatMoney(market_value.net)}</p>
+            <p className="text-callout text-muted-foreground">Líquido, se vender tudo hoje</p>
+          </>
+        ) : (
           <p className="text-callout text-muted-foreground">
-            Bruto {formatMoney(market_value.gross)} · já descontados IR, IOF e custódia
+            Nenhuma compra tem valor de mercado hoje.
           </p>
-        </>
-      ) : (
-        <p className="text-callout text-muted-foreground">
-          Nenhuma compra tem valor de mercado hoje.
-        </p>
+        )}
+      </div>
+      {market_value && (
+        <dl className="flex flex-wrap gap-x-10 gap-y-2 border-t border-border pt-4">
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-footnote text-muted-foreground">Bruto</dt>{" "}
+            <dd className="text-callout tabular-nums">{formatMoney(market_value.gross)}</dd>{" "}
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-footnote text-muted-foreground">IR, IOF e custódia</dt>{" "}
+            <dd className="text-callout tabular-nums">
+              − {formatMoney(subtractDecimals(market_value.gross, market_value.net))}
+            </dd>
+          </div>
+        </dl>
       )}
       {market_value && leftOut > 0 && (
-        <p className="mt-2 text-footnote text-muted-foreground">
+        <p className="text-footnote text-muted-foreground">
           {leftOut === 1
             ? "1 compra sem valor de mercado ficou fora do total."
             : `${leftOut} compras sem valor de mercado ficaram fora do total.`}
@@ -76,10 +91,12 @@ function LotRow({ lot, check }: { lot: LotValued; check: EarlySaleCheck | undefi
     <GroupedListItem>
       <GroupedListRow asChild>
         <Link to="/investimentos/compras/$lotId" params={{ lotId: String(lot.id) }}>
-          <GroupedListLabel className="flex flex-col gap-0.5">
-            <span>Compra em {formatDate(lot.purchase_date)}</span>
-            <span className="text-callout text-muted-foreground">
-              {bondRate(lot.type, lot.rate)}
+          <GroupedListLabel className="flex flex-col">
+            <span>
+              Compra em {formatDate(lot.purchase_date)}{" "}
+              <span className="text-callout text-muted-foreground">
+                · {bondRate(lot.type, lot.rate)}
+              </span>
             </span>
             {hint && <span className="text-footnote text-muted-foreground">{hint}</span>}
           </GroupedListLabel>

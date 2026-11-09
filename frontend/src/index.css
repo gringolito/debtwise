@@ -113,6 +113,9 @@
   --color-chart-mortgage: var(--chart-mortgage);
   --color-chart-investment: var(--chart-investment);
   --color-chart-projection: var(--chart-projection);
+  --color-chart-amortization: var(--chart-amortization);
+  --color-chart-interest: var(--chart-interest);
+  --color-chart-charges: var(--chart-charges);
 }
 
 :root {
@@ -144,6 +147,9 @@
   --chart-mortgage: #1d1d1f;
   --chart-investment: #4e9e8c;
   --chart-projection: #aeaeb2;
+  --chart-amortization: #4e9e8c;
+  --chart-interest: #c7c7cc;
+  --chart-charges: #8e8e93;
   --radius: 12px;
 }
 
