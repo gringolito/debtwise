@@ -219,8 +219,9 @@ Amortizações and Extratos in a segmented control with the page's one primary b
   gradients. A hollow ring marks each installment a prepayment followed.
 - Prestações shows six rows around the current installment, which has the tint background and an
   "Atual" label in the strong accent and starts expanded; a row's chevron expands its correction,
-  rate, insurance and fee as columns, each a Footnote label over its value, with the index readings
-  behind the correction and the rate under them. "Ver todas as N prestações" shows every row.
+  rate, insurance and fee as columns, each a Footnote label over its value. A strong-accent info
+  icon beside the correction and the rate opens, on hover or focus, a graphite tooltip with the
+  index readings behind them and their periods. "Ver todas as N prestações" shows every row.
 - Amortizações shows the total prepaid and the months the term shrank in a summary panel above an
   inset grouped list, newest first, each row drilling into the sheet that edits or deletes it.
 - Extratos compares the bank's balance with the calculated one, newest first.
