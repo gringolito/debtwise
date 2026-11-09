@@ -36,12 +36,14 @@ type prepaymentOutcome struct {
 	Effect               string `json:"effect" enum:"shorten_term,lower_installment" doc:"What the prepayment changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments."`
 	MonthsShortened      int64  `json:"months_shortened" doc:"How many installments fewer the schedule has because of this prepayment."`
 	InstallmentReduction string `json:"installment_reduction" doc:"How much lower the first installment due after the prepayment is because of it, in reais, as a decimal string. Zero when no installment is due after it."`
+	MoneySaved           string `json:"money_saved" doc:"The interest, insurance and fees the prepayment avoids under the current projection, in reais, as a decimal string: what the installments charge without it beyond what they charge with it, less what it took off the outstanding balance."`
 }
 
 type prepaymentList struct {
 	Prepayments     []prepaymentOutcome `json:"prepayments" nullable:"false" doc:"Every prepayment recorded on the mortgage, in date order, each with what it changed in the schedule. Only this list carries what each changed."`
 	TotalAmount     string              `json:"total_amount" doc:"Sum of every prepayment's amount, in reais, as a decimal string."`
 	MonthsShortened int64               `json:"months_shortened" doc:"How many installments fewer the schedule has because of all the prepayments together."`
+	MoneySaved      string              `json:"money_saved" doc:"Sum of every prepayment's money_saved, in reais, as a decimal string."`
 }
 
 type prepaymentPreviewInput struct {
@@ -56,6 +58,7 @@ type prepaymentPreview struct {
 	PayoffDate         string `json:"payoff_date" format:"date" doc:"Date the mortgage is paid off with the previewed prepayment: the due date of its last installment."`
 	CurrentInstallment string `json:"current_installment,omitempty" doc:"Amount of the first installment due after the previewed prepayment's date in the schedule as recorded, in reais, as a decimal string. Absent when none is due after it."`
 	Installment        string `json:"installment,omitempty" doc:"Amount of that same installment with the previewed prepayment, in reais, as a decimal string. Absent when the mortgage no longer has it."`
+	MoneySaved         string `json:"money_saved" doc:"The money_saved the previewed prepayment would have once recorded, in place of the one it replaces, in reais, as a decimal string."`
 }
 
 type statementInput struct {
@@ -110,7 +113,7 @@ func registerPrepayments(humaAPI huma.API, mortgages Mortgages, store IndexStore
 		Method:      http.MethodGet,
 		Path:        prepaymentsPath,
 		Summary:     "List the prepayments",
-		Description: "Returns the prepayments recorded on the mortgage, each with how many installments it removed and how much it lowered the next installment.",
+		Description: "Returns the prepayments recorded on the mortgage, each with how many installments it removed, how much it lowered the next installment and how much money it saved.",
 		Tags:        []string{mortgageTag},
 	}, func(ctx context.Context, _ *struct{}) (*struct{ Body prepaymentList }, error) {
 		terms, outlook, events, err := replayInputs(ctx, mortgages, store)
@@ -124,6 +127,7 @@ func registerPrepayments(humaAPI huma.API, mortgages Mortgages, store IndexStore
 			Prepayments:     make([]prepaymentOutcome, 0, len(outcomes.Prepayments)),
 			TotalAmount:     outcomes.TotalAmount.String(),
 			MonthsShortened: int64(outcomes.MonthsShortened),
+			MoneySaved:      outcomes.MoneySaved.String(),
 		}}
 		for _, o := range outcomes.Prepayments {
 			out.Body.Prepayments = append(out.Body.Prepayments, prepaymentOutcome{
@@ -133,6 +137,7 @@ func registerPrepayments(humaAPI huma.API, mortgages Mortgages, store IndexStore
 				Effect:               string(o.Prepayment.Effect),
 				MonthsShortened:      int64(o.MonthsShortened),
 				InstallmentReduction: o.InstallmentReduction.String(),
+				MoneySaved:           o.MoneySaved.String(),
 			})
 		}
 
@@ -165,6 +170,7 @@ func registerPrepayments(humaAPI huma.API, mortgages Mortgages, store IndexStore
 		out := &struct{ Body prepaymentPreview }{Body: prepaymentPreview{
 			CurrentPayoffDate: previewed.CurrentPayoff.Format(time.DateOnly),
 			PayoffDate:        previewed.Payoff.Format(time.DateOnly),
+			MoneySaved:        previewed.MoneySaved.String(),
 		}}
 		if previewed.CurrentInstallment != nil {
 			out.Body.CurrentInstallment = previewed.CurrentInstallment.String()
