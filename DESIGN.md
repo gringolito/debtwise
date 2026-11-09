@@ -380,11 +380,11 @@ market data lives in Ajustes.
   projection changes the future balance and the comparisons in Decidir. The poupança yield's
   section says what its projection derives from, linking TR and Selic meta.
 - Títulos: the bonds a decision compares with the mortgage (ADR-0007) that Tesouro sells today under
-  "Comparáveis com seu financiamento", then "Comparáveis fora de oferta" and "Outros títulos", each
-  one collapsed row naming its bonds ("Tesouro IPCA+ e outros · 3 títulos") that opens their table.
-  Each table has the bond, its maturity in grey, and a Compra and a Venda column, each with the rate
-  over the unit price in Footnote grey; the off-offer table has no Compra column, and a bond
-  Tesouro doesn't sell reads "Fora de oferta" under Compra in Outros títulos.
+  "Comparáveis com seu financiamento", then "Outros títulos" and last "Comparáveis fora de oferta",
+  each one collapsed row naming its bonds ("Tesouro IPCA+ e outros · 3 títulos") that opens their
+  table. Each table has the bond, its maturity in grey, and a Compra and a Venda column, each with
+  the rate over the unit price in Footnote grey; the off-offer table has no Compra column, and a
+  bond Tesouro doesn't sell reads "Fora de oferta" under Compra in Outros títulos.
 
 ## Ajustes
 

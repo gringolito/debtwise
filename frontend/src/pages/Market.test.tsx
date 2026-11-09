@@ -452,7 +452,7 @@ describe("Títulos", () => {
       .slice(1)
       .map((row) => row.textContent?.replace(/\s/g, " "));
 
-  it("lists first the comparable bonds on offer, and those off offer in a collapsed group", async () => {
+  it("lists first the comparable bonds on offer, and last those off offer in a collapsed group", async () => {
     stubBackend();
 
     renderAt("/mercado");
@@ -463,6 +463,13 @@ describe("Títulos", () => {
       "Tesouro Prefixado 202901/01/202912,15%R$ 789,4013,00%R$ 1.234,56",
     ]);
     expect(screen.getByText("Taxas e preços do Tesouro Direto em 14/04/2024.")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual([
+      "Comparáveis com seu financiamento",
+      "Outros títulos",
+      "Comparáveis fora de oferta",
+    ]);
 
     const offOffer = within(screen.getByRole("region", { name: "Comparáveis fora de oferta" }));
     const toggle = offOffer.getByRole("button", {
