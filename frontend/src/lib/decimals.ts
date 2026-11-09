@@ -17,14 +17,3 @@ export function compareDecimals(a: string, b: string): number {
   const [scaledA, scaledB] = atCommonScale(a, b);
   return scaledA === scaledB ? 0 : scaledA < scaledB ? -1 : 1;
 }
-
-/** subtractDecimals is a − b exactly, with as many decimal places as the longer of the two. */
-export function subtractDecimals(a: string, b: string): string {
-  const [scaledA, scaledB] = atCommonScale(a, b);
-  const places = Math.max(a.split(".")[1]?.length ?? 0, b.split(".")[1]?.length ?? 0);
-  const difference = scaledA - scaledB;
-  const sign = difference < 0n ? "-" : "";
-  const digits = (difference < 0n ? -difference : difference).toString().padStart(places + 1, "0");
-  if (places === 0) return sign + digits;
-  return `${sign}${digits.slice(0, -places)}.${digits.slice(-places)}`;
-}

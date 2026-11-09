@@ -42,14 +42,16 @@ function Side({ type, price }: { type: BondQuote["type"]; price?: BondQuote["sel
   );
 }
 
+const sideNames = { buy: "Compra", sell: "Venda" } as const;
+
 function BondsTable({
   bonds,
   label,
-  buyable = true,
+  sides,
 }: {
   bonds: BondQuote[];
   label: string;
-  buyable?: boolean;
+  sides: (keyof typeof sideNames)[];
 }) {
   return (
     <Table variant="grouped" aria-label={label}>
@@ -57,14 +59,11 @@ function BondsTable({
         <TableRow variant="grouped">
           <TableHead variant="grouped">Título</TableHead>
           <TableHead variant="grouped">Vencimento</TableHead>
-          {buyable && (
-            <TableHead variant="grouped" align="end">
-              Compra
+          {sides.map((side) => (
+            <TableHead key={side} variant="grouped" align="end">
+              {sideNames[side]}
             </TableHead>
-          )}
-          <TableHead variant="grouped" align="end">
-            Venda
-          </TableHead>
+          ))}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -76,14 +75,11 @@ function BondsTable({
             <TableCell variant="grouped">
               <span className="text-muted-foreground">{formatDate(bond.maturity)}</span>
             </TableCell>
-            {buyable && (
-              <TableCell variant="grouped" align="end">
-                <Side type={bond.type} price={bond.buy} />
+            {sides.map((side) => (
+              <TableCell key={side} variant="grouped" align="end">
+                <Side type={bond.type} price={bond[side]} />
               </TableCell>
-            )}
-            <TableCell variant="grouped" align="end">
-              <Side type={bond.type} price={bond.sell} />
-            </TableCell>
+            ))}
           </TableRow>
         ))}
       </TableBody>
@@ -102,11 +98,11 @@ function othersSummary(bonds: BondQuote[]): string {
 function CollapsedBonds({
   title,
   bonds,
-  buyable,
+  children,
 }: {
   title: string;
   bonds: BondQuote[];
-  buyable?: boolean;
+  children: React.ReactNode;
 }) {
   const id = useId();
   return (
@@ -126,9 +122,7 @@ function CollapsedBonds({
           </GroupedListItem>
         </GroupedList>
         <CollapsibleContent>
-          <div className="pt-2">
-            <BondsTable bonds={bonds} label={title} buyable={buyable} />
-          </div>
+          <div className="pt-2">{children}</div>
         </CollapsibleContent>
       </Collapsible>
     </GroupedListSection>
@@ -190,13 +184,23 @@ export function Bonds() {
       {offered.length > 0 && (
         <GroupedListSection aria-labelledby={id}>
           <GroupedListHeader id={id}>Comparáveis com seu financiamento</GroupedListHeader>
-          <BondsTable bonds={offered} label="Comparáveis com seu financiamento" />
+          <BondsTable
+            bonds={offered}
+            label="Comparáveis com seu financiamento"
+            sides={["buy", "sell"]}
+          />
         </GroupedListSection>
       )}
       {notOffered.length > 0 && (
-        <CollapsedBonds title="Comparáveis fora de oferta" bonds={notOffered} buyable={false} />
+        <CollapsedBonds title="Comparáveis fora de oferta" bonds={notOffered}>
+          <BondsTable bonds={notOffered} label="Comparáveis fora de oferta" sides={["sell"]} />
+        </CollapsedBonds>
       )}
-      {others.length > 0 && <CollapsedBonds title="Outros títulos" bonds={others} />}
+      {others.length > 0 && (
+        <CollapsedBonds title="Outros títulos" bonds={others}>
+          <BondsTable bonds={others} label="Outros títulos" sides={["buy", "sell"]} />
+        </CollapsedBonds>
+      )}
     </div>
   );
 }

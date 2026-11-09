@@ -26,6 +26,7 @@ import { problem, stubRoutes } from "@/test/stubServer";
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 /** setToday fakes only the clock, so timers and the server stub keep running. */
@@ -151,6 +152,34 @@ describe("the summary of the mortgage", () => {
     expect(screen.getByRole("region", { name: "Prestação ao longo do tempo" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "Composição" }));
     expect(screen.getByRole("region", { name: "Composição da prestação" })).toBeInTheDocument();
+  });
+
+  it.each([
+    ["early in the term, to its right", "2024-01-01", "start"],
+    ["late in the term, to its left", "2024-06-01", "end"],
+  ])("labels today %s, toward the room the plot has", async (_, today, anchor) => {
+    // jsdom lays nothing out, and a chart with no size draws nothing.
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+      DOMRect.fromRect({ width: 800, height: 256 }),
+    );
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(800);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(256);
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(800);
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(256);
+    stubMortgageApi({ mortgage: registeredMortgage });
+    setToday(today);
+    renderAt("/financiamento");
+
+    const chart = within(
+      await screen.findByRole("region", { name: "Saldo devedor ao longo do tempo" }),
+    );
+    const label = await chart.findByText(/^Hoje \(/);
+    const lineX = Number(
+      document.querySelector(".recharts-reference-line line")?.getAttribute("x1"),
+    );
+    expect(label).toHaveAttribute("text-anchor", anchor);
+    const labelX = Number(label.getAttribute("x"));
+    expect(anchor === "start" ? labelX > lineX : labelX < lineX).toBe(true);
   });
 });
 

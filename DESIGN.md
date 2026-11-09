@@ -290,12 +290,12 @@ A lot is a "compra". Investimentos opens on Compras; once a lot is recorded, the
 control switches Compras and Venda antecipada. With no lot, the page shows only its empty state.
 
 - Compras: a white panel titled "Valor de mercado" with the net total as a hero figure, "Líquido, se
-  vender tudo hoje" in Callout under it and, under a hairline, the gross total and what IR, IOF and
-  custody take off it. Then a group per bond, the bonds maturing first leading, under a Headline
-  with the bond's name. Each lot is a two-line row: "Compra em" its date with its rate in Callout
-  grey beside it, then what its early sale check favours in Footnote ("Manter até o vencimento", or
-  "Vender e amortizar renderia" and the gain in green), and its net Market Value, or why it has
-  none, as the value.
+  vender tudo hoje" in Callout under it and, under a hairline, the gross total, then IR, IOF and
+  Custódia each with what it takes off it. Then a group per bond, the bonds maturing first leading,
+  under a Headline with the bond's name. Each lot is a two-line row: "Compra em" its date with its
+  rate in Callout grey beside it, then what its early sale check favours in Footnote ("Manter até o
+  vencimento", or "Vender e amortizar renderia" and the gain in green), and its net Market Value,
+  or why it has none, as the value.
 - A lot's detail: an accent "‹ Investimentos" back link, the bond's name as the Large Title with
   "Editar" and a red "Excluir", one line on the purchase, then the net Market, Accrual and Maturity
   Values side by side in one white panel. Under it, a white panel on the early sale with its own

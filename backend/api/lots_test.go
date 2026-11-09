@@ -204,7 +204,8 @@ func TestLotsAreValuedOnTodayWithTesouroPrices(t *testing.T) {
 				"coupons": []
 			}
 		}
-	], "market_value": {"gross": "7600.00", "net": "7465.00"}}`, do(t, handler, http.MethodGet, "/lots", "", http.StatusOK))
+	], "market_value": {"gross": "7600.00", "iof": "0.00", "income_tax": "135.00", "custody_fee": "0.00",
+		"net": "7465.00"}}`, do(t, handler, http.MethodGet, "/lots", "", http.StatusOK))
 }
 
 // On the day of the example above, the lots that have a Market Value add up to the total: ten
@@ -242,7 +243,8 @@ func TestLotsTotalTheirMarketValue(t *testing.T) {
 			UnitPrice: "700.00", Quantity: "2",
 		},
 	}, got.Lots)
-	assert.JSONEq(t, `{"gross": "9120.00", "net": "8958.00"}`, string(got.MarketValue))
+	assert.JSONEq(t, `{"gross": "9120.00", "iof": "0.00", "income_tax": "162.00", "custody_fee": "0.00",
+		"net": "8958.00"}`, string(got.MarketValue))
 }
 
 // An LTN lot of two bonds bought on 2026-10-16 at 990.00 and valued ten days later, at a contracted
@@ -276,7 +278,8 @@ func TestLotsAreNetOfIOFAndCustodyFee(t *testing.T) {
 				"coupons": []
 			}
 		}
-	], "market_value": {"gross": "1990.00", "net": "1982.55"}}`, do(t, handler, http.MethodGet, "/lots", "", http.StatusOK))
+	], "market_value": {"gross": "1990.00", "iof": "6.60", "income_tax": "0.74", "custody_fee": "0.11",
+		"net": "1982.55"}}`, do(t, handler, http.MethodGet, "/lots", "", http.StatusOK))
 }
 
 // The IPCA index numbers of June 2000 and November 2011 are IBGE's (SIDRA table 1737); October 2011

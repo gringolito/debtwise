@@ -19,16 +19,22 @@ afterEach(() => {
 const rowsOf = (group: HTMLElement) => within(group).getAllByRole("link").map(words);
 
 describe("Compras", () => {
-  it("shows the net Market Value with what it took off the gross, and lists each lot under its bond", async () => {
+  it("shows the net Market Value with what each deduction took off the gross, and lists each lot under its bond", async () => {
     stubInvestments({
       lots: [ipca2035, prefixado2029, ipca2035Again],
-      marketValue: { gross: "34800.12", net: "33016.50" },
+      marketValue: {
+        gross: "34800.12",
+        iof: "70.50",
+        income_tax: "1700.00",
+        custody_fee: "13.12",
+        net: "33016.50",
+      },
     });
     renderAt("/investimentos");
 
     const total = await screen.findByRole("region", { name: "Valor de mercado" });
     expect(words(total)).toBe(
-      "Valor de mercado R$ 33.016,50 Líquido, se vender tudo hoje Bruto R$ 34.800,12 IR, IOF e custódia − R$ 1.783,62 1 compra sem valor de mercado ficou fora do total.",
+      "Valor de mercado R$ 33.016,50 Líquido, se vender tudo hoje Bruto R$ 34.800,12 IR − R$ 1.700,00 IOF − R$ 70,50 Custódia − R$ 13,12 1 compra sem valor de mercado ficou fora do total.",
     );
 
     const groups = screen.getAllByRole("region").filter((region) => region !== total);

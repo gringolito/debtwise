@@ -687,9 +687,21 @@ export type MarketDataStatus = {
 
 export type MarketTotal = {
     /**
+     * The custody fee taken from the gross total, in reais, as a decimal string.
+     */
+    custody_fee: string;
+    /**
      * The total before IOF, income tax and the custody fee, in reais, as a decimal string.
      */
     gross: string;
+    /**
+     * The income tax taken from the gross total, in reais, as a decimal string.
+     */
+    income_tax: string;
+    /**
+     * The IOF taken from the gross total, in reais, as a decimal string.
+     */
+    iof: string;
     /**
      * The total after IOF, income tax and the custody fee, in reais, as a decimal string.
      */

@@ -15,7 +15,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/gringolito/debtwise/backend/bonds"
-	"github.com/gringolito/debtwise/backend/decimal"
 	"github.com/gringolito/debtwise/backend/indexes"
 )
 
@@ -123,8 +122,11 @@ type lotList struct {
 }
 
 type marketTotal struct {
-	Gross string `json:"gross" doc:"The total before IOF, income tax and the custody fee, in reais, as a decimal string."`
-	Net   string `json:"net" doc:"The total after IOF, income tax and the custody fee, in reais, as a decimal string."`
+	Gross      string `json:"gross" doc:"The total before IOF, income tax and the custody fee, in reais, as a decimal string."`
+	IOF        string `json:"iof" doc:"The IOF taken from the gross total, in reais, as a decimal string."`
+	IncomeTax  string `json:"income_tax" doc:"The income tax taken from the gross total, in reais, as a decimal string."`
+	CustodyFee string `json:"custody_fee" doc:"The custody fee taken from the gross total, in reais, as a decimal string."`
+	Net        string `json:"net" doc:"The total after IOF, income tax and the custody fee, in reais, as a decimal string."`
 }
 
 const (
@@ -300,8 +302,8 @@ func valuedLots(ctx context.Context, lots Lots, quotes Quotes, store IndexStore,
 	valued := make([]lotValued, 0, len(recorded))
 
 	var (
-		gross, net decimal.Decimal
-		hasMarket  bool
+		total     bonds.Amount
+		hasMarket bool
 	)
 
 	for _, l := range recorded {
@@ -320,8 +322,10 @@ func valuedLots(ctx context.Context, lots Lots, quotes Quotes, store IndexStore,
 		default:
 			valued = append(valued, newLotValued(l, new(newLotValues(v)), ""))
 
-			if v.Market != nil {
-				gross, net = gross.Add(v.Market.Gross), net.Add(v.Market.Net)
+			if m := v.Market; m != nil {
+				total.Gross, total.Net = total.Gross.Add(m.Gross), total.Net.Add(m.Net)
+				total.IOF, total.IncomeTax = total.IOF.Add(m.IOF), total.IncomeTax.Add(m.IncomeTax)
+				total.CustodyFee = total.CustodyFee.Add(m.CustodyFee)
 				hasMarket = true
 			}
 		}
@@ -331,7 +335,13 @@ func valuedLots(ctx context.Context, lots Lots, quotes Quotes, store IndexStore,
 		return valued, nil, nil
 	}
 
-	return valued, &marketTotal{Gross: gross.String(), Net: net.String()}, nil
+	return valued, &marketTotal{
+		Gross:      total.Gross.String(),
+		IOF:        total.IOF.String(),
+		IncomeTax:  total.IncomeTax.String(),
+		CustodyFee: total.CustodyFee.String(),
+		Net:        total.Net.String(),
+	}, nil
 }
 
 // readsIPCA reports whether the values of a lot of the bond type follow the IPCA.

@@ -12,7 +12,6 @@ import {
 import type { EarlySaleCheck, LotList, LotValued } from "@/lib/api";
 import { bondRate } from "@/lib/bondKinds";
 import { today } from "@/lib/dashboard";
-import { subtractDecimals } from "@/lib/decimals";
 import { useEarlySaleChecks } from "@/lib/earlySaleQueries";
 import { formatDate, formatMoney } from "@/lib/format";
 import { checkOf, groupByBond, leftOutOfMarketTotal, saleGain } from "@/lib/investments";
@@ -41,16 +40,17 @@ function MarketTotal({ lots: { lots, market_value } }: { lots: LotList }) {
       </div>
       {market_value && (
         <dl className="flex flex-wrap gap-x-10 gap-y-2 border-t border-border pt-4">
-          <div className="flex flex-col gap-0.5">
-            <dt className="text-footnote text-muted-foreground">Bruto</dt>{" "}
-            <dd className="text-callout tabular-nums">{formatMoney(market_value.gross)}</dd>{" "}
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <dt className="text-footnote text-muted-foreground">IR, IOF e custódia</dt>{" "}
-            <dd className="text-callout tabular-nums">
-              − {formatMoney(subtractDecimals(market_value.gross, market_value.net))}
-            </dd>
-          </div>
+          {[
+            ["Bruto", formatMoney(market_value.gross)],
+            ["IR", `− ${formatMoney(market_value.income_tax)}`],
+            ["IOF", `− ${formatMoney(market_value.iof)}`],
+            ["Custódia", `− ${formatMoney(market_value.custody_fee)}`],
+          ].map(([name, amount]) => (
+            <div key={name} className="flex flex-col gap-0.5">
+              <dt className="text-footnote text-muted-foreground">{name}</dt>{" "}
+              <dd className="text-callout tabular-nums">{amount}</dd>{" "}
+            </div>
+          ))}
         </dl>
       )}
       {market_value && leftOut > 0 && (
