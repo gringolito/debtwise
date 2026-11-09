@@ -124,10 +124,7 @@ export function EarlySalePanel({
   const titleId = useId();
   return (
     <div className="flex flex-col gap-2">
-      <section
-        aria-labelledby={titleId}
-        className="flex flex-col gap-4 rounded-lg border bg-card p-6"
-      >
+      <section aria-labelledby={titleId} className="flex flex-col gap-4 rounded-lg glass p-6">
         <div className="flex items-center justify-between gap-4">
           <h2 id={titleId} className="text-footnote tracking-wide text-muted-foreground uppercase">
             Venda antecipada

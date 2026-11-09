@@ -70,7 +70,7 @@ export function IndexChart({ index, values, projection, today }: IndexChartProps
       : [];
 
   return (
-    <section aria-label={title} className="flex flex-col gap-6 rounded-lg border bg-card p-6">
+    <section aria-label={title} className="flex flex-col gap-6 rounded-lg glass p-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-headline">{title}</h2>
         <div className="flex items-center gap-6">

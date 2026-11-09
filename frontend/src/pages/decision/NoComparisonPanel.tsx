@@ -67,7 +67,7 @@ export function NoComparisonPanel({ why, onUseAmount }: NoComparisonPanelProps) 
   return (
     <section
       aria-labelledby={titleId}
-      className="flex flex-col items-center rounded-lg border bg-card px-12 py-16 text-center"
+      className="flex flex-col items-center rounded-lg glass px-12 py-16 text-center"
     >
       <div className="mb-6 flex size-14 items-center justify-center rounded-lg bg-muted">
         <InfoIcon aria-hidden="true" strokeWidth={1.5} className="size-6 text-muted-foreground" />

@@ -52,7 +52,7 @@ export function ReviewStep({ terms, schedule, onEdit }: ReviewStepProps) {
 
   return (
     <>
-      <section aria-label="Resumo" className="flex flex-col gap-6 rounded-lg border bg-card p-6">
+      <section aria-label="Resumo" className="flex flex-col gap-6 rounded-lg glass p-6">
         <dl className="flex justify-between gap-6">
           {last && <Figure name="Quitação prevista" value={formatMonthYear(last.due_date)} />}
           {current && (

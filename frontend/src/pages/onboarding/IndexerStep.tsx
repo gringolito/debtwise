@@ -10,7 +10,7 @@ export function IndexerStep({ values, set, messageOf }: StepProps) {
   const invalid = messageOf("indexer") !== undefined;
   return (
     <div className="flex flex-col gap-4">
-      <div className="overflow-hidden rounded-lg border bg-card">
+      <div className="overflow-hidden rounded-lg glass">
         <RadioGroup
           aria-label="Índice de correção"
           aria-invalid={invalid || undefined}

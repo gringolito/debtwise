@@ -62,7 +62,7 @@ export function PoupancaDerivation({ methods }: { methods: ProjectionMethod[] })
   return (
     <GroupedListSection aria-labelledby={id}>
       <GroupedListHeader id={id}>Projeção</GroupedListHeader>
-      <p className="rounded-lg border bg-card px-4 py-3 text-callout">
+      <p className="rounded-lg glass px-4 py-3 text-callout">
         A projeção deriva da{" "}
         <Link to="/mercado/indices/$index" params={{ index: "tr" }} className={link}>
           {indexNames.tr}

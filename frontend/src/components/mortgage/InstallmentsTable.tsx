@@ -179,7 +179,7 @@ export function InstallmentsTable({ installments, current }: InstallmentsTablePr
           installment.rate_index_values.filter((value) => value.status === "missing"),
         )}
       />
-      <div className="overflow-hidden rounded-lg border bg-card px-2">
+      <div className="overflow-hidden rounded-lg glass px-2">
         <Table aria-label="Prestações">
           <TableHeader>
             <TableRow>

@@ -149,7 +149,7 @@ export function ScheduleChart({
   return (
     <section
       aria-label={titles[view]}
-      className="flex flex-col gap-6 rounded-lg border bg-card p-6"
+      className="flex flex-col gap-6 rounded-lg glass p-6"
       {...props}
     >
       <header className="flex flex-wrap items-center justify-between gap-4">

@@ -26,7 +26,7 @@ function StatementTable({
   onEdit: (statement: StatementDrift) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border bg-card px-2">
+    <div className="overflow-hidden rounded-lg glass px-2">
       <Table aria-label="Extratos registrados">
         <TableHeader>
           <TableRow>
@@ -100,7 +100,7 @@ export function Statements({ onEdit }: StatementsProps) {
         usa o saldo do banco.
       </p>
       {data.statements.length === 0 ? (
-        <p className="rounded-lg border bg-card px-6 py-10 text-center text-callout text-muted-foreground">
+        <p className="rounded-lg glass px-6 py-10 text-center text-callout text-muted-foreground">
           Nenhum extrato registrado.
         </p>
       ) : (

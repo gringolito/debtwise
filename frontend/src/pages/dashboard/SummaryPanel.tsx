@@ -16,7 +16,7 @@ export function SummaryPanel({ title, className, children, ...props }: SummaryPa
   return (
     <section
       aria-labelledby={titleId}
-      className={cn("flex flex-col rounded-lg border bg-card p-6", className)}
+      className={cn("flex flex-col rounded-lg glass p-6", className)}
       {...props}
     >
       <h2 id={titleId} className="text-footnote tracking-wide text-muted-foreground uppercase">

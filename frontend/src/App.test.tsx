@@ -51,7 +51,7 @@ describe("shell", () => {
 
     renderAt(path);
 
-    expect(await screen.findByText("DebtWise")).toBeInTheDocument();
+    expect(await screen.findByText("Debtwise")).toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Principal" });
     const links = within(nav).getAllByRole("link");
     expect(links.map((link) => [link.textContent, link.getAttribute("href")])).toEqual(

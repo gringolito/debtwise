@@ -16,7 +16,7 @@ export function GroupedListHeader({ className, ...props }: React.ComponentProps<
 }
 
 export function GroupedList({ className, ...props }: React.ComponentProps<"ul">) {
-  return <ul className={cn("overflow-hidden rounded-lg border bg-card", className)} {...props} />;
+  return <ul className={cn("overflow-hidden rounded-lg glass", className)} {...props} />;
 }
 
 export function GroupedListItem({ className, ...props }: React.ComponentProps<"li">) {

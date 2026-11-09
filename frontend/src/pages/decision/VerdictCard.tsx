@@ -32,10 +32,7 @@ export function VerdictCard({ verdict }: { verdict: ComparedVerdict }) {
   const side = favoured(verdict.advantage);
   const note = breakEvenNote(verdict);
   return (
-    <section
-      aria-labelledby={titleId}
-      className="flex flex-col gap-6 rounded-lg border bg-card p-8"
-    >
+    <section aria-labelledby={titleId} className="flex flex-col gap-6 rounded-lg glass p-8">
       <div className="flex flex-col gap-2">
         <p className="text-footnote font-medium tracking-wide text-muted-foreground uppercase">
           {headings[side]}
