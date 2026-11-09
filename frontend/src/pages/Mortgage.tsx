@@ -3,6 +3,10 @@ import { PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { Page, PageHeader, PageTitle } from "@/components/layout/Page";
 import { InstallmentsTable } from "@/components/mortgage/InstallmentsTable";
+import {
+  type PrepaymentChange,
+  PrepaymentFeedback,
+} from "@/components/mortgage/PrepaymentFeedback";
 import { PrepaymentSheet } from "@/components/mortgage/PrepaymentSheet";
 import { Prepayments } from "@/components/mortgage/Prepayments";
 import { ScheduleChart } from "@/components/mortgage/ScheduleChart";
@@ -14,7 +18,7 @@ import { Loading } from "@/components/patterns/Loading";
 import { SegmentedControl, SegmentedControlItem } from "@/components/patterns/SegmentedControl";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Prepayment, RegisteredMortgage, Schedule, StatementDrift } from "@/lib/api";
+import type { PrepaymentOutcome, RegisteredMortgage, Schedule, StatementDrift } from "@/lib/api";
 import { latestDue, nextDue, today } from "@/lib/dashboard";
 import { formatMoney, formatMonthYear } from "@/lib/format";
 import { useMortgage, useMortgageSchedule } from "@/lib/mortgageQueries";
@@ -24,9 +28,12 @@ const route = getRouteApi("/shell/financiamento");
 
 type Tab = NonNullable<MortgageSearch["secao"]> | "prestacoes";
 
+// A prepayment sheet keeps the schedule it opened over, which its feedback compares with.
 type Sheet =
-  | { kind: "prepayment"; prepayment?: Prepayment }
+  | { kind: "prepayment"; prepayment?: PrepaymentOutcome; schedule: Schedule }
   | { kind: "statement"; statement?: StatementDrift };
+
+type Feedback = { change: PrepaymentChange; before: Schedule };
 
 function MortgageSkeleton() {
   return (
@@ -50,6 +57,7 @@ function MortgageDetails({
   const setTab = (secao: Tab) =>
     navigate({ search: secao === "prestacoes" ? {} : { secao }, replace: true });
   const [sheet, setSheet] = useState<Sheet | null>(null);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const date = today();
   const { installments } = schedule;
   const current = nextDue(installments, date);
@@ -87,7 +95,7 @@ function MortgageDetails({
               Registrar extrato
             </Button>
           ) : (
-            <Button onClick={() => setSheet({ kind: "prepayment" })}>
+            <Button onClick={() => setSheet({ kind: "prepayment", schedule })}>
               <PlusIcon aria-hidden="true" />
               Registrar amortização
             </Button>
@@ -97,14 +105,30 @@ function MortgageDetails({
           <InstallmentsTable installments={schedule.installments} current={current} />
         )}
         {tab === "amortizacoes" && (
-          <Prepayments onEdit={(prepayment) => setSheet({ kind: "prepayment", prepayment })} />
+          <Prepayments
+            onEdit={(prepayment) => setSheet({ kind: "prepayment", prepayment, schedule })}
+          />
         )}
         {tab === "extratos" && (
           <Statements onEdit={(statement) => setSheet({ kind: "statement", statement })} />
         )}
       </div>
       {sheet?.kind === "prepayment" && (
-        <PrepaymentSheet prepayment={sheet.prepayment} onClose={() => setSheet(null)} />
+        <PrepaymentSheet
+          prepayment={sheet.prepayment}
+          onClose={() => setSheet(null)}
+          onSaved={(change) => {
+            setSheet(null);
+            setFeedback({ change, before: sheet.schedule });
+          }}
+        />
+      )}
+      {feedback && (
+        <PrepaymentFeedback
+          change={feedback.change}
+          before={feedback.before}
+          onClose={() => setFeedback(null)}
+        />
       )}
       {sheet?.kind === "statement" && (
         <StatementSheet statement={sheet.statement} onClose={() => setSheet(null)} />

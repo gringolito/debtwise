@@ -53,6 +53,24 @@ const rows = async () =>
     .getAllByRole("button")
     .map(text);
 
+/** feedback is the dialog that opens once a change is saved, after the sheet closed. */
+async function feedback(name: string) {
+  await waitFor(() => expect(screen.queryByRole("form")).toBeNull());
+  return screen.findByRole("dialog", { name });
+}
+
+async function dismiss(dialog: HTMLElement, button: string) {
+  expect(within(dialog).getAllByRole("button").map(text)).toEqual([button]);
+  expect(within(dialog).getByRole("button", { name: button })).toHaveFocus();
+  fireEvent.click(within(dialog).getByRole("button", { name: button }));
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+}
+
+const facts = (dialog: HTMLElement) =>
+  within(dialog)
+    .getAllByRole("term")
+    .map((term) => [text(term), text(term.nextElementSibling as HTMLElement)]);
+
 describe("the prepayments of the mortgage", () => {
   it("lists every prepayment newest first with what it changed, under the totals", async () => {
     stubMortgageApi({ mortgage: registeredMortgage, prepayments });
@@ -141,7 +159,7 @@ describe("recording a prepayment", () => {
     ]);
     fireEvent.click(within(form).getByRole("button", { name: "Registrar" }));
 
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await dismiss(await feedback("Amortização registrada!"), "Continuar");
     expect(bodies(requests, "POST").at(-1)).toEqual([
       "/api/mortgage/prepayments",
       { date: "2024-02-20", amount: "5000.00", effect: "shorten_term" },
@@ -205,10 +223,106 @@ describe("recording a prepayment", () => {
     fill(form, "Valor", "5.000,00");
     fireEvent.click(within(form).getByRole("button", { name: "Registrar" }));
 
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await dismiss(await feedback("Amortização registrada!"), "Continuar");
     fireEvent.click(screen.getByRole("radio", { name: "Extratos" }));
     await waitFor(() => expect(statementReads()).toBe(2));
   });
+});
+
+// The schedule once a prepayment on 2024-02-20 lowers installments 3 to 6.
+const scheduleWithLowerInstallments = {
+  installments: schedule.installments.map((installment) =>
+    installment.number >= 3 ? { ...installment, amount: "9184.45" } : installment,
+  ),
+};
+
+describe("celebrating a recorded prepayment", () => {
+  async function record(effect: "Reduzir prazo" | "Reduzir prestação") {
+    const form = await openNewSheet();
+    fill(form, "Valor", "5.000,00");
+    fireEvent.click(within(form).getByRole("radio", { name: effect }));
+    fireEvent.click(within(form).getByRole("button", { name: "Registrar" }));
+  }
+
+  it("shows what a prepayment that shortens the term saves, with every prepayment's", async () => {
+    stubMortgageApi({
+      mortgage: registeredMortgage,
+      prepayments,
+      scheduleAfterChange: { installments: schedule.installments.slice(0, 5) },
+      prepaymentOutcome: () => ({
+        months_shortened: 1,
+        installment_reduction: "0.00",
+        money_saved: "520.30",
+      }),
+    });
+    setToday("2024-02-20");
+    renderAt("/financiamento");
+
+    await record("Reduzir prazo");
+
+    const dialog = await feedback("Amortização registrada!");
+    expect(within(dialog).getByText("R$ 520,30").closest("p")).toHaveTextContent(
+      "Na projeção atual, ela economiza R$ 520,30 em juros, seguros e taxas",
+    );
+    expect(facts(dialog)).toEqual([
+      ["Prazo reduzido", "1 mês"],
+      ["Quitação prevista", "maio de 2024"],
+    ]);
+    expect(
+      within(dialog).getByText(/^Com todas as amortizações/, { selector: "p" }),
+    ).toHaveTextContent(
+      "Com todas as amortizações, você economiza R$ 1.719,12 e 2 meses de prazo.",
+    );
+    await dismiss(dialog, "Continuar");
+  });
+
+  it("shows the installment a prepayment lowered, from what it was to what it is", async () => {
+    stubMortgageApi({
+      mortgage: registeredMortgage,
+      scheduleAfterChange: scheduleWithLowerInstallments,
+      prepaymentOutcome: () => ({
+        months_shortened: 0,
+        installment_reduction: "1250.05",
+        money_saved: "845.15",
+      }),
+    });
+    setToday("2024-02-20");
+    renderAt("/financiamento");
+
+    await record("Reduzir prestação");
+
+    const dialog = await feedback("Amortização registrada!");
+    expect(facts(dialog)).toEqual([["Prestação", "R$ 10.434,50 para R$ 9.184,45"]]);
+    expect(
+      within(dialog).getByText(/^Com todas as amortizações/, { selector: "p" }),
+    ).toHaveTextContent("Com todas as amortizações, você economiza R$ 845,15.");
+  });
+
+  it.each(["Reduzir prazo", "Reduzir prestação"] as const)(
+    "celebrates a payoff with the money and the time saved, under %s",
+    async (effect) => {
+      stubMortgageApi({
+        mortgage: registeredMortgage,
+        scheduleAfterChange: { installments: schedule.installments.slice(0, 2) },
+        prepaymentOutcome: () => ({
+          months_shortened: 4,
+          installment_reduction: "10434.50",
+          money_saved: "1000.00",
+        }),
+      });
+      setToday("2024-02-20");
+      renderAt("/financiamento");
+
+      await record(effect);
+
+      const dialog = await feedback("Financiamento quitado!");
+      expect(within(dialog).getByText("R$ 1.000,00").closest("p")).toHaveTextContent(
+        "Na projeção atual, ela economiza R$ 1.000,00 em juros, seguros e taxas",
+      );
+      expect(facts(dialog)).toEqual([["Prazo reduzido", "4 meses"]]);
+      await dismiss(dialog, "Continuar");
+    },
+  );
 });
 
 describe("a prepayment the server rejects", () => {
@@ -290,7 +404,7 @@ describe("editing a prepayment", () => {
     );
     fireEvent.click(within(form).getByRole("button", { name: "Salvar" }));
 
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await dismiss(await feedback("Amortização atualizada"), "Entendi");
     expect(bodies(requests, "PUT")).toEqual([
       [
         "/api/mortgage/prepayments/2",
@@ -304,6 +418,58 @@ describe("editing a prepayment", () => {
         "20/01/2024 Reduzir prazo R$ 13.000,00",
       ]),
     );
+  });
+
+  it("tells where an edit leaves the payoff and the money the prepayment saves", async () => {
+    stubMortgageApi({
+      mortgage: registeredMortgage,
+      prepayments,
+      scheduleAfterChange: { installments: schedule.installments.slice(0, 5) },
+      prepaymentOutcome: () => ({
+        months_shortened: 1,
+        installment_reduction: "0.00",
+        money_saved: "610.00",
+      }),
+    });
+    renderAt("/financiamento");
+
+    const form = await openEditSheet("15/03/2024");
+    fireEvent.click(within(form).getByRole("radio", { name: "Reduzir prazo" }));
+    fireEvent.click(within(form).getByRole("button", { name: "Salvar" }));
+
+    const dialog = await feedback("Amortização atualizada");
+    expect(within(dialog).getByText(/^Na projeção atual/)).toHaveTextContent(
+      "Na projeção atual, o financiamento fica assim:",
+    );
+    expect(facts(dialog)).toEqual([
+      ["Quitação prevista", "junho de 2024 para maio de 2024"],
+      ["Economia", "R$ 845,15 para R$ 610,00"],
+    ]);
+    await dismiss(dialog, "Entendi");
+  });
+
+  it("tells where an edit leaves the installment the prepayment lowers", async () => {
+    stubMortgageApi({
+      mortgage: registeredMortgage,
+      prepayments,
+      scheduleAfterChange: scheduleWithLowerInstallments,
+      prepaymentOutcome: () => ({
+        months_shortened: 0,
+        installment_reduction: "1153.05",
+        money_saved: "900.00",
+      }),
+    });
+    renderAt("/financiamento");
+
+    const form = await openEditSheet("15/03/2024");
+    fill(form, "Valor", "13.000,00");
+    fireEvent.click(within(form).getByRole("button", { name: "Salvar" }));
+
+    const dialog = await feedback("Amortização atualizada");
+    expect(facts(dialog)).toEqual([
+      ["Prestação", "R$ 10.337,50 para R$ 9.184,45"],
+      ["Economia", "R$ 845,15 para R$ 900,00"],
+    ]);
   });
 
   it("keeps the prepayment when the owner cancels", async () => {
@@ -368,6 +534,7 @@ describe("deleting a prepayment", () => {
       schedule: scheduleAfterEvent,
       scheduleAfterChange: schedule,
     });
+    setToday("2024-02-20");
     renderAt("/financiamento");
 
     await openEditSheet("15/03/2024");
@@ -378,7 +545,16 @@ describe("deleting a prepayment", () => {
     expect(requests.some((req) => req.method === "DELETE")).toBe(false);
     fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
 
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const notice = await feedback("Amortização excluída");
+    expect(within(notice).getByText(/^Na projeção atual/)).toHaveTextContent(
+      "Na projeção atual, o financiamento fica assim:",
+    );
+    expect(facts(notice)).toEqual([
+      ["Quitação prevista", "junho de 2024"],
+      ["Prestação atual", "R$ 10.434,50"],
+      ["Economia com amortizações", "R$ 353,67"],
+    ]);
+    await dismiss(notice, "Entendi");
     expect(bodies(requests, "DELETE")).toEqual([["/api/mortgage/prepayments/2", undefined]]);
     expect(await rows()).toEqual([
       "02/04/2024 Reduzir prazo R$ 1.234,00",

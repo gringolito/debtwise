@@ -1,3 +1,4 @@
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type * as React from "react";
@@ -34,21 +35,39 @@ function DialogOverlay({
   );
 }
 
+const dialogContentVariants = cva(
+  "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100%-4rem)] w-full -translate-x-1/2 -translate-y-1/2 flex-col gap-6 overflow-y-auto rounded-lg bg-popover p-8 text-popover-foreground shadow-sheet duration-150 outline-none data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+  {
+    variants: {
+      variant: {
+        default: "max-w-[520px] data-open:zoom-in-95",
+        /** The neutral feedback after a change: centered, with the default transition. */
+        notice: "max-w-120 text-center data-open:zoom-in-95",
+        /** A celebration springs up; when the device asks for reduced motion it only fades in. */
+        celebration:
+          "max-w-120 text-center data-open:duration-700 motion-safe:data-open:zoom-in-75 motion-safe:data-open:slide-in-from-bottom-16 motion-safe:data-open:ease-spring",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+);
+
 // Upstream renders an X close button; an Orvalho sheet closes through "Cancelar" in DialogHeader.
 function DialogContent({
   className,
+  variant = "default",
   children,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> &
+  VariantProps<typeof dialogContentVariants>) {
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
-        className={cn(
-          "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100%-4rem)] w-full max-w-[520px] -translate-x-1/2 -translate-y-1/2 flex-col gap-6 overflow-y-auto rounded-lg bg-popover p-8 text-popover-foreground shadow-sheet duration-150 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-          className,
-        )}
+        className={cn(dialogContentVariants({ variant }), className)}
         {...props}
       >
         {children}

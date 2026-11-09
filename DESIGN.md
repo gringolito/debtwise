@@ -161,6 +161,17 @@ Large Title at semibold weight. The wordmark's text is Title 2. These seven size
   full-width buttons stacked, the action in solid red with white text and "Cancelar" in graphite
   text on the canvas gray. Deleting the mortgage, the deletion that takes the most with it, also
   shows a red "!" in a red-tint disc above the question.
+- A celebration follows a new record that improves the owner's position: a centered 480px white
+  panel over the dimmed page, its content centered. An accent icon on a tint disc, a party popper
+  unless the action has its own, pops in over the Title 2 that says what happened; then, under a
+  Footnote uppercase lead that starts "Na projeção atual", the action's main figure as a hero
+  figure, green when it is money gained, with what it measures in Callout grey; the other figures
+  as rows of a white grouped list; a Callout line of context; and a full-width graphite
+  "Continuar". The panel springs up from below as it fades in, and only fades in when the device
+  asks for reduced motion. A milestone, such as a mortgage paid off, also ripples soft-accent rings
+  out of its icon. After a correction, such as an edited or deleted prepayment, the same panel
+  informs instead: no icon, the dialog's usual short fade, the figures as before → after where
+  they changed, and "Entendi".
 - A screen that fails to load shows a white error panel in place of its content: a cloud-off icon
   in a grey circle, a Headline saying what could not load, "Verifique sua conexão. Seus dados
   estão salvos." in Callout, and a graphite "Tentar novamente" that retries the failed request.
@@ -227,6 +238,13 @@ Amortizações and Extratos in a segmented control with the page's one primary b
 - Extratos compares the bank's balance with the calculated one, newest first.
 - The sheets preview before saving: the new payoff month or installment for a prepayment, the
   calculated balance and the difference for a statement.
+- Recording a prepayment closes its sheet and celebrates the money it saves, with every
+  prepayment's money and months saved in the context line. A prepayment that shortens the term also
+  shows the months it took off and the new payoff month; one that lowers the installment shows the
+  installment before → after. One that pays the mortgage off is a milestone, "Financiamento
+  quitado!", with the money and the months saved. Saving an edit informs of the payoff month, or
+  the installment, and the prepayment's money saved, before → after; deleting one informs of the
+  payoff month, the current installment and the money all prepayments save.
 
 ## Onboarding
 

@@ -36,6 +36,8 @@ interface MortgageApiOptions {
   scheduleAfterChange?: Schedule;
   /** What a prepayment preview answers once the body passes validation. */
   prepaymentPreview?: (input: PrepaymentPreviewInput) => PrepaymentPreview;
+  /** What a prepayment changed once recorded or edited; nothing by default. */
+  prepaymentOutcome?: (input: PrepaymentInput) => Outcome;
   /** What a statement preview answers once the body passes validation. */
   statementPreview?: (input: StatementPreviewInput) => StatementPreview;
   /** Endpoints the screen under test reads too, or answers that replace the fake's own. */
@@ -48,6 +50,11 @@ interface FieldError {
   code?: Rule;
 }
 
+type Outcome = Pick<
+  PrepaymentOutcome,
+  "months_shortened" | "installment_reduction" | "money_saved"
+>;
+
 const byDate = (a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date);
 
 const cents = (amount: string) => Math.round(Number(amount) * 100);
@@ -56,8 +63,9 @@ const cents = (amount: string) => Math.round(Number(amount) * 100);
 // removes, and the schedule exists while a mortgage does. Prepayments and statements are kept in
 // date order, get the next ID when recorded, and are validated the way the server does: a prepayment
 // is for more than zero, neither is dated before the contract, and a date holds one statement. A
-// recorded prepayment changed nothing, and a recorded statement has computed no balance, so its
-// drift is the whole balance it reports. Previews are validated the same way.
+// recorded prepayment changed nothing unless prepaymentOutcome says otherwise, and a recorded
+// statement has computed no balance, so its drift is the whole balance it reports. Previews are
+// validated the same way.
 export function stubMortgageApi({
   mortgage,
   schedule: initialSchedule = schedule,
@@ -70,6 +78,11 @@ export function stubMortgageApi({
   prepaymentPreview = () => ({
     current_payoff_date: initialSchedule.installments.at(-1)?.due_date ?? "",
     payoff_date: initialSchedule.installments.at(-1)?.due_date ?? "",
+    money_saved: "0.00",
+  }),
+  prepaymentOutcome = () => ({
+    months_shortened: 0,
+    installment_reduction: "0.00",
     money_saved: "0.00",
   }),
   statementPreview = (input) => ({
@@ -121,9 +134,7 @@ export function stubMortgageApi({
     date: input.date,
     amount: input.amount,
     effect: input.effect,
-    months_shortened: 0,
-    installment_reduction: "0.00",
-    money_saved: "0.00",
+    ...prepaymentOutcome(input),
   });
   const statementOf = (id: number, input: StatementInput): StatementDrift => ({
     id,
@@ -144,6 +155,8 @@ export function stubMortgageApi({
     date,
     outstanding_balance,
   });
+  const sum = (amount: (p: PrepaymentOutcome) => string) =>
+    (prepaymentList.reduce((total, p) => total + cents(amount(p)), 0) / 100).toFixed(2);
 
   return stubRoutes({
     "GET /api/mortgage": () => (registered ? Response.json(registered) : notFound()),
@@ -171,10 +184,9 @@ export function stubMortgageApi({
       registered
         ? Response.json({
             prepayments: prepaymentList,
-            total_amount: (
-              prepaymentList.reduce((sum, p) => sum + cents(p.amount), 0) / 100
-            ).toFixed(2),
-            months_shortened: prepaymentList.reduce((sum, p) => sum + p.months_shortened, 0),
+            total_amount: sum((p) => p.amount),
+            money_saved: sum((p) => p.money_saved),
+            months_shortened: prepaymentList.reduce((total, p) => total + p.months_shortened, 0),
           })
         : notFound(),
     "POST /api/mortgage/prepayments": (req) => {
