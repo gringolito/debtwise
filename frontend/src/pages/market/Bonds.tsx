@@ -130,8 +130,8 @@ function CollapsedBonds({
 }
 
 /**
- * Bonds is Mercado's Títulos: the Tesouro Direto catalogue, the comparable bonds Tesouro sells today
- * first, then the other bonds and last the comparable ones off offer, each in a collapsed group.
+ * Bonds is Mercado's Títulos: the Tesouro Direto catalogue, the bonds a decision compares with the
+ * mortgage first, those of them Tesouro doesn't sell today and the rest each in a collapsed group.
  */
 export function Bonds() {
   const { status } = useMarketData();
@@ -191,14 +191,14 @@ export function Bonds() {
           />
         </GroupedListSection>
       )}
-      {others.length > 0 && (
-        <CollapsedBonds title="Outros títulos" bonds={others}>
-          <BondsTable bonds={others} label="Outros títulos" sides={["buy", "sell"]} />
-        </CollapsedBonds>
-      )}
       {notOffered.length > 0 && (
         <CollapsedBonds title="Comparáveis fora de oferta" bonds={notOffered}>
           <BondsTable bonds={notOffered} label="Comparáveis fora de oferta" sides={["sell"]} />
+        </CollapsedBonds>
+      )}
+      {others.length > 0 && (
+        <CollapsedBonds title="Outros títulos" bonds={others}>
+          <BondsTable bonds={others} label="Outros títulos" sides={["buy", "sell"]} />
         </CollapsedBonds>
       )}
     </div>

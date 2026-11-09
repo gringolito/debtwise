@@ -452,7 +452,7 @@ describe("Títulos", () => {
       .slice(1)
       .map((row) => row.textContent?.replace(/\s/g, " "));
 
-  it("lists first the comparable bonds on offer, and last those off offer in a collapsed group", async () => {
+  it("lists the comparable bonds on offer, then those off offer, then the other bonds", async () => {
     stubBackend();
 
     renderAt("/mercado");
@@ -467,8 +467,8 @@ describe("Títulos", () => {
       screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
     ).toEqual([
       "Comparáveis com seu financiamento",
-      "Outros títulos",
       "Comparáveis fora de oferta",
+      "Outros títulos",
     ]);
 
     const offOffer = within(screen.getByRole("region", { name: "Comparáveis fora de oferta" }));
