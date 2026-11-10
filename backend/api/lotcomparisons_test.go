@@ -24,11 +24,11 @@ type lotComparison struct {
 }
 
 // compareLot compares the lot body with prepaying, and returns the comparison as the API answers it.
-func compareLot(t *testing.T, handler http.Handler, body string) lotComparison {
+func compareLot(t *testing.T, handler http.Handler, effect, body string) lotComparison {
 	t.Helper()
 
 	var got lotComparison
-	require.NoError(t, json.Unmarshal([]byte(do(t, handler, http.MethodPost, "/lots/comparison?effect=shorten_term", body, http.StatusOK)), &got))
+	require.NoError(t, json.Unmarshal([]byte(do(t, handler, http.MethodPost, "/lots/comparison?effect="+effect, body, http.StatusOK)), &got))
 
 	return got
 }
@@ -44,7 +44,7 @@ func TestALotComparesWithPrepayingOnItsPurchaseDate(t *testing.T) {
 	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
 	do(t, s.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
 
-	got := compareLot(t, s.handler, lotBody("ltn", "2027-01-01", "2026-07-10", "0.14", "800.00", "5.00"))
+	got := compareLot(t, s.handler, "shorten_term", lotBody("ltn", "2027-01-01", "2026-07-10", "0.14", "800.00", "5.00"))
 
 	assert.Equal(t, lotComparison{
 		AmountInvested: "4000.00",
@@ -64,7 +64,7 @@ func TestALotComparesWithPrepayingOnItsPurchaseDate(t *testing.T) {
 }
 
 // A mortgage charging 40% a year costs far more than an LTN bought at 11% a year earns, so prepaying
-// the lot's amount invested on its purchase date wins.
+// the lot's amount invested on its purchase date wins, with either effect.
 func TestALotComparisonFavoursPrepayingWhenTheMortgageCostsMore(t *testing.T) {
 	t.Parallel()
 
@@ -72,10 +72,17 @@ func TestALotComparisonFavoursPrepayingWhenTheMortgageCostsMore(t *testing.T) {
 	do(t, s.handler, http.MethodPut, "/mortgage",
 		strings.Replace(fmt.Sprintf(interestFreeMortgage, "none"), `"rate": "0"`, `"rate": "0.40"`, 1), http.StatusOK)
 
-	got := compareLot(t, s.handler, lotBody("ltn", "2029-01-01", "2026-02-02", "0.11", "650.00", "10.00"))
+	body := lotBody("ltn", "2029-01-01", "2026-02-02", "0.11", "650.00", "10.00")
+	shortened := compareLot(t, s.handler, "shorten_term", body)
+	lowered := compareLot(t, s.handler, "lower_installment", body)
 
-	assert.Empty(t, got.Unavailable)
-	assert.True(t, strings.HasPrefix(got.Advantage, "-"), got.Advantage)
+	assert.Equal(t, "shorten_term", shortened.Effect)
+	assert.Equal(t, "lower_installment", lowered.Effect)
+
+	for _, c := range []lotComparison{shortened, lowered} {
+		assert.Empty(t, c.Unavailable)
+		assert.True(t, strings.HasPrefix(c.Advantage, "-"), c.Advantage)
+	}
 }
 
 // A lot bought before the mortgage's contract date still has its Maturity Value and gain, but no
@@ -87,7 +94,7 @@ func TestALotComparisonWithoutAnAdvantageSaysWhy(t *testing.T) {
 	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
 	do(t, s.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
 
-	before := compareLot(t, s.handler, lotBody("ltn", "2027-01-01", "2026-01-09", "0.14", "800.00", "5.00"))
+	before := compareLot(t, s.handler, "shorten_term", lotBody("ltn", "2027-01-01", "2026-01-09", "0.14", "800.00", "5.00"))
 	assert.Equal(t, "before_contract", before.Unavailable)
 	assert.Equal(t, "4000.00", before.AmountInvested)
 	require.NotNil(t, before.Maturity)
@@ -95,7 +102,7 @@ func TestALotComparisonWithoutAnAdvantageSaysWhy(t *testing.T) {
 	assert.Equal(t, "792.18", before.Gain)
 	assert.Empty(t, before.Advantage)
 
-	missing := compareLot(t, s.handler, lotBody("ntn_b_principal", "2032-08-15", "2026-05-04", "0.07", "3200.00", "1.00"))
+	missing := compareLot(t, s.handler, "shorten_term", lotBody("ntn_b_principal", "2032-08-15", "2026-05-04", "0.07", "3200.00", "1.00"))
 	assert.Equal(t, lotComparison{
 		AmountInvested: "3200.00",
 		Horizon:        "2032-08-15",

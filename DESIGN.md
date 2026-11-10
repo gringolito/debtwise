@@ -337,10 +337,11 @@ control switches Compras and Venda antecipada. With no lot, the page shows only 
   the gain at maturity, net of taxes and custody, as the hero figure; "Valor investido" and
   "Líquido no vencimento" as rows; and one line on how the lot compares with prepaying the same
   amount on its purchase date to shorten the term, by the bond's maturity. A lot whose values wait
-  on the IPCA shows only the amount invested. Saving an edit informs of the net at maturity and the
-  advantage over prepaying, before → after. Deleting a lot shows no notice, since its confirmation
-  already names what goes. Only figures that read a projected index carry the asterisk: a
-  Prefixado's gain is fixed, its comparison with a TR mortgage is not.
+  on the IPCA shows only the amount invested, and one that pays back no more than it cost shows no
+  gain. Saving an edit informs of the net at maturity and the advantage over prepaying, before →
+  after. Deleting a lot shows no notice, since its confirmation already names what goes. Only
+  figures that read a projected index carry the asterisk: a Prefixado's gain is fixed, its
+  comparison with a TR mortgage is not.
 - Importar planilha: the file's name and row count with "Trocar arquivo", then every row in a
   table, each value editable in place. A row whose bond name wasn't recognised is tinted
   caution-tint with an orange bar on its edge, its bond picker holds the suggested bond, and an

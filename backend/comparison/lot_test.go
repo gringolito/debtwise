@@ -60,6 +60,38 @@ func TestALotIsBetterThanPrepayingByItsNetMaturityValueBeyondTheAvoidedCost(t *t
 	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}}, c.ProjectedBy)
 }
 
+// The NTN-B of TestAnNTNBVerdictPrepaysItsProjectedCoupons, recorded as 2.20 bought on 2025-11-03
+// for 4,536.718091 each: 9,980.78, with nothing left over as cash. Its Maturity Value and its
+// coupon are grown by the projected IPCA, so the comparison names its projection, and the coupon is
+// prepaid on its date as in that verdict. Investing is then worth that verdict's -199.69 without
+// its 19.22 of cash, -218.91, while prepaying 19.22 less than it did leaves the prepay scenario
+// 20.43 worse off, at -184.12.
+func TestALotPaysItsCouponsAndNamesTheProjectedIPCA(t *testing.T) {
+	t.Parallel()
+
+	m, outlook := ipcaMortgage(t, "0.20")
+	market := comparison.Market{
+		Taxes: lotTaxes(t),
+		IPCA: bonds.IPCA{
+			Numbers: bonds.IPCANumbers{date(t, "2000-06-01"): dec(t, "1614.62"), date(t, "2025-09-01"): dec(t, "7300.00")},
+			Outlook: outlook,
+		},
+	}
+	lot := bonds.Lot{Bond: bonds.Bond{Type: bonds.NTNB, Maturity: date(t, "2026-08-15")}, PurchaseDate: date(t, "2025-11-03"), Rate: dec(t, "0.075"), UnitPrice: dec(t, "4536.718091"), Quantity: dec(t, "2.20")}
+
+	c, err := comparison.CompareLot(m, market, lot, mortgage.ShortenTerm, date(t, "2025-11-03"))
+	require.NoError(t, err)
+
+	trailing := []indexes.ProjectionMethod{{Index: indexes.IPCA, Method: indexes.Trailing12}}
+
+	assert.Empty(t, c.Unavailable)
+	assert.Equal(t, amountView{"10447.33", "0.00", "95.01", "10.36", "10341.96"}, amountOf(&c.Maturity))
+	assert.Equal(t, trailing, c.Maturity.ProjectedBy)
+	assert.Equal(t, "361.18", c.Gain().String())
+	assert.Equal(t, "-34.79", c.Advantage.String())
+	assert.Equal(t, trailing, c.ProjectedBy)
+}
+
 // A lot bought before the mortgage's contract date, when there was nothing to prepay, has no
 // advantage, though it still has its Maturity Value: bought on 2024-01-09 for 4,000.00, the LTN
 // above pays 15% of income tax on its 1,000.00 gain after the 29.81 custody fee of its 1,088 days.

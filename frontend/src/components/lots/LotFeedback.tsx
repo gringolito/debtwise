@@ -136,8 +136,9 @@ function Edited({
       </Celebration>
     );
   }
-  const marked = projected(after);
-  const advantageMarked = advantageProjected(after);
+  // A row marks its change when either side reads a projection.
+  const marked = projected(before) || projected(after);
+  const advantageMarked = advantageProjected(before) || advantageProjected(after);
   return (
     <Celebration
       variant="notice"

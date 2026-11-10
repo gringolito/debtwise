@@ -56,8 +56,9 @@ export function lotComparisonQuery(lot: Lot) {
   });
 }
 
+/** useLotComparison reads the comparison the lot's save fetched, without reading it again. */
 export function useLotComparison(lot: Lot) {
-  return useQuery(lotComparisonQuery(lot));
+  return useQuery({ ...lotComparisonQuery(lot), refetchOnMount: false });
 }
 
 // Every change to a lot changes its values, the order of the list and the early sale checks, so

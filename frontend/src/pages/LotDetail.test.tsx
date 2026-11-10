@@ -222,6 +222,7 @@ describe("a lot's detail", () => {
       "Compra em 10/01/2025 · 11,85% Sem preço de venda",
     ]);
     expect(screen.queryByRole("region", { name: "Tesouro IPCA+ 2035" })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(
       requests.filter((r) => r.method === "DELETE").map((r) => new URL(r.url).pathname),
     ).toEqual(["/api/lots/1"]);
