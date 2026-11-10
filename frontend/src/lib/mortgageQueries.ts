@@ -90,12 +90,15 @@ function dropRecordedEvents(queryClient: QueryClient) {
   queryClient.removeQueries({ queryKey: statementsKey });
 }
 
+// The schedule of the saved terms is fetched before the mortgage is, so the screen that opens with
+// the mortgage, and the welcome over it, show it at once.
 export function useSaveMortgage() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: putMortgage,
-    onSuccess: (saved) => {
+    onSuccess: async (saved) => {
       dropRecordedEvents(queryClient);
+      await queryClient.prefetchQuery({ queryKey: scheduleKey, queryFn: fetchMortgageSchedule });
       queryClient.setQueryData(mortgageKey, saved);
       return queryClient.invalidateQueries({ queryKey: mortgageKey, exact: true });
     },

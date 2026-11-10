@@ -1,9 +1,9 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MortgageTerms } from "@/lib/api";
 import { text } from "@/test/dom";
 import { stubMortgageApi } from "@/test/mortgageApi";
-import { registeredMortgage, schedule, scheduleAfterSave } from "@/test/mortgageFixtures";
+import { registeredMortgage, schedule, trSchedule } from "@/test/mortgageFixtures";
 import { closeWelcome } from "@/test/onboarding";
 import { renderAt } from "@/test/renderAt";
 import { problem, type RecordedRequest, stubRoutes } from "@/test/stubServer";
@@ -274,15 +274,17 @@ describe("setting up the mortgage", () => {
   });
 
   it("welcomes the owner with the registered mortgage's payoff and the next step", async () => {
-    stubMortgageApi({ onSave: () => registeredMortgage, scheduleAfterSave });
+    stubMortgageApi({ onSave: () => registeredMortgage, scheduleAfterSave: trSchedule });
     renderAt("/");
 
     await fillEveryStep();
     next();
     fireEvent.click(await screen.findByRole("button", { name: "Concluir" }));
 
-    const welcome = await screen.findByRole("dialog", { name: "Financiamento configurado!" });
-    expect(figures(welcome)).toEqual([["Quitação prevista", "janeiro de 2024"]]);
+    // The welcome opens with the app, not once the app has shown without it.
+    await waitFor(() => expect(document.querySelector("nav")).not.toBeNull());
+    const welcome = screen.getByRole("dialog", { name: "Financiamento configurado!" });
+    expect(figures(welcome)).toEqual([["Quitação prevista", "março de 2024"]]);
     expect(welcome).toHaveTextContent(
       "Próximo passo: registre uma amortização ou um investimento.",
     );
