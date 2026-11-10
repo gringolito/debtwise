@@ -163,7 +163,7 @@ Large Title at semibold weight. The wordmark's text is Title 2. These seven size
   shows a red "!" in a red-tint disc above the question.
 - A celebration follows a new record that improves the owner's position. It takes the place of the
   sheet that recorded it, in the same 520px frame and without animation, so the modal reads as one
-  whose content changes; its content is centered. The motion is in its 96px icon over the Title 2
+  whose content changes; its content is centered. The motion is in its 160px icon over the Title 2
   that says what happened: a check that pops in on a tint disc and draws its soft-accent ring and
   strong-accent tick, or the action's own accent icon, which pops in and twists. Then, under a
   Footnote uppercase lead that starts "Na projeção atual", the action's main figure as a hero

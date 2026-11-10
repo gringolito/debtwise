@@ -83,15 +83,15 @@ export function CelebrationTitle({
 }: React.ComponentProps<typeof DialogTitle> & { icon?: LucideIcon }) {
   const variant = use(VariantContext);
   return (
-    <div className="flex flex-col items-center gap-5">
+    <div className="flex flex-col items-center gap-6">
       {variant !== "notice" && (
-        <span aria-hidden="true" className="relative size-24">
+        <span aria-hidden="true" className="relative size-40">
           {variant === "milestone" && (
             <span className="absolute inset-0 rounded-full bg-accent-soft motion-safe:animate-ripple" />
           )}
           {Icon ? (
             <span className="relative flex size-full items-center justify-center rounded-full bg-accent-tint text-accent motion-safe:animate-pop">
-              <Icon className="size-12 motion-safe:animate-twist" strokeWidth={1.75} />
+              <Icon className="size-20 motion-safe:animate-twist" strokeWidth={1.5} />
             </span>
           ) : (
             <span className="relative block size-full">
