@@ -56,6 +56,7 @@ import type {
   LotAmount,
   LotCoupon,
   LotImport,
+  LotImported,
   LotInput,
   LotList,
   LotPreview,
@@ -108,6 +109,7 @@ export type {
   LotAmount,
   LotCoupon,
   LotImport,
+  LotImported,
   LotInput,
   LotList,
   LotPreview,
@@ -351,11 +353,11 @@ export async function putLot(id: number, body: LotInput): Promise<Lot> {
   return data;
 }
 
-/** importLots records every lot, or none when any is rejected. */
-export async function importLots(lots: LotInput[]): Promise<Lot[]> {
+/** importLots records every lot, or none when any is rejected, and answers their totals. */
+export async function importLots(lots: LotInput[]): Promise<LotImported> {
   const { data, error, response } = await importLotsRequest({ body: { lots } });
   if (!data) throw failure(error, response);
-  return data.lots;
+  return data;
 }
 
 export async function removeLot(id: number): Promise<void> {

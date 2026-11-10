@@ -976,16 +976,31 @@
       "LotImported": {
         "additionalProperties": false,
         "properties": {
+          "invested": {
+            "description": "The Amount Invested in the lots together: the sum of what each cost, in reais, as a decimal string.",
+            "type": "string"
+          },
           "lots": {
             "description": "The lots recorded, in the order they were sent, each with its ID.",
             "items": {
               "$ref": "#/components/schemas/Lot"
             },
             "type": "array"
+          },
+          "maturity_net": {
+            "description": "The total net Maturity Value of the lots that have values, valued on today, in reais, as a decimal string. Absent when none has.",
+            "type": "string"
+          },
+          "without_values": {
+            "description": "How many of the lots have no values, as the IPCA they follow is not available yet, and so are left out of maturity_net.",
+            "format": "int64",
+            "type": "integer"
           }
         },
         "required": [
-          "lots"
+          "lots",
+          "invested",
+          "without_values"
         ],
         "type": "object"
       },

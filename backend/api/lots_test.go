@@ -575,18 +575,23 @@ func TestLotsAreImportedInABatch(t *testing.T) {
 			handler, _ := lotsOn(t, "2026-10-26")
 			do(t, handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, indexer), http.StatusOK)
 
-			assert.JSONEq(t, `{"lots": [
+			var imported struct {
+				Lots json.RawMessage `json:"lots"`
+			}
+			require.NoError(t, json.Unmarshal([]byte(do(t, handler, http.MethodPost, "/lots/import", `{"lots": [`+
+				lotBody("ltn", "2027-01-01", "2026-03-10", "0.1276", "771.26", "10")+`,`+
+				lotBody("ntn_f", "2029-01-01", "2026-01-05", "0.1288", "880.05", "1.5")+`,`+
+				lotBody("ntn_b_principal", "2035-05-15", "2026-02-01", "0.0745", "1500.123456", "0.25")+`,`+
+				lotBody("ntn_b", "2035-05-15", "2026-04-20", "0.0612", "4012.5", "2")+`,`+
+				lotBody("ltn", "2027-01-01", "2026-05-05", "0.1301", "790.5", "3")+`]}`, http.StatusCreated)), &imported))
+
+			assert.JSONEq(t, `[
 		{"id": 1, "type": "ltn", "maturity": "2027-01-01", "purchase_date": "2026-03-10", "rate": "0.1276", "unit_price": "771.26", "quantity": "10"},
 		{"id": 2, "type": "ntn_f", "maturity": "2029-01-01", "purchase_date": "2026-01-05", "rate": "0.1288", "unit_price": "880.05", "quantity": "1.5"},
 		{"id": 3, "type": "ntn_b_principal", "maturity": "2035-05-15", "purchase_date": "2026-02-01", "rate": "0.0745", "unit_price": "1500.123456", "quantity": "0.25"},
 		{"id": 4, "type": "ntn_b", "maturity": "2035-05-15", "purchase_date": "2026-04-20", "rate": "0.0612", "unit_price": "4012.5", "quantity": "2"},
 		{"id": 5, "type": "ltn", "maturity": "2027-01-01", "purchase_date": "2026-05-05", "rate": "0.1301", "unit_price": "790.5", "quantity": "3"}
-	]}`, do(t, handler, http.MethodPost, "/lots/import", `{"lots": [`+
-				lotBody("ltn", "2027-01-01", "2026-03-10", "0.1276", "771.26", "10")+`,`+
-				lotBody("ntn_f", "2029-01-01", "2026-01-05", "0.1288", "880.05", "1.5")+`,`+
-				lotBody("ntn_b_principal", "2035-05-15", "2026-02-01", "0.0745", "1500.123456", "0.25")+`,`+
-				lotBody("ntn_b", "2035-05-15", "2026-04-20", "0.0612", "4012.5", "2")+`,`+
-				lotBody("ltn", "2027-01-01", "2026-05-05", "0.1301", "790.5", "3")+`]}`, http.StatusCreated))
+	]`, string(imported.Lots))
 
 			assert.Equal(t, []lotRow{
 				{
@@ -612,6 +617,87 @@ func TestLotsAreImportedInABatch(t *testing.T) {
 			}, lotRows(t, handler))
 		})
 	}
+}
+
+// An import answers what its lots cost together and the net Maturity Value of those that have
+// values, and counts those that don't; lots recorded before it count in none of them. On
+// 2012-01-03 with no IPCA index numbers the NTN-B Principal lots have no values; the LTN lots
+// matured on 2011-01-01 after 362 days, paying 1,000.00 a bond bought at 800.00, 17.5% of the
+// 200.00 gain a bond taxed: 965.00 for one bond and 1,930.00 for two.
+func TestAnImportAnswersItsTotals(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		recorded []string
+		lots     []string
+		want     string
+	}{
+		{
+			name: "some lots without values",
+			lots: []string{
+				lotBody("ntn_b_principal", "2015-05-15", "2012-01-03", "0.0517", "1776.77", "1"),
+				lotBody("ltn", "2011-01-01", "2010-01-04", "0.1", "800.00", "1"),
+				lotBody("ltn", "2011-01-01", "2010-01-04", "0.1", "800.00", "2"),
+			},
+			want: `{"invested": "4176.77", "maturity_net": "2895.00", "without_values": 1}`,
+		},
+		{
+			name: "lots recorded before",
+			recorded: []string{
+				lotBody("ntn_b_principal", "2035-05-15", "2012-01-03", "0.06", "900.00", "3"),
+				lotBody("ltn", "2011-01-01", "2010-01-04", "0.1", "800.00", "5"),
+			},
+			lots: []string{lotBody("ltn", "2011-01-01", "2010-01-04", "0.1", "800.00", "2")},
+			want: `{"invested": "1600.00", "maturity_net": "1930.00", "without_values": 0}`,
+		},
+		{
+			name: "no lot with values",
+			lots: []string{lotBody("ntn_b_principal", "2015-05-15", "2012-01-03", "0.0517", "1776.77", "1")},
+			want: `{"invested": "1776.77", "without_values": 1}`,
+		},
+		{
+			name: "every lot with values",
+			lots: []string{lotBody("ltn", "2011-01-01", "2010-01-04", "0.1", "800.00", "1")},
+			want: `{"invested": "800.00", "maturity_net": "965.00", "without_values": 0}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler, _ := lotsOn(t, "2012-01-03")
+			addLots(t, handler, tt.recorded...)
+
+			var got map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal([]byte(do(t, handler, http.MethodPost, "/lots/import",
+				`{"lots": [`+strings.Join(tt.lots, ",")+`]}`, http.StatusCreated)), &got))
+			delete(got, "lots")
+
+			totals, err := json.Marshal(got)
+			require.NoError(t, err)
+			assert.JSONEq(t, tt.want, string(totals))
+		})
+	}
+}
+
+// The lots of an import are valued before they are recorded, so an import that cannot be valued
+// records none: here the index history the NTN-B Principal lot needs is gone.
+func TestAnImportThatCannotBeValuedRecordsNothing(t *testing.T) {
+	t.Parallel()
+
+	handler, conn := lotsOn(t, "2026-10-26")
+
+	_, err := conn.ExecContext(t.Context(), "DROP TABLE index_values")
+	require.NoError(t, err)
+
+	rec := serve(t, handler, http.MethodPost, "/lots/import", `{"lots": [`+
+		lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "1")+`,`+
+		lotBody("ntn_b_principal", "2035-05-15", "2026-03-10", "0.0745", "1500", "1")+`]}`)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
+	assert.Empty(t, lotRows(t, handler))
 }
 
 // A batch with any invalid lot records nothing, and answers every violation of every lot, located

@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { BondQuote, LotImport } from "@/lib/api";
+import type { BondQuote, LotImport, LotImported } from "@/lib/api";
 import { rowTexts, text } from "@/test/dom";
 import { renderAt } from "@/test/renderAt";
 import { problem, stubRoutes } from "@/test/stubServer";
@@ -32,10 +32,16 @@ const rateRejection = {
   message: "expected string to match pattern",
 };
 
-function stubImport(
-  importResponse: (body: LotImport) => Response = (body) =>
-    Response.json({ lots: body.lots.map((l, i) => ({ id: i + 1, ...l })) }, { status: 201 }),
-) {
+/** imported answers an import with the lots it sent, each with an ID, and the totals given. */
+const imported =
+  (totals: Omit<LotImported, "lots"> = { invested: "1000.00", without_values: 0 }) =>
+  (body: LotImport) =>
+    Response.json(
+      { lots: body.lots.map((l, i) => ({ id: i + 1, ...l })), ...totals },
+      { status: 201 },
+    );
+
+function stubImport(importResponse: (body: LotImport) => Response = imported()) {
   return stubRoutes({
     "GET /api/bonds": () => Response.json({ bonds: catalogue }),
     "GET /api/lots": () => Response.json({ lots: [] }),
@@ -94,6 +100,14 @@ function previewRow(line: number): HTMLElement {
 const bondOf = (line: number) => screen.getByLabelText(`Título da linha ${line}`);
 
 const importHeading = () => screen.queryByRole("heading", { name: "Importar planilha" });
+
+/** celebration is the dialog that opens once an import succeeds. */
+const celebration = () => screen.findByRole("dialog", { name: /importadas?!$/ });
+
+const facts = (dialog: HTMLElement) =>
+  within(dialog)
+    .queryAllByRole("term")
+    .map((term) => [text(term), text(term.nextElementSibling as HTMLElement)]);
 
 describe("importing purchases from a spreadsheet", () => {
   it("explains the file to pick and offers it once the titles have loaded", async () => {
@@ -217,7 +231,7 @@ describe("importing purchases from a spreadsheet", () => {
 
       fireEvent.click(screen.getByRole("button", { name: "Importar 5 compras" }));
 
-      await waitFor(() => expect(importHeading()).toBeNull());
+      await celebration();
       expect(posted(requests)).toEqual([
         {
           lots: [
@@ -347,7 +361,7 @@ describe("importing purchases from a spreadsheet", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Importar 3 compras" }));
 
-    await waitFor(() => expect(importHeading()).toBeNull());
+    await celebration();
     expect(
       posted(requests).flatMap((body) => (body as LotImport).lots.map((l) => [l.type, l.maturity])),
     ).toEqual([
@@ -393,7 +407,7 @@ describe("importing purchases from a spreadsheet", () => {
     expect(screen.getByText("· 4 linhas")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Importar 2 compras" }));
 
-    await waitFor(() => expect(importHeading()).toBeNull());
+    await celebration();
     expect(posted(requests)).toEqual([
       {
         lots: [
@@ -568,10 +582,7 @@ describe("importing purchases from a spreadsheet", () => {
           { location: "body.lots[1].maturity", message: "expected string to be RFC 3339 date" },
         ]);
       }
-      return Response.json(
-        { lots: body.lots.map((l, i) => ({ id: i + 1, ...l })) },
-        { status: 201 },
-      );
+      return imported()(body);
     });
     renderAt("/investimentos/importar");
 
@@ -600,7 +611,7 @@ describe("importing purchases from a spreadsheet", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Importar 2 compras" }));
 
-    await waitFor(() => expect(importHeading()).toBeNull());
+    await celebration();
     expect(posted(requests)[1]).toEqual({
       lots: [
         {
@@ -638,6 +649,7 @@ describe("importing purchases from a spreadsheet", () => {
     expect(screen.queryByText("Não foi possível importar as compras.")).toBeNull();
     expect(previewValues(preview)).toHaveLength(1);
     expect(importHeading()).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("says the purchases could not be imported when the API fails otherwise, keeping the rows", async () => {
@@ -655,6 +667,7 @@ describe("importing purchases from a spreadsheet", () => {
     expect(screen.queryByText(/Nenhuma compra foi importada/)).toBeNull();
     expect(previewValues(preview)).toHaveLength(1);
     expect(importHeading()).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("replaces the preview and the rejections when another file is picked", async () => {
@@ -682,5 +695,96 @@ describe("importing purchases from a spreadsheet", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByText(/taxa de 0%/)).toBeNull();
     expect(posted(requests)).toHaveLength(1);
+  });
+});
+
+describe("the celebration of an import", () => {
+  it("shows how many purchases were imported, what they pay at maturity and what they cost", async () => {
+    stubImport(imported({ invested: "8840.73", maturity_net: "12345.67", without_values: 0 }));
+    renderAt("/investimentos/importar");
+
+    await chooseFile(
+      [
+        header,
+        "Tesouro Prefixado 2029;02/01/2026;12,76;771,26;10",
+        "Tesouro IPCA+ 2035;10/03/2026;6,84;2.256,93;0,5",
+      ].join("\n"),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Importar 2 compras" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "2 compras importadas!" });
+    expect(within(dialog).getByText("Você vai receber").closest("p")).toHaveTextContent(
+      "Você vai receber R$ 12.345,67* líquidos, nos vencimentos",
+    );
+    expect(facts(dialog)).toEqual([["Valor investido", "R$ 8.840,73"]]);
+    expect(within(dialog).queryByText(/fora da projeção/)).toBeNull();
+    expect(within(dialog).getByText("* Baseado na projeção atual.")).toBeVisible();
+
+    const close = within(dialog).getByRole("button", { name: "Continuar" });
+    expect(within(dialog).getAllByRole("button")).toEqual([close]);
+    expect(close).toHaveFocus();
+    fireEvent.click(close);
+
+    expect(await screen.findByRole("heading", { name: "Investimentos" })).toBeInTheDocument();
+    expect(importHeading()).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it.each([
+    {
+      without: 3,
+      unit: "líquidos, no vencimento",
+      note: "3 compras aguardando o IPCA ficaram fora da projeção.",
+    },
+    {
+      without: 1,
+      unit: "líquidos, nos vencimentos",
+      note: "1 compra aguardando o IPCA ficou fora da projeção.",
+    },
+  ])(
+    "says how many purchases awaiting the IPCA it left out of the projection: $without",
+    async ({ without, unit, note }) => {
+      stubImport(
+        imported({ invested: "11097.33", maturity_net: "1500.00", without_values: without }),
+      );
+      renderAt("/investimentos/importar");
+
+      await chooseFile(
+        [
+          header,
+          "Tesouro Prefixado 2029;02/01/2026;12,76;771,26;10",
+          "Tesouro IPCA+ 2035;10/03/2026;6,84;2.256,93;0,5",
+          "Tesouro IPCA+ 2045;10/03/2026;6,9;1.000,00;1",
+          "Tesouro Prefixado 2029;15/06/2026;13,1;780;1",
+        ].join("\n"),
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Importar 4 compras" }));
+
+      const dialog = await screen.findByRole("dialog", { name: "4 compras importadas!" });
+      expect(within(dialog).getByText("Você vai receber").closest("p")).toHaveTextContent(
+        `Você vai receber R$ 1.500,00* ${unit}`,
+      );
+      expect(facts(dialog)).toEqual([["Valor investido", "R$ 11.097,33"]]);
+      expect(within(dialog).getByText(note)).toBeVisible();
+      expect(within(dialog).getByText("* Baseado na projeção atual.")).toBeVisible();
+    },
+  );
+
+  it("shows only what was invested when no purchase imported has values yet", async () => {
+    stubImport(imported({ invested: "1128.47", without_values: 1 }));
+    renderAt("/investimentos/importar");
+
+    await chooseFile([header, "Tesouro IPCA+ 2035;10/03/2026;6,84;2.256,93;0,5"].join("\n"));
+    fireEvent.click(screen.getByRole("button", { name: "Importar 1 compra" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "1 compra importada!" });
+    expect(within(dialog).getByText("Você investiu").closest("p")).toHaveTextContent(
+      "Você investiu R$ 1.128,47",
+    );
+    expect(facts(dialog)).toEqual([]);
+    expect(
+      within(dialog).getByText("1 compra aguardando o IPCA ficou fora da projeção."),
+    ).toBeVisible();
+    expect(within(dialog).queryByText(/\*/)).toBeNull();
   });
 });
