@@ -164,3 +164,8 @@ export function CelebrationChange({ from, to }: { from: string; to: string }) {
 export function CelebrationNote({ className, ...props }: React.ComponentProps<"p">) {
   return <p className={cn("text-callout text-muted-foreground", className)} {...props} />;
 }
+
+/** CelebrationFootnote qualifies a figure marked with an asterisk, at the foot of the card. */
+export function CelebrationFootnote({ className, ...props }: React.ComponentProps<"p">) {
+  return <p className={cn("text-footnote text-muted-foreground", className)} {...props} />;
+}
