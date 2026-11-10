@@ -166,11 +166,12 @@ Large Title at semibold weight. The wordmark's text is Title 2. These seven size
   whose content changes; its content is centered. The motion is in its 160px icon over the Title 2
   that says what happened: a check that pops in on a tint disc and draws its soft-accent ring and
   strong-accent tick, or the action's own accent icon, which pops in and twists. Then, under a
-  Footnote uppercase lead such as "Você economizou*", the action's main figure as a hero figure,
-  green when it is money gained, with what it measures in Callout grey; the other figures as rows
-  of a white grouped list; "* Baseado na projeção atual." in Footnote grey, since the figures are
-  the current projection's; and a full-width graphite "Continuar". Totals across records
-  belong on a summary screen, not here. A milestone, such as a mortgage paid off, also ripples
+  Footnote uppercase lead such as "Você economizou", the action's main figure as a hero figure,
+  green when it is money gained, with a grey Title 2 asterisk raised beside it and what it measures
+  in Callout grey under it; the other figures as rows of a white grouped list; a full-width
+  graphite "Continuar"; and under it, right-aligned in Footnote grey, "* Baseado na projeção
+  atual.", since the figures are the current projection's. Totals across records belong on a
+  summary screen, not here. A milestone, such as a mortgage paid off, also ripples
   soft-accent rings out of its icon. When the device asks for reduced motion, the icon stands still
   and fully drawn. After a correction, such as an edited or deleted prepayment, the same panel
   informs instead: no icon, the figures as before → after where they changed, and "Entendi".

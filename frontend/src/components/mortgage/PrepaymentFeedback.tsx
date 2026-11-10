@@ -5,7 +5,7 @@ import {
   CelebrationFact,
   CelebrationFacts,
   CelebrationFigure,
-  CelebrationFootnote,
+  CelebrationMark,
   CelebrationNote,
   CelebrationTitle,
 } from "@/components/patterns/Celebration";
@@ -62,11 +62,12 @@ function Recorded({
   const paidOff = !next && nextDue(before.installments, outcome.date) !== undefined;
   const payoff = payoffOf(after);
   const saved = (
-    <CelebrationFigure lead="Você economizou*" unit="em juros, seguros e taxas">
+    <CelebrationFigure lead="Você economizou" unit="em juros, seguros e taxas">
       {formatMoney(outcome.money_saved)}
+      <CelebrationMark>*</CelebrationMark>
     </CelebrationFigure>
   );
-  const projection = <CelebrationFootnote>* Baseado na projeção atual.</CelebrationFootnote>;
+  const projection = "* Baseado na projeção atual.";
   const shortened = outcome.months_shortened > 0 && (
     <CelebrationFact name="Prazo reduzido">
       {formatDuration(outcome.months_shortened)}
@@ -75,11 +76,10 @@ function Recorded({
 
   if (paidOff) {
     return (
-      <Celebration variant="milestone" onClose={onClose}>
+      <Celebration variant="milestone" footnote={projection} onClose={onClose}>
         <CelebrationTitle icon={KeyRoundIcon}>Financiamento quitado!</CelebrationTitle>
         {saved}
         {shortened && <CelebrationFacts>{shortened}</CelebrationFacts>}
-        {projection}
       </Celebration>
     );
   }
@@ -99,11 +99,10 @@ function Recorded({
       )
     );
   return (
-    <Celebration onClose={onClose}>
+    <Celebration footnote={projection} onClose={onClose}>
       <CelebrationTitle>Amortização registrada!</CelebrationTitle>
       {saved}
       {facts && <CelebrationFacts>{facts}</CelebrationFacts>}
-      {projection}
     </Celebration>
   );
 }

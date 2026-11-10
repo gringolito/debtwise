@@ -20,6 +20,8 @@ const VariantContext = createContext<CelebrationVariant>("celebration");
 
 interface CelebrationProps {
   variant?: CelebrationVariant;
+  /** Fine print under the button, such as what a figure's asterisk stands for. */
+  footnote?: React.ReactNode;
   onClose: () => void;
   children: React.ReactNode;
 }
@@ -29,7 +31,12 @@ interface CelebrationProps {
  * itself stays still; a celebration's motion is in its icon. The caller assembles its title,
  * figures and notes from the parts below; it closes with its one button.
  */
-export function Celebration({ variant = "celebration", onClose, children }: CelebrationProps) {
+export function Celebration({
+  variant = "celebration",
+  footnote,
+  onClose,
+  children,
+}: CelebrationProps) {
   return (
     <Dialog open onOpenChange={(open) => open || onClose()}>
       <DialogContent variant="feedback" aria-describedby={undefined}>
@@ -38,6 +45,7 @@ export function Celebration({ variant = "celebration", onClose, children }: Cele
           <DialogClose asChild>
             <Button>{variant === "notice" ? "Entendi" : "Continuar"}</Button>
           </DialogClose>
+          {footnote && <p className="text-right text-footnote text-muted-foreground">{footnote}</p>}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -116,7 +124,7 @@ export function CelebrationFigure({
   return (
     <p className={cn("flex flex-col items-center gap-1", className)} {...props}>
       <span className="text-footnote tracking-wide text-muted-foreground uppercase">{lead}</span>{" "}
-      <span className="text-hero-figure text-positive">{children}</span>
+      <span className="relative text-hero-figure text-positive">{children}</span>
       {unit && <span className="text-callout text-muted-foreground"> {unit}</span>}
     </p>
   );
@@ -165,7 +173,18 @@ export function CelebrationNote({ className, ...props }: React.ComponentProps<"p
   return <p className={cn("text-callout text-muted-foreground", className)} {...props} />;
 }
 
-/** CelebrationFootnote qualifies a figure marked with an asterisk, at the foot of the card. */
-export function CelebrationFootnote({ className, ...props }: React.ComponentProps<"p">) {
-  return <p className={cn("text-footnote text-muted-foreground", className)} {...props} />;
+/**
+ * CelebrationMark is the small mark beside a figure that the footnote explains, such as "*". It
+ * hangs outside the figure, so the figure stays centered.
+ */
+export function CelebrationMark({ className, ...props }: React.ComponentProps<"span">) {
+  return (
+    <span
+      className={cn(
+        "absolute top-0 left-full ml-1 text-title-2 font-normal text-muted-foreground",
+        className,
+      )}
+      {...props}
+    />
+  );
 }

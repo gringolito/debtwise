@@ -261,10 +261,10 @@ describe("celebrating a recorded prepayment", () => {
     await record("Reduzir prazo");
 
     const dialog = await feedback("Amortização registrada!");
-    expect(within(dialog).getByText("R$ 520,30").closest("p")).toHaveTextContent(
-      "Você economizou* R$ 520,30 em juros, seguros e taxas",
+    expect(within(dialog).getByText("Você economizou").closest("p")).toHaveTextContent(
+      "Você economizou R$ 520,30* em juros, seguros e taxas",
     );
-    expect(within(dialog).getByText(/^\*/)).toHaveTextContent("* Baseado na projeção atual.");
+    expect(within(dialog).getByText("* Baseado na projeção atual.")).toBeVisible();
     expect(facts(dialog)).toEqual([
       ["Prazo reduzido", "1 mês"],
       ["Quitação prevista", "maio de 2024"],
@@ -309,10 +309,10 @@ describe("celebrating a recorded prepayment", () => {
       await record(effect);
 
       const dialog = await feedback("Financiamento quitado!");
-      expect(within(dialog).getByText("R$ 1.000,00").closest("p")).toHaveTextContent(
-        "Você economizou* R$ 1.000,00 em juros, seguros e taxas",
+      expect(within(dialog).getByText("Você economizou").closest("p")).toHaveTextContent(
+        "Você economizou R$ 1.000,00* em juros, seguros e taxas",
       );
-      expect(within(dialog).getByText(/^\*/)).toHaveTextContent("* Baseado na projeção atual.");
+      expect(within(dialog).getByText("* Baseado na projeção atual.")).toBeVisible();
       expect(facts(dialog)).toEqual([["Prazo reduzido", "4 meses"]]);
       await dismiss(dialog, "Continuar");
     },
