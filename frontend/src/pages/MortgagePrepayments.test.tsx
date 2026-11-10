@@ -244,7 +244,7 @@ describe("celebrating a recorded prepayment", () => {
     fireEvent.click(within(form).getByRole("button", { name: "Registrar" }));
   }
 
-  it("shows what a prepayment that shortens the term saves, with every prepayment's", async () => {
+  it("shows what a prepayment that shortens the term saves and the months it takes off", async () => {
     stubMortgageApi({
       mortgage: registeredMortgage,
       prepayments,
@@ -268,11 +268,6 @@ describe("celebrating a recorded prepayment", () => {
       ["Prazo reduzido", "1 mês"],
       ["Quitação prevista", "maio de 2024"],
     ]);
-    expect(
-      within(dialog).getByText(/^Com todas as amortizações/, { selector: "p" }),
-    ).toHaveTextContent(
-      "Com todas as amortizações, você economiza R$ 1.719,12 e 2 meses de prazo.",
-    );
     await dismiss(dialog, "Continuar");
   });
 
@@ -293,9 +288,6 @@ describe("celebrating a recorded prepayment", () => {
 
     const dialog = await feedback("Amortização registrada!");
     expect(facts(dialog)).toEqual([["Prestação", "R$ 10.434,50 para R$ 9.184,45"]]);
-    expect(
-      within(dialog).getByText(/^Com todas as amortizações/, { selector: "p" }),
-    ).toHaveTextContent("Com todas as amortizações, você economiza R$ 845,15.");
   });
 
   it.each(["Reduzir prazo", "Reduzir prestação"] as const)(

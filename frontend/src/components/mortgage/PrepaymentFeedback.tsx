@@ -48,17 +48,6 @@ function PayoffChange({ before, after }: { before: Schedule; after: Schedule }) 
   return <CelebrationChange from={formatMonthYear(was)} to={formatMonthYear(is)} />;
 }
 
-function TotalNote({ list }: { list: PrepaymentList }) {
-  const saved = formatMoney(list.money_saved);
-  return (
-    <CelebrationNote>
-      {list.months_shortened > 0
-        ? `Com todas as amortizações, você economiza ${saved} e ${formatDuration(list.months_shortened)} de prazo.`
-        : `Com todas as amortizações, você economiza ${saved}.`}
-    </CelebrationNote>
-  );
-}
-
 function Recorded({
   prepayment,
   list,
@@ -88,7 +77,6 @@ function Recorded({
         <CelebrationTitle icon={KeyRoundIcon}>Financiamento quitado!</CelebrationTitle>
         {saved}
         {shortened && <CelebrationFacts>{shortened}</CelebrationFacts>}
-        <TotalNote list={list} />
       </Celebration>
     );
   }
@@ -112,7 +100,6 @@ function Recorded({
       <CelebrationTitle>Amortização registrada!</CelebrationTitle>
       {saved}
       {facts && <CelebrationFacts>{facts}</CelebrationFacts>}
-      <TotalNote list={list} />
     </Celebration>
   );
 }

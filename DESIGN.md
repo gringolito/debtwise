@@ -168,11 +168,11 @@ Large Title at semibold weight. The wordmark's text is Title 2. These seven size
   strong-accent tick, or the action's own accent icon, which pops in and twists. Then, under a
   Footnote uppercase lead that starts "Na projeção atual", the action's main figure as a hero
   figure, green when it is money gained, with what it measures in Callout grey; the other figures
-  as rows of a white grouped list; a Callout line of context; and a full-width graphite
-  "Continuar". A milestone, such as a mortgage paid off, also ripples soft-accent rings out of its
-  icon. When the device asks for reduced motion, the icon stands still and fully drawn. After a
-  correction, such as an edited or deleted prepayment, the same panel informs instead: no icon,
-  the figures as before → after where they changed, and "Entendi".
+  as rows of a white grouped list; and a full-width graphite "Continuar". Totals across records
+  belong on a summary screen, not here. A milestone, such as a mortgage paid off, also ripples
+  soft-accent rings out of its icon. When the device asks for reduced motion, the icon stands still
+  and fully drawn. After a correction, such as an edited or deleted prepayment, the same panel
+  informs instead: no icon, the figures as before → after where they changed, and "Entendi".
 - A screen that fails to load shows a white error panel in place of its content: a cloud-off icon
   in a grey circle, a Headline saying what could not load, "Verifique sua conexão. Seus dados
   estão salvos." in Callout, and a graphite "Tentar novamente" that retries the failed request.
@@ -239,13 +239,13 @@ Amortizações and Extratos in a segmented control with the page's one primary b
 - Extratos compares the bank's balance with the calculated one, newest first.
 - The sheets preview before saving: the new payoff month or installment for a prepayment, the
   calculated balance and the difference for a statement.
-- Recording a prepayment closes its sheet and celebrates the money it saves, with every
-  prepayment's money and months saved in the context line. A prepayment that shortens the term also
-  shows the months it took off and the new payoff month; one that lowers the installment shows the
-  installment before → after. One that pays the mortgage off is a milestone, "Financiamento
-  quitado!", with the money and the months saved. Saving an edit informs of the payoff month, or
-  the installment, and the prepayment's money saved, before → after; deleting one informs of the
-  payoff month, the current installment and the money all prepayments save.
+- Recording a prepayment replaces its sheet with a celebration of the money it saves. A prepayment
+  that shortens the term also shows the months it took off and the new payoff month; one that
+  lowers the installment shows the installment before → after. One that pays the mortgage off is a
+  milestone, "Financiamento quitado!", with the money and the months saved. Saving an edit informs
+  of the payoff month, or the installment, and the prepayment's money saved, before → after;
+  deleting one informs of the payoff month, the current installment and the money all prepayments
+  save.
 
 ## Onboarding
 
