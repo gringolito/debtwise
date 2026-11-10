@@ -120,14 +120,16 @@ export function useDeleteMortgage() {
 }
 
 // A prepayment changes the schedule and, through the balance it leaves, every statement's drift.
+// The prepayments are fetched even while no screen shows them, so the feedback on the change opens
+// with them as the sheet closes.
 function useRefreshAfterPrepayment() {
   const queryClient = useQueryClient();
   return () =>
-    Promise.all(
-      [scheduleKey, prepaymentsKey, statementsKey].map((queryKey) =>
-        queryClient.invalidateQueries({ queryKey, exact: true }),
-      ),
-    );
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: scheduleKey, exact: true }),
+      queryClient.prefetchQuery({ queryKey: prepaymentsKey, queryFn: fetchPrepayments }),
+      queryClient.invalidateQueries({ queryKey: statementsKey, exact: true }),
+    ]);
 }
 
 function useRefreshAfterStatement() {

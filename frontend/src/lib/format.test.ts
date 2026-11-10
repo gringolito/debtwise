@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { groupThousands, inputToMoney, moneyToInput } from "@/lib/format";
+import { formatDuration, groupThousands, inputToMoney, moneyToInput } from "@/lib/format";
+
+describe("formatDuration", () => {
+  it.each([
+    [1, "1 mês"],
+    [11, "11 meses"],
+    [12, "1 ano"],
+    [13, "1 ano e 1 mês"],
+    [24, "2 anos"],
+    [41, "3 anos e 5 meses"],
+  ])("writes %i months as %s", (months, text) => {
+    expect(formatDuration(months)).toBe(text);
+  });
+});
 
 describe("moneyToInput", () => {
   it.each([

@@ -1,3 +1,4 @@
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type * as React from "react";
@@ -18,37 +19,70 @@ function DialogClose({ ...props }: React.ComponentProps<typeof DialogPrimitive.C
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
 }
 
+const dialogOverlayVariants = cva(
+  "fixed inset-0 isolate z-50 bg-foreground/30 supports-backdrop-filter:backdrop-blur-sm",
+  {
+    variants: {
+      motion: {
+        fade: "duration-150 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        none: "",
+      },
+    },
+    defaultVariants: {
+      motion: "fade",
+    },
+  },
+);
+
 function DialogOverlay({
   className,
+  motion,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+}: React.ComponentProps<typeof DialogPrimitive.Overlay> &
+  VariantProps<typeof dialogOverlayVariants>) {
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
-      className={cn(
-        "fixed inset-0 isolate z-50 bg-foreground/30 duration-150 supports-backdrop-filter:backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
-        className,
-      )}
+      className={cn(dialogOverlayVariants({ motion }), className)}
       {...props}
     />
   );
 }
 
+const dialogContentVariants = cva(
+  "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100%-4rem)] w-full -translate-x-1/2 -translate-y-1/2 flex-col gap-6 overflow-y-auto rounded-lg bg-popover p-8 text-popover-foreground shadow-sheet outline-none",
+  {
+    variants: {
+      variant: {
+        default:
+          "max-w-[520px] duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+        /**
+         * What follows a sheet once its change is saved. It takes the sheet's place in the same
+         * frame and without animation, so the modal reads as one changing its content.
+         */
+        feedback: "max-w-[520px] text-center",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+);
+
 // Upstream renders an X close button; an Orvalho sheet closes through "Cancelar" in DialogHeader.
 function DialogContent({
   className,
+  variant = "default",
   children,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> &
+  VariantProps<typeof dialogContentVariants>) {
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay motion={variant === "feedback" ? "none" : "fade"} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
-        className={cn(
-          "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100%-4rem)] w-full max-w-[520px] -translate-x-1/2 -translate-y-1/2 flex-col gap-6 overflow-y-auto rounded-lg bg-popover p-8 text-popover-foreground shadow-sheet duration-150 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-          className,
-        )}
+        className={cn(dialogContentVariants({ variant }), className)}
         {...props}
       >
         {children}

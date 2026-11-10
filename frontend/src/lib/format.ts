@@ -50,6 +50,17 @@ export function formatMonthYear(isoDate: string): string {
   return monthYearFormat.format(new Date(Number(year), Number(month) - 1));
 }
 
+/** formatDuration writes a count of months in years and months: 13 is "1 ano e 1 mês". */
+export function formatDuration(months: number): string {
+  const plural = (count: number, one: string, many: string) =>
+    `${count} ${count === 1 ? one : many}`;
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  if (years === 0) return plural(rest, "mês", "meses");
+  const inYears = plural(years, "ano", "anos");
+  return rest === 0 ? inYears : `${inYears} e ${plural(rest, "mês", "meses")}`;
+}
+
 const weekdayFormat = new Intl.DateTimeFormat("pt-BR", {
   weekday: "long",
   day: "numeric",

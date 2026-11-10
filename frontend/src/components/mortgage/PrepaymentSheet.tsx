@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { DeleteEventDialog } from "@/components/mortgage/DeleteEventDialog";
+import type { PrepaymentChange } from "@/components/mortgage/PrepaymentFeedback";
 import { SheetNote } from "@/components/mortgage/SheetFields";
 import { InputRow } from "@/components/patterns/FieldRows";
 import {
@@ -18,7 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import type { Prepayment, PrepaymentPreview } from "@/lib/api";
+import type { PrepaymentOutcome, PrepaymentPreview } from "@/lib/api";
 import { today } from "@/lib/dashboard";
 import { formatDate, formatMoney, formatMonthYear } from "@/lib/format";
 import {
@@ -76,12 +77,14 @@ function PreviewNote({
 
 interface PrepaymentSheetProps {
   /** The prepayment to edit; a new one is recorded while it is undefined. */
-  prepayment?: Prepayment;
+  prepayment?: PrepaymentOutcome;
   onClose: () => void;
+  /** Called in place of onClose once the change is saved. */
+  onSaved: (change: PrepaymentChange) => void;
 }
 
 /** PrepaymentSheet records a prepayment, or edits or deletes one, previewing what it changes. */
-export function PrepaymentSheet({ prepayment, onClose }: PrepaymentSheetProps) {
+export function PrepaymentSheet({ prepayment, onClose, onSaved }: PrepaymentSheetProps) {
   const [values, setValues] = useState<PrepaymentValues>(() =>
     prepayment ? valuesFromPrepayment(prepayment) : { ...blankPrepayment, date: today() },
   );
@@ -108,8 +111,17 @@ export function PrepaymentSheet({ prepayment, onClose }: PrepaymentSheetProps) {
   function submit(event: FormEvent) {
     event.preventDefault();
     const input = prepaymentInput(values);
-    if (prepayment) edit.mutate({ id: prepayment.id, input }, { onSuccess: onClose });
-    else add.mutate(input, { onSuccess: onClose });
+    if (prepayment) {
+      edit.mutate(
+        { id: prepayment.id, input },
+        {
+          onSuccess: (saved) =>
+            onSaved({ kind: "edited", prepayment: saved, replaced: prepayment }),
+        },
+      );
+    } else {
+      add.mutate(input, { onSuccess: (saved) => onSaved({ kind: "recorded", prepayment: saved }) });
+    }
   }
 
   const title = prepayment ? "Editar amortização" : "Registrar amortização";
@@ -215,7 +227,9 @@ export function PrepaymentSheet({ prepayment, onClose }: PrepaymentSheetProps) {
               size="default"
               title="Excluir amortização extraordinária?"
               description={`A amortização de ${when} será removida e a evolução do financiamento será recalculada sem ela.`}
-              onConfirm={() => remove.mutate(prepayment.id, { onSuccess: onClose })}
+              onConfirm={() =>
+                remove.mutate(prepayment.id, { onSuccess: () => onSaved({ kind: "deleted" }) })
+              }
             >
               Excluir amortização
             </DeleteEventDialog>

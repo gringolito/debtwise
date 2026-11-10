@@ -161,6 +161,20 @@ Large Title at semibold weight. The wordmark's text is Title 2. These seven size
   full-width buttons stacked, the action in solid red with white text and "Cancelar" in graphite
   text on the canvas gray. Deleting the mortgage, the deletion that takes the most with it, also
   shows a red "!" in a red-tint disc above the question.
+- A celebration follows a new record that improves the owner's position. It takes the place of the
+  sheet that recorded it, in the same 520px frame and without animation, so the modal reads as one
+  whose content changes; its content is centered. The motion is in its 160px icon over the Title 2
+  that says what happened: a check that pops in on a tint disc and draws its soft-accent ring and
+  strong-accent tick, or the action's own accent icon, which pops in and twists. Then, under a
+  Footnote uppercase lead such as "Você economizou", the action's main figure as a hero figure,
+  green when it is money gained, with a grey Title 2 asterisk raised beside it and what it measures
+  in Callout grey under it; the other figures as rows of a white grouped list; a full-width
+  graphite "Continuar"; and under it, right-aligned in Footnote grey, "* Baseado na projeção
+  atual.", since the figures are the current projection's. Totals across records belong on a
+  summary screen, not here. A milestone, such as a mortgage paid off, also ripples
+  soft-accent rings out of its icon. When the device asks for reduced motion, the icon stands still
+  and fully drawn. After a correction, such as an edited or deleted prepayment, the same panel
+  informs instead: no icon, the figures as before → after where they changed, and "Entendi".
 - A screen that fails to load shows a white error panel in place of its content: a cloud-off icon
   in a grey circle, a Headline saying what could not load, "Verifique sua conexão. Seus dados
   estão salvos." in Callout, and a graphite "Tentar novamente" that retries the failed request.
@@ -227,6 +241,13 @@ Amortizações and Extratos in a segmented control with the page's one primary b
 - Extratos compares the bank's balance with the calculated one, newest first.
 - The sheets preview before saving: the new payoff month or installment for a prepayment, the
   calculated balance and the difference for a statement.
+- Recording a prepayment replaces its sheet with a celebration of the money it saves. A prepayment
+  that shortens the term also shows the months it took off and the new payoff month; one that
+  lowers the installment shows the installment before → after. One that pays the mortgage off is a
+  milestone, "Financiamento quitado!", with the money and the months saved. Saving an edit informs
+  of the payoff month, or the installment, and the prepayment's money saved, before → after;
+  deleting one informs of the payoff month, the current installment and the money all prepayments
+  save.
 
 ## Onboarding
 
