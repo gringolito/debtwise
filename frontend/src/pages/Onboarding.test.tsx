@@ -281,9 +281,7 @@ describe("setting up the mortgage", () => {
     next();
     fireEvent.click(await screen.findByRole("button", { name: "Concluir" }));
 
-    // The welcome opens with the app, not once the app has shown without it.
-    await waitFor(() => expect(document.querySelector("nav")).not.toBeNull());
-    const welcome = screen.getByRole("dialog", { name: "Financiamento configurado!" });
+    const welcome = await screen.findByRole("dialog", { name: "Financiamento configurado!" });
     expect(figures(welcome)).toEqual([["Quitação prevista", "março de 2024"]]);
     expect(welcome).toHaveTextContent(
       "Próximo passo: registre uma amortização ou um investimento.",
@@ -292,6 +290,37 @@ describe("setting up the mortgage", () => {
     fireEvent.click(within(welcome).getByRole("button", { name: "Continuar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(await screen.findByRole("navigation", { name: "Principal" })).toBeInTheDocument();
+  });
+
+  it("opens Início and the welcome together, once the registered schedule has loaded", async () => {
+    let serve = () => {};
+    const served = new Promise<void>((resolve) => {
+      serve = resolve;
+    });
+    const requests = stubMortgageApi({
+      onSave: () => registeredMortgage,
+      routes: {
+        "GET /api/mortgage/schedule": async () => {
+          await served;
+          return Response.json(trSchedule);
+        },
+      },
+    });
+    renderAt("/");
+
+    await fillEveryStep();
+    next();
+    fireEvent.click(await screen.findByRole("button", { name: "Concluir" }));
+
+    await waitFor(() =>
+      expect(requests.some((req) => new URL(req.url).pathname === "/api/mortgage/schedule")).toBe(
+        true,
+      ),
+    );
+    expect(document.querySelector("nav")).toBeNull();
+    serve();
+    await waitFor(() => expect(document.querySelector("nav")).not.toBeNull());
+    expect(screen.getByRole("dialog", { name: "Financiamento configurado!" })).toBeInTheDocument();
   });
 
   it("goes back from the review to the last step, or with Editar to the first, keeping the terms", async () => {
