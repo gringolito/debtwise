@@ -12,10 +12,12 @@ import { formatMoney } from "@/lib/format";
 
 /**
  * ImportCelebration opens once an import is recorded: how many purchases it brought in, the net
- * they pay at maturity, for those that have values, and what they cost together.
+ * they pay at maturity, for those that have values, and what they cost together. The net at
+ * maturity carries the projection's asterisk only when it depends on projected indexes; for
+ * prefixed bonds it follows from the contract alone.
  */
 export function ImportCelebration({
-  imported: { lots, invested, maturity_net, without_values },
+  imported: { lots, invested, maturity_net, maturity_projected, without_values },
   onClose,
 }: {
   imported: LotImported;
@@ -41,7 +43,7 @@ export function ImportCelebration({
 
   const valued = lots.length - without_values;
   return (
-    <Celebration footnote="* Baseado na projeção atual." onClose={onClose}>
+    <Celebration footnote={maturity_projected && "* Baseado na projeção atual."} onClose={onClose}>
       <CelebrationTitle>{title}</CelebrationTitle>
       <CelebrationFigure
         lead="Você vai receber"
@@ -49,7 +51,7 @@ export function ImportCelebration({
         gain={false}
       >
         {formatMoney(maturity_net)}
-        <CelebrationMark>*</CelebrationMark>
+        {maturity_projected && <CelebrationMark>*</CelebrationMark>}
       </CelebrationFigure>
       <CelebrationFacts>
         <CelebrationFact name="Valor investido">{formatMoney(invested)}</CelebrationFact>

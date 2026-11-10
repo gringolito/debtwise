@@ -338,10 +338,11 @@ control switches Compras and Venda antecipada. With no lot, the page shows only 
   caution-tint with an orange bar on its edge, its bond picker holds the suggested bond, and an
   orange note asks to confirm it. A recorded import opens one celebration over the page, titled
   with how many purchases it brought in ("3 compras importadas!"): "Você vai receber" over the net
-  Maturity Value of the purchases that have values, in the text color since it isn't a gain, with
-  its asterisk, and a "Valor investido" row with what they all cost. A Callout note counts the
-  purchases awaiting the IPCA, left out of the projection; when none has values the figure is
-  "Você investiu" with no asterisk. "Continuar" opens Investimentos.
+  Maturity Value of the purchases that have values, in the text color since it isn't a gain, and a
+  "Valor investido" row with what they all cost. The figure carries the asterisk and the footnote
+  only when a purchase follows a projected index, such as the IPCA; prefixed bonds alone need
+  neither. A Callout note counts the purchases awaiting the IPCA, left out of the projection; when
+  none has values the figure is "Você investiu" with no asterisk. "Continuar" opens Investimentos.
 
 ## Decidir
 

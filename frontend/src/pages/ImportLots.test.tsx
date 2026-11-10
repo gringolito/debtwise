@@ -34,7 +34,13 @@ const rateRejection = {
 
 /** imported answers an import with the lots it sent, each with an ID, and the totals given. */
 const imported =
-  (totals: Omit<LotImported, "lots"> = { invested: "1000.00", without_values: 0 }) =>
+  (
+    totals: Omit<LotImported, "lots"> = {
+      invested: "1000.00",
+      maturity_projected: false,
+      without_values: 0,
+    },
+  ) =>
   (body: LotImport) =>
     Response.json(
       { lots: body.lots.map((l, i) => ({ id: i + 1, ...l })), ...totals },
@@ -700,7 +706,14 @@ describe("importing purchases from a spreadsheet", () => {
 
 describe("the celebration of an import", () => {
   it("shows how many purchases were imported, what they pay at maturity and what they cost", async () => {
-    stubImport(imported({ invested: "8840.73", maturity_net: "12345.67", without_values: 0 }));
+    stubImport(
+      imported({
+        invested: "8840.73",
+        maturity_net: "12345.67",
+        maturity_projected: true,
+        without_values: 0,
+      }),
+    );
     renderAt("/investimentos/importar");
 
     await chooseFile(
@@ -730,6 +743,28 @@ describe("the celebration of an import", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("leaves the projection's asterisk out when no purchase depends on a projected index", async () => {
+    stubImport(
+      imported({
+        invested: "7712.60",
+        maturity_net: "9604.12",
+        maturity_projected: false,
+        without_values: 0,
+      }),
+    );
+    renderAt("/investimentos/importar");
+
+    await chooseFile([header, "Tesouro Prefixado 2029;02/01/2026;12,76;771,26;10"].join("\n"));
+    fireEvent.click(screen.getByRole("button", { name: "Importar 1 compra" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "1 compra importada!" });
+    expect(within(dialog).getByText("Você vai receber").closest("p")).toHaveTextContent(
+      /^Você vai receber R\$ 9\.604,12 líquidos, no vencimento$/,
+    );
+    expect(facts(dialog)).toEqual([["Valor investido", "R$ 7.712,60"]]);
+    expect(within(dialog).queryByText(/\*/)).toBeNull();
+  });
+
   it.each([
     {
       without: 3,
@@ -745,7 +780,12 @@ describe("the celebration of an import", () => {
     "says how many purchases awaiting the IPCA it left out of the projection: $without",
     async ({ without, unit, note }) => {
       stubImport(
-        imported({ invested: "11097.33", maturity_net: "1500.00", without_values: without }),
+        imported({
+          invested: "11097.33",
+          maturity_net: "1500.00",
+          maturity_projected: true,
+          without_values: without,
+        }),
       );
       renderAt("/investimentos/importar");
 
@@ -771,7 +811,7 @@ describe("the celebration of an import", () => {
   );
 
   it("shows only what was invested when no purchase imported has values yet", async () => {
-    stubImport(imported({ invested: "1128.47", without_values: 1 }));
+    stubImport(imported({ invested: "1128.47", maturity_projected: false, without_values: 1 }));
     renderAt("/investimentos/importar");
 
     await chooseFile([header, "Tesouro IPCA+ 2035;10/03/2026;6,84;2.256,93;0,5"].join("\n"));

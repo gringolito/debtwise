@@ -74,10 +74,11 @@ func (i *lotImport) UnmarshalJSON(data []byte) error {
 }
 
 type lotImported struct {
-	Lots          []lot   `json:"lots" nullable:"false" doc:"The lots recorded, in the order they were sent, each with its ID."`
-	Invested      string  `json:"invested" doc:"The Amount Invested in the lots together: the sum of what each cost, in reais, as a decimal string."`
-	MaturityNet   *string `json:"maturity_net,omitempty" doc:"The total net Maturity Value of the lots that have values, valued on today, in reais, as a decimal string. Absent when none has."`
-	WithoutValues int     `json:"without_values" doc:"How many of the lots have no values, as the IPCA they follow is not available yet, and so are left out of maturity_net."`
+	Lots              []lot   `json:"lots" nullable:"false" doc:"The lots recorded, in the order they were sent, each with its ID."`
+	Invested          string  `json:"invested" doc:"The Amount Invested in the lots together: the sum of what each cost, in reais, as a decimal string."`
+	MaturityNet       *string `json:"maturity_net,omitempty" doc:"The total net Maturity Value of the lots that have values, valued on today, in reais, as a decimal string. Absent when none has."`
+	MaturityProjected bool    `json:"maturity_projected" doc:"Whether maturity_net depends on projected index values, as the Maturity Value of a lot following the IPCA does until the IPCA up to its maturity is published."`
+	WithoutValues     int     `json:"without_values" doc:"How many of the lots have no values, as the IPCA they follow is not available yet, and so are left out of maturity_net."`
 }
 
 type lotAmount struct {
@@ -390,7 +391,8 @@ func valuedLots(ctx context.Context, lots Lots, quotes Quotes, store IndexStore,
 }
 
 // importTotals totals the lots of an import valued on the date on: what they cost, and the net
-// Maturity Value of those that have values, counting those that don't.
+// Maturity Value of those that have values and whether it depends on projections, counting the
+// lots that have no values.
 func importTotals(ctx context.Context, imported []bonds.Lot, lots Lots, quotes Quotes, store IndexStore, on time.Time) (lotImported, error) {
 	valuer, err := newLotValuer(ctx, imported, lots, quotes, store, on)
 	if err != nil {
@@ -417,6 +419,7 @@ func importTotals(ctx context.Context, imported []bonds.Lot, lots Lots, quotes Q
 		}
 
 		maturityNet = maturityNet.Add(v.Maturity.Net)
+		totals.MaturityProjected = totals.MaturityProjected || len(v.Maturity.ProjectedBy) > 0
 	}
 
 	totals.Invested = invested.String()

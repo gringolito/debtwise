@@ -991,6 +991,10 @@
             "description": "The total net Maturity Value of the lots that have values, valued on today, in reais, as a decimal string. Absent when none has.",
             "type": "string"
           },
+          "maturity_projected": {
+            "description": "Whether maturity_net depends on projected index values, as the Maturity Value of a lot following the IPCA does until the IPCA up to its maturity is published.",
+            "type": "boolean"
+          },
           "without_values": {
             "description": "How many of the lots have no values, as the IPCA they follow is not available yet, and so are left out of maturity_net.",
             "format": "int64",
@@ -1000,6 +1004,7 @@
         "required": [
           "lots",
           "invested",
+          "maturity_projected",
           "without_values"
         ],
         "type": "object"

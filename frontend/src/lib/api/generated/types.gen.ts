@@ -566,6 +566,10 @@ export type LotImported = {
      */
     maturity_net?: string;
     /**
+     * Whether maturity_net depends on projected index values, as the Maturity Value of a lot following the IPCA does until the IPCA up to its maturity is published.
+     */
+    maturity_projected: boolean;
+    /**
      * How many of the lots have no values, as the IPCA they follow is not available yet, and so are left out of maturity_net.
      */
     without_values: number;
