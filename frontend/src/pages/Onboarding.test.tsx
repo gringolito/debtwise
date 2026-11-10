@@ -1,9 +1,10 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MortgageTerms } from "@/lib/api";
 import { text } from "@/test/dom";
 import { stubMortgageApi } from "@/test/mortgageApi";
-import { registeredMortgage, schedule } from "@/test/mortgageFixtures";
+import { registeredMortgage, schedule, trSchedule } from "@/test/mortgageFixtures";
+import { closeWelcome } from "@/test/onboarding";
 import { renderAt } from "@/test/renderAt";
 import { problem, type RecordedRequest, stubRoutes } from "@/test/stubServer";
 
@@ -262,6 +263,7 @@ describe("setting up the mortgage", () => {
     ]);
 
     fireEvent.click(screen.getByRole("button", { name: "Concluir" }));
+    await closeWelcome();
 
     const nav = await screen.findByRole("navigation", { name: "Principal" });
     expect(within(nav).getByRole("link", { name: "Início" })).toHaveAttribute(
@@ -269,6 +271,56 @@ describe("setting up the mortgage", () => {
       "page",
     );
     expect(bodies(requests, "PUT", "/api/mortgage")).toEqual([terms]);
+  });
+
+  it("welcomes the owner with the registered mortgage's payoff and the next step", async () => {
+    stubMortgageApi({ onSave: () => registeredMortgage, scheduleAfterSave: trSchedule });
+    renderAt("/");
+
+    await fillEveryStep();
+    next();
+    fireEvent.click(await screen.findByRole("button", { name: "Concluir" }));
+
+    const welcome = await screen.findByRole("dialog", { name: "Financiamento configurado!" });
+    expect(figures(welcome)).toEqual([["Quitação prevista", "março de 2024"]]);
+    expect(welcome).toHaveTextContent(
+      "Próximo passo: registre uma amortização ou um investimento.",
+    );
+    expect(welcome).not.toHaveTextContent("*");
+    fireEvent.click(within(welcome).getByRole("button", { name: "Continuar" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(await screen.findByRole("navigation", { name: "Principal" })).toBeInTheDocument();
+  });
+
+  it("opens Início and the welcome together, once the registered schedule has loaded", async () => {
+    let serve = () => {};
+    const served = new Promise<void>((resolve) => {
+      serve = resolve;
+    });
+    const requests = stubMortgageApi({
+      onSave: () => registeredMortgage,
+      routes: {
+        "GET /api/mortgage/schedule": async () => {
+          await served;
+          return Response.json(trSchedule);
+        },
+      },
+    });
+    renderAt("/");
+
+    await fillEveryStep();
+    next();
+    fireEvent.click(await screen.findByRole("button", { name: "Concluir" }));
+
+    await waitFor(() =>
+      expect(requests.some((req) => new URL(req.url).pathname === "/api/mortgage/schedule")).toBe(
+        true,
+      ),
+    );
+    expect(document.querySelector("nav")).toBeNull();
+    serve();
+    await waitFor(() => expect(document.querySelector("nav")).not.toBeNull());
+    expect(screen.getByRole("dialog", { name: "Financiamento configurado!" })).toBeInTheDocument();
   });
 
   it("goes back from the review to the last step, or with Editar to the first, keeping the terms", async () => {
