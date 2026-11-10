@@ -273,7 +273,11 @@ column, a Large Title that asks a question, one sentence of context, the inputs,
    its rate from it
 6. Revisão: a white panel with the payoff month and the current installment (the first one while
    none is due) over the balance curve, graphite up to today and dashed after it, then the informed
-   terms with "Editar", which goes back to step 1. "Concluir" saves and opens Início.
+   terms with "Editar", which goes back to step 1. "Concluir" saves and opens Início, with a
+   celebration over it, which follows no sheet and appears with the page, without animation:
+   "Financiamento configurado!" under the check, the payoff month as the one row, which carries no
+   asterisk since it follows from the contract, and "Próximo passo: registre uma amortização ou um
+   investimento." Editing the terms later celebrates nothing.
 
 The review shows the schedule the server computes for the typed terms before anything is saved.
 When the server rejects the terms, on the review or on "Concluir", the owner goes back to the

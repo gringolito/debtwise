@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MortgageTerms } from "@/lib/api";
 import { text } from "@/test/dom";
 import { stubMortgageApi } from "@/test/mortgageApi";
-import { registeredMortgage, schedule } from "@/test/mortgageFixtures";
+import { registeredMortgage, schedule, scheduleAfterSave } from "@/test/mortgageFixtures";
+import { closeWelcome } from "@/test/onboarding";
 import { renderAt } from "@/test/renderAt";
 import { problem, type RecordedRequest, stubRoutes } from "@/test/stubServer";
 
@@ -262,6 +263,7 @@ describe("setting up the mortgage", () => {
     ]);
 
     fireEvent.click(screen.getByRole("button", { name: "Concluir" }));
+    await closeWelcome();
 
     const nav = await screen.findByRole("navigation", { name: "Principal" });
     expect(within(nav).getByRole("link", { name: "Início" })).toHaveAttribute(
@@ -269,6 +271,25 @@ describe("setting up the mortgage", () => {
       "page",
     );
     expect(bodies(requests, "PUT", "/api/mortgage")).toEqual([terms]);
+  });
+
+  it("welcomes the owner with the registered mortgage's payoff and the next step", async () => {
+    stubMortgageApi({ onSave: () => registeredMortgage, scheduleAfterSave });
+    renderAt("/");
+
+    await fillEveryStep();
+    next();
+    fireEvent.click(await screen.findByRole("button", { name: "Concluir" }));
+
+    const welcome = await screen.findByRole("dialog", { name: "Financiamento configurado!" });
+    expect(figures(welcome)).toEqual([["Quitação prevista", "janeiro de 2024"]]);
+    expect(welcome).toHaveTextContent(
+      "Próximo passo: registre uma amortização ou um investimento.",
+    );
+    expect(welcome).not.toHaveTextContent("*");
+    fireEvent.click(within(welcome).getByRole("button", { name: "Continuar" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(await screen.findByRole("navigation", { name: "Principal" })).toBeInTheDocument();
   });
 
   it("goes back from the review to the last step, or with Editar to the first, keeping the terms", async () => {

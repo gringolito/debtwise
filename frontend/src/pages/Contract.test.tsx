@@ -267,6 +267,7 @@ describe("saving", () => {
 
     const page = await savedPage();
     expect(within(page).getByText("R$ 250.000,00")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(putBodies(requests)).toEqual([
       {
         ...registeredTerms,
