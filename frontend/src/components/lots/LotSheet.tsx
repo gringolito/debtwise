@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { ChoiceRow, InputRow } from "@/components/patterns/FieldRows";
+import type { LotChange } from "@/components/lots/LotFeedback";
 import { GroupedList, GroupedListLabel } from "@/components/patterns/GroupedList";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,8 @@ interface LotSheetProps {
   /** The lot to edit; a new one is recorded while it is undefined. */
   lot?: Lot;
   onClose: () => void;
-  onSaved?: (lot: Lot) => void;
+  /** Called in place of onClose once the lot is saved. */
+  onSaved: (change: LotChange) => void;
 }
 
 /** LotSheet records a purchase of a bond, or edits one, showing what it cost before saving. */
@@ -80,12 +82,14 @@ export function LotSheet({ lot, onClose, onSaved }: LotSheetProps) {
   function submit(event: FormEvent) {
     event.preventDefault();
     const input = lotInput(values);
-    const saved = (result: Lot) => {
-      onSaved?.(result);
-      onClose();
-    };
-    if (lot) edit.mutate({ id: lot.id, input }, { onSuccess: saved });
-    else add.mutate(input, { onSuccess: saved });
+    if (lot) {
+      edit.mutate(
+        { id: lot.id, input, replaced: lot },
+        { onSuccess: (saved) => onSaved({ kind: "edited", lot: saved, replaced: lot }) },
+      );
+    } else {
+      add.mutate(input, { onSuccess: (saved) => onSaved({ kind: "recorded", lot: saved }) });
+    }
   }
 
   const title = lot ? "Editar compra" : "Adicionar compra";

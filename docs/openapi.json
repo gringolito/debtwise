@@ -904,6 +904,62 @@
         ],
         "type": "object"
       },
+      "LotComparison": {
+        "additionalProperties": false,
+        "properties": {
+          "advantage": {
+            "description": "The net worth on the horizon of buying the lot less that of prepaying its amount invested on its purchase date instead, in reais, as a decimal string. Positive favours the lot. Absent when the comparison is unavailable.",
+            "type": "string"
+          },
+          "amount_invested": {
+            "description": "What the lot cost: its unit price times its quantity, rounded to centavos, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What prepaying changes.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          },
+          "gain": {
+            "description": "The lot's net Maturity Value less its amount invested, in reais, as a decimal string. Absent when unavailable is missing_ipca.",
+            "type": "string"
+          },
+          "horizon": {
+            "description": "The date both options are valued on: the bond's maturity.",
+            "format": "date",
+            "type": "string"
+          },
+          "maturity": {
+            "$ref": "#/components/schemas/LotAmount",
+            "description": "The lot's Maturity Value, gross and net of IOF, income tax and the custody fee. Absent when unavailable is missing_ipca."
+          },
+          "projected_by": {
+            "description": "The projection method of each index a projected value of the advantage comes from. Empty when it reads published values only, or when the comparison is unavailable.",
+            "items": {
+              "$ref": "#/components/schemas/ProjectedBy"
+            },
+            "type": "array"
+          },
+          "unavailable": {
+            "description": "Why the comparison has no advantage. missing_ipca: the IPCA the lot's values follow is not available yet; before_contract: the lot was bought before the mortgage's contract date. Absent when it has one.",
+            "enum": [
+              "missing_ipca",
+              "before_contract"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount_invested",
+          "horizon",
+          "effect",
+          "projected_by"
+        ],
+        "type": "object"
+      },
       "LotCoupon": {
         "additionalProperties": false,
         "properties": {
@@ -2676,6 +2732,65 @@
           }
         },
         "summary": "Record a lot",
+        "tags": [
+          "Lots"
+        ]
+      }
+    },
+    "/lots/comparison": {
+      "post": {
+        "description": "Compares buying the lot with prepaying its amount invested on its purchase date instead, under equal outflow, valued on the bond's maturity. The lot need not be recorded; it is computed on request and not stored.",
+        "operationId": "compare-lot",
+        "parameters": [
+          {
+            "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "explode": false,
+            "in": "query",
+            "name": "effect",
+            "required": true,
+            "schema": {
+              "description": "What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+              "enum": [
+                "shorten_term",
+                "lower_installment"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LotInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotComparison"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Compare a lot with prepaying",
         "tags": [
           "Lots"
         ]

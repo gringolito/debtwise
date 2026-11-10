@@ -1,14 +1,23 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  keepPreviousData,
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
+  comparePurchase,
   earlySaleChecksKeys,
   fetchLots,
   importLots,
+  type Lot,
   type LotInput,
   postLot,
   previewLot,
   putLot,
   removeLot,
 } from "@/lib/api";
+import { inputOfLot } from "@/lib/lots";
 
 export const lotsKey = ["lots"] as const;
 
@@ -35,31 +44,58 @@ export function useLotPreview(input: LotInput | undefined) {
   });
 }
 
+/**
+ * lotComparisonQuery compares a lot with prepaying what it cost on its purchase date with
+ * shorten_term, the effect the dashboard's summaries compare against.
+ */
+export function lotComparisonQuery(lot: Lot) {
+  const input = inputOfLot(lot);
+  return queryOptions({
+    queryKey: [...lotsKey, "comparison", input],
+    queryFn: () => comparePurchase(input, "shorten_term"),
+  });
+}
+
+export function useLotComparison(lot: Lot) {
+  return useQuery(lotComparisonQuery(lot));
+}
+
 // Every change to a lot changes its values, the order of the list and the early sale checks, so
 // they are read again. Only the list is awaited: the checks take longer and nothing waits on them.
+// The comparisons the feedback on a change shows are awaited too, so it opens with them as the
+// sheet closes.
 function useRefreshLots() {
   const queryClient = useQueryClient();
-  return () => {
+  return (...compared: Lot[]) => {
     void queryClient.invalidateQueries({ queryKey: earlySaleChecksKeys });
-    return queryClient.invalidateQueries({ queryKey: lotsKey, exact: true });
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: lotsKey, exact: true }),
+      ...compared.map((lot) => queryClient.prefetchQuery(lotComparisonQuery(lot))),
+    ]);
   };
 }
 
 export function useAddLot() {
-  return useMutation({ mutationFn: postLot, onSuccess: useRefreshLots() });
+  const refresh = useRefreshLots();
+  return useMutation({ mutationFn: postLot, onSuccess: (lot) => refresh(lot) });
 }
 
 export function useImportLots() {
-  return useMutation({ mutationFn: importLots, onSuccess: useRefreshLots() });
+  const refresh = useRefreshLots();
+  return useMutation({ mutationFn: importLots, onSuccess: () => refresh() });
 }
 
+/** useEditLot replaces a lot; replaced is the lot as it was, which the feedback compares with. */
 export function useEditLot() {
+  const refresh = useRefreshLots();
   return useMutation({
-    mutationFn: ({ id, input }: { id: number; input: LotInput }) => putLot(id, input),
-    onSuccess: useRefreshLots(),
+    mutationFn: ({ id, input }: { id: number; input: LotInput; replaced: Lot }) =>
+      putLot(id, input),
+    onSuccess: (lot, { replaced }) => refresh(lot, replaced),
   });
 }
 
 export function useDeleteLot() {
-  return useMutation({ mutationFn: removeLot, onSuccess: useRefreshLots() });
+  const refresh = useRefreshLots();
+  return useMutation({ mutationFn: removeLot, onSuccess: () => refresh() });
 }

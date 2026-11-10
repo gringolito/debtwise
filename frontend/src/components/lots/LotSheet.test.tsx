@@ -95,8 +95,8 @@ describe("adding a purchase", () => {
     fill(form, "Quantidade", "8");
     fireEvent.click(within(form).getByRole("button", { name: "Adicionar" }));
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith({ kind: "recorded", lot: saved }));
+    expect(onClose).not.toHaveBeenCalled();
     expect(sent(requests, "POST", "/api/lots")).toEqual([
       {
         type: "ntn_b_principal",
@@ -359,8 +359,13 @@ describe("editing a purchase", () => {
     fill(form, "Quantidade", "3");
     fireEvent.click(within(form).getByRole("button", { name: "Salvar" }));
 
-    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
-    expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: 1, quantity: "3" }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    expect(onSaved).toHaveBeenCalledWith({
+      kind: "edited",
+      lot: { ...ltn, quantity: "3" },
+      replaced: ltn,
+    });
+    expect(onClose).not.toHaveBeenCalled();
     expect(sent(requests, "PUT", "/api/lots/1")).toEqual([
       {
         type: "ltn",

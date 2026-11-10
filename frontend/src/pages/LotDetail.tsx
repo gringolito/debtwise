@@ -2,6 +2,7 @@ import { getRouteApi, Link } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 import { useState } from "react";
 import { Page, PageHeader, PageTitle } from "@/components/layout/Page";
+import { type LotChange, LotFeedback } from "@/components/lots/LotFeedback";
 import { LotSheet } from "@/components/lots/LotSheet";
 import { DeleteEventDialog } from "@/components/mortgage/DeleteEventDialog";
 import { ErrorPanel } from "@/components/patterns/ErrorPanel";
@@ -53,6 +54,7 @@ function Detail({ lot }: { lot: LotValued }) {
   const navigate = route.useNavigate();
   const remove = useDeleteLot();
   const [editing, setEditing] = useState(false);
+  const [feedback, setFeedback] = useState<LotChange | null>(null);
   const label = bondLabel(lot);
 
   return (
@@ -100,7 +102,17 @@ function Detail({ lot }: { lot: LotValued }) {
         <Coupons coupons={lot.values.coupons} />
       )}
       <ValuesNote lot={lot} />
-      {editing && <LotSheet lot={lot} onClose={() => setEditing(false)} />}
+      {editing && (
+        <LotSheet
+          lot={lot}
+          onClose={() => setEditing(false)}
+          onSaved={(change) => {
+            setEditing(false);
+            setFeedback(change);
+          }}
+        />
+      )}
+      {feedback && <LotFeedback change={feedback} onClose={() => setFeedback(null)} />}
     </>
   );
 }

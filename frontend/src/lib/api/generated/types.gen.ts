@@ -510,6 +510,41 @@ export type LotAmount = {
     projected_by: Array<ProjectedBy>;
 };
 
+export type LotComparison = {
+    /**
+     * The net worth on the horizon of buying the lot less that of prepaying its amount invested on its purchase date instead, in reais, as a decimal string. Positive favours the lot. Absent when the comparison is unavailable.
+     */
+    advantage?: string;
+    /**
+     * What the lot cost: its unit price times its quantity, rounded to centavos, in reais, as a decimal string.
+     */
+    amount_invested: string;
+    /**
+     * What prepaying changes.
+     */
+    effect: 'shorten_term' | 'lower_installment';
+    /**
+     * The lot's net Maturity Value less its amount invested, in reais, as a decimal string. Absent when unavailable is missing_ipca.
+     */
+    gain?: string;
+    /**
+     * The date both options are valued on: the bond's maturity.
+     */
+    horizon: string;
+    /**
+     * The lot's Maturity Value, gross and net of IOF, income tax and the custody fee. Absent when unavailable is missing_ipca.
+     */
+    maturity?: LotAmount;
+    /**
+     * The projection method of each index a projected value of the advantage comes from. Empty when it reads published values only, or when the comparison is unavailable.
+     */
+    projected_by: Array<ProjectedBy>;
+    /**
+     * Why the comparison has no advantage. missing_ipca: the IPCA the lot's values follow is not available yet; before_contract: the lot was bought before the mortgage's contract date. Absent when it has one.
+     */
+    unavailable?: 'missing_ipca' | 'before_contract';
+};
+
 export type LotCoupon = {
     /**
      * The custody fee taken from the coupon, in reais, as a decimal string.
@@ -1553,6 +1588,36 @@ export type AddLotResponses = {
 };
 
 export type AddLotResponse = AddLotResponses[keyof AddLotResponses];
+
+export type CompareLotData = {
+    body: LotInput;
+    path?: never;
+    query: {
+        /**
+         * What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.
+         */
+        effect: 'shorten_term' | 'lower_installment';
+    };
+    url: '/lots/comparison';
+};
+
+export type CompareLotErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type CompareLotError = CompareLotErrors[keyof CompareLotErrors];
+
+export type CompareLotResponses = {
+    /**
+     * OK
+     */
+    200: LotComparison;
+};
+
+export type CompareLotResponse = CompareLotResponses[keyof CompareLotResponses];
 
 export type ImportLotsData = {
     body: LotImport;

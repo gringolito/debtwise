@@ -57,6 +57,11 @@ mortgage's corrections and contract rates in any of the three replays, the updat
 balance at their prepayments (ADR-0006), and the VNA of the purchase, of each coupon and of the
 maturity.
 
+A recorded lot is compared the same way, with the lot as the invest side: its bond, rate, unit
+price and quantity on its purchase date, which can be in the past. The prepay scenario prepays its
+amount invested on that date, so nothing is left over as cash. A lot bought before the mortgage's
+contract date has nothing to compare with, since there was no balance to prepay.
+
 ## Considered Options
 
 - **Valuing the bond at today's quoted unit price:** rejected. The decision's date can be later
