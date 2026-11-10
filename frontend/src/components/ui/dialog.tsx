@@ -56,11 +56,11 @@ const dialogContentVariants = cva(
       variant: {
         default:
           "max-w-[520px] duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-        /** The neutral feedback after a change: centered, and it appears and goes without animation. */
-        notice: "max-w-120 text-center",
-        /** A celebration springs up; when the device asks for reduced motion it only fades in. */
-        celebration:
-          "max-w-120 text-center duration-150 data-open:animate-in data-open:fade-in-0 data-open:duration-700 motion-safe:data-open:zoom-in-75 motion-safe:data-open:slide-in-from-bottom-16 motion-safe:data-open:ease-spring data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+        /**
+         * What follows a sheet once its change is saved. It takes the sheet's place in the same
+         * frame and without animation, so the modal reads as one changing its content.
+         */
+        feedback: "max-w-[520px] text-center",
       },
     },
     defaultVariants: {
@@ -79,7 +79,7 @@ function DialogContent({
   VariantProps<typeof dialogContentVariants>) {
   return (
     <DialogPortal>
-      <DialogOverlay motion={variant === "notice" ? "none" : "fade"} />
+      <DialogOverlay motion={variant === "feedback" ? "none" : "fade"} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(dialogContentVariants({ variant }), className)}

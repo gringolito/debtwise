@@ -1,4 +1,4 @@
-import { ArrowRightIcon, type LucideIcon, PartyPopperIcon } from "lucide-react";
+import { ArrowRightIcon, type LucideIcon } from "lucide-react";
 import { createContext, use } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * A celebration cheers a new record and a milestone cheers it louder, such as a mortgage paid off.
- * A notice informs, without animation, after a correction.
+ * A notice informs after a correction.
  */
 type CelebrationVariant = "celebration" | "milestone" | "notice";
 
@@ -25,18 +25,18 @@ interface CelebrationProps {
 }
 
 /**
- * Celebration opens over the page after an action, with what the action did. The caller assembles
- * its title, figures and notes from the parts below; it closes with its one button.
+ * Celebration takes a sheet's place once its action is saved, with what the action did. The modal
+ * itself stays still; a celebration's motion is in its icon. The caller assembles its title,
+ * figures and notes from the parts below; it closes with its one button.
  */
 export function Celebration({ variant = "celebration", onClose, children }: CelebrationProps) {
-  const notice = variant === "notice";
   return (
     <Dialog open onOpenChange={(open) => open || onClose()}>
-      <DialogContent variant={notice ? "notice" : "celebration"} aria-describedby={undefined}>
+      <DialogContent variant="feedback" aria-describedby={undefined}>
         <VariantContext value={variant}>{children}</VariantContext>
         <DialogFooter>
           <DialogClose asChild>
-            <Button>{notice ? "Entendi" : "Continuar"}</Button>
+            <Button>{variant === "notice" ? "Entendi" : "Continuar"}</Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
@@ -44,26 +44,60 @@ export function Celebration({ variant = "celebration", onClose, children }: Cele
   );
 }
 
+// The check draws its ring, then its tick. Without motion, both stand drawn.
+function DrawnCheck() {
+  return (
+    <svg viewBox="0 0 96 96" className="size-full motion-safe:animate-pop" fill="none">
+      <circle cx="48" cy="48" r="46" className="fill-accent-tint" />
+      <circle
+        cx="48"
+        cy="48"
+        r="44"
+        transform="rotate(-90 48 48)"
+        pathLength={1}
+        strokeDasharray={1}
+        strokeWidth={4}
+        className="stroke-accent-soft motion-safe:animate-draw-ring"
+      />
+      <path
+        d="M29 49.5 42 62l25-27"
+        pathLength={1}
+        strokeDasharray={1}
+        strokeWidth={7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="stroke-accent motion-safe:animate-draw-check"
+      />
+    </svg>
+  );
+}
+
 /**
- * CelebrationTitle names what happened. A celebration's title comes under its icon, a party popper
- * unless the caller picks another, which a milestone's rings ripple out of.
+ * CelebrationTitle names what happened. A celebration's title comes under a check that draws
+ * itself, or under the icon the caller picks, which pops in and twists. A milestone's rings ripple
+ * out of it. A notice has no icon.
  */
 export function CelebrationTitle({
-  icon: Icon = PartyPopperIcon,
+  icon: Icon,
   ...props
 }: React.ComponentProps<typeof DialogTitle> & { icon?: LucideIcon }) {
   const variant = use(VariantContext);
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-5">
       {variant !== "notice" && (
-        <span
-          aria-hidden="true"
-          className="relative flex size-16 items-center justify-center rounded-full bg-accent-tint text-accent fill-mode-both motion-safe:animate-in motion-safe:zoom-in-0 motion-safe:spin-in-90 motion-safe:delay-300 motion-safe:duration-700 motion-safe:ease-spring"
-        >
+        <span aria-hidden="true" className="relative size-24">
           {variant === "milestone" && (
-            <span className="absolute inset-0 -z-10 rounded-full bg-accent-soft motion-safe:animate-ripple" />
+            <span className="absolute inset-0 rounded-full bg-accent-soft motion-safe:animate-ripple" />
           )}
-          <Icon className="size-8" strokeWidth={1.5} />
+          {Icon ? (
+            <span className="relative flex size-full items-center justify-center rounded-full bg-accent-tint text-accent motion-safe:animate-pop">
+              <Icon className="size-12 motion-safe:animate-twist" strokeWidth={1.75} />
+            </span>
+          ) : (
+            <span className="relative block size-full">
+              <DrawnCheck />
+            </span>
+          )}
         </span>
       )}
       <DialogTitle {...props} />

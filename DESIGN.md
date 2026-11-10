@@ -161,17 +161,18 @@ Large Title at semibold weight. The wordmark's text is Title 2. These seven size
   full-width buttons stacked, the action in solid red with white text and "Cancelar" in graphite
   text on the canvas gray. Deleting the mortgage, the deletion that takes the most with it, also
   shows a red "!" in a red-tint disc above the question.
-- A celebration follows a new record that improves the owner's position: a centered 480px white
-  panel over the dimmed page, its content centered. An accent icon on a tint disc, a party popper
-  unless the action has its own, pops in over the Title 2 that says what happened; then, under a
+- A celebration follows a new record that improves the owner's position. It takes the place of the
+  sheet that recorded it, in the same 520px frame and without animation, so the modal reads as one
+  whose content changes; its content is centered. The motion is in its 96px icon over the Title 2
+  that says what happened: a check that pops in on a tint disc and draws its soft-accent ring and
+  strong-accent tick, or the action's own accent icon, which pops in and twists. Then, under a
   Footnote uppercase lead that starts "Na projeção atual", the action's main figure as a hero
   figure, green when it is money gained, with what it measures in Callout grey; the other figures
   as rows of a white grouped list; a Callout line of context; and a full-width graphite
-  "Continuar". The panel springs up from below as it fades in, and only fades in when the device
-  asks for reduced motion. A milestone, such as a mortgage paid off, also ripples soft-accent rings
-  out of its icon. After a correction, such as an edited or deleted prepayment, the same panel
-  informs instead: no icon and no animation, the figures as before → after where they changed, and
-  "Entendi".
+  "Continuar". A milestone, such as a mortgage paid off, also ripples soft-accent rings out of its
+  icon. When the device asks for reduced motion, the icon stands still and fully drawn. After a
+  correction, such as an edited or deleted prepayment, the same panel informs instead: no icon,
+  the figures as before → after where they changed, and "Entendi".
 - A screen that fails to load shows a white error panel in place of its content: a cloud-off icon
   in a grey circle, a Headline saying what could not load, "Verifique sua conexão. Seus dados
   estão salvos." in Callout, and a graphite "Tentar novamente" that retries the failed request.
