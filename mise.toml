@@ -10,7 +10,7 @@ sqlc = "1.31.1"
 helm = "4.3.1"
 "go:github.com/pressly/goose/v3/cmd/goose" = "v3.29.0"
 # Keep in sync with the version the gringolito/go-covergrid action runs in CI.
-"go:github.com/vladopajic/go-test-coverage/v2" = "v2.22.0"
+"go:github.com/vladopajic/go-test-coverage/v2" = "v2.23.0"
 
 [env]
 _.file = ".env"
