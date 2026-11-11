@@ -23,7 +23,7 @@ export default defineConfig({
     setupFiles: "./src/setupTests.ts",
     coverage: {
       provider: "v8",
-      reporter: ["text", "json-summary", "json"],
+      reporter: ["text", "json-summary"],
       reportOnFailure: true,
       // Generated and third-party code carries no test value.
       exclude: [
