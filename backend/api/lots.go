@@ -73,7 +73,11 @@ func (i *lotImport) UnmarshalJSON(data []byte) error {
 }
 
 type lotImported struct {
-	Lots []lot `json:"lots" nullable:"false" doc:"The lots recorded, in the order they were sent, each with its ID."`
+	Lots              []lot   `json:"lots" nullable:"false" doc:"The lots recorded, in the order they were sent, each with its ID."`
+	Invested          string  `json:"invested" doc:"The Amount Invested in the lots together: the sum of what each cost, in reais, as a decimal string."`
+	MaturityNet       *string `json:"maturity_net,omitempty" doc:"The total net Maturity Value of the lots that have values, valued on today, in reais, as a decimal string. Absent when none has."`
+	MaturityProjected bool    `json:"maturity_projected" doc:"Whether maturity_net depends on projected index values, as the Maturity Value of a lot following the IPCA does until the IPCA up to its maturity is published."`
+	WithoutValues     int     `json:"without_values" doc:"How many of the lots have no values, as the IPCA they follow is not available yet, and so are left out of maturity_net."`
 }
 
 type lotAmount struct {
@@ -204,7 +208,15 @@ func registerLots(humaAPI huma.API, lots Lots, quotes Quotes, store IndexStore, 
 		// readLots validates the body itself, to answer the errors of every lot at once.
 		SkipValidateBody: true,
 	}, func(ctx context.Context, in *struct{ Body lotImport }) (*struct{ Body lotImported }, error) {
-		read, err := readLots(humaAPI.OpenAPI().Components.Schemas, importSchema, in.Body.raw, in.Body.Lots, dateOf(now()))
+		today := dateOf(now())
+
+		read, err := readLots(humaAPI.OpenAPI().Components.Schemas, importSchema, in.Body.raw, in.Body.Lots, today)
+		if err != nil {
+			return nil, err
+		}
+
+		// The lots are valued before they are recorded, so a failure to value them records none.
+		totals, err := importTotals(ctx, read, lots, quotes, store, today)
 		if err != nil {
 			return nil, err
 		}
@@ -214,12 +226,12 @@ func registerLots(humaAPI huma.API, lots Lots, quotes Quotes, store IndexStore, 
 			return nil, err
 		}
 
-		imported := make([]lot, 0, len(added))
+		totals.Lots = make([]lot, 0, len(added))
 		for _, l := range added {
-			imported = append(imported, newLot(l))
+			totals.Lots = append(totals.Lots, newLot(l))
 		}
 
-		return &struct{ Body lotImported }{Body: lotImported{Lots: imported}}, nil
+		return &struct{ Body lotImported }{Body: totals}, nil
 	})
 
 	register(humaAPI, huma.Operation{
@@ -268,6 +280,33 @@ func registerLots(humaAPI huma.API, lots Lots, quotes Quotes, store IndexStore, 
 	})
 }
 
+// valueLots values the lots on the date on, from the tax tables, the bonds' quotes and, when a lot
+// follows it, the IPCA.
+func valueLots(ctx context.Context, valued []bonds.Lot, lots Lots, quotes Quotes, store IndexStore, on time.Time) ([]bonds.ValuedLot, error) {
+	taxes, err := lots.Taxes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	stored, err := quotes.Quotes(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	pricing := bonds.Pricing{Taxes: taxes, Sells: make(map[bonds.Bond]bonds.Price, len(stored))}
+	for _, q := range stored {
+		pricing.Sells[q.Bond] = q.Sell
+	}
+
+	if slices.ContainsFunc(valued, func(l bonds.Lot) bool { return readsIPCA(l.Bond.Type) }) {
+		if pricing.IPCA, err = ipcaOf(ctx, store); err != nil {
+			return nil, err
+		}
+	}
+
+	return pricing.ValueAll(valued, on)
+}
+
 // valuedLots values every recorded lot on the date on, and totals the Market Value of the lots that
 // have one; the total is nil when none has.
 func valuedLots(ctx context.Context, lots Lots, quotes Quotes, store IndexStore, on time.Time) ([]lotValued, *marketTotal, error) {
@@ -276,72 +315,53 @@ func valuedLots(ctx context.Context, lots Lots, quotes Quotes, store IndexStore,
 		return nil, nil, err
 	}
 
-	taxes, err := lots.Taxes(ctx)
+	valued, err := valueLots(ctx, recorded, lots, quotes, store, on)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	stored, err := quotes.Quotes(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	sells := make(map[bonds.Bond]bonds.Price, len(stored))
-	for _, q := range stored {
-		sells[q.Bond] = q.Sell
-	}
-
-	var ipca bonds.IPCA
-
-	if slices.ContainsFunc(recorded, func(l bonds.Lot) bool { return readsIPCA(l.Bond.Type) }) {
-		if ipca, err = ipcaOf(ctx, store); err != nil {
-			return nil, nil, err
+	out := make([]lotValued, 0, len(valued))
+	for _, v := range valued {
+		if v.Valuation == nil {
+			out = append(out, newLotValued(v.Lot, nil, missingIPCA))
+		} else {
+			out = append(out, newLotValued(v.Lot, new(newLotValues(*v.Valuation)), ""))
 		}
 	}
 
-	valued := make([]lotValued, 0, len(recorded))
-
-	var (
-		total     bonds.Amount
-		hasMarket bool
-	)
-
-	for _, l := range recorded {
-		var sell *bonds.Price
-		if p, ok := sells[l.Bond]; ok {
-			sell = &p
-		}
-
-		v, err := l.Value(on, taxes, ipca, sell)
-
-		switch {
-		case errors.Is(err, bonds.ErrMissingIPCANumber):
-			valued = append(valued, newLotValued(l, nil, missingIPCA))
-		case err != nil:
-			return nil, nil, fmt.Errorf("value lot %d: %w", l.ID, err)
-		default:
-			valued = append(valued, newLotValued(l, new(newLotValues(v)), ""))
-
-			if m := v.Market; m != nil {
-				total.Gross, total.Net = total.Gross.Add(m.Gross), total.Net.Add(m.Net)
-				total.IOF, total.IncomeTax = total.IOF.Add(m.IOF), total.IncomeTax.Add(m.IncomeTax)
-				total.CustodyFee = total.CustodyFee.Add(m.CustodyFee)
-				hasMarket = true
-			}
-		}
+	total, ok := bonds.MarketTotal(valued)
+	if !ok {
+		return out, nil, nil
 	}
 
-	if !hasMarket {
-		return valued, nil, nil
-	}
-
-	return valued, &marketTotal{
+	return out, &marketTotal{
 		Gross:      total.Gross.String(),
 		IOF:        total.IOF.String(),
 		IncomeTax:  total.IncomeTax.String(),
 		CustodyFee: total.CustodyFee.String(),
 		Net:        total.Net.String(),
 	}, nil
+}
+
+// importTotals values the lots of an import on the date on and answers their totals.
+func importTotals(ctx context.Context, imported []bonds.Lot, lots Lots, quotes Quotes, store IndexStore, on time.Time) (lotImported, error) {
+	valued, err := valueLots(ctx, imported, lots, quotes, store, on)
+	if err != nil {
+		return lotImported{}, err
+	}
+
+	t := bonds.TotalsOf(valued)
+	totals := lotImported{
+		Invested:          t.Invested.String(),
+		MaturityProjected: t.Projected,
+		WithoutValues:     t.WithoutValues,
+	}
+
+	if t.WithValues > 0 {
+		totals.MaturityNet = new(t.MaturityNet.String())
+	}
+
+	return totals, nil
 }
 
 // readsIPCA reports whether the values of a lot of the bond type follow the IPCA.

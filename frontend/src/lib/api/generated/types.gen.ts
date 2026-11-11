@@ -554,9 +554,25 @@ export type LotImport = {
 
 export type LotImported = {
     /**
+     * The Amount Invested in the lots together: the sum of what each cost, in reais, as a decimal string.
+     */
+    invested: string;
+    /**
      * The lots recorded, in the order they were sent, each with its ID.
      */
     lots: Array<Lot>;
+    /**
+     * The total net Maturity Value of the lots that have values, valued on today, in reais, as a decimal string. Absent when none has.
+     */
+    maturity_net?: string;
+    /**
+     * Whether maturity_net depends on projected index values, as the Maturity Value of a lot following the IPCA does until the IPCA up to its maturity is published.
+     */
+    maturity_projected: boolean;
+    /**
+     * How many of the lots have no values, as the IPCA they follow is not available yet, and so are left out of maturity_net.
+     */
+    without_values: number;
 };
 
 export type LotInput = {

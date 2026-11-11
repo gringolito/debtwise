@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeftIcon, FileTextIcon } from "lucide-react";
 import { useRef, useState } from "react";
 import { Page, PageHeader, PageTitle } from "@/components/layout/Page";
+import { ImportCelebration } from "@/components/lots/ImportCelebration";
 import { ImportPreview, type PreviewRow } from "@/components/lots/ImportPreview";
 import { ErrorPanel } from "@/components/patterns/ErrorPanel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -21,7 +22,7 @@ interface ReadFile {
 /**
  * ImportLots reads a lots file in the browser and previews its rows for the owner to edit, remove,
  * and pick the bond of each row whose name the catalogue lacks, then records every purchase left,
- * or none.
+ * or none. A recorded import is celebrated before Investimentos opens.
  */
 export function ImportLots() {
   const navigate = useNavigate();
@@ -85,10 +86,7 @@ export function ImportLots() {
     const rows = preview.map((p) => importedRow(p.row, p.bond));
     setImported(rows);
     setRevised(new Set());
-    importLots.mutate(
-      rows.map((r) => r.input),
-      { onSuccess: () => void navigate({ to: "/investimentos" }) },
-    );
+    importLots.mutate(rows.map((r) => r.input));
   }
 
   return (
@@ -204,6 +202,12 @@ export function ImportLots() {
             )}
           </div>
         </div>
+      )}
+      {importLots.data && (
+        <ImportCelebration
+          imported={importLots.data}
+          onClose={() => void navigate({ to: "/investimentos" })}
+        />
       )}
     </Page>
   );

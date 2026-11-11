@@ -304,24 +304,7 @@ func TestNTNBLotsAreValuedFromTheIPCAAndMarkedProjected(t *testing.T) {
 	t.Parallel()
 
 	handler, conn := lotsOn(t, "2012-01-03")
-	store := indexes.NewStore(conn)
-
-	require.NoError(t, store.SaveRefresh(t.Context(), indexes.IPCANumber, []indexes.Value{
-		publishedValue("2000-06-01", "2000-06-01", "1614.62"),
-		publishedValue("2011-10-01", "2011-10-01", "3369.28"),
-		publishedValue("2011-11-01", "2011-11-01", "3386.80"),
-	}, time.Now()))
-
-	ipca := make([]indexes.Value, 0, 12)
-
-	for month := range 12 {
-		start := time.Date(2010, time.December, 1, 0, 0, 0, 0, time.UTC).AddDate(0, month, 0).Format(time.DateOnly)
-		ipca = append(ipca, publishedValue(start, start, "0.53"))
-	}
-
-	require.NoError(t, store.SaveRefresh(t.Context(), indexes.IPCA, ipca, time.Now()))
-	require.NoError(t, store.SaveProjectionMethod(t.Context(),
-		indexes.ProjectionMethod{Index: indexes.IPCA, Method: indexes.Trailing12}))
+	saveIPCAProjectedFromNovember2011(t, conn)
 
 	addLots(t, handler,
 		lotBody("ntn_b_principal", "2015-05-15", "2012-01-03", "0.0517", "1776.77", "1"),
@@ -359,6 +342,31 @@ func TestNTNBLotsAreValuedFromTheIPCAAndMarkedProjected(t *testing.T) {
 			}
 		}
 	]}`, do(t, handler, http.MethodGet, "/lots", "", http.StatusOK))
+}
+
+// saveIPCAProjectedFromNovember2011 saves IBGE's index numbers up to November 2011 and an IPCA of
+// 0.53% a month over the year before, which the trailing 12 months method projects on.
+func saveIPCAProjectedFromNovember2011(t *testing.T, conn *sql.DB) {
+	t.Helper()
+
+	store := indexes.NewStore(conn)
+
+	require.NoError(t, store.SaveRefresh(t.Context(), indexes.IPCANumber, []indexes.Value{
+		publishedValue("2000-06-01", "2000-06-01", "1614.62"),
+		publishedValue("2011-10-01", "2011-10-01", "3369.28"),
+		publishedValue("2011-11-01", "2011-11-01", "3386.80"),
+	}, time.Now()))
+
+	ipca := make([]indexes.Value, 0, 12)
+
+	for month := range 12 {
+		start := time.Date(2010, time.December, 1, 0, 0, 0, 0, time.UTC).AddDate(0, month, 0).Format(time.DateOnly)
+		ipca = append(ipca, publishedValue(start, start, "0.53"))
+	}
+
+	require.NoError(t, store.SaveRefresh(t.Context(), indexes.IPCA, ipca, time.Now()))
+	require.NoError(t, store.SaveProjectionMethod(t.Context(),
+		indexes.ProjectionMethod{Index: indexes.IPCA, Method: indexes.Trailing12}))
 }
 
 // A lot whose VNA needs an IPCA index number that is neither published nor projected has no values,
@@ -575,18 +583,23 @@ func TestLotsAreImportedInABatch(t *testing.T) {
 			handler, _ := lotsOn(t, "2026-10-26")
 			do(t, handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, indexer), http.StatusOK)
 
-			assert.JSONEq(t, `{"lots": [
+			var imported struct {
+				Lots json.RawMessage `json:"lots"`
+			}
+			require.NoError(t, json.Unmarshal([]byte(do(t, handler, http.MethodPost, "/lots/import", `{"lots": [`+
+				lotBody("ltn", "2027-01-01", "2026-03-10", "0.1276", "771.26", "10")+`,`+
+				lotBody("ntn_f", "2029-01-01", "2026-01-05", "0.1288", "880.05", "1.5")+`,`+
+				lotBody("ntn_b_principal", "2035-05-15", "2026-02-01", "0.0745", "1500.123456", "0.25")+`,`+
+				lotBody("ntn_b", "2035-05-15", "2026-04-20", "0.0612", "4012.5", "2")+`,`+
+				lotBody("ltn", "2027-01-01", "2026-05-05", "0.1301", "790.5", "3")+`]}`, http.StatusCreated)), &imported))
+
+			assert.JSONEq(t, `[
 		{"id": 1, "type": "ltn", "maturity": "2027-01-01", "purchase_date": "2026-03-10", "rate": "0.1276", "unit_price": "771.26", "quantity": "10"},
 		{"id": 2, "type": "ntn_f", "maturity": "2029-01-01", "purchase_date": "2026-01-05", "rate": "0.1288", "unit_price": "880.05", "quantity": "1.5"},
 		{"id": 3, "type": "ntn_b_principal", "maturity": "2035-05-15", "purchase_date": "2026-02-01", "rate": "0.0745", "unit_price": "1500.123456", "quantity": "0.25"},
 		{"id": 4, "type": "ntn_b", "maturity": "2035-05-15", "purchase_date": "2026-04-20", "rate": "0.0612", "unit_price": "4012.5", "quantity": "2"},
 		{"id": 5, "type": "ltn", "maturity": "2027-01-01", "purchase_date": "2026-05-05", "rate": "0.1301", "unit_price": "790.5", "quantity": "3"}
-	]}`, do(t, handler, http.MethodPost, "/lots/import", `{"lots": [`+
-				lotBody("ltn", "2027-01-01", "2026-03-10", "0.1276", "771.26", "10")+`,`+
-				lotBody("ntn_f", "2029-01-01", "2026-01-05", "0.1288", "880.05", "1.5")+`,`+
-				lotBody("ntn_b_principal", "2035-05-15", "2026-02-01", "0.0745", "1500.123456", "0.25")+`,`+
-				lotBody("ntn_b", "2035-05-15", "2026-04-20", "0.0612", "4012.5", "2")+`,`+
-				lotBody("ltn", "2027-01-01", "2026-05-05", "0.1301", "790.5", "3")+`]}`, http.StatusCreated))
+	]`, string(imported.Lots))
 
 			assert.Equal(t, []lotRow{
 				{
@@ -612,6 +625,104 @@ func TestLotsAreImportedInABatch(t *testing.T) {
 			}, lotRows(t, handler))
 		})
 	}
+}
+
+// An import answers what its lots cost together and the net Maturity Value of those that have
+// values, whether that value depends on projected indexes, and how many lots have no values; lots
+// recorded before it count in none of them. On 2012-01-03 with no IPCA index numbers the NTN-B
+// Principal lots have no values; the LTN lots matured on 2011-01-01 after 362 days, paying 1,000.00
+// a bond bought at 800.00, 17.5% of the 200.00 gain a bond taxed: 965.00 for one bond and 1,930.00
+// for two, from no index. With the IPCA saved, the two NTN-B bonds that
+// TestNTNBLotsAreValuedFromTheIPCAAndMarkedProjected values pay 4,476.67 net, from the projected
+// IPCA.
+func TestAnImportAnswersItsTotals(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		ipca     bool
+		recorded []string
+		lots     []string
+		want     string
+	}{
+		{
+			name: "some lots without values",
+			lots: []string{
+				lotBody("ntn_b_principal", "2015-05-15", "2012-01-03", "0.0517", "1776.77", "1"),
+				lotBody("ltn", "2011-01-01", "2010-01-04", "0.1", "800.00", "1"),
+				lotBody("ltn", "2011-01-01", "2010-01-04", "0.1", "800.00", "2"),
+			},
+			want: `{"invested": "4176.77", "maturity_net": "2895.00", "maturity_projected": false, "without_values": 1}`,
+		},
+		{
+			name: "lots recorded before",
+			recorded: []string{
+				lotBody("ntn_b_principal", "2035-05-15", "2012-01-03", "0.06", "900.00", "3"),
+				lotBody("ltn", "2011-01-01", "2010-01-04", "0.1", "800.00", "5"),
+			},
+			lots: []string{lotBody("ltn", "2011-01-01", "2010-01-04", "0.1", "800.00", "2")},
+			want: `{"invested": "1600.00", "maturity_net": "1930.00", "maturity_projected": false, "without_values": 0}`,
+		},
+		{
+			name: "no lot with values",
+			lots: []string{lotBody("ntn_b_principal", "2015-05-15", "2012-01-03", "0.0517", "1776.77", "1")},
+			want: `{"invested": "1776.77", "maturity_projected": false, "without_values": 1}`,
+		},
+		{
+			name: "every lot with values",
+			lots: []string{lotBody("ltn", "2011-01-01", "2010-01-04", "0.1", "800.00", "1")},
+			want: `{"invested": "800.00", "maturity_net": "965.00", "maturity_projected": false, "without_values": 0}`,
+		},
+		{
+			name: "a lot valued from the projected IPCA",
+			ipca: true,
+			lots: []string{
+				lotBody("ltn", "2011-01-01", "2010-01-04", "0.1", "800.00", "1"),
+				lotBody("ntn_b", "2012-11-15", "2011-06-15", "0", "2000.00", "2"),
+			},
+			want: `{"invested": "4800.00", "maturity_net": "5441.67", "maturity_projected": true, "without_values": 0}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler, conn := lotsOn(t, "2012-01-03")
+			if tt.ipca {
+				saveIPCAProjectedFromNovember2011(t, conn)
+			}
+
+			addLots(t, handler, tt.recorded...)
+
+			var got map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal([]byte(do(t, handler, http.MethodPost, "/lots/import",
+				`{"lots": [`+strings.Join(tt.lots, ",")+`]}`, http.StatusCreated)), &got))
+			delete(got, "lots")
+
+			totals, err := json.Marshal(got)
+			require.NoError(t, err)
+			assert.JSONEq(t, tt.want, string(totals))
+		})
+	}
+}
+
+// The lots of an import are valued before they are recorded, so an import that cannot be valued
+// records none: here the index history the NTN-B Principal lot needs is gone.
+func TestAnImportThatCannotBeValuedRecordsNothing(t *testing.T) {
+	t.Parallel()
+
+	handler, conn := lotsOn(t, "2026-10-26")
+
+	_, err := conn.ExecContext(t.Context(), "DROP TABLE index_values")
+	require.NoError(t, err)
+
+	rec := serve(t, handler, http.MethodPost, "/lots/import", `{"lots": [`+
+		lotBody("ltn", "2027-01-01", "2026-03-10", "0.12", "800", "1")+`,`+
+		lotBody("ntn_b_principal", "2035-05-15", "2026-03-10", "0.0745", "1500", "1")+`]}`)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
+	assert.Empty(t, lotRows(t, handler))
 }
 
 // A batch with any invalid lot records nothing, and answers every violation of every lot, located

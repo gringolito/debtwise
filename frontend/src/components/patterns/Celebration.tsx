@@ -113,18 +113,23 @@ export function CelebrationTitle({
   );
 }
 
-/** CelebrationFigure is the action's main figure as a hero, between a lead and what it measures. */
+/**
+ * CelebrationFigure is the action's main figure as a hero, between a lead and what it measures. It
+ * is green when it is money gained; `gain={false}` keeps any other figure, such as an amount
+ * invested, in the text color.
+ */
 export function CelebrationFigure({
   lead,
   unit,
+  gain = true,
   className,
   children,
   ...props
-}: React.ComponentProps<"p"> & { lead: string; unit?: string }) {
+}: React.ComponentProps<"p"> & { lead: string; unit?: string; gain?: boolean }) {
   return (
     <p className={cn("flex flex-col items-center gap-1", className)} {...props}>
       <span className="text-footnote tracking-wide text-muted-foreground uppercase">{lead}</span>{" "}
-      <span className="relative text-hero-figure text-positive">{children}</span>
+      <span className={cn("relative text-hero-figure", gain && "text-positive")}>{children}</span>
       {unit && <span className="text-callout text-muted-foreground"> {unit}</span>}
     </p>
   );
