@@ -54,32 +54,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
       - run: mise run test:frontend
-      - name: Upload main coverage baseline
-        if: github.event_name == 'push'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - name: Coverage grid map
+        uses: gringolito/js-covergrid@98e0f57c27bd7a13c3bb96f74918a56e7d31fbc5 # v0.0.1
         with:
-          name: frontend-coverage
-          path: frontend/coverage/coverage-summary.json
-          if-no-files-found: error
-      - name: Download main coverage baseline
-        id: baseline
-        if: github.event_name == 'pull_request'
-        working-directory: frontend
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow frontend-ci.yaml \
-            --branch main --event push --status success --limit 1 \
-            --json databaseId --jq '.[0].databaseId // empty')
-          if [ -n "$run_id" ] && gh run download "$run_id" --repo "$GITHUB_REPOSITORY" \
-            --name frontend-coverage --dir coverage-main; then
-            echo "path=coverage-main/coverage-summary.json" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::No main coverage baseline found; reporting without comparison."
-          fi
-      - name: Report coverage
-        if: github.event_name == 'pull_request'
-        uses: davelosert/vitest-coverage-report-action@74c2d9210b4fc44c84d8213f61d7ec99837b7aa0 # v2.13.2
-        with:
-          working-directory: frontend
-          json-summary-compare-path: ${{ steps.baseline.outputs.path }}
+          coverage-summary: frontend/coverage/coverage-summary.json
+          attachment-token: ${{ secrets.COVERGRID_ATTACHMENT_TOKEN }}
