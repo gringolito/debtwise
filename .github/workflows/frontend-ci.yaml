@@ -83,3 +83,12 @@ jobs:
         with:
           working-directory: frontend
           json-summary-compare-path: ${{ steps.baseline.outputs.path }}
+      - name: Coverage grid map (js-covergrid trial)
+        if: always() && github.event_name == 'pull_request'
+        uses: gringolito/js-covergrid@1f8ea1c9b7c45a2fca004f22036c0f37b9fced2b # feat/js-covergrid-fork
+        with:
+          coverage-summary: frontend/coverage/coverage-summary.json
+          breakdown-artifact: frontend-coverage-breakdown
+          # Trial only: the baseline is this branch's own previous run, so a second push shows a diff.
+          base-branch: ${{ github.head_ref }}
+          attachment-token: ${{ secrets.COVERGRID_ATTACHMENT_TOKEN }}
