@@ -10,7 +10,7 @@ import {
 } from "@/components/patterns/Celebration";
 import type { Lot, LotComparison } from "@/lib/api";
 import { compareDecimals } from "@/lib/decimals";
-import { favoured, signedAdvantage } from "@/lib/decisions";
+import { favoured } from "@/lib/decisions";
 import { formatDate, formatMoney } from "@/lib/format";
 import { useLotComparison } from "@/lib/lotQueries";
 
@@ -34,17 +34,10 @@ function Mark({ shown }: { shown: boolean }) {
 }
 
 /**
- * RowFigure hangs a row's asterisk outside its figure, beside its last line, so the figures stay
- * aligned.
+ * label marks a row's name rather than its figure, so the figures keep their right edge and a
+ * before → after keeps its width.
  */
-function RowFigure({ marked, children }: { marked: boolean; children: React.ReactNode }) {
-  return (
-    <span className="relative inline-block">
-      {children}
-      {marked && <CelebrationMark className="top-auto bottom-0 text-headline">*</CelebrationMark>}
-    </span>
-  );
-}
+const label = (name: string, marked: boolean) => (marked ? `${name}*` : name);
 
 /** ComparisonNote says how the lot compares with prepaying what it cost with shorten_term. */
 function ComparisonNote({ comparison }: { comparison: LotComparison }) {
@@ -102,8 +95,8 @@ function Recorded({ comparison, onClose }: { comparison?: LotComparison; onClose
       <CelebrationFacts>
         <CelebrationFact name="Valor investido">{formatMoney(invested)}</CelebrationFact>
         {maturity && (
-          <CelebrationFact name="Líquido no vencimento">
-            <RowFigure marked={marked}>{formatMoney(maturity.net)}</RowFigure>
+          <CelebrationFact name={label("Líquido no vencimento", marked)}>
+            {formatMoney(maturity.net)}
           </CelebrationFact>
         )}
       </CelebrationFacts>
@@ -113,7 +106,33 @@ function Recorded({ comparison, onClose }: { comparison?: LotComparison; onClose
 }
 
 const netOf = (c: LotComparison) => (c.maturity ? formatMoney(c.maturity.net) : "—");
-const advantageOf = (c: LotComparison) => (c.advantage ? signedAdvantage(c.advantage) : "—");
+
+const amountOf = (advantage: string) => formatMoney(advantage.replace("-", ""));
+
+/**
+ * advantageRow writes the advantage over prepaying before and after an edit without a sign: an
+ * advantage while investing wins on both sides, a disadvantage while prepaying does, and which way
+ * each side goes when the edit turned the comparison around.
+ */
+function advantageRow(before?: string, after?: string) {
+  const sides = [before, after].filter((side) => side !== undefined);
+  const wins = new Set(sides.map(favoured).filter((side) => side !== "even"));
+  if (!wins.has("prepay")) {
+    const value = (side?: string) => (side === undefined ? "—" : amountOf(side));
+    return { name: "Vantagem sobre amortizar", from: value(before), to: value(after) };
+  }
+  if (!wins.has("invest")) {
+    const value = (side?: string) =>
+      side === undefined ? "—" : favoured(side) === "even" ? "Nenhuma" : amountOf(side);
+    return { name: "Desvantagem sobre amortizar", from: value(before), to: value(after) };
+  }
+  const value = (side?: string) => {
+    if (side === undefined) return "—";
+    const amount = amountOf(side);
+    return favoured(side) === "invest" ? `${amount} a mais` : `${amount} a menos`;
+  };
+  return { name: "Comparado a amortizar", from: value(before), to: value(after) };
+}
 
 function Change({ from, to }: { from: string; to: string }) {
   return from === to ? to : <CelebrationChange from={from} to={to} />;
@@ -139,6 +158,7 @@ function Edited({
   // A row marks its change when either side reads a projection.
   const marked = projected(before) || projected(after);
   const advantageMarked = advantageProjected(before) || advantageProjected(after);
+  const row = advantageRow(before.advantage, after.advantage);
   return (
     <Celebration
       variant="notice"
@@ -147,15 +167,11 @@ function Edited({
     >
       {title}
       <CelebrationFacts>
-        <CelebrationFact name="Líquido no vencimento">
-          <RowFigure marked={marked}>
-            <Change from={netOf(before)} to={netOf(after)} />
-          </RowFigure>
+        <CelebrationFact name={label("Líquido no vencimento", marked)}>
+          <Change from={netOf(before)} to={netOf(after)} />
         </CelebrationFact>
-        <CelebrationFact name="Vantagem sobre amortizar">
-          <RowFigure marked={advantageMarked}>
-            <Change from={advantageOf(before)} to={advantageOf(after)} />
-          </RowFigure>
+        <CelebrationFact name={label(row.name, advantageMarked)}>
+          <Change from={row.from} to={row.to} />
         </CelebrationFact>
       </CelebrationFacts>
     </Celebration>

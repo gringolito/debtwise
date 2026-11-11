@@ -341,7 +341,10 @@ control switches Compras and Venda antecipada. With no lot, the page shows only 
   gain. Saving an edit informs of the net at maturity and the advantage over prepaying, before →
   after. Deleting a lot shows no notice, since its confirmation already names what goes. Only
   figures that read a projected index carry the asterisk: a Prefixado's gain is fixed, its
-  comparison with a TR mortgage is not.
+  comparison with a TR mortgage is not. In a row the asterisk follows the row's name, so the
+  figures keep their right edge. No figure carries a sign: the notice's row reads "Vantagem sobre
+  amortizar" while investing wins, "Desvantagem sobre amortizar" while prepaying does, and
+  "Comparado a amortizar" with "R$ X a mais" or "R$ X a menos" when the edit turned it around.
 - Importar planilha: the file's name and row count with "Trocar arquivo", then every row in a
   table, each value editable in place. A row whose bond name wasn't recognised is tinted
   caution-tint with an orange bar on its edge, its bond picker holds the suggested bond, and an

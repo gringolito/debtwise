@@ -146,7 +146,7 @@ describe("a recorded lot", () => {
     );
     expect(facts(dialog)).toEqual([
       ["Valor investido", "R$ 14.043,00"],
-      ["Líquido no vencimento", "R$ 18.986,45*"],
+      ["Líquido no vencimento*", "R$ 18.986,45"],
     ]);
     expect(within(dialog).getByText(/^Você fica com/)).toHaveTextContent(
       "Você fica com R$ 2.180,40 a mais",
@@ -217,7 +217,7 @@ describe("an edited lot", () => {
     await waitFor(() =>
       expect(facts(dialog)).toEqual([
         ["Líquido no vencimento", "R$ 18.986,45 para R$ 9.493,22"],
-        ["Vantagem sobre amortizar", "+ R$ 2.180,40 para − R$ 120,00*"],
+        ["Comparado a amortizar*", "R$ 2.180,40 a mais para R$ 120,00 a menos"],
       ]),
     );
     expect(within(dialog).getByText("* Baseado na projeção atual.")).toBeVisible();
@@ -244,8 +244,8 @@ describe("an edited lot", () => {
     const dialog = await screen.findByRole("dialog", { name: "Compra atualizada" });
     await waitFor(() =>
       expect(facts(dialog)).toEqual([
-        ["Líquido no vencimento", "R$ 19.970,00 para R$ 18.986,45*"],
-        ["Vantagem sobre amortizar", "+ R$ 2.500,00 para + R$ 2.180,40*"],
+        ["Líquido no vencimento*", "R$ 19.970,00 para R$ 18.986,45"],
+        ["Vantagem sobre amortizar*", "R$ 2.500,00 para R$ 2.180,40"],
       ]),
     );
     expect(within(dialog).getByText("* Baseado na projeção atual.")).toBeVisible();
@@ -271,7 +271,23 @@ describe("an edited lot", () => {
     await waitFor(() =>
       expect(facts(dialog)).toEqual([
         ["Líquido no vencimento", "R$ 18.986,45"],
-        ["Vantagem sobre amortizar", "— para + R$ 2.180,40*"],
+        ["Vantagem sobre amortizar*", "— para R$ 2.180,40"],
+      ]),
+    );
+  });
+
+  it("calls a prepaying win on both sides a disadvantage, without a sign", async () => {
+    const edited: Lot = { ...bought, quantity: "10" };
+    renderFeedback({ kind: "edited", lot: edited, replaced: bought }, (input) => ({
+      ...lotComparison,
+      advantage: input.quantity === "10" ? "-10667.28" : "-8481.31",
+    }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Compra atualizada" });
+    await waitFor(() =>
+      expect(facts(dialog)[1]).toEqual([
+        "Desvantagem sobre amortizar*",
+        "R$ 8.481,31 para R$ 10.667,28",
       ]),
     );
   });
