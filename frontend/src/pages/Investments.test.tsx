@@ -146,6 +146,11 @@ describe("Compras", () => {
     type("Quantidade", "20");
     fireEvent.click(within(sheet).getByRole("button", { name: "Adicionar" }));
 
+    const celebration = await screen.findByRole("dialog", { name: "Compra registrada!" });
+    expect(screen.queryByRole("form")).toBeNull();
+    fireEvent.click(within(celebration).getByRole("button", { name: "Continuar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
     const group = await screen.findByRole("region", { name: "Tesouro Prefixado 2029" });
     await waitFor(() =>
       expect(rowsOf(group)).toEqual([

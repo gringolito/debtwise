@@ -5,6 +5,7 @@ import {
   addLot,
   addPrepayment,
   addStatement,
+  compareLot,
   checkEarlySales,
   decide as requestDecision,
   deleteLot,
@@ -59,6 +60,7 @@ import type {
   LotImported,
   LotInput,
   LotList,
+  LotComparison,
   LotPreview,
   LotValued,
   LotValues,
@@ -112,6 +114,7 @@ export type {
   LotImported,
   LotInput,
   LotList,
+  LotComparison,
   LotPreview,
   LotValued,
   LotValues,
@@ -343,6 +346,16 @@ export async function postLot(body: LotInput): Promise<Lot> {
 /** previewLot answers what the lot would cost, without recording it. */
 export async function previewLot(body: LotInput): Promise<LotPreview> {
   const { data, error, response } = await previewLotRequest({ body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+/** comparePurchase compares the lot with prepaying what it cost on its purchase date instead. */
+export async function comparePurchase(
+  body: LotInput,
+  effect: LotComparison["effect"],
+): Promise<LotComparison> {
+  const { data, error, response } = await compareLot({ body, query: { effect } });
   if (!data) throw failure(error, response);
   return data;
 }

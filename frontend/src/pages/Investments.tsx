@@ -3,6 +3,7 @@ import { TrendingUpIcon } from "lucide-react";
 import { useState } from "react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { Page, PageHeader, PageTitle } from "@/components/layout/Page";
+import { type LotChange, LotFeedback } from "@/components/lots/LotFeedback";
 import { LotSheet } from "@/components/lots/LotSheet";
 import { ErrorPanel } from "@/components/patterns/ErrorPanel";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ function Content({ onAdd }: { onAdd: () => void }) {
  */
 export function Investments() {
   const [adding, setAdding] = useState(false);
+  const [feedback, setFeedback] = useState<LotChange | null>(null);
   const onPurchases = useLocation({
     select: (location) => location.pathname.replace(/\/+$/, "") === "/investimentos",
   });
@@ -83,7 +85,16 @@ export function Investments() {
         )}
       </PageHeader>
       <Content onAdd={() => setAdding(true)} />
-      {adding && <LotSheet onClose={() => setAdding(false)} />}
+      {adding && (
+        <LotSheet
+          onClose={() => setAdding(false)}
+          onSaved={(change) => {
+            setAdding(false);
+            setFeedback(change);
+          }}
+        />
+      )}
+      {feedback && <LotFeedback change={feedback} onClose={() => setFeedback(null)} />}
     </Page>
   );
 }

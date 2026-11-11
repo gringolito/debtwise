@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LotAmount, LotInput, Scenario } from "@/lib/api";
 import { rowTexts, text, words } from "@/test/dom";
@@ -188,10 +188,13 @@ describe("a lot's detail", () => {
     fireEvent.change(within(sheet).getByLabelText("Quantidade"), { target: { value: "10" } });
     fireEvent.click(within(sheet).getByRole("button", { name: "Salvar" }));
 
+    const notice = await screen.findByRole("dialog", { name: "Compra atualizada" });
+    expect(screen.queryByRole("form")).toBeNull();
+    fireEvent.click(within(notice).getByRole("button", { name: "Entendi" }));
     expect(
       await screen.findByText("Compra em 12/05/2024 · 10 títulos a R$ 2.012,34 · IPCA + 6,21%"),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(requests.filter((r) => r.method === "PUT").map((r) => r.body)).toEqual([
       {
         type: "ntn_b_principal",
@@ -219,6 +222,7 @@ describe("a lot's detail", () => {
       "Compra em 10/01/2025 · 11,85% Sem preço de venda",
     ]);
     expect(screen.queryByRole("region", { name: "Tesouro IPCA+ 2035" })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(
       requests.filter((r) => r.method === "DELETE").map((r) => new URL(r.url).pathname),
     ).toEqual(["/api/lots/1"]);

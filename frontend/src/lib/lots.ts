@@ -46,6 +46,18 @@ export function lotInput(values: LotFormValues): LotInput {
   };
 }
 
+/** inputOfLot is the request body that records lot as it is. */
+export function inputOfLot({
+  type,
+  maturity,
+  purchase_date,
+  rate,
+  unit_price,
+  quantity,
+}: Lot): LotInput {
+  return { type, maturity, purchase_date, rate, unit_price, quantity };
+}
+
 /** lotPreviewInput is lotInput once the owner has filled every field, and undefined before. */
 export function lotPreviewInput(values: LotFormValues): LotInput | undefined {
   const { maturity, purchaseDate, rate, unitPrice, quantity } = values;

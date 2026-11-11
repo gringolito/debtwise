@@ -1,6 +1,7 @@
 import type {
   EarlySaleCheck,
   LotAmount,
+  LotComparison,
   LotList,
   LotValued,
   MarketDataStatus,
@@ -123,6 +124,20 @@ export function uncheckable(
   return { lot: bought, unavailable, projected_by: [], market_data: freshMarketData };
 }
 
+/**
+ * lotComparison compares a Prefixado 2029 bought for R$ 14.043,00 with prepaying that, on a mortgage
+ * whose TR is projected: investing is better by R$ 2.180,40.
+ */
+export const lotComparison: LotComparison = {
+  amount_invested: "14043.00",
+  maturity: amount("20000.00", "0.00", "887.55", "126.00", "18986.45"),
+  gain: "4943.45",
+  horizon: "2029-01-01",
+  effect: "shorten_term",
+  advantage: "2180.40",
+  projected_by: [{ index: "tr", method: "trailing_12" }],
+};
+
 interface InvestmentsStub {
   lots: LotValued[];
   marketValue?: LotList["market_value"];
@@ -156,6 +171,7 @@ export function stubInvestments({
     },
     "GET /api/market-data/status": () => Response.json(FRESH_STATUS),
     "GET /api/bonds": () => Response.json({ bonds: [] }),
+    "POST /api/lots/comparison": () => Response.json(lotComparison),
     ...routes,
   });
 }
