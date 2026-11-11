@@ -53,9 +53,10 @@ jobs:
       - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
-      - run: mise run test:frontend
+      - id: test
+        run: mise run test:frontend
       - name: Coverage grid map
-        if: always()
+        if: ${{ !cancelled() && (steps.test.outcome == 'success' || steps.test.outcome == 'failure') }}
         uses: gringolito/js-covergrid@98e0f57c27bd7a13c3bb96f74918a56e7d31fbc5 # v0.0.1
         with:
           coverage-summary: frontend/coverage/coverage-summary.json
