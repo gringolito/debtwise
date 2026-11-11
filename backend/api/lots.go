@@ -15,7 +15,6 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/gringolito/debtwise/backend/bonds"
-	"github.com/gringolito/debtwise/backend/decimal"
 	"github.com/gringolito/debtwise/backend/indexes"
 )
 
@@ -281,58 +280,31 @@ func registerLots(humaAPI huma.API, lots Lots, quotes Quotes, store IndexStore, 
 	})
 }
 
-// lotValuer values lots on a date, from the taxes, the sell side of the bonds' quotes and, when a lot
+// valueLots values the lots on the date on, from the tax tables, the bonds' quotes and, when a lot
 // follows it, the IPCA.
-type lotValuer struct {
-	on    time.Time
-	taxes bonds.Taxes
-	sells map[bonds.Bond]bonds.Price
-	ipca  bonds.IPCA
-}
-
-// newLotValuer reads what valuing the lots on the date on needs.
-func newLotValuer(ctx context.Context, valued []bonds.Lot, lots Lots, quotes Quotes, store IndexStore, on time.Time) (lotValuer, error) {
+func valueLots(ctx context.Context, valued []bonds.Lot, lots Lots, quotes Quotes, store IndexStore, on time.Time) ([]bonds.ValuedLot, error) {
 	taxes, err := lots.Taxes(ctx)
 	if err != nil {
-		return lotValuer{}, err
+		return nil, err
 	}
 
 	stored, err := quotes.Quotes(ctx)
 	if err != nil {
-		return lotValuer{}, err
+		return nil, err
 	}
 
-	v := lotValuer{on: on, taxes: taxes, sells: make(map[bonds.Bond]bonds.Price, len(stored))}
+	pricing := bonds.Pricing{Taxes: taxes, Sells: make(map[bonds.Bond]bonds.Price, len(stored))}
 	for _, q := range stored {
-		v.sells[q.Bond] = q.Sell
+		pricing.Sells[q.Bond] = q.Sell
 	}
 
 	if slices.ContainsFunc(valued, func(l bonds.Lot) bool { return readsIPCA(l.Bond.Type) }) {
-		if v.ipca, err = ipcaOf(ctx, store); err != nil {
-			return lotValuer{}, err
+		if pricing.IPCA, err = ipcaOf(ctx, store); err != nil {
+			return nil, err
 		}
 	}
 
-	return v, nil
-}
-
-// value values the lot, or answers nil when the IPCA the lot follows is not available yet.
-func (v lotValuer) value(l bonds.Lot) (*bonds.Valuation, error) {
-	var sell *bonds.Price
-	if p, ok := v.sells[l.Bond]; ok {
-		sell = &p
-	}
-
-	valuation, err := l.Value(v.on, v.taxes, v.ipca, sell)
-
-	switch {
-	case errors.Is(err, bonds.ErrMissingIPCANumber):
-		return nil, nil
-	case err != nil:
-		return nil, err
-	default:
-		return &valuation, nil
-	}
+	return pricing.ValueAll(valued, on)
 }
 
 // valuedLots values every recorded lot on the date on, and totals the Market Value of the lots that
@@ -343,45 +315,26 @@ func valuedLots(ctx context.Context, lots Lots, quotes Quotes, store IndexStore,
 		return nil, nil, err
 	}
 
-	valuer, err := newLotValuer(ctx, recorded, lots, quotes, store, on)
+	valued, err := valueLots(ctx, recorded, lots, quotes, store, on)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	valued := make([]lotValued, 0, len(recorded))
-
-	var (
-		total     bonds.Amount
-		hasMarket bool
-	)
-
-	for _, l := range recorded {
-		v, err := valuer.value(l)
-		if err != nil {
-			return nil, nil, fmt.Errorf("value lot %d: %w", l.ID, err)
-		}
-
-		if v == nil {
-			valued = append(valued, newLotValued(l, nil, missingIPCA))
-
-			continue
-		}
-
-		valued = append(valued, newLotValued(l, new(newLotValues(*v)), ""))
-
-		if m := v.Market; m != nil {
-			total.Gross, total.Net = total.Gross.Add(m.Gross), total.Net.Add(m.Net)
-			total.IOF, total.IncomeTax = total.IOF.Add(m.IOF), total.IncomeTax.Add(m.IncomeTax)
-			total.CustodyFee = total.CustodyFee.Add(m.CustodyFee)
-			hasMarket = true
+	out := make([]lotValued, 0, len(valued))
+	for _, v := range valued {
+		if v.Valuation == nil {
+			out = append(out, newLotValued(v.Lot, nil, missingIPCA))
+		} else {
+			out = append(out, newLotValued(v.Lot, new(newLotValues(*v.Valuation)), ""))
 		}
 	}
 
-	if !hasMarket {
-		return valued, nil, nil
+	total, ok := bonds.MarketTotal(valued)
+	if !ok {
+		return out, nil, nil
 	}
 
-	return valued, &marketTotal{
+	return out, &marketTotal{
 		Gross:      total.Gross.String(),
 		IOF:        total.IOF.String(),
 		IncomeTax:  total.IncomeTax.String(),
@@ -390,41 +343,22 @@ func valuedLots(ctx context.Context, lots Lots, quotes Quotes, store IndexStore,
 	}, nil
 }
 
-// importTotals totals the lots of an import valued on the date on: what they cost, and the net
-// Maturity Value of those that have values and whether it depends on projections, counting the
-// lots that have no values.
+// importTotals values the lots of an import on the date on and answers their totals.
 func importTotals(ctx context.Context, imported []bonds.Lot, lots Lots, quotes Quotes, store IndexStore, on time.Time) (lotImported, error) {
-	valuer, err := newLotValuer(ctx, imported, lots, quotes, store, on)
+	valued, err := valueLots(ctx, imported, lots, quotes, store, on)
 	if err != nil {
 		return lotImported{}, err
 	}
 
-	var (
-		invested, maturityNet decimal.Decimal
-		totals                lotImported
-	)
-
-	for i, l := range imported {
-		invested = invested.Add(l.Cost())
-
-		v, err := valuer.value(l)
-		if err != nil {
-			return lotImported{}, fmt.Errorf("value lot %d of the import: %w", i, err)
-		}
-
-		if v == nil {
-			totals.WithoutValues++
-
-			continue
-		}
-
-		maturityNet = maturityNet.Add(v.Maturity.Net)
-		totals.MaturityProjected = totals.MaturityProjected || len(v.Maturity.ProjectedBy) > 0
+	t := bonds.TotalsOf(valued)
+	totals := lotImported{
+		Invested:          t.Invested.String(),
+		MaturityProjected: t.Projected,
+		WithoutValues:     t.WithoutValues,
 	}
 
-	totals.Invested = invested.String()
-	if totals.WithoutValues < len(imported) {
-		totals.MaturityNet = new(maturityNet.String())
+	if t.WithValues > 0 {
+		totals.MaturityNet = new(t.MaturityNet.String())
 	}
 
 	return totals, nil
