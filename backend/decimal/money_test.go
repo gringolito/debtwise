@@ -52,3 +52,25 @@ func TestCeilCents(t *testing.T) {
 		})
 	}
 }
+
+func TestAbsDropsTheSign(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "a negative loses its sign", input: "-814.22", want: "814.22"},
+		{name: "a positive stays", input: "814.22", want: "814.22"},
+		{name: "zero stays", input: "0.00", want: "0.00"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, parse(t, tt.input).Abs().String())
+		})
+	}
+}

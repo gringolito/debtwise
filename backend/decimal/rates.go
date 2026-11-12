@@ -27,6 +27,11 @@ func (x Decimal) RoundProjection() Decimal {
 	return x.quantize(4, apd.RoundHalfEven)
 }
 
+// RoundShare rounds a share of a whole, as a fraction, at 4 places, half up: the basis point.
+func (x Decimal) RoundShare() Decimal {
+	return x.quantize(4, apd.RoundHalfUp)
+}
+
 // TruncateBreakEvenRate truncates a rate the break-even search tries at 10 places. One step of a
 // ten-billionth moves the advantage of a million reais in a 30-year bond by under a centavo.
 func (x Decimal) TruncateBreakEvenRate() Decimal {

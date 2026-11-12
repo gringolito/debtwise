@@ -1228,6 +1228,10 @@ export type Verdict = {
      */
     advantage?: string;
     /**
+     * How large the advantage is against the amount, without its sign: its absolute value divided by the amount, as a decimal fraction rounded to 4 places, such as 0.0814 for 8.14%. Absent when the verdict is unavailable.
+     */
+    advantage_share?: string;
+    /**
      * What prepaying the amount saves by the horizon beyond the amount itself, in reais, as a decimal string. Absent when the verdict is unavailable.
      */
     avoided_cost?: string;
@@ -1235,6 +1239,10 @@ export type Verdict = {
      * The yearly bond rate, as a decimal fraction of at most 10 places, at which buying the bond with the amount on the date gives an advantage within a centavo of zero; where the hundredths the amount buys make the advantage jump over zero, the lowest rate at which it is positive. For ntn_b_principal and ntn_b it is the real rate over IPCA, priced through the VNA of the date. Absent when the verdict is unavailable or has no_break_even.
      */
     break_even_rate?: string;
+    /**
+     * The whole calendar months from the date to the bond's maturity, counting a month only once its day of the month is reached. Absent when the verdict is unavailable.
+     */
+    horizon_months?: number;
     /**
      * Investing the amount in the bond. Absent when the verdict is unavailable.
      */
@@ -1251,6 +1259,10 @@ export type Verdict = {
      * The smallest amount that buys a hundredth of the bond at the unit price, in reais, as a decimal string. Only when the verdict is unavailable for amount_too_small.
      */
     minimum_amount?: string;
+    /**
+     * Whether the advantage is so small against the amount that investing and prepaying give practically the same result. Absent when the verdict is unavailable.
+     */
+    near_tie?: boolean;
     /**
      * Why no yearly bond rate from 0% to 100% is a break-even rate. below_range: investing wins even at 0%; above_range: prepaying wins even at 100%. Absent when the verdict has a break_even_rate or is unavailable.
      */

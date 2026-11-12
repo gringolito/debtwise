@@ -93,6 +93,30 @@ func TestRoundProjectionRoundsAt4PlacesHalfToEven(t *testing.T) {
 	}
 }
 
+func TestRoundShareRoundsAt4PlacesHalfUp(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		value string
+		want  string
+	}{
+		{name: "a tie rounds up", value: "0.08145", want: "0.0815"},
+		{name: "a tie rounds up to an odd digit", value: "0.12355", want: "0.1236"},
+		{name: "below a tie rounds down", value: "0.081449999", want: "0.0814"},
+		{name: "pads to 4 places", value: "0.1", want: "0.1000"},
+		{name: "zero", value: "0", want: "0.0000"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, parse(t, tt.value).RoundShare().String())
+		})
+	}
+}
+
 // Converted to effective and back, a nominal rate keeps 30 decimal places, far more than the few a
 // contract prints.
 func TestNominalToEffectiveAndBackReturnsTheRate(t *testing.T) {
