@@ -1,5 +1,4 @@
 import type { BondQuote, RegisteredMortgage } from "@/lib/api";
-import { formatRate } from "@/lib/format";
 
 export type BondType = BondQuote["type"];
 
@@ -21,9 +20,18 @@ export function bondLabel({ type, maturity }: Pick<BondQuote, "type" | "maturity
   return `${bondKinds[type].name} ${maturity.slice(0, 4)}`;
 }
 
+// Tesouro quotes a bond's rate to two places, whatever more the API computes ("0.1398663" is
+// "13,99%"). Intl formats the decimal string exactly.
+const rateFormat = new Intl.NumberFormat("pt-BR", {
+  style: "percent",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 /** bondRate writes a yearly rate the way Tesouro does: IPCA+ ones as a real rate over IPCA. */
 export function bondRate(type: BondType, rate: string): string {
-  return bondKinds[type].ipcaLinked ? `IPCA + ${formatRate(rate)}` : formatRate(rate);
+  const percent = rateFormat.format(rate as `${number}`);
+  return bondKinds[type].ipcaLinked ? `IPCA + ${percent}` : percent;
 }
 
 /**

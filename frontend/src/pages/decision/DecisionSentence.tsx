@@ -1,5 +1,6 @@
 import { ChevronDownIcon } from "lucide-react";
 import { type FormEvent, useId, useState } from "react";
+import { DateInput } from "@/components/patterns/DateInput";
 import { useTypedValue } from "@/components/patterns/useTypedValue";
 import { Button } from "@/components/ui/button";
 import type { DecisionFormValues } from "@/lib/decisions";
@@ -19,27 +20,44 @@ const editable =
 interface DateValueProps {
   value: string;
   onChange: (date: string) => void;
+  /** Called with whether the date typed is a complete date that does not exist. */
+  onImpossibleChange: (impossible: boolean) => void;
   invalid: boolean;
   describedBy: string | undefined;
 }
 
 /** DateValue reads "hoje" while no date is chosen, and opens a date input when the owner taps it. */
-function DateValue({ value, onChange, invalid, describedBy }: DateValueProps) {
+function DateValue({ value, onChange, onImpossibleChange, invalid, describedBy }: DateValueProps) {
   const [editing, setEditing] = useState(false);
   const field = { "aria-invalid": invalid || undefined, "aria-describedby": describedBy };
   if (editing) {
     return (
-      <input
-        type="date"
-        aria-label="Data"
-        // biome-ignore lint/a11y/noAutofocus: the owner just asked to type the date
-        autoFocus
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onBlur={() => setEditing(false)}
-        className={cn(editable, "bg-transparent")}
-        {...field}
-      />
+      // Focus moving inside the field, to its calendar button, doesn't end the editing. Safari
+      // doesn't focus a button it is clicked, so a press on one is kept from taking focus away.
+      <span
+        className={cn(editable, "inline-flex")}
+        onBlur={(event) => {
+          if (event.currentTarget.contains(event.relatedTarget)) return;
+          setEditing(false);
+          onImpossibleChange(false);
+        }}
+        onMouseDown={(event) => {
+          if (event.target instanceof Element && event.target.closest("button")) {
+            event.preventDefault();
+          }
+        }}
+      >
+        <DateInput
+          aria-label="Data"
+          // biome-ignore lint/a11y/noAutofocus: the owner just asked to type the date
+          autoFocus
+          value={value}
+          onChange={onChange}
+          onImpossibleChange={onImpossibleChange}
+          className="text-left"
+          {...field}
+        />
+      </span>
     );
   }
   const shown = value === "" ? "hoje" : formatDate(value);
@@ -80,7 +98,11 @@ export function DecisionSentence({
   errors,
 }: DecisionSentenceProps) {
   const id = useId();
-  const messageId = (field: string) => (errors.has(field) ? `${id}-${field}` : undefined);
+  const [impossibleDate, setImpossibleDate] = useState(false);
+  // A date typed that does not exist reads as none to the API, which has nothing to reject.
+  const messages = new Map(errors);
+  if (impossibleDate) messages.set("date", "Essa data não existe.");
+  const messageId = (field: string) => (messages.has(field) ? `${id}-${field}` : undefined);
   const amount = useTypedValue(
     values.amount,
     (typed) => onChange({ ...values, amount: typed }),
@@ -108,7 +130,7 @@ export function DecisionSentence({
               aria-label="Valor"
               inputMode="decimal"
               placeholder="0,00"
-              aria-invalid={errors.has("amount") || undefined}
+              aria-invalid={messages.has("amount") || undefined}
               aria-describedby={messageId("amount")}
               className="field-sizing-content min-w-12 bg-transparent placeholder:text-tertiary-foreground"
             />
@@ -116,7 +138,8 @@ export function DecisionSentence({
           <DateValue
             value={values.date}
             onChange={(date) => onChange({ ...values, date })}
-            invalid={errors.has("date")}
+            onImpossibleChange={setImpossibleDate}
+            invalid={messages.has("date")}
             describedBy={messageId("date")}
           />{" "}
           para{" "}
@@ -127,7 +150,7 @@ export function DecisionSentence({
               onChange={(event) =>
                 onChange({ ...values, effect: event.target.value as PrepaymentEffect })
               }
-              aria-invalid={errors.has("effect") || undefined}
+              aria-invalid={messages.has("effect") || undefined}
               aria-describedby={messageId("effect")}
               className="field-sizing-content appearance-none bg-transparent pr-5"
             >
@@ -148,7 +171,7 @@ export function DecisionSentence({
           Comparar
         </Button>
       </div>
-      {[...errors].map(([field, message]) => (
+      {[...messages].map(([field, message]) => (
         <p key={field} id={`${id}-${field}`} className="text-footnote text-destructive">
           {message}
         </p>

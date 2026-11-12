@@ -1,6 +1,14 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CashFlow, Decision, Scenario, Verdict, VerdictMarketData } from "@/lib/api";
+import type {
+  CashFlow,
+  CorrectionIndex,
+  Decision,
+  Scenario,
+  Verdict,
+  VerdictMarketData,
+} from "@/lib/api";
+import { today } from "@/lib/dashboard";
 import { rowTexts, text } from "@/test/dom";
 import { renderAt } from "@/test/renderAt";
 import { problem, type RecordedRequest, stubRoutes } from "@/test/stubServer";
@@ -149,6 +157,9 @@ const ltnVerdict: Verdict = {
   unit_price: "771.26",
   quantity: "12.96",
   advantage: "1234.56",
+  advantage_share: "0.1234",
+  near_tie: false,
+  horizon_months: 26,
   avoided_cost: "456.78",
   break_even_rate: "0.1102",
   invest,
@@ -164,6 +175,9 @@ const ntnbPrincipalVerdict: Verdict = {
   unit_price: "3278.12",
   quantity: "3.05",
   advantage: "-250.30",
+  advantage_share: "0.0250",
+  near_tie: false,
+  horizon_months: 70,
   avoided_cost: "1800.00",
   break_even_rate: "0.0712",
   invest,
@@ -175,7 +189,7 @@ const ntnbPrincipalVerdict: Verdict = {
 function decisionOf(verdicts: Verdict[], input: Partial<Decision> = {}): Decision {
   return {
     amount: "10000.00",
-    date: "2026-10-27",
+    date: today(),
     effect: "shorten_term",
     verdicts,
     ...input,
@@ -192,8 +206,8 @@ function fill(label: string, value: string) {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
 
-async function compare(verdicts: Verdict[], amount = "10000") {
-  const requests = stubDecisions(() => Response.json(decisionOf(verdicts)));
+async function compare(verdicts: Verdict[], amount = "10000", input: Partial<Decision> = {}) {
+  const requests = stubDecisions(() => Response.json(decisionOf(verdicts, input)));
   renderAt("/comparar");
   await sentence();
   fill("Valor", amount);
@@ -201,8 +215,16 @@ async function compare(verdicts: Verdict[], amount = "10000") {
   return requests;
 }
 
-const verdictCard = (bond: string) => screen.findByRole("region", { name: bond });
+/** The verdict panel, which its headline names: who ends with more, or that it is a tie. */
+const verdictPanel = () =>
+  screen.findByRole("region", { name: / rende mais| dá (praticamente )?no mesmo/ });
 const otherBonds = () => screen.getByRole("region", { name: "Outros títulos" });
+
+/** What one option of the verdict panel says: its title, what it is, what it ends with and why. */
+const outcome = (panel: HTMLElement, title: string) =>
+  Array.from(
+    within(panel).getByRole("region", { name: title }).querySelectorAll("h3, p, dt, dd"),
+  ).map(text);
 
 /** The bodies of the comparisons asked, leaving out what the stale data note reads. */
 const asked = (requests: RecordedRequest[]) =>
@@ -224,7 +246,7 @@ describe("arriving with an amount in the address", () => {
     const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
     renderAt("/comparar?valor=10000&comparar=true");
 
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
     expect(screen.getByLabelText("Valor")).toHaveValue("10.000");
     expect(
       requests.filter((r) => r.method === "POST").map((r) => [new URL(r.url).pathname, r.body]),
@@ -257,7 +279,7 @@ describe("the question as a sentence", () => {
   it("reads today and a shorter term until the owner changes them, and leaves the date to the server", async () => {
     const requests = await compare([ltnVerdict], "10.000,00");
 
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
     expect(screen.getByRole("button", { name: "Data: hoje" })).toHaveTextContent("hoje");
     expect(screen.getByLabelText("Efeito")).toHaveDisplayValue("reduzir o prazo");
     expect(asked(requests)).toEqual([{ amount: "10000.00", effect: "shorten_term" }]);
@@ -272,7 +294,7 @@ describe("the question as a sentence", () => {
     expect(screen.getByLabelText("Valor")).toHaveValue("1.250.000,5");
   });
 
-  it("sends the date and the effect the owner chose", async () => {
+  it("sends the date the owner typed as dd/mm/aaaa and the effect they chose", async () => {
     const requests = stubDecisions(() =>
       Response.json(decisionOf([ltnVerdict], { effect: "lower_installment", date: "2026-12-01" })),
     );
@@ -281,7 +303,7 @@ describe("the question as a sentence", () => {
 
     fill("Valor", "2.500,50");
     fireEvent.click(screen.getByRole("button", { name: "Data: hoje" }));
-    fill("Data", "2026-12-01");
+    fill("Data", "01/12/2026");
     fireEvent.blur(screen.getByLabelText("Data"));
     fill("Efeito", "lower_installment");
 
@@ -291,7 +313,7 @@ describe("the question as a sentence", () => {
     expect(screen.getByLabelText("Efeito")).toHaveDisplayValue("reduzir a prestação");
     fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
 
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
     expect(asked(requests)).toEqual([
       { amount: "2500.50", date: "2026-12-01", effect: "lower_installment" },
     ]);
@@ -303,7 +325,7 @@ describe("the question as a sentence", () => {
     await sentence();
 
     fireEvent.click(screen.getByRole("button", { name: "Data: hoje" }));
-    fill("Data", "2026-12-01");
+    fill("Data", "01/12/2026");
     fireEvent.blur(screen.getByLabelText("Data"));
     fireEvent.click(screen.getByRole("button", { name: "Data: 01/12/2026" }));
     fill("Data", "");
@@ -311,55 +333,124 @@ describe("the question as a sentence", () => {
 
     expect(screen.getByRole("button", { name: "Data: hoje" })).toBeInTheDocument();
   });
+
+  it("says a date that does not exist does not, while the owner is typing it", async () => {
+    stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
+    renderAt("/comparar");
+    await sentence();
+
+    fireEvent.click(screen.getByRole("button", { name: "Data: hoje" }));
+    fill("Data", "31/02/2026");
+
+    expect(screen.getByText("Essa data não existe.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Data")).toBeInvalid();
+    expect(screen.getByLabelText("Data")).toHaveAccessibleDescription("Essa data não existe.");
+
+    fill("Data", "28/02/2026");
+    expect(screen.queryByText("Essa data não existe.")).toBeNull();
+  });
 });
 
-describe("the verdict card", () => {
-  it("states the bond of the highest advantage, in green when investing wins", async () => {
+describe("the verdict panel", () => {
+  it("says investing ends with more and where the money is in each option", async () => {
     await compare([ntnbPrincipalVerdict, ltnVerdict]);
 
-    const card = await verdictCard("Tesouro Prefixado 2029");
-    expect(within(card).getByText("Investir rende mais")).toBeInTheDocument();
-    expect(within(card).getByText("em relação a amortizar, até 01/01/2029.")).toBeInTheDocument();
+    const panel = await verdictPanel();
     expect(
-      within(card).getByText("Empata com amortizar se a taxa cair para 11,02%."),
+      within(panel).getByRole("heading", { name: "Investir em Tesouro Prefixado 2029 rende mais" }),
     ).toBeInTheDocument();
-    expect(within(card).getByText("+ R$ 1.234,56")).toHaveClass("text-positive");
+    expect(
+      within(panel).getByText("Onde está o dinheiro em 01/01/2029, em cada opção."),
+    ).toBeInTheDocument();
+    expect(outcome(panel, "Se amortizar")).toEqual([
+      "Se amortizar",
+      "R$ 10.000,00 hoje",
+      "No fim, você deve",
+      "R$ 139.357,56",
+      "Saldo devedor",
+      "R$ 150.000,00",
+      "Dinheiro do título, líquido",
+      "Nenhum",
+    ]);
+    expect(outcome(panel, "Se investir")).toEqual([
+      "Se investir",
+      "Tesouro Prefixado 2029",
+      "No fim, você deve",
+      "R$ 138.123,00",
+      "Saldo devedor",
+      "R$ 151.000,00",
+      "Dinheiro do título, líquido",
+      "R$ 12.877,00",
+    ]);
+    expect(within(panel).getByText("Investir termina com R$ 1.234,56 a mais")).toBeInTheDocument();
+    expect(
+      within(panel).getByText("12,3% dos R$ 10.000,00 em 2 anos e 2 meses."),
+    ).toBeInTheDocument();
   });
 
-  it("is red when prepaying wins over every bond", async () => {
+  it("says prepaying ends with more when it wins over every bond", async () => {
     await compare([
       ntnbPrincipalVerdict,
       { ...ntnbPrincipalVerdict, maturity: "2035-05-15", advantage: "-900.00" },
     ]);
 
-    const card = await verdictCard("Tesouro IPCA+ 2032");
-    expect(within(card).getByText("Amortizar rende mais")).toBeInTheDocument();
-    expect(within(card).getByText("− R$ 250,30")).toHaveClass("text-destructive");
+    const panel = await verdictPanel();
     expect(
-      within(card).getByText("Empata com amortizar se a taxa subir para IPCA + 7,12%."),
+      within(panel).getByRole("heading", { name: "Amortizar rende mais que Tesouro IPCA+ 2032" }),
+    ).toBeInTheDocument();
+    expect(within(panel).getByText("Amortizar termina com R$ 250,30 a mais")).toBeInTheDocument();
+    expect(
+      within(panel).getByText("2,5% dos R$ 10.000,00 em 5 anos e 10 meses."),
     ).toBeInTheDocument();
   });
 
-  it("favours neither option when the advantage is zero", async () => {
-    await compare([{ ...ltnVerdict, advantage: "-0.00", break_even_rate: "0.1276000000" }]);
+  it("calls a near tie practically the same, and says so in practice", async () => {
+    await compare([
+      { ...ltnVerdict, advantage: "39.64", advantage_share: "0.0040", near_tie: true },
+    ]);
 
-    const card = await verdictCard("Tesouro Prefixado 2029");
-    expect(within(card).getByText("Investir ou amortizar dá no mesmo")).toBeInTheDocument();
-    expect(within(card).getByText("R$ 0,00")).not.toHaveClass("text-positive", "text-destructive");
+    const panel = await verdictPanel();
     expect(
-      within(card).getByText("A taxa de hoje, 12,76%, empata com amortizar."),
+      within(panel).getByRole("heading", {
+        name: "Investir em Tesouro Prefixado 2029 ou amortizar dá praticamente no mesmo",
+      }),
+    ).toBeInTheDocument();
+    expect(within(panel).getByText("Investir termina com R$ 39,64 a mais")).toBeInTheDocument();
+    expect(
+      within(panel).getByText("0,4% dos R$ 10.000,00 em 2 anos e 2 meses. Na prática, um empate."),
     ).toBeInTheDocument();
   });
 
-  it.each([
-    ["below_range", "Investir rende mais mesmo a 0,00% ao ano."],
-    ["above_range", "Amortizar rende mais mesmo a 100,00% ao ano."],
-  ] as const)("says why no rate breaks even when it is %s", async (reason, note) => {
-    await compare([{ ...ltnVerdict, break_even_rate: undefined, no_break_even: reason }]);
+  it("says both options end equal when the advantage is zero", async () => {
+    await compare([
+      { ...ltnVerdict, advantage: "-0.00", advantage_share: "0.0000", break_even_rate: "0.1276" },
+    ]);
 
-    const card = await verdictCard("Tesouro Prefixado 2029");
-    expect(within(card).getByText(note)).toBeInTheDocument();
-    expect(within(card).queryByText(/^Empata/)).toBeNull();
+    const panel = await verdictPanel();
+    expect(
+      within(panel).getByRole("heading", {
+        name: "Investir em Tesouro Prefixado 2029 ou amortizar dá no mesmo",
+      }),
+    ).toBeInTheDocument();
+    expect(within(panel).getByText("As duas opções terminam iguais.")).toBeInTheDocument();
+    expect(within(panel).queryByText(/ dos R\$ /)).toBeNull();
+  });
+
+  it("reads what an option leaves the owner with, not a negative amount", async () => {
+    const owning = { ...invest, net_worth: "5000.00" };
+    const owningNothing = { ...prepay, net_worth: "-0.00" };
+    await compare([{ ...ltnVerdict, invest: owning, prepay: owningNothing }]);
+
+    const panel = await verdictPanel();
+    expect(outcome(panel, "Se investir").slice(2, 4)).toEqual(["No fim, você tem", "R$ 5.000,00"]);
+    expect(outcome(panel, "Se amortizar").slice(2, 4)).toEqual(["No fim, você tem", "R$ 0,00"]);
+  });
+
+  it("says when the amount is for a later date than today", async () => {
+    await compare([ltnVerdict], "10000", { date: "2026-12-01" });
+
+    const panel = await verdictPanel();
+    expect(outcome(panel, "Se amortizar")[1]).toBe("R$ 10.000,00 em 01/12/2026");
   });
 
   it("notes the market data the verdict reads that is not fresh", async () => {
@@ -369,7 +460,7 @@ describe("the verdict card", () => {
     };
     await compare([{ ...ltnVerdict, market_data: stale }]);
 
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
     expect(screen.getByText("Preços dos títulos de 23/10.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Atualizar" })).toBeInTheDocument();
   });
@@ -385,7 +476,7 @@ describe("the verdict card", () => {
       },
     ]);
 
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
     expect(
       screen.getByText(
         "Na projeção atual: IPCA: Mediana do Focus (BCB); Selic diária: Média dos últimos 12 meses. O DebtWise compara; a decisão é sua.",
@@ -416,13 +507,13 @@ describe("the other bonds", () => {
     market_data: freshMarketData,
   };
 
-  it("ranks the others by their signed advantage, then those with no comparison, why and what to try", async () => {
+  it("ranks the others by their advantage in words, then those with no comparison, why and what to try", async () => {
     await compare([missingIpca, ntnbPrincipalVerdict, tooSmall, ltn2031, ltnVerdict]);
 
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
     expect(rows(otherBonds())).toEqual([
-      ["Tesouro Prefixado 2031 · 12,76%", "+ R$ 80,00"],
-      ["Tesouro IPCA+ 2032 · IPCA + 6,72%", "− R$ 250,30"],
+      ["Tesouro Prefixado 2031 · 12,76%", "R$ 80,00 a mais"],
+      ["Tesouro IPCA+ 2032 · IPCA + 6,72%", "R$ 250,30 a menos"],
       [
         "Tesouro IPCA+ 2035 · IPCA + 6,88%",
         "Depende de um IPCA que ainda não foi divulgado nem pode ser projetado.",
@@ -436,7 +527,6 @@ describe("the other bonds", () => {
         "Valor pequeno demais",
       ],
     ]);
-    expect(within(otherBonds()).getByText("− R$ 250,30")).toHaveClass("text-destructive");
     expect(
       within(otherBonds()).getByRole("link", { name: "Ver projeções do IPCA" }),
     ).toHaveAttribute("href", "/mercado/indices/ipca");
@@ -444,7 +534,7 @@ describe("the other bonds", () => {
 
   it("compares the least amount that buys a bond the owner's amount is too small for", async () => {
     const requests = await compare([tooSmall, ltnVerdict]);
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
 
     fireEvent.click(within(otherBonds()).getByRole("button", { name: /^Usar R\$\s8,81$/ }));
 
@@ -455,61 +545,28 @@ describe("the other bonds", () => {
     ]);
   });
 
-  it("puts the bond the owner picks on the card", async () => {
+  it("puts the bond the owner picks on the verdict panel", async () => {
     await compare([ntnbPrincipalVerdict, ltnVerdict]);
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
 
     fireEvent.click(within(otherBonds()).getByRole("button", { name: /Tesouro IPCA\+ 2032/ }));
 
-    const card = await verdictCard("Tesouro IPCA+ 2032");
-    expect(within(card).getByText("− R$ 250,30")).toBeInTheDocument();
-    expect(rows(otherBonds())).toEqual([["Tesouro Prefixado 2029 · 12,76%", "+ R$ 1.234,56"]]);
-  });
-
-  it("charts the net worth of the bond on the card", async () => {
-    // jsdom lays nothing out, and a chart with no size draws no lines.
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
-      DOMRect.fromRect({ width: 800, height: 256 }),
-    );
-    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(800);
-    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(256);
-    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(800);
-    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(256);
-    const lower = (scenario: Scenario): Scenario => ({
-      ...scenario,
-      cash_flows: scenario.cash_flows.map((flow) => ({ ...flow, net_worth: "-200000.00" })),
+    const panel = screen.getByRole("region", {
+      name: "Amortizar rende mais que Tesouro IPCA+ 2032",
     });
-    await compare([
-      ltnVerdict,
-      { ...ntnbPrincipalVerdict, invest: lower(invest), prepay: lower(prepay) },
-    ]);
-    await verdictCard("Tesouro Prefixado 2029");
-    const chart = screen.getByRole("img", { name: /^Patrimônio ao amortizar e ao investir/ });
-    const curves = () =>
-      Array.from(chart.querySelectorAll("path.recharts-line-curve")).map((path) => [
-        path.getAttribute("stroke"),
-        path.getAttribute("d"),
-      ]);
-    const shown = curves();
-    expect(shown.map(([stroke]) => stroke)).toEqual(["var(--color-prepay)", "var(--color-invest)"]);
-    expect(shown[0][1]).not.toEqual(shown[1][1]);
-
-    fireEvent.click(within(otherBonds()).getByRole("button", { name: /Tesouro IPCA\+ 2032/ }));
-
-    await verdictCard("Tesouro IPCA+ 2032");
-    const picked = curves();
-    expect(picked[0][1]).toEqual(picked[1][1]);
+    expect(within(panel).getByText("Amortizar termina com R$ 250,30 a mais")).toBeInTheDocument();
+    expect(rows(otherBonds())).toEqual([["Tesouro Prefixado 2029 · 12,76%", "R$ 1.234,56 a mais"]]);
   });
 
-  it("leaves the list out when the card holds the only bond", async () => {
+  it("leaves the list out when the panel holds the only bond", async () => {
     await compare([ltnVerdict]);
 
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
     expect(screen.queryByRole("region", { name: "Outros títulos" })).toBeNull();
   });
 });
 
-const cashFlowHeader = [
+const cashFlowInvestHeader = [
   "Data",
   "Nº",
   "Índice",
@@ -521,22 +578,37 @@ const cashFlowHeader = [
   "Taxa adm.",
   "Prestação",
   "Investido",
-  "Amortização extraordinária",
-  "Caixa retido",
   "Pagamento do título",
   "Bruto",
-  "IOF",
   "IR",
   "Taxa de custódia",
   "Líquido",
-  "Projeção",
   "Saldo devedor",
 ];
 
-describe("the details of the verdict on the card", () => {
+const cashFlowPrepayHeader = [
+  "Data",
+  "Nº",
+  "Índice",
+  "Correção",
+  "Juros",
+  "Amortização",
+  "MIP",
+  "DFI",
+  "Taxa adm.",
+  "Prestação",
+  "Amortização extraordinária",
+  "Saldo devedor",
+];
+
+/** What a scenario's section says under its title: each term and what it reads. */
+const standings = (section: HTMLElement) =>
+  Array.from(section.querySelectorAll("dt, dd")).map(text);
+
+describe("the details of the verdict on the panel", () => {
   it("lists the purchase and what prepaying avoids", async () => {
     await compare([ltnVerdict]);
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
 
     const details = screen.getByRole("region", { name: "Detalhes" });
     expect(rows(details)).toEqual([
@@ -547,28 +619,87 @@ describe("the details of the verdict on the card", () => {
     ]);
   });
 
-  it("opens the summary and every cash flow of investing and of prepaying", async () => {
+  it("writes every rate with at most two places, the way Tesouro quotes it", async () => {
+    await compare([
+      { ...ltnVerdict, rate: "0.150678", break_even_rate: "0.139866" },
+      { ...ntnbPrincipalVerdict, rate: "0.0672349" },
+    ]);
+    await verdictPanel();
+
+    const details = screen.getByRole("region", { name: "Detalhes" });
+    expect(rows(details)[0]).toEqual(["Taxa de hoje", "15,07%"]);
+    expect(
+      within(details).getByText("Empata com amortizar se a taxa cair para 13,99%."),
+    ).toBeInTheDocument();
+    expect(rows(otherBonds())).toEqual([
+      ["Tesouro IPCA+ 2032 · IPCA + 6,72%", "R$ 250,30 a menos"],
+    ]);
+  });
+
+  it("says at which rate prepaying would tie with investing when it wins", async () => {
+    await compare([ntnbPrincipalVerdict]);
+    await verdictPanel();
+
+    expect(
+      within(screen.getByRole("region", { name: "Detalhes" })).getByText(
+        "Empata com amortizar se a taxa subir para IPCA + 7,12%.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says the rate of today ties when the advantage is zero", async () => {
+    await compare([
+      {
+        ...ltnVerdict,
+        advantage: "-0.00",
+        advantage_share: "0.0000",
+        break_even_rate: "0.1276000000",
+      },
+    ]);
+    await verdictPanel();
+
+    expect(
+      within(screen.getByRole("region", { name: "Detalhes" })).getByText(
+        "A taxa de hoje, 12,76%, empata com amortizar.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ["below_range", "Investir rende mais mesmo a 0,00% ao ano."],
+    ["above_range", "Amortizar rende mais mesmo a 100,00% ao ano."],
+  ] as const)("says why no rate breaks even when it is %s", async (reason, note) => {
+    await compare([{ ...ltnVerdict, break_even_rate: undefined, no_break_even: reason }]);
+    await verdictPanel();
+
+    const details = screen.getByRole("region", { name: "Detalhes" });
+    expect(within(details).getByText(note)).toBeInTheDocument();
+    expect(within(details).queryByText(/^Empata/)).toBeNull();
+  });
+
+  it("opens, for investing and for prepaying, where the option ends and every cash flow with only the columns that have something", async () => {
     await compare([ltnVerdict]);
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
     expect(screen.queryByRole("table")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Ver cenários" }));
 
     const investing = screen.getByRole("region", { name: "Investir" });
-    expect(rowTexts(within(investing).getByRole("table", { name: "Resumo de Investir" }))).toEqual([
-      ["Patrimônio líquido no horizonte", "-R$ 138.123,00"],
-      ["Caixa retido no horizonte", "R$ 0,00"],
-      ["Saldo devedor no horizonte", "R$ 151.000,00"],
+    expect(standings(investing)).toEqual([
+      "No fim",
+      "Você deve R$ 138.123,00",
+      "Saldo devedor",
+      "R$ 151.000,00",
     ]);
     expect(
       rowTexts(within(investing).getByRole("table", { name: "Fluxo de caixa de Investir" })),
     ).toEqual([
-      cashFlowHeader,
-      ["27/10/2026", ...dash(9), "R$ 10.000,00", "R$ 0,00", "R$ 0,00", ...dash(7), "R$ 190.000,00"],
+      cashFlowInvestHeader,
+      ["27/10/2026", ...dash(9), "R$ 10.000,00", ...dash(5), "R$ 190.000,00"],
       [
         "05/11/2026",
         "2",
-        "IPCA 0,43% Projetado out/2026 IPCA: Mediana do Focus (BCB)",
+        "IPCA 0,43%",
         "R$ 310,25",
         "R$ 1.500,10",
         "R$ 800,40",
@@ -577,24 +708,18 @@ describe("the details of the verdict on the card", () => {
         "R$ 25,00",
         "R$ 2.710,75",
         "R$ 0,00",
-        "R$ 0,00",
-        "-R$ 120,50",
-        ...dash(7),
+        ...dash(5),
         "R$ 189.199,60",
       ],
       [
         "01/01/2029",
         ...dash(9),
         "R$ 0,00",
-        "R$ 0,00",
-        "R$ 0,00",
         "Resgate",
         "R$ 13.500,00",
-        "R$ 0,00",
         "R$ 525,00",
         "R$ 98,00",
         "R$ 12.877,00",
-        "—",
         "R$ 151.000,00",
       ],
     ]);
@@ -613,23 +738,22 @@ describe("the details of the verdict on the card", () => {
       ],
     ]);
     const prepaying = screen.getByRole("region", { name: "Amortizar" });
-    expect(rowTexts(within(prepaying).getByRole("table", { name: "Resumo de Amortizar" }))).toEqual(
-      [
-        ["Patrimônio líquido no horizonte", "-R$ 139.357,56"],
-        ["Caixa retido no horizonte", "R$ 10.642,44"],
-        ["Saldo devedor no horizonte", "R$ 150.000,00"],
-      ],
-    );
+    expect(standings(prepaying)).toEqual([
+      "No fim",
+      "Você deve R$ 139.357,56",
+      "Saldo devedor",
+      "R$ 150.000,00",
+    ]);
     expect(within(prepaying).queryByRole("table", { name: /^Valor no vencimento/ })).toBeNull();
     expect(
       rowTexts(within(prepaying).getByRole("table", { name: "Fluxo de caixa de Amortizar" })),
     ).toEqual([
-      cashFlowHeader,
-      ["27/10/2026", ...dash(9), "R$ 0,00", "R$ 10.000,00", "R$ 0,00", ...dash(7), "R$ 180.000,00"],
+      cashFlowPrepayHeader,
+      ["27/10/2026", ...dash(9), "R$ 10.000,00", "R$ 180.000,00"],
       [
         "05/11/2026",
         "2",
-        "IPCA 0,43% out/2026",
+        "IPCA 0,43%",
         "R$ 293,98",
         "R$ 1.421,14",
         "R$ 800,40",
@@ -638,16 +762,76 @@ describe("the details of the verdict on the card", () => {
         "R$ 25,00",
         "R$ 2.613,12",
         "R$ 0,00",
-        "R$ 0,00",
-        "R$ 0,00",
-        ...dash(7),
         "R$ 179.493,30",
       ],
-      ["01/01/2029", ...dash(9), "R$ 0,00", "R$ 0,00", "R$ 10.642,44", ...dash(7), "R$ 150.000,00"],
+      ["01/01/2029", ...dash(9), "R$ 0,00", "R$ 150.000,00"],
     ]);
+    expect(screen.getByRole("region", { name: "Detalhes" }).textContent).not.toMatch(/[-−]\s?R\$/);
 
     fireEvent.click(screen.getByRole("button", { name: "Ocultar cenários" }));
     expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("reads what a scenario leaves in words when the owner has it", async () => {
+    await compare([{ ...ltnVerdict, invest: { ...invest, net_worth: "5000.00" } }]);
+    await verdictPanel();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver cenários" }));
+
+    expect(standings(screen.getByRole("region", { name: "Investir" }))[1]).toBe(
+      "Você tem R$ 5.000,00",
+    );
+  });
+
+  describe("a projected index", () => {
+    const projectedTr: CorrectionIndex = {
+      index: "tr",
+      status: "projected",
+      value: "0.1617",
+      period_start: "2026-11-15",
+      period_end: "2026-12-15",
+      methods: [{ index: "tr", method: "trailing_12" }],
+    };
+    const withProjectedTr: Scenario = {
+      ...invest,
+      cash_flows: investFlows.map((flow) =>
+        flow.installment
+          ? { ...flow, installment: { ...flow.installment, index_values: [projectedTr] } }
+          : flow,
+      ),
+    };
+
+    it("says in two plain sentences how it is projected and that projected values are grey", async () => {
+      await compare([{ ...ltnVerdict, invest: withProjectedTr }]);
+      await verdictPanel();
+
+      fireEvent.click(screen.getByRole("button", { name: "Ver cenários" }));
+
+      const investing = screen.getByRole("region", { name: "Investir" });
+      expect(
+        within(investing).getByText(
+          "Taxa TR projetada pela média dos últimos 12 meses a partir de 15/11/2026.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(investing).getByText("Os valores projetados aparecem em cinza."),
+      ).toBeInTheDocument();
+      const prepaying = screen.getByRole("region", { name: "Amortizar" });
+      expect(within(prepaying).queryByText("Os valores projetados aparecem em cinza.")).toBeNull();
+    });
+
+    it("opens, when tapped, the period it was projected for", async () => {
+      await compare([{ ...ltnVerdict, invest: withProjectedTr }]);
+      await verdictPanel();
+      fireEvent.click(screen.getByRole("button", { name: "Ver cenários" }));
+      const reading =
+        "Taxa TR projetada pela média dos últimos 12 meses no período de 15/11/2026 a 15/12/2026.";
+      expect(screen.queryByText(reading)).toBeNull();
+
+      fireEvent.click(screen.getByRole("button", { name: "TR 0,1617%" }));
+
+      expect(await screen.findByText(reading)).toBeInTheDocument();
+    });
   });
 
   it("shows each coupon of the bond with its taxes, prepaid on its date, and marks a projected one", async () => {
@@ -689,35 +873,27 @@ describe("the details of the verdict on the card", () => {
         },
       },
     ]);
-    await verdictCard("Tesouro IPCA+ com Juros Semestrais 2037");
+    await verdictPanel();
     fireEvent.click(screen.getByRole("button", { name: "Ver cenários" }));
 
     const investing = screen.getByRole("region", { name: "Investir" });
-    const couponCells = ["Cupom", "R$ 296,41", "R$ 0,00", "R$ 61,13", "R$ 5,85", "R$ 229,43"];
+    const couponCells = ["Cupom", "R$ 296,41", "R$ 61,13", "R$ 5,85", "R$ 229,43"];
     expect(
       rowTexts(within(investing).getByRole("table", { name: "Fluxo de caixa de Investir" })),
     ).toEqual([
-      cashFlowHeader,
       [
-        "15/11/2026",
-        ...dash(9),
-        "R$ 0,00",
-        "R$ 229,43",
-        "R$ 0,00",
-        ...couponCells,
-        "—",
-        "R$ 188.970,17",
+        "Data",
+        "Amortização extraordinária",
+        "Pagamento do título",
+        "Bruto",
+        "IR",
+        "Taxa de custódia",
+        "Líquido",
+        "Projeção",
+        "Saldo devedor",
       ],
-      [
-        "15/05/2027",
-        ...dash(9),
-        "R$ 0,00",
-        "R$ 0,00",
-        "R$ 229,43",
-        ...couponCells,
-        "ProjetadoIPCA: Mediana do Focus (BCB)",
-        "R$ 0,00",
-      ],
+      ["15/11/2026", "R$ 229,43", ...couponCells, "—", "R$ 188.970,17"],
+      ["15/05/2027", "R$ 0,00", ...couponCells, "ProjetadoIPCA: Mediana do Focus (BCB)", "R$ 0,00"],
     ]);
   });
 });
@@ -757,7 +933,7 @@ describe("a decision that compares no bond", () => {
     ).toBeInTheDocument();
     fireEvent.click(within(panel).getByRole("button", { name: /^Usar R\$\s8,81$/ }));
 
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
     expect(screen.getByLabelText("Valor")).toHaveValue("8,81");
     expect(asked(requests)).toEqual([
       { amount: "5", effect: "shorten_term" },
@@ -861,7 +1037,7 @@ describe("a decision the server rejects", () => {
     expect(within(alert).getByText("Não foi possível comparar")).toBeInTheDocument();
     fireEvent.click(within(alert).getByRole("button", { name: "Tentar novamente" }));
 
-    await verdictCard("Tesouro Prefixado 2029");
+    await verdictPanel();
     expect(asked(requests)).toEqual([
       { amount: "10000", effect: "shorten_term" },
       { amount: "10000", effect: "shorten_term" },

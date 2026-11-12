@@ -8,7 +8,7 @@ import {
 } from "@/lib/api";
 import { bondKinds, bondRate } from "@/lib/bondKinds";
 import { compareDecimals } from "@/lib/decimals";
-import { formatMoney, inputToMoney } from "@/lib/format";
+import { inputToMoney } from "@/lib/format";
 import type { PrepaymentEffect } from "@/lib/mortgageEvents";
 
 /** verdictTitle names a verdict's bond the way Tesouro Direto does: its kind and maturity year. */
@@ -81,12 +81,23 @@ export function verdictKey({ type, maturity }: Verdict): string {
   return `${type} ${maturity}`;
 }
 
-/** An available verdict: one with an Advantage and both scenarios. */
-export type ComparedVerdict = Verdict & Required<Pick<Verdict, "advantage" | "invest" | "prepay">>;
+/** An available verdict: one with an Advantage, its yardstick and both scenarios. */
+export type ComparedVerdict = Verdict &
+  Required<
+    Pick<
+      Verdict,
+      "advantage" | "advantage_share" | "near_tie" | "horizon_months" | "invest" | "prepay"
+    >
+  >;
 
 function isCompared(verdict: Verdict): verdict is ComparedVerdict {
   return (
-    verdict.advantage !== undefined && verdict.invest !== undefined && verdict.prepay !== undefined
+    verdict.advantage !== undefined &&
+    verdict.advantage_share !== undefined &&
+    verdict.near_tie !== undefined &&
+    verdict.horizon_months !== undefined &&
+    verdict.invest !== undefined &&
+    verdict.prepay !== undefined
   );
 }
 
@@ -110,13 +121,6 @@ export type Favoured = "invest" | "prepay" | "even";
 export function favoured(advantage: string): Favoured {
   if (isZero(advantage)) return "even";
   return advantage.startsWith("-") ? "prepay" : "invest";
-}
-
-const signs: Record<Favoured, string> = { invest: "+ ", prepay: "− ", even: "" };
-
-/** signedAdvantage writes an Advantage with its sign spaced from the amount: "− R$ 410,00". */
-export function signedAdvantage(advantage: string): string {
-  return `${signs[favoured(advantage)]}${formatMoney(advantage.replace("-", ""))}`;
 }
 
 /**

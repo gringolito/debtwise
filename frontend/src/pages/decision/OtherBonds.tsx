@@ -13,24 +13,15 @@ import type { Verdict } from "@/lib/api";
 import { bondRate } from "@/lib/bondKinds";
 import {
   type ComparedVerdict,
-  type Favoured,
-  favoured,
   type NoComparison,
   noComparisonOf,
-  signedAdvantage,
   unavailableLabels,
   verdictKey,
   verdictTitle,
 } from "@/lib/decisions";
 import { formatMoney } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { advantageComparison } from "@/lib/yardstick";
 import { NoComparisonFix } from "@/pages/decision/NoComparisonPanel";
-
-const colors: Record<Favoured, string> = {
-  invest: "text-positive",
-  prepay: "text-destructive",
-  even: "text-foreground",
-};
 
 function BondName({ verdict }: { verdict: Verdict }) {
   return (
@@ -85,7 +76,7 @@ function UnavailableRow({
 }
 
 interface OtherBondsProps {
-  /** The compared verdicts besides the one on the card, ranked. */
+  /** The compared verdicts besides the one on the verdict panel, ranked. */
   compared: ComparedVerdict[];
   /** The verdicts with no comparison, each with why. */
   unavailable: Verdict[];
@@ -95,8 +86,8 @@ interface OtherBondsProps {
 }
 
 /**
- * OtherBonds lists the bonds besides the one on the verdict card, ranked by their Advantage, and
- * opens the one the owner picks on the card. The bonds with no comparison follow, with why and
+ * OtherBonds lists the bonds besides the one on the verdict panel, ranked by their Advantage, and
+ * opens the one the owner picks on the panel. The bonds with no comparison follow, with why and
  * what to try.
  */
 export function OtherBonds({ compared, unavailable, onSelect, onUseAmount }: OtherBondsProps) {
@@ -113,10 +104,8 @@ export function OtherBonds({ compared, unavailable, onSelect, onUseAmount }: Oth
                 <GroupedListLabel>
                   <BondName verdict={verdict} />
                 </GroupedListLabel>
-                <GroupedListValue
-                  className={cn("font-medium", colors[favoured(verdict.advantage)])}
-                >
-                  {signedAdvantage(verdict.advantage)}
+                <GroupedListValue className="font-medium text-foreground">
+                  {advantageComparison(verdict)}
                 </GroupedListValue>
                 <GroupedListChevron />
               </button>
