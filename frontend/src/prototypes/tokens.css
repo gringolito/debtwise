@@ -29,8 +29,8 @@ html[data-proto] {
 html[data-proto] body {
   font-family: var(--font-sans);
   background:
-    radial-gradient(circle at 15% 10%, rgb(130 199 183 / 0.14), transparent 45%),
-    linear-gradient(135deg, #e3efea 0%, #eef0f3 50%, #e3e9f3 100%);
+    radial-gradient(circle at 15% 10%, rgb(130 199 183 / 0.1), transparent 45%),
+    linear-gradient(135deg, #eef4f1 0%, #eff1f4 50%, #e3e9f3 100%);
   background-attachment: fixed;
 }
 
