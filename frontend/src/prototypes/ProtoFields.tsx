@@ -57,14 +57,6 @@ function DateInput({ value, onChange, id, ...props }: FieldProps) {
 
   return (
     <span className="relative flex items-center gap-1">
-      <button
-        type="button"
-        aria-label="Abrir calendário"
-        className="proto-calendar grid size-8 place-items-center rounded-lg text-muted-foreground hover:text-foreground"
-        onClick={() => picker.current?.showPicker()}
-      >
-        <CalendarIcon aria-hidden="true" strokeWidth={1.75} className="size-4" />
-      </button>
       <InlineInput
         {...props}
         id={id}
@@ -97,6 +89,14 @@ function DateInput({ value, onChange, id, ...props }: FieldProps) {
           emit(event.target.value);
         }}
       />
+      <button
+        type="button"
+        aria-label="Abrir calendário"
+        className="proto-calendar grid size-8 place-items-center rounded-lg text-muted-foreground hover:text-foreground"
+        onClick={() => picker.current?.showPicker()}
+      >
+        <CalendarIcon aria-hidden="true" strokeWidth={1.75} className="size-4" />
+      </button>
     </span>
   );
 }
@@ -130,12 +130,14 @@ export function ProtoInputRow({ label, hint, message, prefix, suffix, ...props }
     "aria-describedby": describedBy(text),
   };
   const money = prefix === "R$" && props.grouped;
+  // Units read with their value: placeholder grey while empty, so "R$ 0,00" is one placeholder.
+  const unitColor = props.value === "" ? "text-tertiary-foreground" : "text-muted-foreground";
   return (
     <GroupedListItem>
       <GroupedListRow>
         <RowText {...text} />
-        <span className="proto-value flex shrink-0 items-baseline justify-end gap-1">
-          {prefix !== undefined && <span className="text-muted-foreground">{prefix}</span>}
+        <span className="flex shrink-0 items-baseline gap-1">
+          {prefix !== undefined && <span className={unitColor}>{prefix}</span>}
           {props.type === "date" ? (
             <DateInput {...field} type="text" />
           ) : money ? (
@@ -143,7 +145,7 @@ export function ProtoInputRow({ label, hint, message, prefix, suffix, ...props }
           ) : (
             <InlineInput {...field} />
           )}
-          {suffix !== undefined && <span className="text-muted-foreground">{suffix}</span>}
+          {suffix !== undefined && <span className={unitColor}>{suffix}</span>}
         </span>
       </GroupedListRow>
     </GroupedListItem>

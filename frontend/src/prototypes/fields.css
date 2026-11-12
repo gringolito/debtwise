@@ -1,18 +1,8 @@
-/* PROTOTYPE, throwaway: typed-in-place values hug their text, so a row's value and its units form
-   one group on the row's trailing edge. */
-html[data-proto] .proto-value input[data-variant="inline"] {
-  width: auto;
-  min-width: 3ch;
-  field-sizing: content;
-  padding-inline: 2px;
-}
-html[data-proto] .proto-value {
-  align-items: center;
-}
-/* The native picker only opens from a rendered input; this one stays invisible under the button. */
+/* PROTOTYPE, throwaway: the native date picker only opens from a rendered input; this one stays
+   invisible next to the calendar button. */
 html[data-proto] .proto-date-picker {
   position: absolute;
-  left: 0;
+  right: 0;
   bottom: 0;
   width: 1px;
   height: 1px;

@@ -336,7 +336,6 @@ These came from the owner's review of the first round. Each is fixed in B and co
 | "Ver cenários" shows "−R$ 380.743,46" | the net worth is signed, and the mortgage makes it negative | "No fim: Você deve R$ 380.743,46", then the balance. The few reais held uninvested ("Caixa retido", R$ 0,28–1,09 here) are left out as noise | negative amounts on the panel: 2 → 0 |
 | The index cell repeats "Projetado", the period and the method on every row | `IndexCell` shows everything a reading has | the value alone ("TR 0,1617%"), grey when projected. One plain sentence above the table: "Taxa TR projetada pela média dos últimos 12 meses a partir de 15/11/2026. Os valores projetados aparecem em cinza." The tooltip says the same for one reading: "…no período de 15/11/2026 a 15/12/2026." | row height 74px → 38px; columns 21 → 18 (columns empty for the whole scenario are dropped); table width 2325px → 1805px (`before-q-cenarios-A.jpg`, `after-q-cenarios-B.jpg`) |
 | Dates read "04/15/2023" | `<input type="date">` writes dates in the **browser's** language, whatever the page's language. An English system shows mm/dd/yyyy | a dd/mm/aaaa text field with a numeric keyboard and a calendar button that still opens the native picker | the same in every browser language (`after-q-contrato-B.jpg`) |
-| Values misaligned; "R$" far from the amount | every inline input is a fixed 144px box with right-aligned text, so a prefix sits at the box's left edge; date inputs lay out their own segments | inputs are as wide as their text (`field-sizing: content`), so value and units form one group on the row's trailing edge | gap between "R$" and the amount on Contrato: 74px → 6px; every value group ends 16px from the row edge (`before-q-contrato-A.jpg`, `after-q-contrato-B.jpg`) |
 | Money without cents ("480.000") | the form keeps what the API sends or the owner types | money fields show two places when not being edited and complete them on focus and blur ("480.000,00") | — |
 | The change sheet's hint wraps | long hint beside a 144px input | the hint is "Para calcular a taxa.", since the label already names the amount | hint 2 lines → 1 line at 1280px and 390px (`before-q-changesheet-A.jpg`, `after-q-changesheet-B.jpg`) |
 
@@ -351,7 +350,7 @@ These came from the owner's review of the first round. Each is fixed in B and co
 - **Removing a change:** two alternatives were tried and dropped. A red trash icon in the header beside "Cancelar" put two actions there and made the least common one the loudest. A grey trash icon beside "Concluir" was quieter but no clearer than the labelled button. The sheet keeps today's "Cancelar" in the header and the labelled "Remover mudança" under "Concluir".
 - **Touch:** Radix tooltips don't open on touch, so a phone can't see a projected reading's period. A tap-to-open popover is the fix if this is adopted. The method is still stated above the table.
 - **Date field:** the prototype selects the whole date on focus and starts over when typed past; editing one digit in the middle isn't handled. A production version should validate impossible dates (31/02) in the browser, not only on the server.
-- **Firefox:** `field-sizing: content` isn't supported there yet. Inputs fall back to their fixed width, which is today's look.
+- **Content-sized inputs, tried and reverted:** sizing each input to its text put "R$" next to the amount, but it shrank the click and focus target to a few characters. Wrapping the units in a larger focusable field fixed the target, but it left the caret outside the visible ring and gave the units different colors from their values. Inputs keep today's fixed 144px field with the units beside it. The only change kept is that units are placeholder grey while the field is empty, so "R$ 0,00" reads as one placeholder (`after-q-lotsheet-B.jpg`).
 - **Typography:** the owner preferred the system font (SF Pro on Apple) over Inter but isn't sure it's the best. This matches recommendation 9's "validate": a short side-by-side of SF Pro, Inter Display/Inter Tight and one humanist alternative on the hero figures and tables would settle it.
 
 ## What would change in DESIGN.md
@@ -377,7 +376,6 @@ The specification itself isn't edited here. If the recommendations are adopted, 
 - **Investimentos:** Compras is one list with Callout sale hints and a summary line. Venda antecipada uses words instead of signs and shows the horizon.
 - **Layout and components (round two):**
   - Key figures size their columns to the figure and never wrap.
-  - Typed values hug their text, so value and units share the row's trailing edge.
   - Dates are typed as dd/mm/aaaa regardless of the browser's language.
   - Money shows two decimal places.
   - A projected index reads grey with its period and method on demand.
