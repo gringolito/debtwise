@@ -1,5 +1,10 @@
 import { inputToMoney } from "@/lib/format";
-import { type FormValues, unchosenIndexer } from "@/lib/mortgageForm";
+import {
+  type FormValues,
+  firstChargeOf,
+  insuranceFields,
+  unchosenIndexer,
+} from "@/lib/mortgageForm";
 
 /**
  * FieldErrors holds a message per field, at the location the API names the field by:
@@ -24,11 +29,10 @@ function readMoney(text: string): Reading {
   return POSITIVE.test(amount) ? "ok" : "zero";
 }
 
-function readPercent(text: string): Reading {
+function readPercent(text: string): Exclude<Reading, "zero"> {
   const rate = text.trim();
   if (rate === "") return "empty";
-  if (!PERCENT.test(rate)) return "malformed";
-  return POSITIVE.test(rate) ? "ok" : "zero";
+  return PERCENT.test(rate) ? "ok" : "malformed";
 }
 
 function contractStep(values: FormValues, errors: FieldErrors) {
@@ -64,6 +68,7 @@ function indexerStep(values: FormValues, errors: FieldErrors) {
   }
 }
 
+// The API accepts a contract rate of zero, so only its presence and format are asked.
 function interestStep(values: FormValues, errors: FieldErrors) {
   values.contractRates.forEach((row, i) => {
     if (i > 0 && !COMPLETE_DATE.test(row.effectiveFrom)) {
@@ -77,7 +82,6 @@ function interestStep(values: FormValues, errors: FieldErrors) {
         `Informe ${i === 0 ? "a taxa de juros anual" : "a nova taxa"}, como 9,5.`,
       );
     } else if (rate === "malformed") errors.set(location, "A taxa é um número, como 9,5.");
-    else if (rate === "zero") errors.set(location, "A taxa precisa ser maior que zero.");
   });
 }
 
@@ -100,6 +104,16 @@ function insuranceStep(values: FormValues, errors: FieldErrors) {
       errors.set(`${location}[0].rate`, `Informe a taxa do ${name} ao mês, como 0,03.`);
     } else if (rate === "malformed") {
       errors.set(`${location}[0].rate`, "A taxa é um número, como 0,03.");
+    }
+  }
+
+  // A charge that gives no rate leaves the rate it gave before, which the review would send. One
+  // without its base amount waits on that field, which the steps already ask for.
+  for (const insurance of ["MIP", "DFI"] as const) {
+    const { charge } = insuranceFields[insurance];
+    const derived = firstChargeOf(values, insurance);
+    if (values[charge].trim() !== "" && !derived.needsBase && derived.rate === undefined) {
+      errors.set(scalarLocations[charge], "Use só números, como 25,00.");
     }
   }
 
@@ -131,6 +145,9 @@ const scalarLocations = {
   amortizationSystem: "amortization_system",
   indexer: "indexer",
   appraisalValue: "appraisal_value",
+  // The browser's own: the API has no first-installment charge to reject.
+  firstInstallmentMip: "first_installment_mip",
+  firstInstallmentDfi: "first_installment_dfi",
 } as const satisfies Partial<Record<keyof FormValues, string>>;
 
 const listLocations = {
@@ -185,6 +202,29 @@ export function staleLocations(
 
   return (location) =>
     exact.has(location) || prefixes.some((prefix) => location.startsWith(prefix));
+}
+
+/**
+ * touchedLocations tells which locations the owner just edited, even when the value the form keeps
+ * is the same, as a date's is while it is still being typed: the field's own, or the rows of a
+ * list that were replaced.
+ */
+export function touchedLocations<K extends keyof FormValues>(
+  before: FormValues,
+  key: K,
+  value: FormValues[K],
+): (location: string) => boolean {
+  if (key in scalarLocations) {
+    const own: string = scalarLocations[key as keyof typeof scalarLocations];
+    return (location) => location === own;
+  }
+  if (!(key in listLocations) || !Array.isArray(value)) return () => false;
+  const list: string = listLocations[key as keyof typeof listLocations];
+  const was = before[key] as unknown[];
+  const prefixes = value
+    .map((row, i) => (row === was[i] ? undefined : `${list}[${i}].`))
+    .filter((prefix) => prefix !== undefined);
+  return (location) => prefixes.some((prefix) => location.startsWith(prefix));
 }
 
 /** withoutStale is the errors left once the stale ones go; the same map when none was. */

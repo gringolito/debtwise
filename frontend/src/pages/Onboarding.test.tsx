@@ -474,6 +474,10 @@ describe("a step that cannot go on yet", () => {
     fill("Valor financiado", "60.000,00");
     expect(screen.getByLabelText("Valor financiado")).not.toHaveAttribute("aria-invalid");
     expect(screen.getByLabelText("Primeira prestação")).toHaveAttribute("aria-invalid", "true");
+
+    fill("Data do contrato", "1");
+    expect(screen.getByLabelText("Data do contrato")).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByLabelText("Primeira prestação")).toHaveAttribute("aria-invalid", "true");
   });
 
   it("asks the first installment to come on or after the contract date, and rechecks when either date changes", async () => {
@@ -761,6 +765,28 @@ describe("the insurance rates from the first installment", () => {
 
     expect(screen.getByLabelText("MIP · Morte e invalidez")).not.toHaveAttribute("aria-invalid");
     expect(screen.getByLabelText("DFI · Danos ao imóvel")).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("stays on the step while a charge gives no rate, rather than keep the rate it gave before", async () => {
+    const requests = stubMortgageApi();
+    renderAt("/");
+    await start();
+    await continueTo(5, 1);
+    answers[5]();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Não sei a taxa. Usar o valor da primeira prestação" }),
+    );
+    fill("MIP cobrado", "15,48");
+    fill("MIP cobrado", "caro");
+
+    next();
+
+    await atStep(5);
+    expect(screen.getByLabelText("MIP cobrado")).toHaveFocus();
+    expect(screen.getByLabelText("MIP cobrado")).toHaveAccessibleDescription(
+      "Use só números, como 25,00.",
+    );
+    expect(bodies(requests, "POST", "/api/mortgage/schedule/preview")).toEqual([]);
   });
 });
 

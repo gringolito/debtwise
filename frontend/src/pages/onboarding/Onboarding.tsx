@@ -2,7 +2,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ApiError } from "@/lib/api";
-import { checkStep, type FieldErrors, staleLocations, withoutStale } from "@/lib/onboardingChecks";
+import {
+  checkStep,
+  type FieldErrors,
+  staleLocations,
+  touchedLocations,
+  withoutStale,
+} from "@/lib/onboardingChecks";
 import { rejections, withFirstChargeRates } from "@/lib/mortgageForm";
 import { usePreviewSchedule, useSaveMortgage } from "@/lib/mortgageQueries";
 import {
@@ -112,10 +118,13 @@ export function Onboarding() {
       .map((location) => checked.get(location) ?? failure?.rejected.get(location))
       .find((message) => message !== undefined);
 
-  // A message stops showing the moment its field changes, whoever found it wrong.
+  // A message stops showing the moment its field is edited, whoever found it wrong, even while the
+  // value kept is the same, as a date's is until it is typed whole.
   const set: StepProps["set"] = (key, value) => {
     const next = withFirstChargeRates(values, { ...values, [key]: value });
-    const stale = staleLocations(values, next);
+    const changed = staleLocations(values, next);
+    const touched = touchedLocations(values, key, value);
+    const stale = (location: string) => changed(location) || touched(location);
     setValues(next);
     setChecked((current) => withoutStale(current, stale));
     setFailure((current) => {

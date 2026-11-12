@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { blankContractRate, type FormValues } from "@/lib/mortgageForm";
 import { onboardingValues } from "@/lib/onboarding";
-import { checkStep, staleLocations, withoutStale } from "@/lib/onboardingChecks";
+import { checkStep, staleLocations, touchedLocations, withoutStale } from "@/lib/onboardingChecks";
 
 /** What an owner who answered every step with a mortgage from the contract has typed. */
 function answered(patch: Partial<FormValues> = {}): FormValues {
@@ -108,9 +108,15 @@ describe("the interest step", () => {
   it.each([
     ["is missing", "", "Informe a taxa de juros anual, como 9,5."],
     ["is no number", "alta", "A taxa é um número, como 9,5."],
-    ["is zero", "0,00", "A taxa precisa ser maior que zero."],
   ])("rejects a rate that %s", (_, rate, message) => {
     expect(errorsOf(4, withRates({ rate }))).toEqual({ "contract_rates[0].rate": message });
+  });
+
+  it("accepts a rate of zero, which the API takes, as a poupança-linked fixed part can be", () => {
+    const [rate] = answered().contractRates;
+    expect(
+      errorsOf(4, answered({ contractRates: [{ ...rate, rate: "0", poupancaAdditional: true }] })),
+    ).toEqual({});
   });
 
   it("asks a change for its date and its rate, by its place in the list", () => {
@@ -164,6 +170,19 @@ describe("the insurance step", () => {
     expect(
       errorsOf(5, { ...values, fees: values.fees.map((fee) => ({ ...fee, amount })) }),
     ).toEqual(expected);
+  });
+
+  it.each([
+    ["gives a rate", "15,48", {}],
+    ["is no number", "caro", { first_installment_mip: "Use só números, como 25,00." }],
+  ])("reads a MIP charged on the first installment that %s", (_, firstInstallmentMip, expected) => {
+    expect(errorsOf(5, answered({ firstInstallmentMip }))).toEqual(expected);
+  });
+
+  it("leaves a DFI charge to wait on the appraisal value, which it asks for instead", () => {
+    expect(errorsOf(5, answered({ appraisalValue: "", firstInstallmentDfi: "caro" }))).toEqual({
+      appraisal_value: "Informe o valor de avaliação do imóvel.",
+    });
   });
 });
 
@@ -241,5 +260,34 @@ describe("the messages a change leaves out of date", () => {
       new Map([["original_amount", "a"]]),
     );
     expect(withoutStale(errors, () => false)).toBe(errors);
+  });
+});
+
+describe("the messages an edit touches", () => {
+  it("are the field's own even when the value kept is the same, as a date's while typed", () => {
+    const before = answered({ contractDate: "" });
+    expect(
+      ["contract_date", "first_installment_date"].filter(
+        touchedLocations(before, "contractDate", ""),
+      ),
+    ).toEqual(["contract_date"]);
+  });
+
+  it("are those of the list's row the edit replaced, and no other row's", () => {
+    const before = answered({
+      contractRates: [
+        { ...blankContractRate(), rate: "9" },
+        { ...blankContractRate(), rate: "8" },
+      ],
+    });
+    const rows = [before.contractRates[0], { ...before.contractRates[1] }];
+
+    expect(
+      [
+        "contract_rates[0].rate",
+        "contract_rates[1].rate",
+        "contract_rates[1].effective_from",
+      ].filter(touchedLocations(before, "contractRates", rows)),
+    ).toEqual(["contract_rates[1].rate", "contract_rates[1].effective_from"]);
   });
 });
