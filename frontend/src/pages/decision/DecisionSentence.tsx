@@ -20,14 +20,26 @@ const editable =
 interface DateValueProps {
   value: string;
   onChange: (date: string) => void;
+  /** Whether the date typed is a complete date that does not exist. */
+  impossible: boolean;
   /** Called with whether the date typed is a complete date that does not exist. */
   onImpossibleChange: (impossible: boolean) => void;
   invalid: boolean;
   describedBy: string | undefined;
 }
 
-/** DateValue reads "hoje" while no date is chosen, and opens a date input when the owner taps it. */
-function DateValue({ value, onChange, onImpossibleChange, invalid, describedBy }: DateValueProps) {
+/**
+ * DateValue reads "hoje" while no date is chosen, and opens a date input when the owner taps it.
+ * A date typed that does not exist keeps the input open, so it isn't taken for "hoje".
+ */
+function DateValue({
+  value,
+  onChange,
+  impossible,
+  onImpossibleChange,
+  invalid,
+  describedBy,
+}: DateValueProps) {
   const [editing, setEditing] = useState(false);
   const field = { "aria-invalid": invalid || undefined, "aria-describedby": describedBy };
   if (editing) {
@@ -37,9 +49,8 @@ function DateValue({ value, onChange, onImpossibleChange, invalid, describedBy }
       <span
         className={cn(editable, "inline-flex")}
         onBlur={(event) => {
-          if (event.currentTarget.contains(event.relatedTarget)) return;
+          if (impossible || event.currentTarget.contains(event.relatedTarget)) return;
           setEditing(false);
-          onImpossibleChange(false);
         }}
         onMouseDown={(event) => {
           if (event.target instanceof Element && event.target.closest("button")) {
@@ -111,7 +122,8 @@ export function DecisionSentence({
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    onSubmit();
+    // The API would read a date that does not exist as none, which is today.
+    if (!impossibleDate) onSubmit();
   }
 
   return (
@@ -138,6 +150,7 @@ export function DecisionSentence({
           <DateValue
             value={values.date}
             onChange={(date) => onChange({ ...values, date })}
+            impossible={impossibleDate}
             onImpossibleChange={setImpossibleDate}
             invalid={messages.has("date")}
             describedBy={messageId("date")}

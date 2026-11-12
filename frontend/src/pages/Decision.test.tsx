@@ -14,6 +14,7 @@ import { renderAt } from "@/test/renderAt";
 import { problem, type RecordedRequest, stubRoutes } from "@/test/stubServer";
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -349,6 +350,32 @@ describe("the question as a sentence", () => {
     fill("Data", "28/02/2026");
     expect(screen.queryByText("Essa data não existe.")).toBeNull();
   });
+
+  it("compares no date it was not given: one that does not exist stays to be fixed", async () => {
+    const requests = stubDecisions(() =>
+      Response.json(decisionOf([ltnVerdict], { date: "2026-02-28" })),
+    );
+    renderAt("/comparar");
+    await sentence();
+    fill("Valor", "10000");
+    fireEvent.click(screen.getByRole("button", { name: "Data: hoje" }));
+    fill("Data", "31/02/2026");
+
+    fireEvent.blur(screen.getByLabelText("Data"));
+    fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
+
+    expect(screen.getByLabelText("Data")).toHaveDisplayValue("31/02/2026");
+    expect(screen.getByText("Essa data não existe.")).toBeInTheDocument();
+    expect(asked(requests)).toEqual([]);
+
+    fill("Data", "28/02/2026");
+    fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
+
+    await verdictPanel();
+    expect(asked(requests)).toEqual([
+      { amount: "10000", date: "2026-02-28", effect: "shorten_term" },
+    ]);
+  });
 });
 
 describe("the verdict panel", () => {
@@ -447,6 +474,8 @@ describe("the verdict panel", () => {
   });
 
   it("says when the amount is for a later date than today", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 10, 12, 9, 30));
     await compare([ltnVerdict], "10000", { date: "2026-12-01" });
 
     const panel = await verdictPanel();
