@@ -289,8 +289,6 @@ What changes: the verdict panel shows "Se amortizar" and "Se investir" side by s
 
 In a first pass, the parts were Title 2 and the outcome was a smaller Headline at the bottom of each column, so the eye landed on the inputs first. The owner pointed out that the outcome and the difference are what the panel is for. They now carry the weight (`after-decidir-C.jpg`, `after-decidir-C-390.jpg`).
 
-A closing line states the difference and its share. See `after-decidir-C.jpg`.
-
 **Critique:**
 - It makes the abstract "advantage" concrete. Investing leaves a R$ 17.915 larger balance but R$ 18.729 in hand. That is the clearest explanation of *why* in any variant.
 - Even with the outcome first, it asks the reader to subtract two six-digit figures to see the difference. The closing line does it for them, but it says nothing about *when*.
