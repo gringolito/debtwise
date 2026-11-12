@@ -22,9 +22,11 @@ import { WorthChart } from "@/pages/decision/WorthChart";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
 import { ProtoLedgerPanel, ProtoVerdictPanel } from "@/prototypes/ProtoVerdict";
 import { usePrototypeVariant } from "@/prototypes/variant";
+import { ProtoScenarioDetails } from "@/prototypes/ProtoScenarioDetails";
 
 function Details({ verdict }: { verdict: ComparedVerdict }) {
   const headerId = useId();
+  const Scenario = usePrototypeVariant() === "A" ? ScenarioDetails : ProtoScenarioDetails;
   const rows = [
     ["Taxa de hoje", bondRate(verdict.type, verdict.rate)],
     ["Preço do título", verdict.unit_price && formatMoney(verdict.unit_price)],
@@ -45,8 +47,8 @@ function Details({ verdict }: { verdict: ComparedVerdict }) {
         ))}
       </GroupedList>
       <Scenarios>
-        <ScenarioDetails title="Investir" scenario={verdict.invest} />
-        <ScenarioDetails title="Amortizar" scenario={verdict.prepay} />
+        <Scenario title="Investir" scenario={verdict.invest} />
+        <Scenario title="Amortizar" scenario={verdict.prepay} />
       </Scenarios>
     </GroupedListSection>
   );

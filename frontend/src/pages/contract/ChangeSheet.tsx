@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import type { Basis, ContractRateRow, FeeRow, MonthlyRateRow } from "@/lib/mortgageForm";
 import type { Change, ChangeList, InsuranceList } from "@/pages/contract/changes";
+import { usePrototypeVariant } from "@/prototypes/variant";
+import { Trash2Icon } from "lucide-react";
 
 /** The insurance a new change belongs to, which only a new change can still switch. */
 export interface InsuranceChoice {
@@ -96,6 +98,7 @@ function InsuranceFields({
   messageOf,
   firstCharge,
 }: FieldsProps<MonthlyRateRow> & Pick<ChangeSheetProps, "firstCharge">) {
+  const proto = usePrototypeVariant() !== "A";
   return (
     <>
       <InputRow
@@ -114,7 +117,10 @@ function InsuranceFields({
           hint={
             firstCharge.invalid
               ? undefined
-              : (firstCharge.hint ?? "Preencha para calcular a taxa pelo valor cobrado.")
+              : (firstCharge.hint ??
+                (proto
+                  ? "Para calcular a taxa."
+                  : "Preencha para calcular a taxa pelo valor cobrado."))
           }
           grouped
           prefix="R$"
@@ -168,6 +174,7 @@ function ChangeFields({ change, update, messageOf, firstCharge }: ChangeSheetPro
 /** ChangeSheet edits one dated change of a list over the page, until "Concluir" or "Cancelar". */
 export function ChangeSheet(props: ChangeSheetProps) {
   const { change, update, messageOf, insurance, firstCharge, onDone, onRemove, onCancel } = props;
+  const proto = usePrototypeVariant() !== "A";
   return (
     <Dialog open onOpenChange={(open) => open || onCancel()}>
       <DialogContent aria-describedby={undefined}>
@@ -184,11 +191,25 @@ export function ChangeSheet(props: ChangeSheetProps) {
         >
           <DialogHeader>
             <DialogTitle>{titles[change.list]}</DialogTitle>
-            <DialogClose asChild>
-              <Button type="button" variant="plain" size="inline">
-                Cancelar
-              </Button>
-            </DialogClose>
+            <span className="flex items-center gap-3">
+              {proto && onRemove && (
+                <Button
+                  type="button"
+                  variant="plain-destructive"
+                  size="icon-sm"
+                  aria-label="Remover mudança"
+                  title="Remover mudança"
+                  onClick={onRemove}
+                >
+                  <Trash2Icon aria-hidden="true" strokeWidth={1.75} />
+                </Button>
+              )}
+              <DialogClose asChild>
+                <Button type="button" variant="plain" size="inline">
+                  Cancelar
+                </Button>
+              </DialogClose>
+            </span>
           </DialogHeader>
           <GroupedList>
             {insurance && (
@@ -216,7 +237,7 @@ export function ChangeSheet(props: ChangeSheetProps) {
           </GroupedList>
           <DialogFooter>
             <Button type="submit">Concluir</Button>
-            {onRemove && (
+            {!proto && onRemove && (
               <Button type="button" variant="destructive" onClick={onRemove}>
                 Remover mudança
               </Button>

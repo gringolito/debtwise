@@ -267,11 +267,18 @@ html[data-proto] .proto-main .glass.items-center > span.font-medium + span {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-/*
- * KeyFigures stack in rows once their columns cannot hold a 34px figure: three of them need about
- * 830px of content, which the 240px sidebar leaves only from 1160px; two stack below 600px.
- */
-@media (max-width: 1159px) {
+/* KeyFigures' columns are as wide as their figure, so "novembro de 2056" stays on one line. Three
+   need about 830px of content; below that the panel stacks, measured on the content column. */
+html[data-proto] .proto-main > div {
+  container-type: inline-size;
+}
+html[data-proto] .proto-keyfigures {
+  grid-auto-columns: minmax(max-content, 1fr);
+}
+html[data-proto] .proto-keyfigures dd {
+  white-space: nowrap;
+}
+@container (max-width: 839px) {
   html[data-proto] .proto-keyfigures:has(> :nth-child(3)) {
     display: flex;
     flex-direction: column;

@@ -24,6 +24,7 @@ The column ledger (C) is clearer than today's "Ver cenários" but weaker than B 
 | 7 | Investimentos: early-sale signal surfaced, unsigned wording | Objective (contrast) + hypothesis | The most actionable fact on the page is no longer its smallest text | S | **Adopt** |
 | 8 | Shell skeleton while the app starts | Objective (blank screen) | No blank canvas on a slow start | S | **Adopt** |
 | 9 | System font first (SF Pro on Apple devices) | Hypothesis | Closer to a first-party Apple app | S | **Validate** on Windows/Android before adopting |
+| 10 | Round two (P9): one-line key figures, pt-BR date field, values that hug their units, cents, trash icon, quieter scenario tables | Objective (owner-reported) | Dates in the owner's format, figures that don't wrap, tables that read in one line per row | S–M | **Adopt** (date field and tooltip need the production work in P9) |
 
 ## How the evidence was gathered
 
@@ -328,6 +329,34 @@ Screenshots: `after-inv-compras-B.jpg`, `after-inv-venda-B.jpg` and the 390px ve
 
 `MortgageGate` renders the shell with Início's skeleton instead of an empty div. The sidebar or tab bar is visible from the first frame, so a slow start reads as loading, not broken. Effort: S. Partial failure on Início (finding 8) is not prototyped. The recommended direction is a per-panel error state: keep what loaded, and put "Tentar novamente" on the panel that failed.
 
+### P9. Round two: quirks the owner reported (B)
+
+These came from the owner's review of the first round. Each is fixed in B and compared with A in the same state.
+
+| Quirk | Cause | B | Measured |
+|---|---|---|---|
+| Financiamento's "Quitação prevista" wraps ("novembro de / 2056") | three equal `1fr` columns of 253px, while the month needs 290px | columns are as wide as their figure (`minmax(max-content, 1fr)`) and never wrap. The panel stacks only when the content column is narrower than 840px (a container query instead of the 1160px viewport breakpoint) | figure height 82px → 41px at 1280px; the full month is kept, nothing abbreviated (`before-q-keyfigures-A.jpg`, `after-q-keyfigures-B.jpg`) |
+| "Ver cenários" shows "−R$ 380.743,46" | the net worth is signed, and the mortgage makes it negative | "No fim: Você deve R$ 380.743,46", then the balance and cash in hand when there is any | negative amounts on the panel: 2 → 0 |
+| The index cell repeats "Projetado", the period and the method on every row | `IndexCell` shows everything a reading has | the value alone ("TR 0,1617%"), grey when projected, with the period and method in a tooltip on hover or focus, and the method stated once above the table | row height 74px → 38px; columns 21 → 18 (columns empty for the whole scenario are dropped); table width 2325px → 1805px (`before-q-cenarios-A.jpg`, `after-q-cenarios-B.jpg`, `after-q-cenarios-tooltip-B.jpg`) |
+| Dates read "04/15/2023" | `<input type="date">` writes dates in the **browser's** language, whatever the page's language. An English system shows mm/dd/yyyy | a dd/mm/aaaa text field with a numeric keyboard and a calendar button that still opens the native picker | the same in every browser language (`after-q-contrato-B.jpg`) |
+| Values misaligned; "R$" far from the amount | every inline input is a fixed 144px box with right-aligned text, so a prefix sits at the box's left edge; date inputs lay out their own segments | inputs are as wide as their text (`field-sizing: content`), so value and units form one group on the row's trailing edge | gap between "R$" and the amount on Contrato: 74px → 6px; every value group ends 16px from the row edge (`before-q-contrato-A.jpg`, `after-q-contrato-B.jpg`) |
+| Money without cents ("480.000") | the form keeps what the API sends or the owner types | money fields show two places when not being edited and complete them on focus and blur ("480.000,00") | — |
+| The change sheet's hint wraps; "Remover mudança" is a full-width tinted button competing with "Concluir" | long hint beside a 144px input; the destructive action styled as a second primary | the hint is "Para calcular a taxa.", since the label already names the amount. Removal is a red trash icon beside "Cancelar" (accessible name "Remover mudança"), so "Concluir" is the only button | hint 2 lines → 1 line at 1280px and 390px (`before-q-changesheet-A.jpg`, `after-q-changesheet-B.jpg`, `after-q-changesheet-B-390.jpg`) |
+
+**Checked by hand:**
+- Typing "01052023" gives 01/05/2023, and the row updates on "Concluir".
+- The trash icon removes the change.
+- The page's "Cancelar" discards both; the server's MIP rates were unchanged afterwards.
+- The tooltip opens on keyboard focus.
+- Contrato stays at scrollWidth 390 on a phone.
+
+**Tradeoffs and open points:**
+- **Trash icon:** an icon-only destructive action is less discoverable than a labelled one. It is acceptable here because removing a change is undone by the page's "Cancelar" until "Salvar". For deletions that save at once (a prepayment, a lot), keep the labelled confirmation.
+- **Touch:** Radix tooltips don't open on touch, so a phone can't see a projected reading's period. A tap-to-open popover is the fix if this is adopted. The method is still stated above the table.
+- **Date field:** the prototype selects the whole date on focus and starts over when typed past; editing one digit in the middle isn't handled. A production version should validate impossible dates (31/02) in the browser, not only on the server.
+- **Firefox:** `field-sizing: content` isn't supported there yet. Inputs fall back to their fixed width, which is today's look.
+- **Typography:** the owner preferred the system font (SF Pro on Apple) over Inter but isn't sure it's the best. This matches recommendation 9's "validate": a short side-by-side of SF Pro, Inter Display/Inter Tight and one humanist alternative on the hero figures and tables would settle it.
+
 ## What would change in DESIGN.md
 
 The specification itself isn't edited here. If the recommendations are adopted, these parts change:
@@ -349,6 +378,14 @@ The specification itself isn't edited here. If the recommendations are adopted, 
   - "Patrimônio ao longo do tempo" is replaced by "Diferença ao longo do tempo".
   - "Ver cenários" becomes the two-column ledger. Rates are rounded to two places.
 - **Investimentos:** Compras is one list with Callout sale hints and a summary line. Venda antecipada uses words instead of signs and shows the horizon.
+- **Layout and components (round two):**
+  - Key figures size their columns to the figure and never wrap.
+  - Typed values hug their text, so value and units share the row's trailing edge.
+  - Dates are typed as dd/mm/aaaa regardless of the browser's language.
+  - Money shows two decimal places.
+  - In change sheets, removal is a trash icon beside "Cancelar".
+  - A projected index reads grey with its period and method on demand.
+  - Horizons read in words, never as negative amounts.
 - **Voice:** add "near-ties are named as such" and "no signed amounts in prose".
 
 ## Not pursued, and why
@@ -362,7 +399,7 @@ The specification itself isn't edited here. If the recommendations are adopted, 
 
 The prototype code is all development-only and marked `PROTOTYPE, throwaway`:
 - `frontend/src/prototypes/`: the variant store, switcher, scoped tokens, shell, and the per-page prototype components and CSS.
-- **Branches gated on `usePrototypeVariant()`** in existing components: `AppShell`, `MortgageGate`, `Dashboard`, `decision/Comparison`, `decision/OtherBonds`, `investments/Purchases`, `investments/EarlySales`, and `onboarding/Onboarding`, `ReviewStep` and `IndexerStep`.
+- **Branches gated on `usePrototypeVariant()`** in existing components: `AppShell`, `MortgageGate`, `Dashboard`, `patterns/FieldRows` (every `InputRow`), `contract/ChangeSheet`, `decision/Comparison`, `decision/OtherBonds`, `investments/Purchases`, `investments/EarlySales`, and `onboarding/Onboarding`, `ReviewStep` and `IndexerStep`.
 - **Inert `proto-*` hook classes** (and `data-label` on Importar's cells) in: `SegmentedControl`, `KeyFigures`, `LotFigures`, `Mortgage`, `EarlySalePanel`, `Sparkline`, `Indexes`, `Bonds` and `ImportPreview`.
 - **CSS:** `main.tsx` imports the prototype stylesheets. Every rule is scoped under `html[data-proto]` except the switcher's own.
 
