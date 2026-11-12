@@ -22,9 +22,9 @@ interface Destination {
 
 const primary: Destination[] = [
   { to: "/", label: "Início", icon: HouseIcon },
+  { to: "/decidir", label: "Comparar", icon: ScaleIcon },
   { to: "/financiamento", label: "Financiamento", short: "Financ.", icon: LandmarkIcon },
   { to: "/investimentos", label: "Investimentos", short: "Invest.", icon: TrendingUpIcon },
-  { to: "/decidir", label: "Decidir", icon: ScaleIcon },
 ];
 const market: Destination = { to: "/mercado", label: "Mercado", icon: ChartColumnIcon };
 const settings: Destination = { to: "/ajustes", label: "Ajustes", icon: SettingsIcon };

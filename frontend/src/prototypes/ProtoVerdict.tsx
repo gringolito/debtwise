@@ -83,7 +83,7 @@ function GapChart({ verdict }: { verdict: ComparedVerdict }) {
               tickLine={false}
             />
             <YAxis
-              width={56}
+              width={72}
               domain={[min * 1.15, max * 1.15]}
               ticks={
                 -min > (max - min) * 0.2

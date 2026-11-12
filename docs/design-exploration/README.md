@@ -366,6 +366,7 @@ The specification itself isn't edited here. If the recommendations are adopted, 
 - **Typography:** "Inter as the SF Pro stand-in" becomes "system font first (SF Pro on Apple), Inter elsewhere", if P9 validates. Add the phone step-down for hero figures.
 - **Layout and components:**
   - "Desktop canvas 1280px. Left glass sidebar 240px…" gains the phone layout: the tab bar under 900px, single-column panels, and tables that scroll inside their panel. Modal sheets become bottom sheets on phones.
+  - Decidir is renamed **Comparar** and moves to second place, right under Início, since comparing is the app's main action: Início, Comparar, Financiamento, Investimentos; a hairline; Mercado; Ajustes pinned (`after-nav-comparar-B.jpg`, `after-nav-comparar-B-390.jpg`). Every mention of "Decidir" in DESIGN.md, GLOSSARY.md and the copy follows, including "as comparações em Decidir" under Projeções. The prototype keeps the `/decidir` address; a real rename would move it to `/comparar` with a redirect.
   - "Loading shows skeletons" extends to app start.
   - The error-panel rule becomes per panel where the rest loaded.
 - **Onboarding:** add per-step checks and clearing errors. Step 3 has no default. Review rows drill into their step (replacing "Editar … goes back to step 1").
