@@ -25,6 +25,12 @@ export const indexerLabels: Record<Indexer, string> = {
   ipca: indexNames.ipca,
 };
 
+/**
+ * The indexer of a form whose owner has not answered which one the contract has: none of the real
+ * ones, so the API rejects it as it does any text it cannot read.
+ */
+export const unchosenIndexer = "" as Indexer;
+
 /** A row in an editable list; `id` keeps a row's inputs with it when another row is removed. */
 export interface EffectiveRow {
   id: number;

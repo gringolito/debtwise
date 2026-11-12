@@ -1,7 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ApiError } from "@/lib/api";
+import { checkStep, type FieldErrors, staleLocations, withoutStale } from "@/lib/onboardingChecks";
 import { rejections, withFirstChargeRates } from "@/lib/mortgageForm";
 import { usePreviewSchedule, useSaveMortgage } from "@/lib/mortgageQueries";
 import {
@@ -25,6 +26,19 @@ interface Failure {
   /** The step that shows it: the first that asks for a field the API rejected. */
   step: number;
   action: "preview" | "save";
+  /** What the API rejected and the owner has not changed since, by location. */
+  rejected: FieldErrors;
+}
+
+const noErrors: FieldErrors = new Map();
+
+/** Moves focus to the first field the step marks invalid: a choice's first radio, for a choice. */
+function focusFirstInvalid() {
+  const first = document.querySelector<HTMLElement>('main [aria-invalid="true"]');
+  const target = first?.matches('[role="radiogroup"]')
+    ? first.querySelector<HTMLElement>('[role="radio"]')
+    : first;
+  target?.focus();
 }
 
 const failureMessages: Record<Failure["action"], string> = {
@@ -79,38 +93,61 @@ export function Onboarding() {
   const [step, setStep] = useState(0);
   const [values, setValues] = useState(onboardingValues);
   const [failure, setFailure] = useState<Failure | null>(null);
+  // What the browser found wrong with the step the owner tried to leave.
+  const [checked, setChecked] = useState(noErrors);
+  // A step opened from the review goes back to it, previewing the changed terms again.
+  const [fromReview, setFromReview] = useState(false);
+  const [focusRequests, setFocusRequests] = useState(0);
   const preview = usePreviewSchedule();
   const save = useSaveMortgage();
   const navigate = useNavigate();
 
-  const rejected = rejections(failure?.error ?? null);
-  const messageOf = (...locations: string[]) =>
-    locations.map((location) => rejected.get(location)).find((message) => message !== undefined);
+  // Runs after the step that shows the messages has rendered.
+  useEffect(() => {
+    if (focusRequests > 0) focusFirstInvalid();
+  }, [focusRequests]);
 
+  const messageOf = (...locations: string[]) =>
+    locations
+      .map((location) => checked.get(location) ?? failure?.rejected.get(location))
+      .find((message) => message !== undefined);
+
+  // A message stops showing the moment its field changes, whoever found it wrong.
   const set: StepProps["set"] = (key, value) => {
-    // The API names rows by position, so once a row is added or removed its answer is out of date.
-    if (Array.isArray(value) && value.length !== (values[key] as unknown[]).length) {
-      setFailure(null);
-    }
-    setValues((current) => withFirstChargeRates(current, { ...current, [key]: value }));
+    const next = withFirstChargeRates(values, { ...values, [key]: value });
+    const stale = staleLocations(values, next);
+    setValues(next);
+    setChecked((current) => withoutStale(current, stale));
+    setFailure((current) => {
+      if (current === null) return current;
+      const rejected = withoutStale(current.rejected, stale);
+      if (rejected === current.rejected) return current;
+      return rejected.size === 0 ? null : { ...current, rejected };
+    });
+  };
+
+  const goTo = (target: number) => {
+    setChecked(noErrors);
+    setStep(target);
   };
 
   const fail = (error: Error, at: number, action: Failure["action"]) => {
+    const rejected = rejections(error);
     const owner =
-      error instanceof ApiError && error.status === 422
-        ? stepOf(rejections(error).keys())
-        : undefined;
-    setFailure({ error, step: owner ?? at, action });
-    setStep(owner ?? at);
+      error instanceof ApiError && error.status === 422 ? stepOf(rejected.keys()) : undefined;
+    setFailure({ error, step: owner ?? at, action, rejected });
+    goTo(owner ?? at);
+    setFocusRequests((count) => count + 1);
   };
 
-  const review = () =>
+  const review = (from: number) =>
     preview.mutate(onboardingTerms(values), {
       onSuccess: () => {
         setFailure(null);
-        setStep(REVIEW_STEP);
+        setFromReview(false);
+        goTo(REVIEW_STEP);
       },
-      onError: (error) => fail(error, LAST_TERMS_STEP, "preview"),
+      onError: (error) => fail(error, from, "preview"),
     });
 
   // Saving registers the mortgage, which swaps the onboarding for the app at once, so the address
@@ -120,6 +157,23 @@ export function Onboarding() {
     save.mutate(onboardingTerms(values), {
       onError: (error) => fail(error, REVIEW_STEP, "save"),
     });
+  };
+
+  // The browser checks what it can before a step goes on; the API stays the final authority at
+  // the review.
+  const proceed = () => {
+    const errors = checkStep(step, values);
+    setChecked(errors);
+    if (errors.size > 0) setFocusRequests((count) => count + 1);
+    else if (fromReview || step === LAST_TERMS_STEP) review(step);
+    else goTo(step + 1);
+  };
+
+  // Going back is always one step back, even after a step was opened from the review: the review
+  // would show new terms beside the schedule of the old ones.
+  const back = () => {
+    if (step === 1) setFromReview(false);
+    goTo(step - 1);
   };
 
   const alert = failure?.step === step ? <FailureAlert failure={failure} /> : undefined;
@@ -142,7 +196,10 @@ export function Onboarding() {
         <ReviewStep
           terms={onboardingTerms(values)}
           schedule={preview.data}
-          onEdit={() => setStep(1)}
+          onEditStep={(target) => {
+            setFromReview(true);
+            setStep(target);
+          }}
         />
       </StepFrame>
     );
@@ -155,9 +212,9 @@ export function Onboarding() {
       step={step}
       title={title}
       context={context}
-      pending={step === LAST_TERMS_STEP && preview.isPending}
-      onContinue={step === LAST_TERMS_STEP ? review : () => setStep(step + 1)}
-      onBack={() => setStep(step - 1)}
+      pending={(step === LAST_TERMS_STEP || fromReview) && preview.isPending}
+      onContinue={proceed}
+      onBack={back}
       alert={alert}
     >
       <Fields values={values} set={set} messageOf={messageOf} />

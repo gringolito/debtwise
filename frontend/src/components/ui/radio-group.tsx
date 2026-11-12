@@ -8,8 +8,8 @@ const radioGroupVariants = cva("grid w-full", {
   variants: {
     layout: {
       default: "gap-2",
-      /** Side-by-side choice cards, such as SAC and Price. */
-      cards: "grid-cols-2 gap-4",
+      /** Choice cards, such as SAC and Price: side by side, stacked on a phone. */
+      cards: "grid-cols-1 gap-4 sm:grid-cols-2",
       /** Rows of an inset grouped list, which draws its own separators. */
       rows: "gap-0",
     },

@@ -56,7 +56,7 @@ export function BalanceCurve({
           {now && now !== last && (
             <ReferenceLine
               x={now.date}
-              stroke="var(--accent-mark)"
+              stroke="var(--accent)"
               strokeDasharray="2 2"
               label={{
                 value: `Hoje (${formatMonth(today)})`,

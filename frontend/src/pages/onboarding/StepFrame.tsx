@@ -49,7 +49,7 @@ export function StepFrame({
         max={STEP_COUNT}
         className="fixed inset-x-0 top-0"
       />
-      <header className="flex items-center justify-between px-10 pt-8">
+      <header className="flex items-center justify-between px-4 pt-6 sm:px-10 sm:pt-8">
         <Wordmark />
         <p className="text-footnote text-muted-foreground">
           Passo {step} de {STEP_COUNT}

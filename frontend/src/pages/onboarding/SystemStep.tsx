@@ -29,12 +29,14 @@ const choices: SystemChoice[] = [
 
 export function SystemStep({ values, set, messageOf }: StepProps) {
   const id = useId();
-  const invalid = messageOf("amortization_system") !== undefined;
+  const message = messageOf("amortization_system");
+  const invalid = message !== undefined;
   return (
     <div className="flex flex-col gap-4">
       <RadioGroup
         aria-label="Sistema de amortização"
         aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? `${id}-message` : undefined}
         value={values.amortizationSystem}
         onValueChange={(value) => set("amortizationSystem", value as AmortizationSystem)}
         layout="cards"
@@ -69,7 +71,11 @@ export function SystemStep({ values, set, messageOf }: StepProps) {
           </label>
         ))}
       </RadioGroup>
-      {invalid && <p className="text-callout text-destructive">Escolha um sistema.</p>}
+      {invalid && (
+        <p id={`${id}-message`} className="text-callout text-destructive">
+          {message}
+        </p>
+      )}
       <p className="text-center text-footnote text-muted-foreground">
         Não encontrou? Ligue para o banco e pergunte pelo sistema de amortização.
       </p>

@@ -113,7 +113,7 @@ export function InsuranceStep({ values, set, messageOf }: StepProps) {
                   onChange={(value) => set(charge, value)}
                   message={
                     !derived.needsBase && values[charge].trim() !== "" && derived.rate === undefined
-                      ? "Valor inválido."
+                      ? "Use só números, como 25,00."
                       : undefined
                   }
                 />
