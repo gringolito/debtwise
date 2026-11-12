@@ -191,25 +191,11 @@ export function ChangeSheet(props: ChangeSheetProps) {
         >
           <DialogHeader>
             <DialogTitle>{titles[change.list]}</DialogTitle>
-            <span className="flex items-center gap-3">
-              {proto && onRemove && (
-                <Button
-                  type="button"
-                  variant="plain-destructive"
-                  size="icon-sm"
-                  aria-label="Remover mudança"
-                  title="Remover mudança"
-                  onClick={onRemove}
-                >
-                  <Trash2Icon aria-hidden="true" strokeWidth={1.75} />
-                </Button>
-              )}
-              <DialogClose asChild>
-                <Button type="button" variant="plain" size="inline">
-                  Cancelar
-                </Button>
-              </DialogClose>
-            </span>
+            <DialogClose asChild>
+              <Button type="button" variant="plain" size="inline">
+                Cancelar
+              </Button>
+            </DialogClose>
           </DialogHeader>
           <GroupedList>
             {insurance && (
@@ -236,11 +222,33 @@ export function ChangeSheet(props: ChangeSheetProps) {
             <ChangeFields {...props} />
           </GroupedList>
           <DialogFooter>
-            <Button type="submit">Concluir</Button>
-            {!proto && onRemove && (
-              <Button type="button" variant="destructive" onClick={onRemove}>
-                Remover mudança
-              </Button>
+            {proto ? (
+              <div className="flex items-center gap-2">
+                {onRemove && (
+                  <Button
+                    type="button"
+                    variant="plain"
+                    size="icon"
+                    aria-label="Remover mudança"
+                    title="Remover mudança"
+                    onClick={onRemove}
+                  >
+                    <Trash2Icon aria-hidden="true" strokeWidth={1.75} />
+                  </Button>
+                )}
+                <Button type="submit" className="flex-1">
+                  Concluir
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Button type="submit">Concluir</Button>
+                {onRemove && (
+                  <Button type="button" variant="destructive" onClick={onRemove}>
+                    Remover mudança
+                  </Button>
+                )}
+              </>
             )}
           </DialogFooter>
         </form>

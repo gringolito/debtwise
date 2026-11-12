@@ -341,7 +341,7 @@ These came from the owner's review of the first round. Each is fixed in B and co
 | Dates read "04/15/2023" | `<input type="date">` writes dates in the **browser's** language, whatever the page's language. An English system shows mm/dd/yyyy | a dd/mm/aaaa text field with a numeric keyboard and a calendar button that still opens the native picker | the same in every browser language (`after-q-contrato-B.jpg`) |
 | Values misaligned; "R$" far from the amount | every inline input is a fixed 144px box with right-aligned text, so a prefix sits at the box's left edge; date inputs lay out their own segments | inputs are as wide as their text (`field-sizing: content`), so value and units form one group on the row's trailing edge | gap between "R$" and the amount on Contrato: 74px → 6px; every value group ends 16px from the row edge (`before-q-contrato-A.jpg`, `after-q-contrato-B.jpg`) |
 | Money without cents ("480.000") | the form keeps what the API sends or the owner types | money fields show two places when not being edited and complete them on focus and blur ("480.000,00") | — |
-| The change sheet's hint wraps; "Remover mudança" is a full-width tinted button competing with "Concluir" | long hint beside a 144px input; the destructive action styled as a second primary | the hint is "Para calcular a taxa.", since the label already names the amount. Removal is a red trash icon beside "Cancelar" (accessible name "Remover mudança"), so "Concluir" is the only button | hint 2 lines → 1 line at 1280px and 390px (`before-q-changesheet-A.jpg`, `after-q-changesheet-B.jpg`, `after-q-changesheet-B-390.jpg`) |
+| The change sheet's hint wraps; "Remover mudança" is a full-width tinted button competing with "Concluir" | long hint beside a 144px input; the destructive action styled as a second primary | the hint is "Para calcular a taxa.", since the label already names the amount. The header keeps "Cancelar" as its only action; removal is a grey 44px trash icon left of "Concluir" (accessible name "Remover mudança") | hint 2 lines → 1 line at 1280px and 390px; footer buttons 2 → 1 plus the icon (`before-q-changesheet-A.jpg`, `after-q-changesheet-B.jpg`, `after-q-changesheet-B-390.jpg`) |
 
 **Checked by hand:**
 - Typing "01052023" gives 01/05/2023, and the row updates on "Concluir".
@@ -351,7 +351,7 @@ These came from the owner's review of the first round. Each is fixed in B and co
 - Contrato stays at scrollWidth 390 on a phone.
 
 **Tradeoffs and open points:**
-- **Trash icon:** an icon-only destructive action is less discoverable than a labelled one. It is acceptable here because removing a change is undone by the page's "Cancelar" until "Salvar". For deletions that save at once (a prepayment, a lot), keep the labelled confirmation.
+- **Trash icon:** in a first pass the icon sat red in the header beside "Cancelar". The owner rejected both: two header actions, and red drawing the eye to the least common action. It is now grey (`#636366`, 5.9:1 on white) in the footer, while "Cancelar" stays the one header action and the only visible way out without changes. An icon-only destructive action is less discoverable than a labelled one. That is acceptable here because the page's "Cancelar" undoes a removal until "Salvar". For deletions that save at once (a prepayment, a lot), keep the labelled confirmation.
 - **Touch:** Radix tooltips don't open on touch, so a phone can't see a projected reading's period. A tap-to-open popover is the fix if this is adopted. The method is still stated above the table.
 - **Date field:** the prototype selects the whole date on focus and starts over when typed past; editing one digit in the middle isn't handled. A production version should validate impossible dates (31/02) in the browser, not only on the server.
 - **Firefox:** `field-sizing: content` isn't supported there yet. Inputs fall back to their fixed width, which is today's look.
@@ -383,7 +383,7 @@ The specification itself isn't edited here. If the recommendations are adopted, 
   - Typed values hug their text, so value and units share the row's trailing edge.
   - Dates are typed as dd/mm/aaaa regardless of the browser's language.
   - Money shows two decimal places.
-  - In change sheets, removal is a trash icon beside "Cancelar".
+  - In change sheets, "Cancelar" is the header's one action, and removal is a grey trash icon beside "Concluir".
   - A projected index reads grey with its period and method on demand.
   - Horizons read in words, never as negative amounts.
 - **Voice:** add "near-ties are named as such" and "no signed amounts in prose".
