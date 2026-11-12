@@ -19,15 +19,18 @@ html[data-proto] {
   --chart-projection: #8e8e93;
   /* Unselected segment labels sit on a grey track: 5.3:1 there (was 4.22:1). */
   --muted-foreground: #636366;
+  /* One step darker so text on the tinted canvas stays at AA: 4.83:1 at its bluest (was 4.21:1). */
+  --accent: #26705f;
+  --caution: #a84a00;
 }
 
-/* Canvas: a slight diagonal from an Orvalho-tinted grey to a blue-tinted grey, both as light as the
-   old #F5F5F7, with the soft accent wash kept top left. Fixed, so panels scroll over one canvas. */
+/* Canvas: a diagonal from an Orvalho-tinted grey to a blue-tinted grey through a neutral middle,
+   with the soft accent wash kept top left. Fixed, so panels scroll over one canvas. */
 html[data-proto] body {
   font-family: var(--font-sans);
   background:
-    radial-gradient(circle at 15% 10%, rgb(130 199 183 / 0.1), transparent 45%),
-    linear-gradient(135deg, #eef4f1 0%, #f3f4f6 50%, #eef1f6 100%);
+    radial-gradient(circle at 15% 10%, rgb(130 199 183 / 0.14), transparent 45%),
+    linear-gradient(135deg, #e3efea 0%, #eef0f3 50%, #e3e9f3 100%);
   background-attachment: fixed;
 }
 
