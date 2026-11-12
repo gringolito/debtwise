@@ -486,6 +486,26 @@ describe("a mortgage the API rejects", () => {
     expect(bodies(requests, "PUT", "/api/mortgage")).toHaveLength(1);
   });
 
+  it("marks the MIP and DFI rates the API rejects on the insurance step", async () => {
+    stubMortgageApi({
+      onPreview: () => unprocessable("body.mip_rates[0].rate", "body.dfi_rates[0].rate"),
+    });
+    renderAt("/");
+
+    await start();
+    await continueTo(5, 1);
+    next();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Confira os campos destacados.");
+    await atStep(5);
+    expect(screen.getByLabelText("MIP · Morte e invalidez")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByLabelText("DFI · Danos ao imóvel")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Valor de avaliação")).not.toHaveAttribute("aria-invalid");
+  });
+
   it("drops the highlights once a rate change is added or removed, since they named rows", async () => {
     stubMortgageApi({ onPreview: () => unprocessable("body.contract_rates[1].rate") });
     renderAt("/");
