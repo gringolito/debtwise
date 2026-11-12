@@ -21,8 +21,14 @@ html[data-proto] {
   --muted-foreground: #636366;
 }
 
+/* Canvas: a slight diagonal from an Orvalho-tinted grey to a blue-tinted grey, both as light as the
+   old #F5F5F7, with the soft accent wash kept top left. Fixed, so panels scroll over one canvas. */
 html[data-proto] body {
   font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at 15% 10%, rgb(130 199 183 / 0.1), transparent 45%),
+    linear-gradient(135deg, #eef4f1 0%, #f3f4f6 50%, #eef1f6 100%);
+  background-attachment: fixed;
 }
 
 /* One focus treatment everywhere: a 2px strong-accent ring off the element (5.1:1 on white). */
