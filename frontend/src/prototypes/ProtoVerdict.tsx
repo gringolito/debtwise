@@ -187,9 +187,11 @@ function inHand(s: Scenario) {
 }
 
 function standing(s: Scenario) {
-  return Number(s.net_worth) < 0
-    ? `deve ${formatMoney(s.net_worth.replace("-", ""))}`
-    : `tem ${formatMoney(s.net_worth)}`;
+  const owes = Number(s.net_worth) < 0;
+  return {
+    label: owes ? "No fim, você deve" : "No fim, você tem",
+    amount: formatMoney(s.net_worth.replace("-", "")),
+  };
 }
 
 export function ProtoLedgerPanel({
@@ -242,29 +244,36 @@ export function ProtoLedgerPanel({
               <p className="text-headline">{title}</p>
               <p className="text-footnote text-muted-foreground">{subtitle}</p>
             </div>
-            <dl className="flex flex-col gap-3 text-callout">
-              <div>
-                <dt className="text-muted-foreground">Saldo devedor</dt>
-                <dd className="text-title-2 tabular-nums">{formatMoney(s.outstanding_balance)}</dd>
+            <div>
+              <p className="text-callout text-muted-foreground">{standing(s).label}</p>
+              <p className="text-large-title font-semibold tabular-nums">{standing(s).amount}</p>
+            </div>
+            <dl className="flex flex-col gap-1 border-t pt-3 text-footnote text-muted-foreground">
+              <div className="flex justify-between gap-3">
+                <dt>Saldo devedor</dt>
+                <dd className="tabular-nums">{formatMoney(s.outstanding_balance)}</dd>
               </div>
-              <div>
-                <dt className="text-muted-foreground">Dinheiro do título, líquido</dt>
-                <dd className="text-title-2 tabular-nums">{inHand(s) ?? "Nenhum"}</dd>
-              </div>
-              <div className="border-t pt-3">
-                <dt className="text-muted-foreground">No fim, você</dt>
-                <dd className="text-headline tabular-nums">{standing(s)}</dd>
+              <div className="flex justify-between gap-3">
+                <dt>Dinheiro do título, líquido</dt>
+                <dd className="tabular-nums">{inHand(s) ?? "Nenhum"}</dd>
               </div>
             </dl>
           </div>
         ))}
       </div>
-      <p className="text-callout">
-        {y.leader === "tie"
-          ? "As duas opções terminam iguais."
-          : `${y.leader === "invest" ? "Investir" : "Amortizar"} termina com ${y.amount} a mais, ${y.share} dos ${formatMoney(decision.amount)} em ${y.horizon}.`}
-        {y.nearTie && y.leader !== "tie" && " Na prática, um empate."}
-      </p>
+      <div className="flex flex-col gap-1 border-t pt-5">
+        <p className="text-title-2">
+          {y.leader === "tie"
+            ? "As duas opções terminam iguais."
+            : `${y.leader === "invest" ? "Investir" : "Amortizar"} termina com ${y.amount} a mais`}
+        </p>
+        {y.leader !== "tie" && (
+          <p className="text-callout text-muted-foreground">
+            {y.share} dos {formatMoney(decision.amount)} em {y.horizon}.
+            {y.nearTie && " Na prática, um empate."}
+          </p>
+        )}
+      </div>
     </section>
   );
 }

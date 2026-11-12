@@ -285,16 +285,15 @@ What changes:
 
 ### P5. Decidir as two columns (C)
 
-What changes: the verdict panel shows "Se amortizar" and "Se investir" side by side at the horizon:
-- saldo devedor;
-- money from the bond, net;
-- "No fim, você deve R$ …".
+What changes: the verdict panel shows "Se amortizar" and "Se investir" side by side at the horizon. Each column leads with its outcome, "No fim, você deve R$ …", as a large figure. The two parts that produce it, the saldo devedor and the bond's net money, sit under a hairline in Footnote grey. The difference closes the panel as a Title 2 ("Investir termina com R$ 324,84 a mais") over its yardstick in Callout.
+
+In a first pass, the parts were Title 2 and the outcome was a smaller Headline at the bottom of each column, so the eye landed on the inputs first. The owner pointed out that the outcome and the difference are what the panel is for. They now carry the weight (`after-decidir-C.jpg`, `after-decidir-C-390.jpg`).
 
 A closing line states the difference and its share. See `after-decidir-C.jpg`.
 
 **Critique:**
 - It makes the abstract "advantage" concrete. Investing leaves a R$ 17.915 larger balance but R$ 18.729 in hand. That is the clearest explanation of *why* in any variant.
-- It asks the reader to compare four large figures to find R$ 814, and it says nothing about *when*.
+- Even with the outcome first, it asks the reader to subtract two six-digit figures to see the difference. The closing line does it for them, but it says nothing about *when*.
 - It loses to B as the verdict, but it beats today's "Ver cenários", which opens two lists of every cash flow.
 
 **Revise:** keep B's panel and make C's columns the content of "Ver cenários" (replacing Detalhes' four rows plus the scenarios list).
