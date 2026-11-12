@@ -173,10 +173,20 @@ describe("the insurance step", () => {
   });
 
   it.each([
-    ["gives a rate", "15,48", {}],
-    ["is no number", "caro", { first_installment_mip: "Use só números, como 25,00." }],
-  ])("reads a MIP charged on the first installment that %s", (_, firstInstallmentMip, expected) => {
-    expect(errorsOf(5, answered({ firstInstallmentMip }))).toEqual(expected);
+    ["a MIP that gives a rate", { firstInstallmentMip: "15,48" }, {}],
+    [
+      "a MIP that is no number",
+      { firstInstallmentMip: "caro" },
+      { first_installment_mip: "Use só números, como 25,00." },
+    ],
+    ["a DFI that gives a rate", { firstInstallmentDfi: "10,00" }, {}],
+    [
+      "a DFI that is no number",
+      { firstInstallmentDfi: "caro" },
+      { first_installment_dfi: "Use só números, como 25,00." },
+    ],
+  ])("reads %s charged on the first installment", (_, charge, expected) => {
+    expect(errorsOf(5, answered(charge))).toEqual(expected);
   });
 
   it("leaves a DFI charge to wait on the appraisal value, which it asks for instead", () => {
