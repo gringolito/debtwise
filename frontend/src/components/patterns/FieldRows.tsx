@@ -1,4 +1,5 @@
-import { type ReactNode, useId } from "react";
+import { type ReactNode, useId, useState } from "react";
+import { DateInput } from "@/components/patterns/DateInput";
 import {
   GroupedListItem,
   GroupedListLabel,
@@ -68,23 +69,80 @@ export function InlineInput({ value, onChange, grouped = false, ...props }: Inli
   return <Input {...typed} variant="inline" {...props} />;
 }
 
-/** InputRow is a grouped list row whose value the owner types in place. */
-export function InputRow({ label, hint, message, prefix, suffix, ...props }: InputRowProps) {
+const AMOUNT = /^\d{1,3}(\.\d{3})*(,\d*)?$|^\d+(,\d*)?$/;
+
+// A typed amount with its two places: "480.000" reads "480.000,00". Text that is no amount stays.
+function withCents(amount: string): string {
+  if (!AMOUNT.test(amount)) return amount;
+  const [reais, cents = ""] = amount.split(",");
+  return `${reais},${cents.padEnd(2, "0")}`;
+}
+
+/** MoneyInput is an InlineInput for reais, which shows its cents while the owner is not editing. */
+function MoneyInput({ value, onChange, onFocus, onBlur, ...props }: InlineInputProps) {
+  const [focused, setFocused] = useState(false);
+  const complete = () => {
+    if (withCents(value) !== value) onChange(withCents(value));
+  };
+  return (
+    <InlineInput
+      {...props}
+      grouped
+      value={focused ? value : withCents(value)}
+      onChange={onChange}
+      onFocus={(event) => {
+        setFocused(true);
+        complete();
+        onFocus?.(event);
+      }}
+      onBlur={(event) => {
+        setFocused(false);
+        complete();
+        onBlur?.(event);
+      }}
+    />
+  );
+}
+
+/**
+ * InputRow is a grouped list row whose value the owner types in place. Its units read as
+ * placeholders while the value is empty. A `type="date"` row is a DateInput, and says so when the
+ * date typed does not exist; a row with `grouped` and the prefix "R$" shows reais with their cents.
+ */
+export function InputRow({
+  label,
+  hint,
+  message,
+  prefix,
+  suffix,
+  type,
+  grouped,
+  ...props
+}: InputRowProps) {
   const id = useId();
-  const text = { id, label, hint, message };
+  const [impossibleDate, setImpossibleDate] = useState(false);
+  const shown = impossibleDate ? "Essa data não existe." : message;
+  const text = { id, label, hint, message: shown };
+  const field = {
+    id,
+    "aria-invalid": shown !== undefined || undefined,
+    "aria-describedby": describedBy(text),
+  };
+  const unit = props.value === "" ? "text-tertiary-foreground" : "text-muted-foreground";
   return (
     <GroupedListItem>
       <GroupedListRow>
         <RowText {...text} />
         <span className="flex shrink-0 items-baseline gap-1">
-          {prefix !== undefined && <span className="text-muted-foreground">{prefix}</span>}
-          <InlineInput
-            id={id}
-            aria-invalid={message !== undefined || undefined}
-            aria-describedby={describedBy(text)}
-            {...props}
-          />
-          {suffix !== undefined && <span className="text-muted-foreground">{suffix}</span>}
+          {prefix !== undefined && <span className={unit}>{prefix}</span>}
+          {type === "date" ? (
+            <DateInput {...props} {...field} onImpossibleChange={setImpossibleDate} />
+          ) : prefix === "R$" && grouped ? (
+            <MoneyInput type={type} {...props} {...field} />
+          ) : (
+            <InlineInput type={type} grouped={grouped} {...props} {...field} />
+          )}
+          {suffix !== undefined && <span className={unit}>{suffix}</span>}
         </span>
       </GroupedListRow>
     </GroupedListItem>

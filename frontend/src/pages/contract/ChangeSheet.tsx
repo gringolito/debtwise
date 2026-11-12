@@ -111,11 +111,7 @@ function InsuranceFields({
       {firstCharge && (
         <InputRow
           label="Valor na primeira prestação"
-          hint={
-            firstCharge.invalid
-              ? undefined
-              : (firstCharge.hint ?? "Preencha para calcular a taxa pelo valor cobrado.")
-          }
+          hint={firstCharge.invalid ? undefined : (firstCharge.hint ?? "Para calcular a taxa.")}
           grouped
           prefix="R$"
           inputMode="decimal"

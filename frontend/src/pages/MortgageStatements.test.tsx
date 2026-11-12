@@ -136,7 +136,7 @@ describe("recording a statement", () => {
     renderAt("/financiamento");
 
     const form = await openNewSheet();
-    fill(form, "Data do extrato", "2024-02-21");
+    fill(form, "Data do extrato", "21/02/2024");
     fill(form, "Saldo informado", "40.000,30");
 
     const comparison = await within(form).findByRole("status", {
@@ -178,7 +178,7 @@ describe("recording a statement", () => {
     renderAt("/financiamento");
 
     const form = await openNewSheet();
-    fill(form, "Data do extrato", "2024-02-21");
+    fill(form, "Data do extrato", "21/02/2024");
     fill(form, "Saldo informado", "40.269,35");
 
     const comparison = await within(form).findByRole("status");
@@ -194,7 +194,7 @@ describe("a statement the server rejects", () => {
     renderAt("/financiamento");
 
     const form = await openNewSheet();
-    fill(form, "Data do extrato", "2024-04-10");
+    fill(form, "Data do extrato", "10/04/2024");
     fill(form, "Saldo informado", "19.000,00");
 
     await within(form).findByText("Já existe um extrato nesta data.");
@@ -223,7 +223,7 @@ describe("a statement the server rejects", () => {
     renderAt("/financiamento");
 
     const form = await openNewSheet();
-    fill(form, "Data do extrato", "2023-12-09");
+    fill(form, "Data do extrato", "09/12/2023");
     fill(form, "Saldo informado", "60.000,00");
 
     expect(
@@ -241,7 +241,7 @@ describe("a statement the server rejects", () => {
     renderAt("/financiamento");
 
     const form = await openNewSheet();
-    fill(form, "Data do extrato", "2024-02-20");
+    fill(form, "Data do extrato", "20/02/2024");
     fill(form, "Saldo informado", "abc");
 
     await within(form).findByText("Valor inválido.");
@@ -256,7 +256,7 @@ describe("a statement the server rejects", () => {
     renderAt("/financiamento");
 
     const form = await openNewSheet();
-    fill(form, "Data do extrato", "2024-02-20");
+    fill(form, "Data do extrato", "20/02/2024");
     fill(form, "Saldo informado", "41.000,00");
     fireEvent.click(within(form).getByRole("button", { name: "Registrar" }));
 
@@ -277,9 +277,9 @@ describe("editing a statement", () => {
     renderAt("/financiamento");
 
     const form = await openEditSheet("10/04/2024");
-    expect(within(form).getByLabelText("Data do extrato")).toHaveValue("2024-04-10");
+    expect(within(form).getByLabelText("Data do extrato")).toHaveValue("10/04/2024");
     expect(within(form).getByLabelText("Saldo informado")).toHaveValue("19.500,00");
-    fill(form, "Data do extrato", "2024-01-20");
+    fill(form, "Data do extrato", "20/01/2024");
     fill(form, "Saldo informado", "52.000,00");
     await waitFor(() =>
       expect(requestsOf(requests, "POST").at(-1)).toEqual([
@@ -321,7 +321,7 @@ describe("editing a statement", () => {
     renderAt("/financiamento");
 
     const form = await openEditSheet("10/04/2024");
-    fill(form, "Data do extrato", "2024-02-20");
+    fill(form, "Data do extrato", "20/02/2024");
     fireEvent.click(within(form).getByRole("button", { name: "Salvar" }));
 
     await within(form).findByText("Já existe um extrato nesta data.");

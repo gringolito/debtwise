@@ -70,7 +70,7 @@ async function pickBond(form: HTMLElement, option: string, value: string) {
 }
 
 function fillPurchase(form: HTMLElement) {
-  fill(form, "Data da compra", "2024-05-12");
+  fill(form, "Data da compra", "12/05/2024");
   fill(form, "Taxa", "6,21");
   fill(form, "Preço unitário", "2.012,34");
   fill(form, "Quantidade", "8");
@@ -137,8 +137,8 @@ describe("adding a purchase", () => {
     expect(within(form).queryByLabelText("Vencimento")).toBeNull();
     fill(form, "Título", "other");
     fill(form, "Tipo", "ntn_f");
-    fill(form, "Vencimento", "2031-01-01");
-    fill(form, "Data da compra", "2026-10-20");
+    fill(form, "Vencimento", "01/01/2031");
+    fill(form, "Data da compra", "20/10/2026");
     fill(form, "Taxa", "13,52");
     fill(form, "Preço unitário", "912,345678");
     fill(form, "Quantidade", "1,25");
@@ -179,7 +179,7 @@ describe("the amount invested", () => {
 
     const form = await openForm("Adicionar compra");
     await pickBond(form, "Tesouro IPCA+ 2035", "ntn_b_principal 2035-05-15");
-    fill(form, "Data da compra", "2024-05-12");
+    fill(form, "Data da compra", "12/05/2024");
     fill(form, "Taxa", "6,21");
     fill(form, "Preço unitário", "2.012,34");
     expect(within(form).getByText("—")).toBeInTheDocument();
@@ -310,7 +310,7 @@ describe("a rejected purchase", () => {
 
     const form = await openForm("Adicionar compra");
     fill(form, "Título", "other");
-    fill(form, "Vencimento", "2031-01-02");
+    fill(form, "Vencimento", "02/01/2031");
     fireEvent.click(within(form).getByRole("button", { name: "Adicionar" }));
 
     await waitFor(() => expect(within(form).getByLabelText("Vencimento")).toBeInvalid());
@@ -350,7 +350,7 @@ describe("editing a purchase", () => {
 
     const form = await openForm("Editar compra");
     expect(within(form).getByLabelText("Título")).toHaveDisplayValue("Tesouro Prefixado 2027");
-    expect(within(form).getByLabelText("Data da compra")).toHaveValue("2026-01-02");
+    expect(within(form).getByLabelText("Data da compra")).toHaveValue("02/01/2026");
     expect(within(form).getByLabelText("Taxa")).toHaveValue("12,76");
     expect(within(form).getByLabelText("Preço unitário")).toHaveValue("880,50");
     expect(within(form).getByLabelText("Quantidade")).toHaveValue("2,5");
