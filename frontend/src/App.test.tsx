@@ -28,40 +28,65 @@ describe("the API", () => {
 describe("shell", () => {
   const destinations = [
     ["Início", "/"],
+    ["Comparar", "/comparar"],
     ["Financiamento", "/financiamento"],
     ["Investimentos", "/investimentos"],
-    ["Decidir", "/decidir"],
     ["Mercado", "/mercado"],
     ["Ajustes", "/ajustes"],
   ];
 
   it.each([
     ["/", "Início"],
+    ["/comparar", "Comparar"],
     ["/financiamento", "Financiamento"],
     ["/financiamento/editar", "Financiamento"],
     ["/investimentos", "Investimentos"],
     ["/investimentos/venda-antecipada", "Investimentos"],
     ["/investimentos/importar", "Investimentos"],
-    ["/decidir", "Decidir"],
     ["/mercado", "Mercado"],
     ["/mercado/titulos", "Mercado"],
     ["/ajustes", "Ajustes"],
-  ])("lists the six destinations and marks the current one on %s", async (path, current) => {
+  ])(
+    "lists the six destinations in the sidebar and the tab bar, marking the current one on %s",
+    async (path, current) => {
+      stubRoutes({});
+
+      renderAt(path);
+
+      expect(await screen.findByText("Debtwise")).toBeInTheDocument();
+      const navs = screen.getAllByRole("navigation", { name: "Principal" });
+      expect(navs).toHaveLength(2);
+      for (const nav of navs) {
+        expect(
+          destinations.map(([name]) => [
+            name,
+            within(nav).getByRole("link", { name }).getAttribute("href"),
+          ]),
+        ).toEqual(destinations);
+        expect(
+          within(nav)
+            .getAllByRole("link")
+            .map((link) => link.getAttribute("href")),
+        ).toEqual(destinations.map(([, href]) => href));
+        expect(
+          within(nav)
+            .getAllByRole("link", { current: "page" })
+            .map((link) => link.getAttribute("href")),
+        ).toEqual([destinations.find(([name]) => name === current)?.[1]]);
+      }
+    },
+  );
+
+  it.each([
+    ["/decidir", "/comparar"],
+    ["/decidir?valor=10000&comparar=true", "/comparar?valor=10000&comparar=true"],
+  ])("takes the old address %s to Comparar, search kept", async (path, address) => {
     stubRoutes({});
 
-    renderAt(path);
+    const router = renderAt(path);
 
-    expect(await screen.findByText("Debtwise")).toBeInTheDocument();
-    const nav = screen.getByRole("navigation", { name: "Principal" });
-    const links = within(nav).getAllByRole("link");
-    expect(links.map((link) => [link.textContent, link.getAttribute("href")])).toEqual(
-      destinations,
-    );
-    expect(
-      links
-        .filter((link) => link.getAttribute("aria-current") === "page")
-        .map((link) => link.textContent),
-    ).toEqual([current]);
+    expect(await screen.findByRole("heading", { name: "Comparar" })).toBeInTheDocument();
+    expect(router.state.location.href).toBe(address);
   });
 
   it.each([

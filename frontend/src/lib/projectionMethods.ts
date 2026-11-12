@@ -9,7 +9,7 @@ export const projectionMethodLabels: Record<ProjectionMethodName, string> = {
 
 /** What choosing a projection method changes, said under every place that shows the choice. */
 export const projectionMethodsEffect =
-  "A projeção muda o saldo devedor futuro e as comparações em Decidir.";
+  "A projeção muda o saldo devedor futuro e o resultado das comparações.";
 
 /** projectedByText names each projected index with the method that projected it. */
 export function projectedByText(methods: ProjectedBy[]): string {

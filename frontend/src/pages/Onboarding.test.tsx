@@ -72,7 +72,7 @@ describe("the gate in front of the app", () => {
     "/financiamento",
     "/financiamento/editar",
     "/investimentos",
-    "/decidir",
+    "/comparar",
     "/mercado/titulos",
     "/ajustes",
   ])("opens the welcome on %s while no mortgage is registered", async (path) => {
@@ -86,13 +86,13 @@ describe("the gate in front of the app", () => {
     expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
   });
 
-  it("shows neither the app nor the welcome until it knows whether a mortgage is registered", async () => {
+  it("shows the shell with Início's skeleton, not the welcome, while it learns whether a mortgage is registered", async () => {
     stubRoutes({ "GET /api/mortgage": () => new Promise<Response>(() => {}) });
 
     renderAt("/");
 
-    expect(await screen.findByRole("status", { name: "Carregando" })).toBeInTheDocument();
-    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: "Carregando início" })).toBeInTheDocument();
+    expect(screen.getAllByRole("navigation", { name: "Principal" })).toHaveLength(2);
     expect(screen.queryByText("Seu financiamento, com clareza.")).not.toBeInTheDocument();
   });
 
@@ -114,7 +114,9 @@ describe("the gate in front of the app", () => {
     fail = false;
     fireEvent.click(within(alert).getByRole("button", { name: "Tentar novamente" }));
 
-    expect(await screen.findByRole("navigation", { name: "Principal" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Financiamento" }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -238,7 +240,7 @@ describe("setting up the mortgage", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date(2024, 2, 20, 9, 30));
     const requests = stubMortgageApi({ onSave: () => registeredMortgage });
-    renderAt("/decidir");
+    renderAt("/comparar");
 
     await fillEveryStep();
     next();
@@ -265,7 +267,7 @@ describe("setting up the mortgage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Concluir" }));
     await closeWelcome();
 
-    const nav = await screen.findByRole("navigation", { name: "Principal" });
+    const [nav] = await screen.findAllByRole("navigation", { name: "Principal" });
     expect(within(nav).getByRole("link", { name: "Início" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -289,7 +291,7 @@ describe("setting up the mortgage", () => {
     expect(welcome).not.toHaveTextContent("*");
     fireEvent.click(within(welcome).getByRole("button", { name: "Continuar" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(await screen.findByRole("navigation", { name: "Principal" })).toBeInTheDocument();
+    expect(await screen.findAllByRole("navigation", { name: "Principal" })).toHaveLength(2);
   });
 
   it("opens Início and the welcome together, once the registered schedule has loaded", async () => {

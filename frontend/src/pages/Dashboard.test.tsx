@@ -219,18 +219,18 @@ describe("the answer card", () => {
     ).toEqual([["/api/decisions", { amount: "10000.00", effect: "shorten_term" }]]);
   });
 
-  it("links to Decidir with the amount prefilled, comparing it at once or to change it", async () => {
+  it("links to Comparar with the amount prefilled, comparing it at once or to change it", async () => {
     stubInicio({ "POST /api/decisions": decisionOf([ltn]) });
     renderAt("/");
 
     const card = await answerCard();
     expect(within(card).getByRole("link", { name: "Ver comparação" })).toHaveAttribute(
       "href",
-      "/decidir?valor=10000&comparar=true",
+      "/comparar?valor=10000&comparar=true",
     );
     expect(within(card).getByRole("link", { name: "Mudar valor" })).toHaveAttribute(
       "href",
-      "/decidir?valor=10000",
+      "/comparar?valor=10000",
     );
   });
 
@@ -278,7 +278,7 @@ describe("the answer card", () => {
     ).toBeInTheDocument();
     expect(within(card).getByRole("link", { name: "Comparar agora" })).toHaveAttribute(
       "href",
-      "/decidir?valor=10000&comparar=true",
+      "/comparar?valor=10000&comparar=true",
     );
     expect(within(card).queryByRole("link", { name: "Mudar valor" })).not.toBeInTheDocument();
   });

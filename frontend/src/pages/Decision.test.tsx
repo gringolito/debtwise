@@ -194,7 +194,7 @@ function fill(label: string, value: string) {
 
 async function compare(verdicts: Verdict[], amount = "10000") {
   const requests = stubDecisions(() => Response.json(decisionOf(verdicts)));
-  renderAt("/decidir");
+  renderAt("/comparar");
   await sentence();
   fill("Valor", amount);
   fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
@@ -222,7 +222,7 @@ const rows = (list: HTMLElement) =>
 describe("arriving with an amount in the address", () => {
   it("compares the amount at once when asked to", async () => {
     const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
-    renderAt("/decidir?valor=10000&comparar=true");
+    renderAt("/comparar?valor=10000&comparar=true");
 
     await verdictCard("Tesouro Prefixado 2029");
     expect(screen.getByLabelText("Valor")).toHaveValue("10.000");
@@ -233,7 +233,7 @@ describe("arriving with an amount in the address", () => {
 
   it("only fills in the amount otherwise", async () => {
     const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
-    renderAt("/decidir?valor=1234.5");
+    renderAt("/comparar?valor=1234.5");
 
     await sentence();
     expect(screen.getByLabelText("Valor")).toHaveValue("1.234,5");
@@ -244,7 +244,7 @@ describe("arriving with an amount in the address", () => {
     "ignores an amount that is no positive number in %s",
     async (search) => {
       const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
-      renderAt(`/decidir${search}`);
+      renderAt(`/comparar${search}`);
 
       await sentence();
       expect(screen.getByLabelText("Valor")).toHaveValue("");
@@ -265,7 +265,7 @@ describe("the question as a sentence", () => {
 
   it("groups the thousands of the amount while the owner types it", async () => {
     stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
-    renderAt("/decidir");
+    renderAt("/comparar");
     await sentence();
 
     fill("Valor", "1250000,5");
@@ -276,7 +276,7 @@ describe("the question as a sentence", () => {
     const requests = stubDecisions(() =>
       Response.json(decisionOf([ltnVerdict], { effect: "lower_installment", date: "2026-12-01" })),
     );
-    renderAt("/decidir");
+    renderAt("/comparar");
     await sentence();
 
     fill("Valor", "2.500,50");
@@ -299,7 +299,7 @@ describe("the question as a sentence", () => {
 
   it("returns to today once the owner clears the date", async () => {
     stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
-    renderAt("/decidir");
+    renderAt("/comparar");
     await sentence();
 
     fireEvent.click(screen.getByRole("button", { name: "Data: hoje" }));
@@ -744,7 +744,7 @@ describe("a decision that compares no bond", () => {
           : decisionOf([ltnVerdict]),
       ),
     );
-    renderAt("/decidir");
+    renderAt("/comparar");
     await sentence();
     fill("Valor", "5");
     fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
@@ -813,7 +813,7 @@ describe("a decision the server rejects", () => {
         { location: "body.date", message: "must not be before today", code: "before_today" },
       ]),
     );
-    renderAt("/decidir");
+    renderAt("/comparar");
     await sentence();
     fill("Valor", "0");
     fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
@@ -835,7 +835,7 @@ describe("a decision the server rejects", () => {
         { location: "body.amount", message: "expected string to match pattern" },
       ]),
     );
-    renderAt("/decidir");
+    renderAt("/comparar");
     await sentence();
     fill("Valor", "abc");
     fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
@@ -852,7 +852,7 @@ describe("a decision the server rejects", () => {
         ? problem(500, "Internal Server Error", "boom")
         : Response.json(decisionOf([ltnVerdict])),
     );
-    renderAt("/decidir");
+    renderAt("/comparar");
     await sentence();
     fill("Valor", "10000");
     fireEvent.click(screen.getByRole("button", { name: "Comparar" }));

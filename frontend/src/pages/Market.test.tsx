@@ -167,7 +167,8 @@ describe("Índices", () => {
     stubBackend();
 
     renderAt("/");
-    fireEvent.click(await screen.findByRole("link", { name: "Mercado" }));
+    const [sidebar] = await screen.findAllByRole("navigation", { name: "Principal" });
+    fireEvent.click(within(sidebar).getByRole("link", { name: "Mercado" }));
 
     expect(await screen.findByRole("heading", { level: 1, name: "Mercado" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Índices" })).toHaveAttribute("aria-checked", "true");
@@ -299,7 +300,7 @@ describe("an index's page", () => {
     expect(screen.getByRole("img", { name: "Histórico e projeção de IPCA" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "5 anos" })).toHaveAttribute("aria-checked", "true");
     expect(
-      within(screen.getByRole("navigation", { name: "Principal" })).getByRole("link", {
+      within(screen.getAllByRole("navigation", { name: "Principal" })[0]).getByRole("link", {
         name: "Mercado",
       }),
     ).toHaveAttribute("aria-current", "page");
@@ -330,7 +331,9 @@ describe("an index's page", () => {
     stubBackend();
 
     renderAt("/mercado/indices/ipca");
-    fireEvent.click(within(await screen.findByRole("main")).getByRole("link", { name: "Mercado" }));
+    fireEvent.click(
+      await within(await screen.findByRole("main")).findByRole("link", { name: "Mercado" }),
+    );
 
     expect(await indexList()).toBeInTheDocument();
   });

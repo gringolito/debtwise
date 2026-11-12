@@ -8,4 +8,5 @@ export function renderAt(path: string) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createAppRouter(createMemoryHistory({ initialEntries: [path] }));
   render(<App queryClient={queryClient} router={router} />);
+  return router;
 }

@@ -10,7 +10,7 @@ import { moneyToInput } from "@/lib/format";
 import { Comparison } from "@/pages/decision/Comparison";
 import { DecisionSentence } from "@/pages/decision/DecisionSentence";
 
-const route = getRouteApi("/shell/decidir");
+const route = getRouteApi("/shell/comparar");
 
 function ComparisonSkeleton() {
   return (
@@ -26,7 +26,7 @@ function ComparisonSkeleton() {
   );
 }
 
-/** Decision is Decidir: amortizar ou investir, compared for the amount, date and effect asked. */
+/** Decision is Comparar: amortizar ou investir, compared for the amount, date and effect asked. */
 export function Decision() {
   const { valor, comparar } = route.useSearch();
   const [values, setValues] = useState(() => ({
@@ -53,7 +53,7 @@ export function Decision() {
   return (
     <Page>
       <PageHeader className="flex-col items-start gap-1">
-        <PageTitle>Decidir</PageTitle>
+        <PageTitle>Comparar</PageTitle>
         <p className="text-callout text-muted-foreground">
           Amortizar ou investir? Compare usando o mesmo dinheiro.
         </p>

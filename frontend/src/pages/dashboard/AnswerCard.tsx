@@ -101,13 +101,13 @@ export function AnswerCard({ decision }: { decision: Decision }) {
             </p>
             <div className="mt-4 flex items-center gap-2">
               <Button variant="inverse" asChild>
-                <Link to="/decidir" search={{ valor, comparar: true }}>
+                <Link to="/comparar" search={{ valor, comparar: true }}>
                   {stated ? "Ver comparação" : "Comparar agora"}
                 </Link>
               </Button>
               {stated && (
                 <Button variant="plain-inverse" asChild>
-                  <Link to="/decidir" search={{ valor }}>
+                  <Link to="/comparar" search={{ valor }}>
                     Mudar valor
                   </Link>
                 </Button>
