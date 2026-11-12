@@ -42,7 +42,7 @@ export function SystemStep({ values, set, messageOf }: StepProps) {
         {choices.map(({ value, name, description, bars }) => (
           <label
             key={value}
-            className="group flex cursor-pointer flex-col gap-4 rounded-lg border-2 border-border bg-card p-6 transition-colors has-data-checked:border-accent-soft has-data-checked:bg-accent-tint"
+            className="group flex cursor-pointer flex-col gap-4 rounded-lg border-2 border-border bg-card p-6 transition-colors has-data-checked:border-accent-mark has-data-checked:bg-accent-tint"
           >
             <span className="flex items-center justify-between">
               <span id={`${id}-${value}-name`} className="text-headline">
@@ -59,7 +59,7 @@ export function SystemStep({ values, set, messageOf }: StepProps) {
                 <span
                   // biome-ignore lint/suspicious/noArrayIndexKey: the bars are a fixed picture.
                   key={i}
-                  className={cn(height, "flex-1 bg-border group-has-data-checked:bg-accent-soft")}
+                  className={cn(height, "flex-1 bg-border group-has-data-checked:bg-accent-mark")}
                 />
               ))}
             </span>

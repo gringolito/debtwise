@@ -12,9 +12,9 @@ const effects: Record<PrepaymentEffect, string> = {
   lower_installment: "reduzir a prestação",
 };
 
-// An editable value inside the sentence: underlined in the soft accent, red once rejected.
+// An editable value inside the sentence: underlined in the accent mark, red once rejected.
 const editable =
-  "border-b-2 border-accent-soft font-medium outline-none focus-within:border-accent focus-visible:border-accent aria-invalid:border-destructive aria-invalid:text-destructive has-aria-invalid:border-destructive has-aria-invalid:text-destructive";
+  "border-b-2 border-accent-mark font-medium focus-within:border-accent focus-visible:border-accent aria-invalid:border-destructive aria-invalid:text-destructive has-aria-invalid:border-destructive has-aria-invalid:text-destructive";
 
 interface DateValueProps {
   value: string;
@@ -110,7 +110,7 @@ export function DecisionSentence({
               placeholder="0,00"
               aria-invalid={errors.has("amount") || undefined}
               aria-describedby={messageId("amount")}
-              className="field-sizing-content min-w-12 bg-transparent outline-none placeholder:text-tertiary-foreground"
+              className="field-sizing-content min-w-12 bg-transparent placeholder:text-tertiary-foreground"
             />
           </span>{" "}
           <DateValue
@@ -129,7 +129,7 @@ export function DecisionSentence({
               }
               aria-invalid={errors.has("effect") || undefined}
               aria-describedby={messageId("effect")}
-              className="field-sizing-content appearance-none bg-transparent pr-5 outline-none"
+              className="field-sizing-content appearance-none bg-transparent pr-5"
             >
               {(Object.keys(effects) as PrepaymentEffect[]).map((effect) => (
                 <option key={effect} value={effect}>

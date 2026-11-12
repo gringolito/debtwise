@@ -41,7 +41,7 @@ export function GroupedListRow({
   return (
     <Comp
       className={cn(
-        "flex min-h-13 w-full items-center gap-4 px-4 py-3 text-left text-body outline-none focus-visible:bg-muted [&:is(a,button)]:transition-colors [&:is(a,button)]:hover:bg-muted",
+        "flex min-h-13 w-full items-center gap-4 px-4 py-3 text-left text-body -outline-offset-2 focus-visible:bg-muted [&:is(a,button)]:transition-colors [&:is(a,button)]:hover:bg-muted",
         className,
       )}
       {...props}

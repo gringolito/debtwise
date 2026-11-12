@@ -32,8 +32,9 @@ function RadioGroup({
   );
 }
 
-// The checked item is a soft-accent disc with a check, the selection mark DESIGN.md gives choice
-// cards and rows, rather than upstream's primary disc with a dot.
+// The checked item is an accent-mark disc with a check, the selection mark DESIGN.md gives choice
+// cards and rows, rather than upstream's primary disc with a dot. The empty ring is the control
+// grey, which reads at 3:1, and focus shows the app-wide outline from index.css.
 function RadioGroupItem({
   className,
   ...props
@@ -42,7 +43,7 @@ function RadioGroupItem({
     <RadioGroupPrimitive.Item
       data-slot="radio-group-item"
       className={cn(
-        "group/radio-group-item peer relative flex aspect-square size-6 shrink-0 rounded-full border border-input bg-card outline-none group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:not-data-checked:border-input after:absolute after:-inset-x-3 after:-inset-y-2 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-checked:border-accent-soft data-checked:bg-accent-soft data-checked:text-graphite-foreground",
+        "group/radio-group-item peer relative flex aspect-square size-6 shrink-0 rounded-full border border-control bg-card after:absolute after:-inset-x-3 after:-inset-y-2 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-checked:border-accent-mark data-checked:bg-accent-mark data-checked:text-graphite-foreground",
         className,
       )}
       {...props}

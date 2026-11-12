@@ -3,8 +3,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { Slot } from "radix-ui";
 
+// Focus shows the app-wide outline from index.css, DESIGN.md's one focus mark, instead of
+// upstream's translucent ring.
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:opacity-85 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding font-medium whitespace-nowrap transition-all select-none active:not-aria-[haspopup]:opacity-85 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -18,11 +20,9 @@ const buttonVariants = cva(
         "plain-inverse": "text-graphite-muted-foreground hover:text-graphite-foreground",
         /** A destructive text action, such as "Excluir" beside "Editar" in a page's header. */
         "plain-destructive": "text-destructive hover:text-destructive/80",
-        destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
+        destructive: "bg-destructive/10 text-destructive hover:bg-destructive/20",
         /** The action that confirms a deletion. */
-        critical:
-          "bg-destructive text-primary-foreground hover:bg-destructive/90 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
+        critical: "bg-destructive text-primary-foreground hover:bg-destructive/90",
         /** "Cancelar" under a confirmation's action. */
         secondary: "bg-muted text-foreground hover:bg-border",
         link: "text-accent underline-offset-4 hover:underline",

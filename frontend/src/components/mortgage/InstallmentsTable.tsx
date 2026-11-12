@@ -74,11 +74,7 @@ function Readings({ label, indexValues }: { label: string; indexValues: Correcti
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button
-          type="button"
-          aria-label={label}
-          className="rounded-full text-accent outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
+        <button type="button" aria-label={label} className="rounded-full text-accent">
           <InfoIcon aria-hidden="true" strokeWidth={1.5} className="size-4" />
         </button>
       </TooltipTrigger>

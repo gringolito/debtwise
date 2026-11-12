@@ -181,7 +181,7 @@ export function PrepaymentSheet({ prepayment, onClose, onSaved }: PrepaymentShee
               {effectOptions.map(({ value }) => (
                 <label
                   key={value}
-                  className="flex cursor-pointer items-center gap-4 rounded-lg border bg-card px-4 py-3 transition-colors has-data-checked:border-accent-soft has-data-checked:bg-accent-tint"
+                  className="flex cursor-pointer items-center gap-4 rounded-lg border bg-card px-4 py-3 transition-colors has-data-checked:border-accent-mark has-data-checked:bg-accent-tint"
                 >
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span id={`effect-${value}-name`} className="text-headline">

@@ -36,7 +36,7 @@ export function SegmentedControlItem({
   return (
     <ToggleGroup.Item
       className={cn(
-        "h-8 rounded-lg px-4 text-callout font-medium text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-xs",
+        "h-8 rounded-lg px-4 text-callout font-medium text-muted-foreground transition-colors hover:text-foreground data-[state=on]:bg-card data-[state=on]:text-foreground data-[state=on]:shadow-xs",
         className,
       )}
       {...props}
