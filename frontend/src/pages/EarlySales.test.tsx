@@ -44,6 +44,7 @@ describe("Venda antecipada", () => {
     ]);
     expect(within(list).getByText("R$ 120,00")).toHaveClass("text-positive");
     expect(within(list).getByText("R$ 2.140,00")).not.toHaveClass("text-positive");
+    expect(within(list).getByText("R$ 2.140,00").closest(".text-destructive")).toBeNull();
     expect(
       screen.getByText(
         "Cada compra mostra a opção que rende mais até o vencimento. O DebtWise compara; a decisão é sua.",

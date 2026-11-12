@@ -138,6 +138,7 @@ describe("a lot's detail", () => {
       ),
     ).toBeInTheDocument();
     expect(within(panel).getByText("R$ 2.140,00")).not.toHaveClass("text-positive");
+    expect(within(panel).getByText("R$ 2.140,00").closest(".text-destructive")).toBeNull();
     expect(
       within(panel).getByText(/^Comparação até 15\/05\/2035, com a mesma saída de dinheiro/),
     ).toHaveTextContent("O Tesouro Direto recompra hoje a IPCA + 6,40%, R$ 2.250,00 por título.");
@@ -215,10 +216,10 @@ describe("a lot's detail", () => {
     const confirm = await screen.findByRole("alertdialog", { name: "Excluir esta compra?" });
     fireEvent.click(within(confirm).getByRole("button", { name: "Excluir" }));
 
-    expect(await screen.findByRole("region", { name: "Compras" })).toBeInTheDocument();
-    expect(screen.getAllByRole("link").map(words)).toContain(
+    const purchases = await screen.findByRole("region", { name: "Compras" });
+    expect(within(purchases).getAllByRole("link").map(words)).toEqual([
       "Tesouro Prefixado com Juros Semestrais 2029 Sem preço de venda Compra em 10/01/2025 · 11,85%",
-    );
+    ]);
     expect(screen.queryByText(/Tesouro IPCA\+ 2035/)).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(
