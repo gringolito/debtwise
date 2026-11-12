@@ -36,7 +36,7 @@ export function SummaryFigure({ label, figure }: { label: string; figure: string
   return (
     <>
       <p className="text-callout text-muted-foreground">{label}</p>
-      <p className="text-large-title font-semibold">{figure}</p>
+      <p className="text-large-title font-semibold break-words">{figure}</p>
     </>
   );
 }
@@ -46,7 +46,7 @@ export function SummaryLink({ to, children }: { to: LinkProps["to"]; children: R
   return (
     <Link
       to={to}
-      className="mt-6 flex items-center justify-between gap-4 border-t pt-4 text-callout transition-colors hover:text-muted-foreground"
+      className="mt-6 flex min-h-11 items-center justify-between gap-4 border-t pt-4 text-callout transition-colors hover:text-muted-foreground"
     >
       {children}
       <GroupedListChevron />

@@ -56,6 +56,9 @@ const ltn: Verdict = {
   unit_price: "771.26",
   quantity: "12.96",
   advantage: "1234.56",
+  advantage_share: "0.1234",
+  near_tie: false,
+  horizon_months: 57,
   avoided_cost: "456.78",
   break_even_rate: "0.1102",
   invest: scenario,
@@ -63,7 +66,14 @@ const ltn: Verdict = {
   projected_by: [],
   market_data: freshMarketData,
 };
-const ntnf: Verdict = { ...ltn, type: "ntn_f", maturity: "2035-01-01", advantage: "-250.30" };
+const ntnf: Verdict = {
+  ...ltn,
+  type: "ntn_f",
+  maturity: "2035-01-01",
+  advantage: "-250.30",
+  advantage_share: "0.0250",
+  horizon_months: 129,
+};
 const unavailable: Verdict = {
   type: "ntn_f",
   maturity: "2031-01-01",
@@ -130,7 +140,7 @@ function stubInicio(routes: Routes = {}) {
 }
 
 const region = (name: string | RegExp) => screen.findByRole("region", { name });
-const answerCard = () => region(/rende mais|dá no mesmo|Amortizar ou investir\?/);
+const answerCard = () => region(/rende mais|no mesmo|Amortizar ou investir\?/);
 
 /** paragraph finds the paragraph that reads content, across the elements it is split into. */
 const paragraph = (container: HTMLElement, content: string) =>
@@ -212,7 +222,7 @@ describe("the answer card", () => {
     ).toBeInTheDocument();
     expect(within(card).getByText("Na projeção atual, para R$ 10.000,00 hoje")).toBeInTheDocument();
     expect(
-      paragraph(card, "R$ 1.234,56 a mais do que amortizar, até 01/01/2029."),
+      paragraph(card, "R$ 1.234,56 a mais até 01/01/2029, 12,3% do valor em 4 anos e 9 meses."),
     ).toBeInTheDocument();
     expect(
       requests.filter((r) => r.method === "POST").map((r) => [new URL(r.url).pathname, r.body]),
@@ -256,13 +266,15 @@ describe("the answer card", () => {
     renderAt("/");
 
     const card = await answerCard();
-    expect(within(card).getByRole("heading", { name: "Amortizar rende mais" })).toBeInTheDocument();
     expect(
-      paragraph(
-        card,
-        "R$ 250,30 a mais do que investir em Tesouro Prefixado com Juros Semestrais 2035, até 01/01/2035.",
-      ),
+      within(card).getByRole("heading", {
+        name: "Amortizar rende mais que Tesouro Prefixado com Juros Semestrais 2035",
+      }),
     ).toBeInTheDocument();
+    expect(
+      paragraph(card, "R$ 250,30 a mais até 01/01/2035, 2,5% do valor em 10 anos e 9 meses."),
+    ).toBeInTheDocument();
+    expect(card.querySelector("img")).toBeInTheDocument();
   });
 
   it.each([
@@ -284,9 +296,13 @@ describe("the answer card", () => {
   });
 
   it.each(["0.00", "-0.00"])(
-    "says both options come out the same when the advantage is %s",
+    "says both options come out the same, with no difference, when the advantage is %s",
     async (advantage) => {
-      stubInicio({ "POST /api/decisions": decisionOf([{ ...ltn, advantage }]) });
+      stubInicio({
+        "POST /api/decisions": decisionOf([
+          { ...ltn, advantage, advantage_share: "0.0000", horizon_months: 57 },
+        ]),
+      });
       renderAt("/");
 
       const card = await answerCard();
@@ -296,8 +312,44 @@ describe("the answer card", () => {
         }),
       ).toBeInTheDocument();
       expect(paragraph(card, "Nenhuma diferença até 01/01/2029.")).toBeInTheDocument();
+      expect(card.querySelector("img")).toBeNull();
     },
   );
+
+  it("states a near tie as a difference, with no winner illustration", async () => {
+    stubInicio({
+      "POST /api/decisions": decisionOf([
+        {
+          ...ltn,
+          advantage: "39.64",
+          advantage_share: "0.0040",
+          near_tie: true,
+          horizon_months: 25,
+        },
+      ]),
+    });
+    renderAt("/");
+
+    const card = await answerCard();
+    expect(
+      within(card).getByRole("heading", {
+        name: "Investir em Tesouro Prefixado 2029 ou amortizar dá praticamente no mesmo",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      paragraph(card, "R$ 39,64 de diferença até 01/01/2029, 0,4% do valor em 2 anos e 1 mês."),
+    ).toBeInTheDocument();
+    expect(card.querySelector("img")).toBeNull();
+  });
+
+  it("shows an illustration for a clear winner, and no 'Melhor opção' pill", async () => {
+    stubInicio({ "POST /api/decisions": decisionOf([ltn]) });
+    renderAt("/");
+
+    const card = await answerCard();
+    expect(card.querySelector("img")).toBeInTheDocument();
+    expect(within(card).queryByText("Melhor opção")).not.toBeInTheDocument();
+  });
 });
 
 describe("the stale-data note", () => {

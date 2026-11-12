@@ -6,7 +6,8 @@ import type {
   Verdict,
   VerdictMarketData,
 } from "@/lib/api";
-import { atCommonScale, compareDecimals } from "@/lib/decimals";
+import { atCommonScale } from "@/lib/decimals";
+import { type ComparedVerdict, rankVerdicts } from "@/lib/decisions";
 import { indexNames } from "@/lib/indexNames";
 
 /** today is the owner's calendar date as ISO text, the way the API writes dates. */
@@ -100,16 +101,9 @@ export function staleSources({
 }
 
 /**
- * bestVerdict is the verdict of the highest Advantage, the first of them on a tie; undefined when no
- * verdict has one.
+ * bestVerdict is the compared verdict of the highest Advantage, the first of them on a tie;
+ * undefined when no verdict was compared.
  */
-export function bestVerdict(verdicts: Verdict[]): Verdict | undefined {
-  let best: Verdict | undefined;
-  for (const verdict of verdicts) {
-    if (verdict.advantage === undefined) continue;
-    if (best?.advantage === undefined || compareDecimals(verdict.advantage, best.advantage) > 0) {
-      best = verdict;
-    }
-  }
-  return best;
+export function bestVerdict(verdicts: Verdict[]): ComparedVerdict | undefined {
+  return rankVerdicts(verdicts).compared[0];
 }
