@@ -73,7 +73,7 @@ export function Investments() {
 
   return (
     <Page className="gap-6">
-      <PageHeader className="items-center">
+      <PageHeader className="flex-wrap items-center">
         <PageTitle>Investimentos</PageTitle>
         {onPurchases && hasLots && (
           <div className="flex items-center gap-6">

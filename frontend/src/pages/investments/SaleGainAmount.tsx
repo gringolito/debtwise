@@ -1,29 +1,14 @@
-import { cn } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import type { SaleGain } from "@/lib/investments";
+import { cn } from "@/lib/utils";
 
-const signs: Record<SaleGain["kind"], string> = { gain: "+ ", loss: "− ", even: "" };
-const colors: Record<SaleGain["kind"], string> = {
-  gain: "text-positive",
-  loss: "text-destructive",
-  even: "",
-};
 /**
- * SaleGainAmount writes what selling gains over holding, green for a gain and red for a loss, with
- * its sign unless a sentence around it says which way it goes.
+ * SaleGainAmount writes what selling gains over holding, without a sign: green when selling earns
+ * more, the text colour otherwise (holding earning more is no loss), never red.
  */
-export function SaleGainAmount({
-  gain,
-  signed = true,
-  className,
-}: {
-  gain: SaleGain;
-  signed?: boolean;
-  className?: string;
-}) {
+export function SaleGainAmount({ gain, className }: { gain: SaleGain; className?: string }) {
   return (
-    <span className={cn("tabular-nums", colors[gain.kind], className)}>
-      {signed && signs[gain.kind]}
+    <span className={cn("tabular-nums", gain.kind === "gain" && "text-positive", className)}>
       {formatMoney(gain.amount)}
     </span>
   );
