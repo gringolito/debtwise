@@ -54,7 +54,7 @@ function BondsTable({
   sides: (keyof typeof sideNames)[];
 }) {
   return (
-    <Table variant="grouped" aria-label={label}>
+    <Table variant="grouped" aria-label={label} className="proto-bonds">
       <TableHeader>
         <TableRow variant="grouped">
           <TableHead variant="grouped">Título</TableHead>

@@ -9,6 +9,8 @@ import {
   TrendingUpIcon,
 } from "lucide-react";
 import { Wordmark } from "@/components/layout/Wordmark";
+import { ProtoShell } from "@/prototypes/ProtoShell";
+import { usePrototypeVariant } from "@/prototypes/variant";
 
 interface Destination {
   to: LinkProps["to"];
@@ -64,6 +66,7 @@ function Sidebar() {
 }
 
 export function AppShell() {
+  if (usePrototypeVariant() !== "A") return <ProtoShell />;
   return (
     <div className="flex min-h-svh">
       <Sidebar />

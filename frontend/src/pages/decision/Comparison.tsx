@@ -20,6 +20,8 @@ import { OtherBonds } from "@/pages/decision/OtherBonds";
 import { VerdictCard } from "@/pages/decision/VerdictCard";
 import { WorthChart } from "@/pages/decision/WorthChart";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
+import { ProtoLedgerPanel, ProtoVerdictPanel } from "@/prototypes/ProtoVerdict";
+import { usePrototypeVariant } from "@/prototypes/variant";
 
 function Details({ verdict }: { verdict: ComparedVerdict }) {
   const headerId = useId();
@@ -65,6 +67,7 @@ export function Comparison({ decision, onUseAmount }: ComparisonProps) {
   const { compared, unavailable } = rankVerdicts(decision.verdicts);
   const [selectedKey, setSelectedKey] = useState<string>();
   const selected = compared.find((v) => verdictKey(v) === selectedKey) ?? compared[0];
+  const variant = usePrototypeVariant();
 
   if (!selected) {
     return (
@@ -80,10 +83,18 @@ export function Comparison({ decision, onUseAmount }: ComparisonProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <VerdictCard verdict={selected} />
-        <StaleNote marketData={selected.market_data} />
+        {variant === "B" && (
+          <ProtoVerdictPanel
+            decision={decision}
+            verdict={selected}
+            stale={<StaleNote marketData={selected.market_data} />}
+          />
+        )}
+        {variant === "C" && <ProtoLedgerPanel decision={decision} verdict={selected} />}
+        {variant === "A" && <VerdictCard verdict={selected} />}
+        {variant !== "B" && <StaleNote marketData={selected.market_data} />}
       </div>
-      <WorthChart verdict={selected} />
+      {variant === "A" && <WorthChart verdict={selected} />}
       <Details verdict={selected} />
       <OtherBonds
         compared={compared.filter((verdict) => verdict !== selected)}

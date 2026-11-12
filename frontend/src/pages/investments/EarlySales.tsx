@@ -24,6 +24,8 @@ import {
 import { EffectControl } from "@/pages/investments/EffectControl";
 import { RowsSkeleton } from "@/pages/investments/InvestmentsSkeleton";
 import { SaleGainAmount } from "@/pages/investments/SaleGainAmount";
+import { ProtoCheckRow } from "@/prototypes/ProtoInvestments";
+import { usePrototypeVariant } from "@/prototypes/variant";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
 
 const route = getRouteApi("/shell/investimentos/venda-antecipada");
@@ -45,6 +47,7 @@ function Outcome({ check }: { check: EarlySaleCheck }) {
 }
 
 function CheckRow({ check, search }: { check: EarlySaleCheck; search: EffectSearch }) {
+  if (usePrototypeVariant() !== "A") return <ProtoCheckRow check={check} search={search} />;
   const { lot } = check;
   return (
     <GroupedListItem>
@@ -67,6 +70,7 @@ function CheckRow({ check, search }: { check: EarlySaleCheck; search: EffectSear
 }
 
 function Checks({ search }: { search: EffectSearch }) {
+  const proto = usePrototypeVariant() !== "A";
   const checks = useEarlySaleChecks(effectOf(search));
   if (checks.isError) {
     return (
@@ -92,8 +96,9 @@ function Checks({ search }: { search: EffectSearch }) {
         ))}
       </GroupedList>
       <p className="px-1 text-footnote text-muted-foreground">
-        Valores positivos indicam que vender e amortizar rende mais. O DebtWise compara; a decisão é
-        sua.
+        {proto
+          ? "Cada compra mostra a opção que rende mais até o vencimento. O DebtWise compara; a decisão é sua."
+          : "Valores positivos indicam que vender e amortizar rende mais. O DebtWise compara; a decisão é sua."}
       </p>
       {marketData && <StaleNote marketData={marketData} />}
     </div>
@@ -109,7 +114,7 @@ export function EarlySales() {
   const navigate = route.useNavigate();
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-6">
+      <div className="proto-toolbar flex items-center justify-between gap-6">
         <p className="text-callout text-muted-foreground">
           Para cada compra, comparamos vender hoje e amortizar com manter até o vencimento.
         </p>

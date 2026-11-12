@@ -1,0 +1,68 @@
+/*
+ * PROTOTYPE, throwaway: Investimentos for variants B/C, scoped to html[data-proto].
+ * Venda antecipada rows: name left and outcome right when there is room; under 640px the outcome
+ * drops below the name so "Vender rende R$ 5.277,53 a mais" never squeezes the bond name.
+ */
+html[data-proto] .proto-sale-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 1.25rem;
+  grid-template-areas: "label value chevron";
+  align-items: center;
+  column-gap: 1rem;
+}
+html[data-proto] .proto-sale-label {
+  grid-area: label;
+}
+html[data-proto] .proto-sale-value {
+  grid-area: value;
+  text-align: right;
+}
+html[data-proto] .proto-sale-chevron {
+  grid-area: chevron;
+}
+@media (max-width: 639px) {
+  html[data-proto] .proto-sale-row {
+    grid-template-columns: minmax(0, 1fr) 1.25rem;
+    grid-template-areas:
+      "label chevron"
+      "value chevron";
+    row-gap: 0.25rem;
+  }
+  html[data-proto] .proto-sale-value {
+    text-align: left;
+  }
+}
+
+/* Compras rows: name and value share the first line; purchase and hint get the full width. */
+html[data-proto] .proto-lot-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 1.25rem;
+  grid-template-areas:
+    "name value chevron"
+    "meta meta chevron"
+    "hint hint chevron";
+  align-items: start;
+  column-gap: 1rem;
+  row-gap: 0.125rem;
+}
+html[data-proto] .proto-lot-name {
+  grid-area: name;
+}
+html[data-proto] .proto-lot-value {
+  grid-area: value;
+  text-align: right;
+  white-space: nowrap;
+}
+html[data-proto] .proto-lot-meta {
+  grid-area: meta;
+}
+html[data-proto] .proto-lot-hint {
+  grid-area: hint;
+}
+html[data-proto] .proto-lot-hint:empty {
+  display: none;
+}
+html[data-proto] .proto-lot-chevron {
+  grid-area: chevron;
+  align-self: center;
+}

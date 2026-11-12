@@ -24,6 +24,7 @@ import {
 } from "@/lib/decisions";
 import { formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { usePrototypeVariant } from "@/prototypes/variant";
 import { NoComparisonFix } from "@/pages/decision/NoComparisonPanel";
 
 const colors: Record<Favoured, string> = {
@@ -101,6 +102,7 @@ interface OtherBondsProps {
  */
 export function OtherBonds({ compared, unavailable, onSelect, onUseAmount }: OtherBondsProps) {
   const headerId = useId();
+  const proto = usePrototypeVariant() !== "A";
   if (compared.length === 0 && unavailable.length === 0) return null;
   return (
     <GroupedListSection aria-labelledby={headerId}>
@@ -114,9 +116,11 @@ export function OtherBonds({ compared, unavailable, onSelect, onUseAmount }: Oth
                   <BondName verdict={verdict} />
                 </GroupedListLabel>
                 <GroupedListValue
-                  className={cn("font-medium", colors[favoured(verdict.advantage)])}
+                  className={cn("font-medium", !proto && colors[favoured(verdict.advantage)])}
                 >
-                  {signedAdvantage(verdict.advantage)}
+                  {proto
+                    ? `${formatMoney(verdict.advantage.replace("-", ""))} ${verdict.advantage.startsWith("-") ? "a menos" : "a mais"}`
+                    : signedAdvantage(verdict.advantage)}
                 </GroupedListValue>
                 <GroupedListChevron />
               </button>

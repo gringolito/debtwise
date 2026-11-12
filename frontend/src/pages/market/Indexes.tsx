@@ -89,7 +89,7 @@ function IndexRow({
             </span>
           </span>
           <Sparkline points={points} />
-          <span className="flex w-52 flex-col items-end gap-0.5 text-right">
+          <span className="proto-index-value flex w-52 flex-col items-end gap-0.5 text-right">
             {latest ? (
               <>
                 <span className="tabular-nums">{indexValueText(index, latest.value)}</span>

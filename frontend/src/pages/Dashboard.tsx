@@ -18,6 +18,8 @@ import { InvestmentsPanel } from "@/pages/dashboard/InvestmentsPanel";
 import { MortgagePanel } from "@/pages/dashboard/MortgagePanel";
 import { NextSteps } from "@/pages/dashboard/NextSteps";
 import { RecentActivity } from "@/pages/dashboard/RecentActivity";
+import { ProtoAnswerCard } from "@/prototypes/ProtoAnswerCard";
+import { usePrototypeVariant } from "@/prototypes/variant";
 
 /** The amount Início answers "amortizar ou investir?" for, prepaid to shorten the term today. */
 const ANSWERED: DecisionInput = { amount: "10000.00", effect: "shorten_term" };
@@ -26,6 +28,7 @@ const RECENT_ACTIVITY = 3;
 
 function Content() {
   const mortgage = useMortgage();
+  const variant = usePrototypeVariant();
   const schedule = useMortgageSchedule();
   const statements = useStatements();
   const prepayments = usePrepayments();
@@ -59,8 +62,12 @@ function Content() {
   return (
     <>
       <div className="flex flex-col gap-6">
-        <AnswerCard decision={decision.data} />
-        <div className="grid grid-cols-2 gap-6">
+        {variant === "A" ? (
+          <AnswerCard decision={decision.data} />
+        ) : (
+          <ProtoAnswerCard decision={decision.data} />
+        )}
+        <div className="proto-summary-grid grid grid-cols-2 gap-6">
           {mortgage.data && (
             <MortgagePanel mortgage={mortgage.data} schedule={schedule.data} today={date} />
           )}

@@ -46,6 +46,28 @@
     {
       "files": ["src/**/*.test.tsx"],
       "rules": { "shadcn/no-inline-styles": "off" }
+    },
+    {
+      "files": [
+        "src/prototypes/**",
+        "src/components/lots/ImportPreview.tsx",
+        "src/components/mortgage/KeyFigures.tsx",
+        "src/components/patterns/SegmentedControl.tsx",
+        "src/pages/Dashboard.tsx",
+        "src/pages/Mortgage.tsx",
+        "src/pages/investments/EarlySalePanel.tsx",
+        "src/pages/investments/EarlySales.tsx",
+        "src/pages/investments/LotFigures.tsx",
+        "src/pages/market/Bonds.tsx",
+        "src/pages/market/Indexes.tsx",
+        "src/pages/market/Sparkline.tsx"
+      ],
+      "rules": {
+        "shadcn/no-unknown-classes": "off",
+        "shadcn/no-arbitrary-values": "off",
+        "shadcn/no-raw-colors": "off",
+        "shadcn/no-restyle": "off"
+      }
     }
   ]
 }

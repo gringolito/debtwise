@@ -5,7 +5,7 @@ export function KeyFigures({ className, ...props }: React.ComponentProps<"dl">) 
   return (
     <dl
       className={cn(
-        "grid auto-cols-fr grid-flow-col divide-x rounded-lg glass px-6 py-6",
+        "proto-keyfigures grid auto-cols-fr grid-flow-col divide-x rounded-lg glass px-6 py-6",
         className,
       )}
       {...props}

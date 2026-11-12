@@ -1,0 +1,13 @@
+/* PROTOTYPE, throwaway: phone layout of Decidir's B/C verdict panels and Início's answer card. */
+@media (max-width: 599px) {
+  html[data-proto] .proto-verdict {
+    padding: 20px;
+    gap: 20px;
+  }
+  html[data-proto] .proto-ledger {
+    grid-template-columns: 1fr;
+  }
+  html[data-proto] .proto-answer-art {
+    display: none;
+  }
+}
