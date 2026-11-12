@@ -13,7 +13,6 @@ import {
 import type { Basis, ContractRateRow, FeeRow, MonthlyRateRow } from "@/lib/mortgageForm";
 import type { Change, ChangeList, InsuranceList } from "@/pages/contract/changes";
 import { usePrototypeVariant } from "@/prototypes/variant";
-import { Trash2Icon } from "lucide-react";
 
 /** The insurance a new change belongs to, which only a new change can still switch. */
 export interface InsuranceChoice {
@@ -174,7 +173,6 @@ function ChangeFields({ change, update, messageOf, firstCharge }: ChangeSheetPro
 /** ChangeSheet edits one dated change of a list over the page, until "Concluir" or "Cancelar". */
 export function ChangeSheet(props: ChangeSheetProps) {
   const { change, update, messageOf, insurance, firstCharge, onDone, onRemove, onCancel } = props;
-  const proto = usePrototypeVariant() !== "A";
   return (
     <Dialog open onOpenChange={(open) => open || onCancel()}>
       <DialogContent aria-describedby={undefined}>
@@ -222,33 +220,11 @@ export function ChangeSheet(props: ChangeSheetProps) {
             <ChangeFields {...props} />
           </GroupedList>
           <DialogFooter>
-            {proto ? (
-              <div className="flex items-center gap-2">
-                {onRemove && (
-                  <Button
-                    type="button"
-                    variant="plain"
-                    size="icon"
-                    aria-label="Remover mudança"
-                    title="Remover mudança"
-                    onClick={onRemove}
-                  >
-                    <Trash2Icon aria-hidden="true" strokeWidth={1.75} />
-                  </Button>
-                )}
-                <Button type="submit" className="flex-1">
-                  Concluir
-                </Button>
-              </div>
-            ) : (
-              <>
-                <Button type="submit">Concluir</Button>
-                {onRemove && (
-                  <Button type="button" variant="destructive" onClick={onRemove}>
-                    Remover mudança
-                  </Button>
-                )}
-              </>
+            <Button type="submit">Concluir</Button>
+            {onRemove && (
+              <Button type="button" variant="destructive" onClick={onRemove}>
+                Remover mudança
+              </Button>
             )}
           </DialogFooter>
         </form>

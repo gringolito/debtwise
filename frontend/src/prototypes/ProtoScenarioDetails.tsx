@@ -1,7 +1,8 @@
 // PROTOTYPE, throwaway: "Ver cenários" in "Orvalho nítido".
-// - The horizon reads in words, without negative amounts: "No fim, você deve R$ 380.743,46".
-// - A projected index reads as its value in grey; its period and projection method sit in a
-//   tooltip and, once, above the table, instead of three lines repeated on every row.
+// - The horizon reads in words, without negative amounts: "No fim, você deve R$ 380.743,46". The
+//   few reais held uninvested are left out.
+// - A projected index reads as its value in grey; one plain sentence above the table says how and
+//   from when it is projected, and a tooltip names each reading's period.
 // - Columns with nothing in them for this scenario are left out.
 import type { ReactNode } from "react";
 import { AmountRow, AmountsHeader } from "@/components/lots/LotValuesTables";
@@ -14,10 +15,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { CashFlow, CorrectionIndex, LotAmount, ProjectedBy, Scenario } from "@/lib/api";
+import type {
+  CashFlow,
+  CorrectionIndex,
+  IndexName,
+  LotAmount,
+  ProjectionMethodName,
+  Scenario,
+} from "@/lib/api";
 import { formatDate, formatMonth, formatMoney, formatPercent, formatPeriod } from "@/lib/format";
 import { indexNames } from "@/lib/indexNames";
-import { projectedByText } from "@/lib/projectionMethods";
 
 function bondPayment({
   sold,
@@ -28,6 +35,25 @@ function bondPayment({
   if (coupon) return { kind: "Cupom", amount: coupon };
   if (redeemed) return { kind: "Resgate", amount: redeemed };
   return undefined;
+}
+
+const projectedIndex: Record<IndexName, string> = {
+  tr: "Taxa TR projetada",
+  poupanca_yield: "Remuneração da poupança projetada",
+  selic_target: "Selic meta projetada",
+  selic: "Selic diária projetada",
+  ipca: "IPCA projetado",
+  ipca_number: "IPCA projetado",
+};
+
+const byMethod: Record<ProjectionMethodName, string> = {
+  trailing_12: "pela média dos últimos 12 meses",
+  trailing_60: "pela média dos últimos 60 meses",
+  focus: "pela mediana do Focus (BCB)",
+};
+
+function methodOf(value: CorrectionIndex): ProjectionMethodName | undefined {
+  return (value.methods.find((m) => m.index === value.index) ?? value.methods[0])?.method;
 }
 
 function period({ index, period_start, period_end }: CorrectionIndex): string {
@@ -50,7 +76,8 @@ function IndexValue({ value }: { value: CorrectionIndex }) {
       </TooltipTrigger>
       <TooltipContent side="top">
         <span>
-          Projetado para {period(value)}. {projectedByText(value.methods)}.
+          {projectedIndex[value.index]} {byMethod[methodOf(value) ?? "trailing_12"]} no período de{" "}
+          {period(value)}.
         </span>
       </TooltipContent>
     </Tooltip>
@@ -99,23 +126,27 @@ function ProtoCashFlowTable({ label, flows }: { label: string; flows: CashFlow[]
       return value !== undefined && !(typeof value === "string" && ZERO.test(value));
     }),
   );
-  const projected: ProjectedBy[] = [];
+  // The first projected reading of each index, which says from when its projection runs.
+  const projected = new Map<IndexName, CorrectionIndex>();
   for (const flow of flows) {
     for (const value of flow.installment?.index_values ?? []) {
-      if (value.status !== "projected") continue;
-      for (const method of value.methods) {
-        if (!projected.some((m) => m.index === method.index && m.method === method.method))
-          projected.push(method);
-      }
+      if (value.status === "projected" && !projected.has(value.index))
+        projected.set(value.index, value);
     }
   }
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-2">
-        {projected.length > 0 && (
-          <p className="text-footnote text-muted-foreground">
-            Índices em cinza são projetados ({projectedByText(projected)}).
-          </p>
+        {projected.size > 0 && (
+          <div className="text-footnote text-muted-foreground">
+            {[...projected.values()].map((value) => (
+              <p key={value.index}>
+                {projectedIndex[value.index]} {byMethod[methodOf(value) ?? "trailing_12"]} a partir
+                de {formatDate(value.period_start)}.
+              </p>
+            ))}
+            <p>Os valores projetados aparecem em cinza.</p>
+          </div>
         )}
         <Table aria-label={`Fluxo de caixa de ${label}`}>
           <TableHeader>
@@ -149,7 +180,6 @@ function standing(netWorth: string): string {
 }
 
 export function ProtoScenarioDetails({ title, scenario }: { title: string; scenario: Scenario }) {
-  const cash = Number(scenario.cash);
   return (
     <section aria-label={title} className="flex flex-col gap-4">
       <h4 className="font-medium">{title}</h4>
@@ -162,12 +192,6 @@ export function ProtoScenarioDetails({ title, scenario }: { title: string; scena
           <dt>Saldo devedor</dt>
           <dd>{formatMoney(scenario.outstanding_balance)}</dd>
         </div>
-        {cash > 0 && (
-          <div className="flex justify-between gap-4 text-muted-foreground">
-            <dt>Dinheiro guardado, sem investir</dt>
-            <dd>{formatMoney(scenario.cash)}</dd>
-          </div>
-        )}
       </dl>
       {scenario.bond && (
         <Table aria-label={`Valor no vencimento de ${title}`}>

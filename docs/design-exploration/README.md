@@ -24,7 +24,7 @@ The column ledger (C) is clearer than today's "Ver cenários" but weaker than B 
 | 7 | Investimentos: early-sale signal surfaced, unsigned wording | Objective (contrast) + hypothesis | The most actionable fact on the page is no longer its smallest text | S | **Adopt** |
 | 8 | Shell skeleton while the app starts | Objective (blank screen) | No blank canvas on a slow start | S | **Adopt** |
 | 9 | System font first (SF Pro on Apple devices) | Hypothesis | Closer to a first-party Apple app | S | **Validate** on Windows/Android before adopting |
-| 10 | Round two (P9): one-line key figures, pt-BR date field, values that hug their units, cents, trash icon, quieter scenario tables | Objective (owner-reported) | Dates in the owner's format, figures that don't wrap, tables that read in one line per row | S–M | **Adopt** (date field and tooltip need the production work in P9) |
+| 10 | Round two (P9): one-line key figures, pt-BR date field, values that hug their units, cents, quieter scenario tables | Objective (owner-reported) | Dates in the owner's format, figures that don't wrap, tables that read in one line per row | S–M | **Adopt** (date field and tooltip need the production work in P9) |
 
 ## How the evidence was gathered
 
@@ -336,22 +336,22 @@ These came from the owner's review of the first round. Each is fixed in B and co
 | Quirk | Cause | B | Measured |
 |---|---|---|---|
 | Financiamento's "Quitação prevista" wraps ("novembro de / 2056") | three equal `1fr` columns of 253px, while the month needs 290px | columns are as wide as their figure (`minmax(max-content, 1fr)`) and never wrap. The panel stacks only when the content column is narrower than 840px (a container query instead of the 1160px viewport breakpoint) | figure height 82px → 41px at 1280px; the full month is kept, nothing abbreviated (`before-q-keyfigures-A.jpg`, `after-q-keyfigures-B.jpg`) |
-| "Ver cenários" shows "−R$ 380.743,46" | the net worth is signed, and the mortgage makes it negative | "No fim: Você deve R$ 380.743,46", then the balance and cash in hand when there is any | negative amounts on the panel: 2 → 0 |
-| The index cell repeats "Projetado", the period and the method on every row | `IndexCell` shows everything a reading has | the value alone ("TR 0,1617%"), grey when projected, with the period and method in a tooltip on hover or focus, and the method stated once above the table | row height 74px → 38px; columns 21 → 18 (columns empty for the whole scenario are dropped); table width 2325px → 1805px (`before-q-cenarios-A.jpg`, `after-q-cenarios-B.jpg`, `after-q-cenarios-tooltip-B.jpg`) |
+| "Ver cenários" shows "−R$ 380.743,46" | the net worth is signed, and the mortgage makes it negative | "No fim: Você deve R$ 380.743,46", then the balance. The few reais held uninvested ("Caixa retido", R$ 0,28–1,09 here) are left out as noise | negative amounts on the panel: 2 → 0 |
+| The index cell repeats "Projetado", the period and the method on every row | `IndexCell` shows everything a reading has | the value alone ("TR 0,1617%"), grey when projected. One plain sentence above the table: "Taxa TR projetada pela média dos últimos 12 meses a partir de 15/11/2026. Os valores projetados aparecem em cinza." The tooltip says the same for one reading: "…no período de 15/11/2026 a 15/12/2026." | row height 74px → 38px; columns 21 → 18 (columns empty for the whole scenario are dropped); table width 2325px → 1805px (`before-q-cenarios-A.jpg`, `after-q-cenarios-B.jpg`) |
 | Dates read "04/15/2023" | `<input type="date">` writes dates in the **browser's** language, whatever the page's language. An English system shows mm/dd/yyyy | a dd/mm/aaaa text field with a numeric keyboard and a calendar button that still opens the native picker | the same in every browser language (`after-q-contrato-B.jpg`) |
 | Values misaligned; "R$" far from the amount | every inline input is a fixed 144px box with right-aligned text, so a prefix sits at the box's left edge; date inputs lay out their own segments | inputs are as wide as their text (`field-sizing: content`), so value and units form one group on the row's trailing edge | gap between "R$" and the amount on Contrato: 74px → 6px; every value group ends 16px from the row edge (`before-q-contrato-A.jpg`, `after-q-contrato-B.jpg`) |
 | Money without cents ("480.000") | the form keeps what the API sends or the owner types | money fields show two places when not being edited and complete them on focus and blur ("480.000,00") | — |
-| The change sheet's hint wraps; "Remover mudança" is a full-width tinted button competing with "Concluir" | long hint beside a 144px input; the destructive action styled as a second primary | the hint is "Para calcular a taxa.", since the label already names the amount. The header keeps "Cancelar" as its only action; removal is a grey 44px trash icon left of "Concluir" (accessible name "Remover mudança") | hint 2 lines → 1 line at 1280px and 390px; footer buttons 2 → 1 plus the icon (`before-q-changesheet-A.jpg`, `after-q-changesheet-B.jpg`, `after-q-changesheet-B-390.jpg`) |
+| The change sheet's hint wraps | long hint beside a 144px input | the hint is "Para calcular a taxa.", since the label already names the amount | hint 2 lines → 1 line at 1280px and 390px (`before-q-changesheet-A.jpg`, `after-q-changesheet-B.jpg`) |
 
 **Checked by hand:**
 - Typing "01052023" gives 01/05/2023, and the row updates on "Concluir".
-- The trash icon removes the change.
-- The page's "Cancelar" discards both; the server's MIP rates were unchanged afterwards.
+- The change sheet keeps its current actions.
+- The page's "Cancelar" discards the edit; the server's MIP rates were unchanged afterwards.
 - The tooltip opens on keyboard focus.
 - Contrato stays at scrollWidth 390 on a phone.
 
 **Tradeoffs and open points:**
-- **Trash icon:** in a first pass the icon sat red in the header beside "Cancelar". The owner rejected both: two header actions, and red drawing the eye to the least common action. It is now grey (`#636366`, 5.9:1 on white) in the footer, while "Cancelar" stays the one header action and the only visible way out without changes. An icon-only destructive action is less discoverable than a labelled one. That is acceptable here because the page's "Cancelar" undoes a removal until "Salvar". For deletions that save at once (a prepayment, a lot), keep the labelled confirmation.
+- **Removing a change:** two alternatives were tried and dropped. A red trash icon in the header beside "Cancelar" put two actions there and made the least common one the loudest. A grey trash icon beside "Concluir" was quieter but no clearer than the labelled button. The sheet keeps today's "Cancelar" in the header and the labelled "Remover mudança" under "Concluir".
 - **Touch:** Radix tooltips don't open on touch, so a phone can't see a projected reading's period. A tap-to-open popover is the fix if this is adopted. The method is still stated above the table.
 - **Date field:** the prototype selects the whole date on focus and starts over when typed past; editing one digit in the middle isn't handled. A production version should validate impossible dates (31/02) in the browser, not only on the server.
 - **Firefox:** `field-sizing: content` isn't supported there yet. Inputs fall back to their fixed width, which is today's look.
@@ -383,7 +383,6 @@ The specification itself isn't edited here. If the recommendations are adopted, 
   - Typed values hug their text, so value and units share the row's trailing edge.
   - Dates are typed as dd/mm/aaaa regardless of the browser's language.
   - Money shows two decimal places.
-  - In change sheets, "Cancelar" is the header's one action, and removal is a grey trash icon beside "Concluir".
   - A projected index reads grey with its period and method on demand.
   - Horizons read in words, never as negative amounts.
 - **Voice:** add "near-ties are named as such" and "no signed amounts in prose".
