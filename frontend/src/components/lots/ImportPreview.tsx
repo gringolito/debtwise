@@ -34,19 +34,25 @@ const editableFields: {
   inputMode?: "decimal";
   /** Whether the value is a number whose thousands are grouped as the owner types. */
   grouped?: boolean;
-  /** Wide enough for the longest value the column usually holds. */
+  /** Wide enough for the longest value the column usually holds, and the card's column on a phone. */
   width: string;
 }[] = [
-  { field: "purchaseDate", label: "Data da compra", width: "w-28" },
-  { field: "rate", label: "Taxa", inputMode: "decimal", width: "w-20" },
+  { field: "purchaseDate", label: "Data da compra", width: "w-full sm:w-28" },
+  { field: "rate", label: "Taxa", inputMode: "decimal", width: "w-full sm:w-20" },
   {
     field: "unitPrice",
     label: "Preço unitário",
     inputMode: "decimal",
     grouped: true,
-    width: "w-28",
+    width: "w-full sm:w-28",
   },
-  { field: "quantity", label: "Quantidade", inputMode: "decimal", grouped: true, width: "w-20" },
+  {
+    field: "quantity",
+    label: "Quantidade",
+    inputMode: "decimal",
+    grouped: true,
+    width: "w-full sm:w-20",
+  },
 ];
 
 interface ImportPreviewProps {
@@ -73,7 +79,7 @@ export function ImportPreview({
 }: ImportPreviewProps) {
   const noteIdPrefix = useId();
   return (
-    <Table variant="grouped" aria-label="Compras do arquivo">
+    <Table variant="grouped" reflow="cards" aria-label="Compras do arquivo">
       <TableHeader>
         <TableRow variant="grouped">
           <TableHead scope="col" variant="grouped">
@@ -100,7 +106,7 @@ export function ImportPreview({
                 {row.malformed ? (
                   <p className="text-destructive">{problemMessages.malformed}</p>
                 ) : (
-                  <div className="w-60">
+                  <div className="w-full sm:w-60">
                     <NativeSelect
                       variant={exact ? "text" : "default"}
                       className="w-full"
@@ -142,10 +148,10 @@ export function ImportPreview({
               </TableCell>
               {!row.malformed &&
                 editableFields.map(({ field, label, inputMode, grouped, width }) => (
-                  <TableCell key={field} variant="grouped">
+                  <TableCell key={field} variant="grouped" data-label={label}>
                     <div className={width}>
                       <InlineInput
-                        className="w-full"
+                        className="w-full max-sm:text-left"
                         aria-label={`${label} da linha ${row.line}`}
                         inputMode={inputMode}
                         grouped={grouped}

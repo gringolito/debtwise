@@ -74,7 +74,11 @@ function Readings({ label, indexValues }: { label: string; indexValues: Correcti
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <button type="button" aria-label={label} className="rounded-full text-accent">
+        <button
+          type="button"
+          aria-label={label}
+          className="rounded-full text-accent max-md:relative max-md:after:absolute max-md:after:-inset-3.5"
+        >
           <InfoIcon aria-hidden="true" strokeWidth={1.5} className="size-4" />
         </button>
       </TooltipTrigger>
@@ -90,7 +94,7 @@ function Readings({ label, indexValues }: { label: string; indexValues: Correcti
 function InstallmentDetails({ installment }: { installment: ScheduledInstallment }) {
   return (
     <TooltipProvider>
-      <dl className="flex flex-wrap gap-x-10 gap-y-4 px-2 py-1 text-footnote text-muted-foreground">
+      <dl className="flex flex-wrap gap-x-10 gap-y-4 px-2 py-1 text-footnote text-muted-foreground max-md:pinned-readout max-md:gap-x-6">
         <Detail name="Correção">
           {formatMoney(installment.correction)}
           <Readings label="Índices da correção" indexValues={installment.index_values} />
@@ -195,40 +199,38 @@ export function InstallmentsTable({ installments, current }: InstallmentsTablePr
           installment.rate_index_values.filter((value) => value.status === "missing"),
         )}
       />
-      <div className="overflow-hidden rounded-lg glass px-2">
-        <Table aria-label="Prestações">
-          <TableHeader>
-            <TableRow>
-              {["Nº", "Vencimento"].map((column) => (
-                <TableHead key={column}>
-                  <span className="text-footnote tracking-wide text-muted-foreground uppercase">
-                    {column}
-                  </span>
-                </TableHead>
-              ))}
-              {["Prestação", "Juros", "Amortização", "Saldo após"].map((column) => (
-                <TableHead key={column} className="text-right">
-                  <span className="text-footnote tracking-wide text-muted-foreground uppercase">
-                    {column}
-                  </span>
-                </TableHead>
-              ))}
-              <TableHead>
-                <span className="sr-only">Detalhes</span>
+      <Table variant="panel" aria-label="Prestações">
+        <TableHeader>
+          <TableRow>
+            {["Nº", "Vencimento"].map((column) => (
+              <TableHead key={column}>
+                <span className="text-footnote tracking-wide text-muted-foreground uppercase">
+                  {column}
+                </span>
               </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {shown.map((installment) => (
-              <InstallmentRow
-                key={`${installment.number}-${installment === current}`}
-                installment={installment}
-                isCurrent={installment === current}
-              />
             ))}
-          </TableBody>
-        </Table>
-      </div>
+            {["Prestação", "Juros", "Amortização", "Saldo após"].map((column) => (
+              <TableHead key={column} className="text-right">
+                <span className="text-footnote tracking-wide text-muted-foreground uppercase">
+                  {column}
+                </span>
+              </TableHead>
+            ))}
+            <TableHead>
+              <span className="sr-only">Detalhes</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {shown.map((installment) => (
+            <InstallmentRow
+              key={`${installment.number}-${installment === current}`}
+              installment={installment}
+              isCurrent={installment === current}
+            />
+          ))}
+        </TableBody>
+      </Table>
       {installments.length > WINDOW_SIZE && (
         <Button variant="link" className="self-center" onClick={() => setShowAll(!showAll)}>
           {showAll ? "Ver menos prestações" : `Ver todas as ${installments.length} prestações`}

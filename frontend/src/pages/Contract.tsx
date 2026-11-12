@@ -53,15 +53,13 @@ const indexerChoices: { value: Indexer; label: string }[] = [
 function ContractHeader({ children }: { children?: ReactNode }) {
   return (
     <PageHeader className="flex-col items-stretch gap-2">
-      <Link
-        to="/financiamento"
-        aria-label="Voltar para Financiamento"
-        className="inline-flex items-center gap-1 self-start text-callout text-accent"
-      >
-        <ChevronLeftIcon aria-hidden="true" strokeWidth={1.5} className="size-4" />
-        Financiamento
-      </Link>
-      <div className="flex items-center justify-between gap-4">
+      <Button asChild variant="link" size="inline" className="self-start">
+        <Link to="/financiamento" aria-label="Voltar para Financiamento">
+          <ChevronLeftIcon aria-hidden="true" strokeWidth={1.5} />
+          Financiamento
+        </Link>
+      </Button>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <PageTitle>Contrato</PageTitle>
         {children}
       </div>

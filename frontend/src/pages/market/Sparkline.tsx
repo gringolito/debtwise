@@ -7,7 +7,7 @@ const INSET = 2;
 
 /** Sparkline draws an index's recent values solid and its projection dashed, without axes. */
 export function Sparkline({ points }: { points: SeriesPoint[] }) {
-  if (points.length < 2) return <span aria-hidden="true" className="w-30 shrink-0" />;
+  if (points.length < 2) return <span aria-hidden="true" className="w-30 shrink-0 max-sm:hidden" />;
 
   const times = points.map((p) => p.time);
   const values = points.flatMap((p) => [p.history, p.projection]).filter((v) => v !== undefined);
@@ -27,7 +27,7 @@ export function Sparkline({ points }: { points: SeriesPoint[] }) {
     <svg
       aria-hidden="true"
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-      className="h-8 w-30 shrink-0 overflow-visible"
+      className="h-8 w-30 shrink-0 overflow-visible max-sm:hidden"
       fill="none"
       strokeWidth={1.5}
       strokeLinecap="round"

@@ -6,6 +6,7 @@ export const cn = createCn({
     theme: {
       text: [
         "hero-figure",
+        "page-title",
         "large-title",
         "title-2",
         "headline",
@@ -15,7 +16,8 @@ export const cn = createCn({
         "caption",
       ],
       shadow: ["sheet"],
-      container: ["content"],
+      radius: ["sheet"],
+      container: ["content", "three-figures"],
     },
   },
 });

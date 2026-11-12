@@ -73,9 +73,9 @@ export function IndexChart({ index, values, projection, today }: IndexChartProps
     <section aria-label={title} className="flex flex-col gap-6 rounded-lg glass p-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-headline">{title}</h2>
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 max-sm:w-full">
           {projected && <Legend />}
-          <SegmentedControl value={years} onValueChange={setYears} aria-label="Período">
+          <SegmentedControl fill value={years} onValueChange={setYears} aria-label="Período">
             <SegmentedControlItem value="1">1 ano</SegmentedControlItem>
             <SegmentedControlItem value="5">5 anos</SegmentedControlItem>
             <SegmentedControlItem value="10">10 anos</SegmentedControlItem>

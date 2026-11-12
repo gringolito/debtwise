@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { KeyFigure, KeyFigures } from "@/components/mortgage/KeyFigures";
 import { GroupedListHeader, GroupedListSection } from "@/components/patterns/GroupedList";
 import {
   Table,
@@ -11,38 +12,26 @@ import {
 import type { LotAmount, LotCoupon, LotValued, LotValues } from "@/lib/api";
 import { formatDate, formatMoney } from "@/lib/format";
 
-function Figure({ label, amount, note }: { label: string; amount?: LotAmount; note: string }) {
+/** LotKeyFigures are a lot's net Market, Accrual and Maturity Values side by side. */
+export function LotKeyFigures({ lot, values }: { lot: LotValued; values: LotValues }) {
   return (
-    <div className="flex flex-1 flex-col gap-1 not-first:border-l not-first:pl-6">
-      <dt className="text-footnote tracking-wide text-muted-foreground uppercase">{label}</dt>
-      <dd className="text-large-title font-semibold tabular-nums">
-        {amount ? formatMoney(amount.net) : "—"}
-      </dd>
-      <dd className="text-footnote text-muted-foreground">{note}</dd>
-    </div>
-  );
-}
-
-/** KeyFigures are a lot's net Market, Accrual and Maturity Values side by side. */
-export function KeyFigures({ lot, values }: { lot: LotValued; values: LotValues }) {
-  return (
-    <dl className="flex gap-6 rounded-lg glass p-6">
-      <Figure
-        label="Valor a mercado"
-        amount={values.market}
+    <KeyFigures>
+      <KeyFigure
+        name="Valor a mercado"
         note={values.market ? "se vender hoje, líquido" : "sem preço de venda hoje"}
-      />
-      <Figure
-        label="Valor na curva"
-        amount={values.accrual}
+      >
+        {values.market ? formatMoney(values.market.net) : "—"}
+      </KeyFigure>
+      <KeyFigure
+        name="Valor na curva"
         note={values.accrual ? "pela taxa contratada, líquido" : "título vencido"}
-      />
-      <Figure
-        label="No vencimento"
-        amount={values.maturity}
-        note={`em ${formatDate(lot.maturity)}, líquido`}
-      />
-    </dl>
+      >
+        {values.accrual ? formatMoney(values.accrual.net) : "—"}
+      </KeyFigure>
+      <KeyFigure name="No vencimento" note={`em ${formatDate(lot.maturity)}, líquido`}>
+        {values.maturity ? formatMoney(values.maturity.net) : "—"}
+      </KeyFigure>
+    </KeyFigures>
   );
 }
 

@@ -76,10 +76,10 @@ function IndexRow({
       <GroupedListRow asChild>
         <Link to="/mercado/indices/$index" params={{ index }} aria-label={label}>
           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="flex items-center gap-2">
+            <span className="flex flex-wrap items-center gap-x-2">
               {indexNames[index]}
               {ofMortgage && (
-                <span className="rounded-full bg-accent-tint px-2 text-footnote text-accent">
+                <span className="rounded-full bg-accent-tint px-2 text-footnote whitespace-nowrap text-accent">
                   Seu financiamento
                 </span>
               )}
@@ -89,7 +89,7 @@ function IndexRow({
             </span>
           </span>
           <Sparkline points={points} />
-          <span className="flex w-52 flex-col items-end gap-0.5 text-right">
+          <span className="flex w-52 flex-col items-end gap-0.5 text-right max-sm:w-auto max-sm:max-w-1/2 max-sm:flex-none">
             {latest ? (
               <>
                 <span className="tabular-nums">{indexValueText(index, latest.value)}</span>

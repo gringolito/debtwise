@@ -19,6 +19,7 @@ export function SectionLayout({ label, sections }: SectionLayoutProps) {
   return (
     <div className="flex flex-col gap-6">
       <SegmentedControl
+        fill
         aria-label={label}
         className="self-start"
         value={pathname}

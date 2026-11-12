@@ -22,6 +22,12 @@
   --text-hero-figure--line-height: 60px;
   --text-hero-figure--letter-spacing: -0.03em;
   --text-hero-figure--font-weight: 600;
+  /* The Large Title of a page, which keeps its size on a phone. */
+  --text-page-title: 34px;
+  --text-page-title--line-height: 41px;
+  --text-page-title--letter-spacing: -0.022em;
+  --text-page-title--font-weight: 700;
+  /* The same size for a figure inside a panel, which steps down under 600px (see below). */
   --text-large-title: 34px;
   --text-large-title--line-height: 41px;
   --text-large-title--letter-spacing: -0.022em;
@@ -46,7 +52,11 @@
   --text-caption--letter-spacing: -0.01em;
   --text-caption--font-weight: 500;
 
+  /* The top corners of a modal's bottom sheet on a phone. */
+  --radius-sheet: 16px;
   --container-content: 880px;
+  /* A panel of three key figures stacks when its container is narrower than this. */
+  --container-three-figures: 840px;
   --shadow-sheet: 0 8px 24px rgb(0 0 0 / 0.08);
   --shadow-glass:
     0 10px 30px -5px rgb(0 0 0 / 0.04), 0 1px 2px 0 rgb(0 0 0 / 0.02),
@@ -57,6 +67,9 @@
   --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.12), inset 0 1px 1px rgb(255 255 255);
   --shadow-glow: 0 0 8px var(--accent-soft);
   --drop-shadow-glow: 0 10px 20px rgb(130 199 183 / 0.15);
+  /* A modal's bottom sheet on a phone slides up with the iOS ease. */
+  --animate-sheet-in: sheet-in 320ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  --animate-sheet-out: sheet-out 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
   /* A celebration's icon: it pops in, then a check draws itself or another icon twists. */
   --animate-pop: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   --animate-draw-ring: draw 0.45s ease-out 0.2s both;
@@ -64,6 +77,16 @@
   --animate-twist: twist 1s ease-in-out 0.45s both;
   --animate-ripple: ripple 1.2s cubic-bezier(0, 0, 0.2, 1) 0.9s 3 both;
 
+  @keyframes sheet-in {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes sheet-out {
+    to {
+      transform: translateY(100%);
+    }
+  }
   @keyframes pop {
     from {
       transform: scale(0);
@@ -159,6 +182,37 @@
   padding-bottom: calc(--spacing(28) + env(safe-area-inset-bottom));
 }
 
+/* The first column of a table that scrolls in its panel stays put; once the table has scrolled, a
+   hairline and a soft shadow on its edge show what slides under it. Without scroll-driven
+   animations the column just stays pinned. */
+@keyframes pinned-edge {
+  to {
+    box-shadow:
+      1px 0 0 rgb(0 0 0 / 0.08),
+      8px 0 12px -8px rgb(0 0 0 / 0.16);
+  }
+}
+@utility pinned-edge {
+  @supports (animation-timeline: scroll()) {
+    animation: pinned-edge linear both;
+    animation-timeline: scroll(nearest inline);
+    animation-range: 0 24px;
+  }
+}
+
+/* A readout inside a wide, scrolling table row, kept as wide as the visible panel and in view.
+   The table's container is the container this measures. */
+@utility pinned-readout {
+  position: sticky;
+  left: --spacing(4);
+  width: calc(100cqw - --spacing(8));
+}
+
+/* Columns as wide as their content, and wider only when there is room to share. */
+@utility auto-cols-fit {
+  grid-auto-columns: minmax(max-content, 1fr);
+}
+
 @theme inline {
   --font-heading: var(--font-sans);
   --radius-lg: var(--radius);
@@ -188,6 +242,7 @@
   --color-positive: var(--positive);
   --color-caution: var(--caution);
   --color-caution-tint: var(--caution-tint);
+  --color-panel: var(--panel);
   --color-destructive: var(--destructive);
   --color-chart-mortgage: var(--chart-mortgage);
   --color-chart-investment: var(--chart-investment);
@@ -224,6 +279,9 @@
   --positive: #1e7a36;
   --caution: #a84a00;
   --caution-tint: #fff4e5;
+  /* What a glass panel looks like over the canvas, opaque: the fill of what must hide the content
+     scrolling under it. */
+  --panel: #fafbfc;
   --destructive: #d70015;
   --chart-mortgage: #1d1d1f;
   --chart-investment: #3e8e7c;
@@ -239,6 +297,15 @@
   :root {
     --text-hero-figure: clamp(34px, 11.4vw, 48px);
     --text-hero-figure--line-height: 1.1;
+  }
+}
+
+/* On a phone, a figure inside a panel steps down so it fits beside the panel's padding. A page's
+   title keeps its size: it is text-page-title. */
+@media (width < 600px) {
+  :root {
+    --text-large-title: 28px;
+    --text-large-title--line-height: 34px;
   }
 }
 

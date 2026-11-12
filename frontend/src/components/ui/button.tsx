@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils";
 import { Slot } from "radix-ui";
 
 // Focus shows the app-wide outline from index.css, DESIGN.md's one focus mark, instead of
-// upstream's translucent ring.
+// upstream's translucent ring. On touch-size screens (under md) the small sizes reach a 44px hit
+// area through an ::after that extends past the button without moving anything.
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding font-medium whitespace-nowrap transition-all select-none active:not-aria-[haspopup]:opacity-85 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
@@ -31,11 +32,12 @@ const buttonVariants = cva(
         default:
           "h-11 gap-2 px-6 text-callout has-data-[icon=inline-end]:pr-5 has-data-[icon=inline-start]:pl-5",
         xs: "h-6 gap-1 px-2 text-footnote has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 px-3 text-callout has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-3.5",
-        inline: "h-auto gap-1 p-0 text-callout",
+        sm: "h-8 gap-1.5 px-3 text-callout has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 max-md:relative max-md:after:absolute max-md:after:-inset-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        inline:
+          "h-auto gap-1 p-0 text-callout max-md:relative max-md:after:absolute max-md:after:-inset-x-1.5 max-md:after:-inset-y-3.25",
         icon: "size-11",
         "icon-xs": "size-6 [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
+        "icon-sm": "size-8 max-md:relative max-md:after:absolute max-md:after:-inset-1.5",
       },
     },
     defaultVariants: {
