@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import type { Basis, ContractRateRow, FeeRow, MonthlyRateRow } from "@/lib/mortgageForm";
 import type { Change, ChangeList, InsuranceList } from "@/pages/contract/changes";
+import { usePrototypeVariant } from "@/prototypes/variant";
 
 /** The insurance a new change belongs to, which only a new change can still switch. */
 export interface InsuranceChoice {
@@ -96,6 +97,7 @@ function InsuranceFields({
   messageOf,
   firstCharge,
 }: FieldsProps<MonthlyRateRow> & Pick<ChangeSheetProps, "firstCharge">) {
+  const proto = usePrototypeVariant() !== "A";
   return (
     <>
       <InputRow
@@ -114,7 +116,10 @@ function InsuranceFields({
           hint={
             firstCharge.invalid
               ? undefined
-              : (firstCharge.hint ?? "Preencha para calcular a taxa pelo valor cobrado.")
+              : (firstCharge.hint ??
+                (proto
+                  ? "Para calcular a taxa."
+                  : "Preencha para calcular a taxa pelo valor cobrado."))
           }
           grouped
           prefix="R$"

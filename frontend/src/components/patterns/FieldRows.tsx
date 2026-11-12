@@ -7,6 +7,8 @@ import {
 import { useTypedValue } from "@/components/patterns/useTypedValue";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { ProtoInputRow } from "@/prototypes/ProtoFields";
+import { usePrototypeVariant } from "@/prototypes/variant";
 
 interface RowTextProps {
   id: string;
@@ -17,7 +19,7 @@ interface RowTextProps {
   message?: string;
 }
 
-const describedBy = ({ id, hint, message }: RowTextProps) =>
+export const describedBy = ({ id, hint, message }: RowTextProps) =>
   [
     message === undefined ? undefined : `${id}-message`,
     hint === undefined ? undefined : `${id}-hint`,
@@ -25,7 +27,7 @@ const describedBy = ({ id, hint, message }: RowTextProps) =>
     .filter(Boolean)
     .join(" ") || undefined;
 
-function RowText({ id, label, hint, message }: RowTextProps) {
+export function RowText({ id, label, hint, message }: RowTextProps) {
   return (
     <GroupedListLabel className="flex flex-col gap-0.5">
       <label htmlFor={id}>{label}</label>
@@ -43,7 +45,7 @@ function RowText({ id, label, hint, message }: RowTextProps) {
   );
 }
 
-interface InputRowProps extends Omit<InlineInputProps, "prefix">, Omit<RowTextProps, "id"> {
+export interface InputRowProps extends Omit<InlineInputProps, "prefix">, Omit<RowTextProps, "id"> {
   /** The unit before the value, such as "R$". */
   prefix?: string;
   /** The unit after the value, such as "% ao mês". */
@@ -69,7 +71,15 @@ export function InlineInput({ value, onChange, grouped = false, ...props }: Inli
 }
 
 /** InputRow is a grouped list row whose value the owner types in place. */
-export function InputRow({ label, hint, message, prefix, suffix, ...props }: InputRowProps) {
+export function InputRow(props: InputRowProps) {
+  return usePrototypeVariant() === "A" ? (
+    <CurrentInputRow {...props} />
+  ) : (
+    <ProtoInputRow {...props} />
+  );
+}
+
+function CurrentInputRow({ label, hint, message, prefix, suffix, ...props }: InputRowProps) {
   const id = useId();
   const text = { id, label, hint, message };
   return (

@@ -1,0 +1,89 @@
+/*
+ * PROTOTYPE, throwaway: the "Orvalho nítido" token set, scoped to html[data-proto] so the current
+ * design (variant A) is untouched. Plain CSS outside Tailwind's layers, so it wins over utilities.
+ */
+
+html[data-proto] {
+  /* SF Pro where the device has it (Apple), Inter elsewhere. */
+  --font-sans: system-ui, -apple-system, "SF Pro Text", "Inter Variable", sans-serif;
+
+  /* Gains: 5.26:1 on glass (was #248a3d, 4.28:1, below AA for Footnote). */
+  --positive: #1e7a36;
+  /* Non-text accent marks: selected borders, progress, toggles, focus. 3.9:1 on white (was 1.94:1). */
+  --accent-line: #3e8e7c;
+  --accent-soft: #3e8e7c;
+  --ring: #2a7a6a;
+  --chart-investment: #3e8e7c;
+  --chart-amortization: #3e8e7c;
+  /* Projections stay set back but readable: 3.26:1 as a line (was 2.21:1). */
+  --chart-projection: #8e8e93;
+  /* Unselected segment labels sit on a grey track: 5.3:1 there (was 4.22:1). */
+  --muted-foreground: #636366;
+  /* One step darker so text on the tinted canvas stays at AA: 4.83:1 at its bluest (was 4.21:1). */
+  --accent: #26705f;
+  --caution: #a84a00;
+}
+
+/* Canvas: a diagonal from an Orvalho-tinted grey to a blue-tinted grey through a neutral middle,
+   with the soft accent wash kept top left. Fixed, so panels scroll over one canvas. */
+html[data-proto] body {
+  font-family: var(--font-sans);
+  background:
+    radial-gradient(circle at 15% 10%, rgb(130 199 183 / 0.1), transparent 45%),
+    linear-gradient(135deg, #eef4f1 0%, #eff1f4 50%, #e3e9f3 100%);
+  background-attachment: fixed;
+}
+
+/* One focus treatment everywhere: a 2px strong-accent ring off the element (5.1:1 on white). */
+html[data-proto] :focus-visible {
+  outline: 2px solid #2a7a6a !important;
+  outline-offset: 2px;
+  box-shadow: none !important;
+}
+html[data-proto] .glass-graphite :focus-visible,
+html[data-proto] .bg-graphite :focus-visible {
+  outline-color: #ffffff !important;
+}
+
+/* Variant switcher: deliberately off-brand so it never reads as part of the design. */
+.proto-switcher {
+  position: fixed;
+  z-index: 100;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #ffd60a;
+  color: #000;
+  font:
+    600 12px / 1 ui-monospace,
+    monospace;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
+}
+.proto-switcher span {
+  padding: 0 8px;
+  white-space: nowrap;
+}
+.proto-switcher button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+}
+.proto-switcher button:hover {
+  background: rgb(0 0 0 / 0.1);
+}
+@media (max-width: 899px) {
+  .proto-switcher {
+    top: 8px;
+    right: 8px;
+    bottom: auto;
+    left: auto;
+    transform: none;
+  }
+}

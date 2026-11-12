@@ -25,7 +25,8 @@ import type { ProjectionMethod } from "@/lib/api";
 import { indexNames } from "@/lib/indexNames";
 import { projectionMethodDescriptions } from "@/lib/marketIndexes";
 import { useProjectionMethods, useSaveProjectionMethod } from "@/lib/marketQueries";
-import { projectionMethodLabels, projectionMethodsEffect } from "@/lib/projectionMethods";
+import { projectionMethodLabels } from "@/lib/projectionMethods";
+import { ProjectionMethodsEffect } from "@/prototypes/ProtoCopy";
 
 /** ProjectionSheet picks the method an index is projected by, saves it on the spot and closes. */
 function ProjectionSheet({
@@ -138,7 +139,9 @@ export function ProjectionsSection() {
             </GroupedListItem>
           ))}
         </GroupedList>
-        <p className="px-4 text-footnote text-muted-foreground">{projectionMethodsEffect}</p>
+        <p className="px-4 text-footnote text-muted-foreground">
+          <ProjectionMethodsEffect />
+        </p>
       </>
     );
   }

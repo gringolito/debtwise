@@ -9,6 +9,7 @@ import { useDecide } from "@/lib/decisionQueries";
 import { moneyToInput } from "@/lib/format";
 import { Comparison } from "@/pages/decision/Comparison";
 import { DecisionSentence } from "@/pages/decision/DecisionSentence";
+import { usePrototypeVariant } from "@/prototypes/variant";
 
 const route = getRouteApi("/shell/decidir");
 
@@ -53,7 +54,7 @@ export function Decision() {
   return (
     <Page>
       <PageHeader className="flex-col items-start gap-1">
-        <PageTitle>Decidir</PageTitle>
+        <PageTitle>{usePrototypeVariant() === "A" ? "Decidir" : "Comparar"}</PageTitle>
         <p className="text-callout text-muted-foreground">
           Amortizar ou investir? Compare usando o mesmo dinheiro.
         </p>

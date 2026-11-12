@@ -17,8 +17,16 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { checkOf, groupByBond, leftOutOfMarketTotal, saleGain } from "@/lib/investments";
 import { useLots } from "@/lib/lotQueries";
 import { SaleGainAmount } from "@/pages/investments/SaleGainAmount";
+import { ProtoLotList, ProtoSaleSummary } from "@/prototypes/ProtoInvestments";
+import { usePrototypeVariant } from "@/prototypes/variant";
 
-function MarketTotal({ lots: { lots, market_value } }: { lots: LotList }) {
+function MarketTotal({
+  lots: { lots, market_value },
+  signal,
+}: {
+  lots: LotList;
+  signal?: React.ReactNode;
+}) {
   const titleId = useId();
   const leftOut = leftOutOfMarketTotal(lots, today());
   return (
@@ -31,6 +39,7 @@ function MarketTotal({ lots: { lots, market_value } }: { lots: LotList }) {
           <>
             <p className="text-hero-figure tabular-nums">{formatMoney(market_value.net)}</p>
             <p className="text-callout text-muted-foreground">Líquido, se vender tudo hoje</p>
+            {signal}
           </>
         ) : (
           <p className="text-callout text-muted-foreground">
@@ -116,8 +125,17 @@ function LotRow({ lot, check }: { lot: LotValued; check: EarlySaleCheck | undefi
 export function Purchases() {
   const { data } = useLots();
   const checks = useEarlySaleChecks("shorten_term");
+  const proto = usePrototypeVariant() !== "A";
   if (!data) return null;
   const listed = checks.data?.checks ?? [];
+  if (proto) {
+    return (
+      <div className="flex flex-col gap-6">
+        <MarketTotal lots={data} signal={<ProtoSaleSummary checks={listed} />} />
+        <ProtoLotList lots={data.lots} checks={listed} />
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-10">
       <MarketTotal lots={data} />

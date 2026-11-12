@@ -23,7 +23,10 @@ export function SegmentedControl<T extends string>({
       onValueChange={(next) => {
         if (next) onValueChange(next as T);
       }}
-      className={cn("inline-flex gap-0.5 rounded-lg bg-foreground/5 p-0.5", className)}
+      className={cn(
+        "proto-segmented inline-flex gap-0.5 rounded-lg bg-foreground/5 p-0.5",
+        className,
+      )}
       {...props}
     />
   );

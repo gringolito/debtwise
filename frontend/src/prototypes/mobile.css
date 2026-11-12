@@ -1,0 +1,487 @@
+/*
+ * PROTOTYPE, throwaway: phone layouts of variants B and C. Every rule sits under html[data-proto],
+ * so variant A is untouched. Plain CSS outside Tailwind's layers, so it wins over utilities.
+ *
+ * Tables: horizontal scroll INSIDE the glass panel with the first column pinned (see "Tables").
+ * Panels of figures stack to one column; page headers and segmented-control rows wrap; modal
+ * sheets become iOS bottom sheets under 600px.
+ */
+
+/* ---------- Tables: scroll inside the panel, first column pinned (under 900px) ---------- */
+@media (max-width: 899px) {
+  html[data-proto] [data-slot="table-container"] {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    /* Lets a pinned note size itself to the visible panel: 100cqw is the panel's width. */
+    container-type: inline-size;
+  }
+
+  /*
+   * Inside a glass panel the first column stays put while the rest scrolls; an opaque fill hides
+   * what slides under it. A table loose on the canvas (Decidir's scenarios) just scrolls: there is
+   * no panel colour to match, and the fill would show as white blocks.
+   */
+  html[data-proto]
+    :is(.glass [data-slot="table-container"], [data-slot="table-container"].glass)
+    :is(th, td):first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background-color: #fcfcfd;
+  }
+  html[data-proto]
+    :is(.glass [data-slot="table-container"], [data-slot="table-container"].glass)
+    tr[aria-current="date"]
+    > :first-child {
+    background-color: var(--accent-tint);
+  }
+  html[data-proto]
+    :is(.glass [data-slot="table-container"], [data-slot="table-container"].glass)
+    tr[class*="bg-caution-tint"]
+    > :first-child {
+    background-color: var(--caution-tint);
+  }
+  /* A hairline and soft edge appear on the pinned column only once the table has scrolled. */
+  @supports (animation-timeline: scroll()) {
+    html[data-proto]
+      :is(.glass [data-slot="table-container"], [data-slot="table-container"].glass)
+      :is(th, td):first-child {
+      animation: proto-pinned-edge linear both;
+      animation-timeline: scroll(nearest inline);
+      animation-range: 0 24px;
+    }
+  }
+
+  /* Importar's preview rows hold a 240px bond picker: pinning it would leave no room to edit. */
+  html[data-proto] [data-slot="table"][aria-label="Compras do arquivo"] :is(th, td):first-child {
+    position: static;
+    background-color: transparent;
+    animation: none;
+  }
+
+  /* An installment's detail row is as wide as the table; keep its readout inside the panel. */
+  html[data-proto] [data-slot="table-row"][id^="installment-"] > td {
+    white-space: normal;
+  }
+  html[data-proto] [data-slot="table-row"][id^="installment-"] dl {
+    position: sticky;
+    left: 0;
+    width: calc(100cqw - 16px);
+    column-gap: 24px;
+  }
+}
+@keyframes proto-pinned-edge {
+  to {
+    box-shadow:
+      1px 0 0 rgb(0 0 0 / 0.08),
+      8px 0 12px -8px rgb(0 0 0 / 0.16);
+  }
+}
+
+@media (max-width: 599px) {
+  /* Row headers wrap instead of pinning a 300px column. */
+  html[data-proto] [data-slot="table"] th[scope="row"] {
+    white-space: normal;
+    min-width: 7rem;
+    max-width: 10rem;
+  }
+  html[data-proto] [data-slot="table"][class*="text-body"] {
+    font-size: 15px;
+    line-height: 21px;
+  }
+  html[data-proto] [data-slot="table"] :is(th, td)[class*="px-4"] {
+    padding-inline: 12px;
+  }
+}
+
+/*
+ * Títulos is a price comparison, so nothing may scroll out of sight: each row folds its
+ * Vencimento under the bond's name and the two prices keep their columns.
+ */
+@media (max-width: 599px) {
+  html[data-proto] .proto-bonds,
+  html[data-proto] .proto-bonds :is(thead, tbody) {
+    display: block;
+  }
+  html[data-proto] .proto-bonds tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    column-gap: 16px;
+    align-items: start;
+    padding-inline: 14px;
+  }
+  html[data-proto] .proto-bonds tr > * {
+    padding-inline: 0;
+    position: static;
+    animation: none;
+    background-color: transparent;
+    max-width: none;
+    min-width: 0;
+  }
+  html[data-proto] .proto-bonds thead th {
+    align-self: center;
+  }
+  /* Header: Título over the name column, then the price columns; Vencimento has no column left. */
+  html[data-proto] .proto-bonds thead th:nth-child(1) {
+    grid-column: 1;
+  }
+  html[data-proto] .proto-bonds thead th:nth-child(2) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  html[data-proto] .proto-bonds thead th:nth-child(3) {
+    grid-column: 2;
+  }
+  html[data-proto] .proto-bonds thead th:nth-child(4) {
+    grid-column: 3;
+  }
+  /* Rows: name, its maturity under it, the prices spanning both lines. */
+  html[data-proto] .proto-bonds tbody th {
+    grid-column: 1;
+    grid-row: 1;
+    padding-top: 14px;
+    padding-bottom: 2px;
+  }
+  html[data-proto] .proto-bonds tbody td:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+    padding-top: 0;
+    padding-bottom: 14px;
+    font-size: 13px;
+    line-height: 18px;
+  }
+  html[data-proto] .proto-bonds tbody td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    padding-block: 14px;
+  }
+  html[data-proto] .proto-bonds tbody td:nth-child(4) {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    padding-block: 14px;
+  }
+}
+
+/*
+ * Importar's preview is an editing surface: scrolling sideways to reach Taxa with the keyboard up
+ * is the wrong gesture. Each row becomes a card: the bond picker on top, the four fields in a
+ * two-column grid under their own labels (the column headings, moved), the remove button last.
+ */
+@media (max-width: 599px) {
+  html[data-proto] .proto-import,
+  html[data-proto] .proto-import :is(thead, tbody) {
+    display: block;
+  }
+  html[data-proto] .proto-import thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  html[data-proto] .proto-import tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px 16px;
+    padding: 14px 16px;
+  }
+  html[data-proto] .proto-import tbody td {
+    min-width: 0;
+    padding: 0;
+    position: static;
+    animation: none;
+    background-color: transparent;
+  }
+  html[data-proto] .proto-import tbody td:first-child,
+  html[data-proto] .proto-import tbody td:last-child {
+    grid-column: 1 / -1;
+  }
+  /* The remove button sits in the card's top-right corner, beside the bond picker. */
+  html[data-proto] .proto-import tbody tr {
+    position: relative;
+  }
+  html[data-proto] .proto-import tbody td:first-child {
+    padding-right: 36px;
+  }
+  html[data-proto] .proto-import tbody td:last-child:not(:first-child) {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: auto;
+    padding: 0;
+  }
+  html[data-proto] .proto-import td input {
+    text-align: left;
+  }
+  html[data-proto] .proto-import td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--muted-foreground);
+  }
+  html[data-proto] .proto-import td > div {
+    width: 100%;
+  }
+}
+
+/* A long file name wraps inside its chip instead of crushing the icon and the row count. */
+html[data-proto] .proto-main .glass.items-center > svg {
+  flex-shrink: 0;
+}
+html[data-proto] .proto-main .glass.items-center > span.font-medium {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+html[data-proto] .proto-main .glass.items-center > span.font-medium + span {
+  white-space: nowrap;
+}
+
+/* ---------- Page headers: the title keeps its line, actions wrap under it ---------- */
+@media (max-width: 899px) {
+  html[data-proto] .proto-main header {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  html[data-proto] .proto-main header > .flex {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  html[data-proto] .proto-main header > :first-child {
+    min-width: 0;
+  }
+  html[data-proto] .proto-main h1 {
+    overflow-wrap: break-word;
+  }
+}
+
+/* ---------- Panels of figures: one column ---------- */
+@media (max-width: 719px) {
+  html[data-proto] .proto-summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* KeyFigures' columns are as wide as their figure, so "novembro de 2056" stays on one line. Three
+   need about 830px of content; below that the panel stacks, measured on the content column. */
+html[data-proto] .proto-main > div {
+  container-type: inline-size;
+}
+html[data-proto] .proto-keyfigures {
+  grid-auto-columns: minmax(max-content, 1fr);
+}
+html[data-proto] .proto-keyfigures dd {
+  white-space: nowrap;
+}
+@container (max-width: 839px) {
+  html[data-proto] .proto-keyfigures:has(> :nth-child(3)) {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  html[data-proto] .proto-keyfigures:has(> :nth-child(3)) > * {
+    flex: none;
+    padding: 14px 0;
+    border-inline-width: 0;
+    border-top: 1px solid var(--border);
+  }
+  html[data-proto] .proto-keyfigures:has(> :nth-child(3)) > :first-child {
+    padding-top: 0;
+    border-top-width: 0;
+  }
+  html[data-proto] .proto-keyfigures:has(> :nth-child(3)) > :last-child {
+    padding-bottom: 0;
+  }
+}
+@media (max-width: 599px) {
+  html[data-proto] .proto-keyfigures {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  html[data-proto] .proto-keyfigures > * {
+    flex: none;
+    padding: 14px 0;
+    border-inline-width: 0;
+    border-top: 1px solid var(--border);
+  }
+  html[data-proto] .proto-keyfigures > :first-child {
+    padding-top: 0;
+    border-top-width: 0;
+  }
+  html[data-proto] .proto-keyfigures > :last-child {
+    padding-bottom: 0;
+  }
+}
+/* A figure is never clipped: it may break at its spaces, and in the last resort anywhere. */
+html[data-proto] .text-hero-figure,
+html[data-proto] .text-large-title {
+  overflow-wrap: anywhere;
+}
+html[data-proto] .proto-keyfigures > *,
+html[data-proto] .proto-summary-grid section {
+  min-width: 0;
+}
+
+@media (max-width: 599px) {
+  html[data-proto] .text-hero-figure {
+    font-size: clamp(34px, 11.4vw, 48px);
+    line-height: 1.1;
+  }
+  /* The page title stays at 34px; the figures inside panels step down. */
+  html[data-proto] .proto-main :not(h1).text-large-title {
+    font-size: 28px;
+    line-height: 34px;
+  }
+  html[data-proto] .proto-main section,
+  html[data-proto] .proto-keyfigures {
+    min-width: 0;
+  }
+}
+
+/* ---------- Segmented controls and the buttons beside them ---------- */
+@media (max-width: 599px) {
+  /* A control that heads a section or a panel spans the width and its segments share it; one
+     inside a form row (Contrato) keeps its natural size. */
+  html[data-proto] .proto-segmented:is(.self-start, .proto-toolbar > *, header > div > *) {
+    display: flex;
+    width: 100%;
+  }
+  html[data-proto] .proto-segmented:is(.self-start, .proto-toolbar > *, header > div > *) > * {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 44px;
+    padding-inline: 8px;
+    white-space: nowrap;
+  }
+  /* A control with a label, text or a primary button beside it: each takes its own line. */
+  html[data-proto] .proto-toolbar,
+  html[data-proto] header > div:has(> .proto-segmented) {
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 12px;
+  }
+  html[data-proto] .proto-toolbar > * {
+    flex: 1 1 100%;
+  }
+  html[data-proto] header > div:has(> .proto-segmented) {
+    flex: 1 1 100%;
+  }
+  html[data-proto] header > div:has(> .proto-segmented) > :not(.proto-segmented) {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---------- Mercado index rows: name, line and value fit ---------- */
+@media (max-width: 599px) {
+  html[data-proto] .proto-sparkline {
+    display: none;
+  }
+  html[data-proto] .proto-index-value {
+    width: auto;
+    max-width: 46%;
+    flex: none;
+  }
+}
+
+/* The "Seu financiamento" badge never breaks inside its pill; it drops under the name instead. */
+html[data-proto] span:has(> span[class*="bg-accent-tint"][class*="rounded-full"]) {
+  flex-wrap: wrap;
+}
+html[data-proto] span[class*="bg-accent-tint"][class*="rounded-full"] {
+  white-space: nowrap;
+}
+
+/* ---------- Tap targets: 44px without moving anything ---------- */
+@media (max-width: 899px) {
+  html[data-proto] [data-slot="button"][data-size="inline"],
+  html[data-proto] [data-slot="button"][data-size="icon-sm"],
+  html[data-proto] [data-slot="button"][data-size="sm"] {
+    position: relative;
+  }
+  html[data-proto] [data-slot="button"][data-size="inline"]::after {
+    content: "";
+    position: absolute;
+    inset: -13px -6px;
+  }
+  html[data-proto] [data-slot="button"][data-size="icon-sm"]::after,
+  html[data-proto] [data-slot="button"][data-size="sm"]::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+  }
+  html[data-proto] .proto-summary-grid a {
+    min-height: 52px;
+  }
+  /* Segments of a form row stay 32px tall; their touch area reaches 44px. */
+  html[data-proto] .proto-segmented > *,
+  html[data-proto] button:has(> svg.lucide-info),
+  html[data-proto] .proto-main a[aria-label^="Voltar"] {
+    position: relative;
+  }
+  html[data-proto] .proto-segmented > *::after {
+    content: "";
+    position: absolute;
+    inset: -6px 0;
+  }
+  html[data-proto] button:has(> svg.lucide-info)::after {
+    content: "";
+    position: absolute;
+    inset: -14px;
+  }
+  html[data-proto] .proto-main a[aria-label^="Voltar"]::after {
+    content: "";
+    position: absolute;
+    inset: -12px -8px;
+  }
+}
+
+/* ---------- Modal sheets: an iOS bottom sheet under 600px ---------- */
+@keyframes proto-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes proto-sheet-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+@media (max-width: 599px) {
+  html[data-proto] [data-slot="dialog-content"],
+  html[data-proto] [data-slot="alert-dialog-content"] {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+    max-height: 92svh;
+    translate: none;
+    transform: none;
+    border-radius: 16px 16px 0 0;
+    padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* Slides up with the iOS ease; the feedback that replaces a sheet has no animation to repeat. */
+  html[data-proto] [data-slot="dialog-content"][class*="animate-in"],
+  html[data-proto] [data-slot="alert-dialog-content"][class*="animate-in"] {
+    animation: proto-sheet-in 320ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+  html[data-proto] [data-slot="dialog-content"][class*="animate-in"][data-state="closed"],
+  html[data-proto] [data-slot="alert-dialog-content"][class*="animate-in"][data-state="closed"] {
+    animation: proto-sheet-out 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-proto] [data-slot="dialog-content"][class*="animate-in"],
+  html[data-proto] [data-slot="alert-dialog-content"][class*="animate-in"] {
+    animation: none;
+  }
+}

@@ -12,6 +12,9 @@ import {
   stepOf,
 } from "@/lib/onboarding";
 import { ContractStep } from "@/pages/onboarding/ContractStep";
+import { usePrototypeVariant } from "@/prototypes/variant";
+import { useOnboardingErrors } from "@/prototypes/ProtoOnboardingErrors";
+import { protoOnboardingValues } from "@/prototypes/ProtoOnboardingChecks";
 import { IndexerStep } from "@/pages/onboarding/IndexerStep";
 import { InsuranceStep } from "@/pages/onboarding/InsuranceStep";
 import { InterestStep } from "@/pages/onboarding/InterestStep";
@@ -76,22 +79,23 @@ const steps = [
  * that ask for the terms and a review of the schedule they give, which saves them.
  */
 export function Onboarding() {
+  const proto = usePrototypeVariant() !== "A";
   const [step, setStep] = useState(0);
-  const [values, setValues] = useState(onboardingValues);
+  const [values, setValues] = useState(proto ? protoOnboardingValues : onboardingValues);
   const [failure, setFailure] = useState<Failure | null>(null);
+  // Variant B/C: a step opened from the review goes back to it on Continuar.
+  const [fromReview, setFromReview] = useState(false);
   const preview = usePreviewSchedule();
   const save = useSaveMortgage();
   const navigate = useNavigate();
-
-  const rejected = rejections(failure?.error ?? null);
-  const messageOf = (...locations: string[]) =>
-    locations.map((location) => rejected.get(location)).find((message) => message !== undefined);
+  const errors = useOnboardingErrors(failure?.error ?? null, proto);
 
   const set: StepProps["set"] = (key, value) => {
     // The API names rows by position, so once a row is added or removed its answer is out of date.
     if (Array.isArray(value) && value.length !== (values[key] as unknown[]).length) {
       setFailure(null);
     }
+    if (proto) errors.changed(values, withFirstChargeRates(values, { ...values, [key]: value }));
     setValues((current) => withFirstChargeRates(current, { ...current, [key]: value }));
   };
 
@@ -102,12 +106,14 @@ export function Onboarding() {
         : undefined;
     setFailure({ error, step: owner ?? at, action });
     setStep(owner ?? at);
+    if (proto) errors.focus();
   };
 
   const review = () =>
     preview.mutate(onboardingTerms(values), {
       onSuccess: () => {
         setFailure(null);
+        setFromReview(false);
         setStep(REVIEW_STEP);
       },
       onError: (error) => fail(error, LAST_TERMS_STEP, "preview"),
@@ -122,7 +128,21 @@ export function Onboarding() {
     });
   };
 
-  const alert = failure?.step === step ? <FailureAlert failure={failure} /> : undefined;
+  // Variant B/C asks the browser first; the API stays the final authority at the review.
+  const proceed = () => {
+    if (proto) {
+      if (!errors.check(step, values)) return;
+      if (fromReview) return review();
+    }
+    if (step === LAST_TERMS_STEP) review();
+    else setStep(step + 1);
+  };
+
+  const rejectedByApi =
+    failure !== null && failure.error instanceof ApiError && failure.error.status === 422;
+  const answered = proto && rejectedByApi && !errors.hasRejections;
+  const alert =
+    failure?.step === step && !answered ? <FailureAlert failure={failure} /> : undefined;
 
   if (step === 0) return <Welcome onStart={() => setStep(1)} />;
 
@@ -143,6 +163,10 @@ export function Onboarding() {
           terms={onboardingTerms(values)}
           schedule={preview.data}
           onEdit={() => setStep(1)}
+          onEditStep={(target) => {
+            setFromReview(true);
+            setStep(target);
+          }}
         />
       </StepFrame>
     );
@@ -155,12 +179,15 @@ export function Onboarding() {
       step={step}
       title={title}
       context={context}
-      pending={step === LAST_TERMS_STEP && preview.isPending}
-      onContinue={step === LAST_TERMS_STEP ? review : () => setStep(step + 1)}
-      onBack={() => setStep(step - 1)}
+      pending={(step === LAST_TERMS_STEP || fromReview) && preview.isPending}
+      onContinue={proceed}
+      onBack={() => {
+        errors.reset();
+        setStep(step - 1);
+      }}
       alert={alert}
     >
-      <Fields values={values} set={set} messageOf={messageOf} />
+      <Fields values={values} set={set} messageOf={errors.messageOf} />
     </StepFrame>
   );
 }

@@ -12,7 +12,8 @@ import {
 import type { ProjectionMethod } from "@/lib/api";
 import { indexNames } from "@/lib/indexNames";
 import { projectionMethodDescriptions } from "@/lib/marketIndexes";
-import { projectionMethodLabels, projectionMethodsEffect } from "@/lib/projectionMethods";
+import { projectionMethodLabels } from "@/lib/projectionMethods";
+import { ProjectionMethodsEffect } from "@/prototypes/ProtoCopy";
 
 /** ProjectionSummary says how an index is projected, opening Ajustes, where the method is chosen. */
 export function ProjectionSummary({ projection }: { projection: ProjectionMethod }) {
@@ -36,7 +37,7 @@ export function ProjectionSummary({ projection }: { projection: ProjectionMethod
         </GroupedListItem>
       </GroupedList>
       <p className="px-4 text-footnote text-muted-foreground">
-        {projectionMethodsEffect} Escolha o método em Ajustes.
+        <ProjectionMethodsEffect /> Escolha o método em Ajustes.
       </p>
     </GroupedListSection>
   );
@@ -73,7 +74,9 @@ export function PoupancaDerivation({ methods }: { methods: ProjectionMethod[] })
         </Link>{" "}
         projetada pela {midSentence(selic.method)}, segundo a regra da poupança.
       </p>
-      <p className="px-4 text-footnote text-muted-foreground">{projectionMethodsEffect}</p>
+      <p className="px-4 text-footnote text-muted-foreground">
+        <ProjectionMethodsEffect />
+      </p>
     </GroupedListSection>
   );
 }

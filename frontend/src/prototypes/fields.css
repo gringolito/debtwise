@@ -1,0 +1,11 @@
+/* PROTOTYPE, throwaway: the native date picker only opens from a rendered input; this one stays
+   invisible next to the calendar button. */
+html[data-proto] .proto-date-picker {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}

@@ -73,7 +73,7 @@ export function ImportPreview({
 }: ImportPreviewProps) {
   const noteIdPrefix = useId();
   return (
-    <Table variant="grouped" aria-label="Compras do arquivo">
+    <Table variant="grouped" aria-label="Compras do arquivo" className="proto-import">
       <TableHeader>
         <TableRow variant="grouped">
           <TableHead scope="col" variant="grouped">
@@ -142,7 +142,7 @@ export function ImportPreview({
               </TableCell>
               {!row.malformed &&
                 editableFields.map(({ field, label, inputMode, grouped, width }) => (
-                  <TableCell key={field} variant="grouped">
+                  <TableCell key={field} variant="grouped" data-label={label}>
                     <div className={width}>
                       <InlineInput
                         className="w-full"
