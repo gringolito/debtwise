@@ -843,7 +843,8 @@ func couponFlows(s comparison.Scenario) []couponFlow {
 // of the days since the purchase: 172 days pay 22.5%, 356 days 20% and 537 days 17.5%. Its custody
 // fee accrues from the purchase or the previous coupon. Each net coupon is prepaid on its date, and
 // equal outflow prepays what the lower installments leave of the 1,000.00. Once nothing is owed, the
-// coupon of 2026-07-01 is held.
+// coupon of 2026-07-01 is held. Investing ends 925.44 ahead, 18.51% of the amount, no near tie,
+// over 23 whole months: the maturity's 1st comes before the decision's 10th.
 func TestAnNTNFVerdictPrepaysEachNetCouponOnItsDate(t *testing.T) {
 	t.Parallel()
 
@@ -891,6 +892,9 @@ func TestAnNTNFVerdictPrepaysEachNetCouponOnItsDate(t *testing.T) {
 	assert.Equal(t, "599.27", v.Invest.Cash.String())
 	assert.Equal(t, "5925.44", v.Invest.NetWorth.String())
 	assert.Equal(t, "925.44", v.Advantage.String())
+	assert.Equal(t, "0.1851", v.AdvantageShare.String())
+	assert.False(t, v.NearTie)
+	assert.Equal(t, 23, v.HorizonMonths)
 	assert.Empty(t, v.ProjectedBy)
 }
 
@@ -994,7 +998,8 @@ func TestACouponPrepaymentHasTheEffectTheOwnerChose(t *testing.T) {
 // figures come from a separate implementation in Python's decimal module, whose schedule reproduces
 // the prepay scenario of the NTN-B Principal test above. 104 days after the purchase the coupon pays
 // 22.5% of income tax, and its net is prepaid on its date, between the installments of 2026-02-03
-// and 2026-03-03; equal outflow then prepays what the lower installments leave.
+// and 2026-03-03; equal outflow then prepays what the lower installments leave. Prepaying ends
+// 36.00 ahead, 0.36% of the amount and so a near tie, over 9 whole months.
 func TestAnNTNBVerdictPrepaysItsProjectedCoupons(t *testing.T) {
 	t.Parallel()
 
@@ -1039,6 +1044,9 @@ func TestAnNTNBVerdictPrepaysItsProjectedCoupons(t *testing.T) {
 	}, couponFlows(v.Invest))
 	assert.Equal(t, "-199.69", v.Invest.NetWorth.String())
 	assert.Equal(t, "-36.00", v.Advantage.String())
+	assert.Equal(t, "0.0036", v.AdvantageShare.String())
+	assert.True(t, v.NearTie)
+	assert.Equal(t, 9, v.HorizonMonths)
 
 	trailing := []indexes.ProjectionMethod{{Index: indexes.IPCA, Method: indexes.Trailing12}}
 	assert.Equal(t, trailing, v.Invest.CashFlows[4].Coupon.ProjectedBy)
