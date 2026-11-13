@@ -263,6 +263,10 @@
   --primary-foreground: #ffffff;
   --muted: #f5f5f7;
   --muted-foreground: #636366;
+  /* The app doesn't use --secondary, --secondary-foreground or --accent-foreground; tweakcn's live
+     preview refuses to theme a page without them. */
+  --secondary: #f5f5f7;
+  --secondary-foreground: #1d1d1f;
   --tertiary-foreground: #aeaeb2;
   --border: #e5e5ea;
   --input: #e5e5ea;
@@ -273,6 +277,7 @@
   --graphite-foreground: #ffffff;
   --graphite-muted-foreground: #a1a1a6;
   --accent: #26705f;
+  --accent-foreground: #ffffff;
   --accent-mark: #3e8e7c;
   --accent-soft: #82c7b7;
   --accent-tint: #e8f5f1;
