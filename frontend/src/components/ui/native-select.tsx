@@ -3,18 +3,19 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 
+// Focus shows the app-wide outline from index.css instead of upstream's translucent ring.
 const selectVariants = cva(
-  "w-full min-w-0 appearance-none bg-transparent transition-colors outline-none select-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed",
+  "w-full min-w-0 appearance-none bg-transparent transition-colors select-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed",
   {
     variants: {
       variant: {
         default:
-          "h-8 rounded-lg border border-input py-1 pr-8 pl-2.5 text-callout focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=sm]:h-7 data-[size=sm]:py-0.5 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+          "h-8 rounded-lg border border-input py-1 pr-8 pl-2.5 text-callout aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=sm]:h-7 data-[size=sm]:py-0.5 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
         /** Chosen in place on a grouped list row: borderless and right-aligned, as the row's value. */
         inline:
-          "cursor-pointer rounded-lg py-1 pr-6 pl-1 text-body [text-align-last:right] focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:text-destructive",
+          "cursor-pointer rounded-lg py-1 pr-6 pl-1 text-body [text-align-last:right] aria-invalid:text-destructive",
         /** Chosen in place inside a table row: borderless, left-aligned, so the value reads as text. */
-        text: "cursor-pointer rounded-lg py-1 pr-6 pl-1 text-body focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:text-destructive",
+        text: "cursor-pointer rounded-lg py-1 pr-6 pl-1 text-body aria-invalid:text-destructive",
       },
     },
     defaultVariants: { variant: "default" },

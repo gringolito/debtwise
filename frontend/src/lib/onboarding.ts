@@ -5,6 +5,7 @@ import {
   type Indexer,
   indexerLabels,
   termsFromValues,
+  unchosenIndexer,
 } from "@/lib/mortgageForm";
 
 /** The body fields each step asks for, in step order; the review that follows asks for none. */
@@ -53,11 +54,16 @@ export function stepOf(locations: Iterable<string>): number | undefined {
   return first;
 }
 
-/** The onboarding starts on the effective basis, which it asks for when the contract shows both. */
+/**
+ * The onboarding starts on the effective basis, which it asks for when the contract shows both,
+ * and on SAC. The indexer has no default: a wrong guess would silently skew every projection, so
+ * the owner has to choose it.
+ */
 export function onboardingValues(): FormValues {
   const values = emptyValues();
   return {
     ...values,
+    indexer: unchosenIndexer,
     contractRates: values.contractRates.map((row) => ({ ...row, basis: "effective" })),
   };
 }

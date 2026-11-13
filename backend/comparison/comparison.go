@@ -64,6 +64,15 @@ type Verdict struct {
 	Advantage decimal.Decimal
 	// AvoidedCost is what prepaying the amount saves by the horizon, beyond the amount itself.
 	AvoidedCost decimal.Decimal
+	// AdvantageShare is the Advantage without its sign as a fraction of the decision's amount,
+	// rounded half up to 4 places.
+	AdvantageShare decimal.Decimal
+	// NearTie is whether the Advantage is below nearTieShare of the decision's amount, so that
+	// both options give practically the same. An Advantage of zero is a near tie.
+	NearTie bool
+	// HorizonMonths is the whole calendar months from the decision's date to the horizon, a month
+	// counting only once its day of month is reached.
+	HorizonMonths int
 	// BreakEvenRate is the bond rate, of at most 10 places, that bought with the amount on the
 	// decision's date gives an advantage within a centavo of zero, or where the hundredths the
 	// amount buys make the advantage jump over zero, the lowest rate at which it is positive. For
@@ -211,6 +220,8 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 	v.Prepay.valueFlows(nil)
 
 	v.Advantage = v.Invest.NetWorth.Sub(v.Prepay.NetWorth)
+	v.AdvantageShare, v.NearTie = yardstick(v.Advantage, c.decision.Amount)
+	v.HorizonMonths = wholeMonths(c.decision.Date, c.bond.Maturity)
 	v.AvoidedCost = statusQuo.Balance.Sub(v.Prepay.OutstandingBalance).Add(v.Prepay.Cash).Sub(c.decision.Amount)
 
 	methods := [][]indexes.ProjectionMethod{

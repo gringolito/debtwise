@@ -3,118 +3,91 @@ import { useId } from "react";
 import investIllustration from "@/assets/answer-invest.webp";
 import prepayIllustration from "@/assets/answer-prepay.webp";
 import { Button } from "@/components/ui/button";
-import type { Decision, Verdict } from "@/lib/api";
+import type { Decision } from "@/lib/api";
 import { bestVerdict } from "@/lib/dashboard";
-import { isZero, verdictTitle } from "@/lib/decisions";
+import { type ComparedVerdict, favoured } from "@/lib/decisions";
 import { formatDate, formatMoney } from "@/lib/format";
+import { advantageAmount, advantageShare, horizon, verdictHeadline } from "@/lib/yardstick";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
 
-type Winner = "invest" | "prepay";
-
-const illustrations: Record<Winner, string> = {
+const illustrations = {
   invest: investIllustration,
   prepay: prepayIllustration,
 };
 
-function answer(best: Verdict & { advantage: string }): {
-  title: string;
-  detail: React.ReactNode;
-  winner?: Winner;
-} {
-  const bond = verdictTitle(best);
-  const horizon = formatDate(best.maturity);
-  const amount = (
-    <span className="font-semibold text-graphite-foreground">
-      {formatMoney(best.advantage.replace("-", ""))}
-    </span>
-  );
-  if (isZero(best.advantage)) {
-    return {
-      title: `Investir em ${bond} ou amortizar dá no mesmo`,
-      detail: `Nenhuma diferença até ${horizon}.`,
-    };
-  }
-  if (best.advantage.startsWith("-")) {
-    return {
-      title: "Amortizar rende mais",
-      detail: (
-        <>
-          {amount} a mais do que investir em {bond}, até {horizon}.
-        </>
-      ),
-      winner: "prepay",
-    };
-  }
-  return {
-    title: `Investir em ${bond} rende mais`,
-    detail: (
-      <>
-        {amount} a mais do que amortizar, até {horizon}.
-      </>
-    ),
-    winner: "invest",
-  };
-}
-
-function Illustration({ winner }: { winner: Winner }) {
+/** The yardstick line: how much the difference is worth against the amount, over the horizon. */
+function Yardstick({ verdict }: { verdict: ComparedVerdict }) {
+  const until = formatDate(verdict.maturity);
+  if (favoured(verdict.advantage) === "even") return <>Nenhuma diferença até {until}.</>;
   return (
-    <div aria-hidden="true" className="relative hidden shrink-0 md:block">
-      <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-accent-soft px-3 py-0.5 text-footnote font-semibold whitespace-nowrap text-graphite shadow-glow">
-        Melhor opção
-      </span>
-      <img src={illustrations[winner]} alt="" className="size-40 object-contain drop-shadow-glow" />
-    </div>
+    <>
+      <span className="font-semibold text-graphite-foreground">{advantageAmount(verdict)}</span>
+      {verdict.near_tie ? " de diferença" : " a mais"} até {until}, {advantageShare(verdict)} do
+      valor em {horizon(verdict)}.
+    </>
   );
 }
 
 /**
  * AnswerCard states the best decision for the amount of a decision, with a note under it when the
  * market data that answer reads is not fresh. With no verdict to state, it invites a comparison.
+ * A clear winner, not a near tie or an even one, gets its illustration.
  */
 export function AnswerCard({ decision }: { decision: Decision }) {
   const titleId = useId();
   const best = bestVerdict(decision.verdicts);
   const valor = Number(decision.amount);
-  const stated =
-    best?.advantage === undefined ? undefined : answer({ ...best, advantage: best.advantage });
+  const side = best && favoured(best.advantage);
+  const winner = side && side !== "even" && !best.near_tie ? side : undefined;
 
   return (
     <div className="flex flex-col gap-2">
       <section
         aria-labelledby={titleId}
-        className="rounded-lg glass-graphite p-8 text-graphite-foreground"
+        className="rounded-lg glass-graphite p-6 text-graphite-foreground sm:p-8"
       >
         <div className="flex items-center justify-between gap-8">
-          <div className="flex max-w-120 flex-col gap-2">
-            <p className="flex items-center gap-2 text-footnote tracking-wide text-graphite-muted-foreground uppercase">
+          <div className="flex min-w-0 max-w-120 flex-col gap-2">
+            <p className="flex items-center gap-2 text-footnote text-graphite-muted-foreground">
               <span
                 aria-hidden="true"
-                className="size-1.5 rounded-full bg-accent-soft shadow-glow"
+                className="size-1.5 shrink-0 rounded-full bg-accent-soft shadow-glow"
               />
               Na projeção atual, para {formatMoney(decision.amount)} hoje
             </p>
             <h2 id={titleId} className="text-title-2">
-              {stated?.title ?? "Amortizar ou investir? Veja a comparação."}
+              {best ? verdictHeadline(best) : "Amortizar ou investir? Veja a comparação."}
             </h2>
             <p className="text-callout text-graphite-muted-foreground">
-              {stated?.detail ?? "Compare antes de registrar sua próxima amortização."}
+              {best ? (
+                <Yardstick verdict={best} />
+              ) : (
+                "Compare antes de registrar sua próxima amortização."
+              )}
             </p>
-            <div className="mt-4 flex items-center gap-2">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               <Button variant="inverse" asChild>
-                <Link to="/decidir" search={{ valor, comparar: true }}>
-                  {stated ? "Ver comparação" : "Comparar agora"}
+                <Link to="/comparar" search={{ valor, comparar: true }}>
+                  {best ? "Ver comparação" : "Comparar agora"}
                 </Link>
               </Button>
-              {stated && (
+              {best && (
                 <Button variant="plain-inverse" asChild>
-                  <Link to="/decidir" search={{ valor }}>
+                  <Link to="/comparar" search={{ valor }}>
                     Mudar valor
                   </Link>
                 </Button>
               )}
             </div>
           </div>
-          {stated?.winner && <Illustration winner={stated.winner} />}
+          {winner && (
+            <img
+              src={illustrations[winner]}
+              alt=""
+              aria-hidden="true"
+              className="hidden size-40 shrink-0 object-contain drop-shadow-glow sm:block"
+            />
+          )}
         </div>
       </section>
       {best && <StaleNote marketData={best.market_data} />}

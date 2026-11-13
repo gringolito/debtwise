@@ -193,9 +193,9 @@ _Avoid_: Admin fee (the mortgage's monthly fee), brokerage (charged by brokers, 
 **Decision**:
 A forward-looking comparison of prepaying an amount on a date against buying a bond with it. It
 answers "what should I do with this money?", while the early sale check asks the same of a lot
-already held.
+already held. The owner asks for one on Comparar, the screen named for the act of comparing.
 _Avoid_: Simulation (suggests free-form what-ifs), recommendation (DebtWise reports; the owner
-decides)
+decides), decidir (the screen's old name; DebtWise compares and the owner decides)
 
 **Early Sale Check**:
 A comparison, for a lot already held, of selling it now and prepaying with the proceeds against
@@ -219,6 +219,12 @@ How much better off the owner is on the horizon by investing instead of prepayin
 positive advantage favours investing, a negative one prepaying.
 _Avoid_: Gain and profit (sound like a bond's return, not a difference between scenarios), ganho
 financeiro (the old spreadsheet's figure, computed differently)
+
+**Near Tie** (praticamente no mesmo):
+A comparison whose advantage is too small against the amount to tell its options apart in practice.
+The advantage still favours one option, but DebtWise says both give practically the same rather
+than name a winner.
+_Avoid_: Tie (an advantage of exactly zero), draw (suggests the scenarios ended equal)
 
 **Break-even Rate**:
 The bond rate at which investing and prepaying come out even. Comparing it with the rate on offer

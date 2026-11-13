@@ -117,7 +117,7 @@ describe("a lot's detail", () => {
     expect(await within(panel).findByText("Sem comparação por enquanto")).toBeInTheDocument();
   });
 
-  it("states the early sale verdict, a loss in red, and follows the effect picked", async () => {
+  it("states the early sale verdict in words, never in red, and follows the effect picked", async () => {
     const requests = stubInvestments({
       lots: [ipca2035],
       checks: {
@@ -134,10 +134,11 @@ describe("a lot's detail", () => {
         (_, element) =>
           element?.tagName === "P" &&
           text(element) ===
-            "Vender hoje e amortizar ficaria R$ 2.140,00 abaixo de manter até o vencimento.",
+            "Manter até o vencimento rende R$ 2.140,00 a mais do que vender hoje e amortizar.",
       ),
     ).toBeInTheDocument();
-    expect(within(panel).getByText("R$ 2.140,00")).toHaveClass("text-destructive");
+    expect(within(panel).getByText("R$ 2.140,00")).not.toHaveClass("text-positive");
+    expect(within(panel).getByText("R$ 2.140,00").closest(".text-destructive")).toBeNull();
     expect(
       within(panel).getByText(/^Comparação até 15\/05\/2035, com a mesma saída de dinheiro/),
     ).toHaveTextContent("O Tesouro Direto recompra hoje a IPCA + 6,40%, R$ 2.250,00 por título.");
@@ -215,13 +216,11 @@ describe("a lot's detail", () => {
     const confirm = await screen.findByRole("alertdialog", { name: "Excluir esta compra?" });
     fireEvent.click(within(confirm).getByRole("button", { name: "Excluir" }));
 
-    const remaining = await screen.findByRole("region", {
-      name: "Tesouro Prefixado com Juros Semestrais 2029",
-    });
-    expect(within(remaining).getAllByRole("link").map(words)).toEqual([
-      "Compra em 10/01/2025 · 11,85% Sem preço de venda",
+    const purchases = await screen.findByRole("region", { name: "Compras" });
+    expect(within(purchases).getAllByRole("link").map(words)).toEqual([
+      "Tesouro Prefixado com Juros Semestrais 2029 Sem preço de venda Compra em 10/01/2025 · 11,85%",
     ]);
-    expect(screen.queryByRole("region", { name: "Tesouro IPCA+ 2035" })).toBeNull();
+    expect(screen.queryByText(/Tesouro IPCA\+ 2035/)).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(
       requests.filter((r) => r.method === "DELETE").map((r) => new URL(r.url).pathname),
@@ -239,17 +238,9 @@ describe("a lot's detail", () => {
     fireEvent.click(await within(panel).findByRole("button", { name: "Ver cenários" }));
 
     const holding = within(panel).getByRole("region", { name: "Manter" });
-    expect(rowTexts(within(holding).getByRole("table", { name: "Resumo de Manter" }))).toEqual([
-      ["Patrimônio líquido no horizonte", "R$ 41.380,00"],
-      ["Caixa retido no horizonte", "R$ 0,00"],
-      ["Saldo devedor no horizonte", "R$ 0,00"],
-    ]);
+    expect(within(holding).getByText("Você tem R$ 41.380,00")).toBeVisible();
     const selling = within(panel).getByRole("region", { name: "Vender" });
-    expect(rowTexts(within(selling).getByRole("table", { name: "Resumo de Vender" }))).toEqual([
-      ["Patrimônio líquido no horizonte", "R$ 39.240,00"],
-      ["Caixa retido no horizonte", "R$ 12.000,00"],
-      ["Saldo devedor no horizonte", "R$ 0,00"],
-    ]);
+    expect(within(selling).getByText("Você tem R$ 39.240,00")).toBeVisible();
     const [, firstDay] = rowTexts(
       within(selling).getByRole("table", { name: "Fluxo de caixa de Vender" }),
     );

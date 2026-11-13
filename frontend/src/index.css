@@ -10,13 +10,24 @@
   --color-*: initial;
   --text-*: initial;
   --radius-*: initial;
+  --breakpoint-*: initial;
 
-  --font-sans: "Inter Variable", sans-serif;
+  /* Phones are under sm; the sidebar takes over from the tab bar at md. */
+  --breakpoint-sm: 600px;
+  --breakpoint-md: 900px;
+
+  --font-sans: system-ui, -apple-system, "SF Pro Text", "Inter Variable", sans-serif;
 
   --text-hero-figure: 56px;
   --text-hero-figure--line-height: 60px;
   --text-hero-figure--letter-spacing: -0.03em;
   --text-hero-figure--font-weight: 600;
+  /* The Large Title of a page, which keeps its size on a phone. */
+  --text-page-title: 34px;
+  --text-page-title--line-height: 41px;
+  --text-page-title--letter-spacing: -0.022em;
+  --text-page-title--font-weight: 700;
+  /* The same size for a figure inside a panel, which steps down under 600px (see below). */
   --text-large-title: 34px;
   --text-large-title--line-height: 41px;
   --text-large-title--letter-spacing: -0.022em;
@@ -36,8 +47,16 @@
   --text-callout--line-height: 21px;
   --text-footnote: 13px;
   --text-footnote--line-height: 18px;
+  --text-caption: 11px;
+  --text-caption--line-height: 13px;
+  --text-caption--letter-spacing: -0.01em;
+  --text-caption--font-weight: 500;
 
+  /* The top corners of a modal's bottom sheet on a phone. */
+  --radius-sheet: 16px;
   --container-content: 880px;
+  /* A panel of three key figures stacks when its container is narrower than this. */
+  --container-three-figures: 840px;
   --shadow-sheet: 0 8px 24px rgb(0 0 0 / 0.08);
   --shadow-glass:
     0 10px 30px -5px rgb(0 0 0 / 0.04), 0 1px 2px 0 rgb(0 0 0 / 0.02),
@@ -48,6 +67,9 @@
   --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.12), inset 0 1px 1px rgb(255 255 255);
   --shadow-glow: 0 0 8px var(--accent-soft);
   --drop-shadow-glow: 0 10px 20px rgb(130 199 183 / 0.15);
+  /* A modal's bottom sheet on a phone slides up with the iOS ease. */
+  --animate-sheet-in: sheet-in 320ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  --animate-sheet-out: sheet-out 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
   /* A celebration's icon: it pops in, then a check draws itself or another icon twists. */
   --animate-pop: pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   --animate-draw-ring: draw 0.45s ease-out 0.2s both;
@@ -55,6 +77,16 @@
   --animate-twist: twist 1s ease-in-out 0.45s both;
   --animate-ripple: ripple 1.2s cubic-bezier(0, 0, 0.2, 1) 0.9s 3 both;
 
+  @keyframes sheet-in {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes sheet-out {
+    to {
+      transform: translateY(100%);
+    }
+  }
   @keyframes pop {
     from {
       transform: scale(0);
@@ -103,8 +135,10 @@
   backdrop-filter: blur(24px) saturate(180%);
 }
 
-/* The graphite card in glass, lit along its top edge from white into the soft accent. */
+/* The graphite card in glass, lit along its top edge from white into the soft accent. Focus rings
+   inside it are white, since the strong accent doesn't read on graphite. */
 @utility glass-graphite {
+  --ring: var(--graphite-foreground);
   background:
     linear-gradient(
       90deg,
@@ -125,6 +159,58 @@
   border-right: 1px solid rgb(0 0 0 / 0.06);
   box-shadow: 1px 0 20px 0 rgb(0 0 0 / 0.02);
   backdrop-filter: blur(28px) saturate(180%);
+}
+
+/* The phone's floating tab bar and its Ajustes button: glass that lifts off the page under it. */
+@utility glass-bar {
+  background-color: rgb(255 255 255 / 0.72);
+  border: 1px solid rgb(255 255 255 / 0.9);
+  box-shadow:
+    0 8px 28px -6px rgb(0 0 0 / 0.18),
+    0 1px 2px rgb(0 0 0 / 0.06),
+    inset 0 1px 1px rgb(255 255 255 / 0.9);
+  backdrop-filter: blur(24px) saturate(180%);
+}
+
+/* The floating tab bar sits over the page's bottom edge, above the phone's home indicator. */
+@utility bottom-tab-bar {
+  bottom: calc(--spacing(3) + env(safe-area-inset-bottom));
+}
+
+/* Room under a page for the tab bar floating over it. */
+@utility pb-tab-bar {
+  padding-bottom: calc(--spacing(28) + env(safe-area-inset-bottom));
+}
+
+/* The first column of a table that scrolls in its panel stays put; once the table has scrolled, a
+   hairline and a soft shadow on its edge show what slides under it. Without scroll-driven
+   animations the column just stays pinned. */
+@keyframes pinned-edge {
+  to {
+    box-shadow:
+      1px 0 0 rgb(0 0 0 / 0.08),
+      8px 0 12px -8px rgb(0 0 0 / 0.16);
+  }
+}
+@utility pinned-edge {
+  @supports (animation-timeline: scroll()) {
+    animation: pinned-edge linear both;
+    animation-timeline: scroll(nearest inline);
+    animation-range: 0 24px;
+  }
+}
+
+/* A readout inside a wide, scrolling table row, kept as wide as the visible panel and in view.
+   The table's container is the container this measures. */
+@utility pinned-readout {
+  position: sticky;
+  left: --spacing(4);
+  width: calc(100cqw - --spacing(8));
+}
+
+/* Columns as wide as their content, and wider only when there is room to share. */
+@utility auto-cols-fit {
+  grid-auto-columns: minmax(max-content, 1fr);
 }
 
 @theme inline {
@@ -150,10 +236,13 @@
   --color-graphite-muted-foreground: var(--graphite-muted-foreground);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-mark: var(--accent-mark);
   --color-accent-tint: var(--accent-tint);
+  --color-control: var(--control);
   --color-positive: var(--positive);
   --color-caution: var(--caution);
   --color-caution-tint: var(--caution-tint);
+  --color-panel: var(--panel);
   --color-destructive: var(--destructive);
   --color-chart-mortgage: var(--chart-mortgage);
   --color-chart-investment: var(--chart-investment);
@@ -164,7 +253,7 @@
 }
 
 :root {
-  --background: #f5f5f7;
+  --background: #eff1f4;
   --foreground: #1d1d1f;
   --card: #ffffff;
   --card-foreground: #1d1d1f;
@@ -173,34 +262,61 @@
   --primary: #1d1d1f;
   --primary-foreground: #ffffff;
   --muted: #f5f5f7;
-  --muted-foreground: #6e6e73;
+  --muted-foreground: #636366;
   --tertiary-foreground: #aeaeb2;
   --border: #e5e5ea;
   --input: #e5e5ea;
-  --ring: #82c7b7;
+  --control: #8e8e93;
+  --ring: #26705f;
   --graphite: #1d1d1f;
   --graphite-raised: #2c2c2e;
   --graphite-foreground: #ffffff;
   --graphite-muted-foreground: #a1a1a6;
-  --accent: #2a7a6a;
+  --accent: #26705f;
+  --accent-mark: #3e8e7c;
   --accent-soft: #82c7b7;
   --accent-tint: #e8f5f1;
-  --positive: #248a3d;
-  --caution: #b25000;
+  --positive: #1e7a36;
+  --caution: #a84a00;
   --caution-tint: #fff4e5;
+  /* What a glass panel looks like over the canvas, opaque: the fill of what must hide the content
+     scrolling under it. */
+  --panel: #fafbfc;
   --destructive: #d70015;
   --chart-mortgage: #1d1d1f;
-  --chart-investment: #4e9e8c;
-  --chart-projection: #aeaeb2;
-  --chart-amortization: #4e9e8c;
+  --chart-investment: #3e8e7c;
+  --chart-projection: #8e8e93;
+  --chart-amortization: #3e8e7c;
   --chart-interest: #c7c7cc;
   --chart-charges: #8e8e93;
   --radius: 12px;
 }
 
+/* On a phone, a hero figure scales with the screen so it fits beside the panel's padding. */
+@media (width < 600px) {
+  :root {
+    --text-hero-figure: clamp(34px, 11.4vw, 48px);
+    --text-hero-figure--line-height: 1.1;
+  }
+}
+
+/* On a phone, a figure inside a panel steps down so it fits beside the panel's padding. A page's
+   title keeps its size: it is text-page-title. */
+@media (width < 600px) {
+  :root {
+    --text-large-title: 28px;
+    --text-large-title--line-height: 34px;
+  }
+}
+
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
+  }
+  /* One focus mark for every control: a 2px strong-accent ring off its edge. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
   html {
     @apply font-sans antialiased;
@@ -209,9 +325,8 @@
   body {
     @apply text-body text-foreground;
     background:
-      radial-gradient(circle at 20% 15%, rgb(130 199 183 / 0.12), transparent 45%),
-      radial-gradient(circle at 85% 65%, rgb(200 220 240 / 0.25), transparent 50%),
-      radial-gradient(circle at 50% 90%, rgb(230 235 245 / 0.4), transparent 40%), var(--background);
+      radial-gradient(circle at 15% 10%, rgb(130 199 183 / 0.1), transparent 45%),
+      linear-gradient(135deg, #eef4f1 0%, #eff1f4 50%, #e3e9f3 100%);
     background-attachment: fixed;
   }
 }

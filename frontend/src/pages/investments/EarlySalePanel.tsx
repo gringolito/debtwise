@@ -37,11 +37,15 @@ function Verdict({ check }: { check: EarlySaleCheck }) {
       <p className="text-body">
         {gain.kind === "even" ? (
           "Vender hoje e amortizar ficaria igual a manter até o vencimento."
+        ) : gain.kind === "gain" ? (
+          <>
+            Vender hoje e amortizar rende <SaleGainAmount gain={gain} className="font-semibold" /> a
+            mais do que manter até o vencimento.
+          </>
         ) : (
           <>
-            Vender hoje e amortizar ficaria{" "}
-            <SaleGainAmount gain={gain} signed={false} className="font-semibold" />{" "}
-            {gain.kind === "gain" ? "acima" : "abaixo"} de manter até o vencimento.
+            Manter até o vencimento rende <SaleGainAmount gain={gain} className="font-semibold" /> a
+            mais do que vender hoje e amortizar.
           </>
         )}
       </p>
@@ -125,7 +129,7 @@ export function EarlySalePanel({
   return (
     <div className="flex flex-col gap-2">
       <section aria-labelledby={titleId} className="flex flex-col gap-4 rounded-lg glass p-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 max-sm:*:w-full">
           <h2 id={titleId} className="text-footnote tracking-wide text-muted-foreground uppercase">
             Venda antecipada
           </h2>

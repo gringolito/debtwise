@@ -4,9 +4,20 @@ import { createCn } from "cn/config";
 export const cn = createCn({
   extend: {
     theme: {
-      text: ["hero-figure", "large-title", "title-2", "headline", "body", "callout", "footnote"],
+      text: [
+        "hero-figure",
+        "page-title",
+        "large-title",
+        "title-2",
+        "headline",
+        "body",
+        "callout",
+        "footnote",
+        "caption",
+      ],
       shadow: ["sheet"],
-      container: ["content"],
+      radius: ["sheet"],
+      container: ["content", "three-figures"],
     },
   },
 });

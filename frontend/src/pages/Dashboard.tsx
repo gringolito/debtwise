@@ -60,7 +60,7 @@ function Content() {
     <>
       <div className="flex flex-col gap-6">
         <AnswerCard decision={decision.data} />
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {mortgage.data && (
             <MortgagePanel mortgage={mortgage.data} schedule={schedule.data} today={date} />
           )}

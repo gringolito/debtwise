@@ -6,6 +6,7 @@ import {
   Outlet,
   type Router,
   type RouterHistory,
+  redirect,
 } from "@tanstack/react-router";
 import { validateEffectSearch } from "@/lib/investments";
 import { isIndexName } from "@/lib/marketIndexes";
@@ -92,7 +93,7 @@ const importLotsRoute = createRoute({
 });
 
 /**
- * What a link to Decidir can prefill: `valor`, the amount in reais, and `comparar`, whether to run
+ * What a link to Comparar can prefill: `valor`, the amount in reais, and `comparar`, whether to run
  * the comparison on arrival. Anything else in the address is dropped.
  */
 export interface DecisionSearch {
@@ -100,17 +101,34 @@ export interface DecisionSearch {
   comparar?: boolean;
 }
 
-const decisionRoute = createRoute({
-  getParentRoute: () => shellRoute,
-  path: "/decidir",
-  component: Decision,
-  validateSearch: (search: Record<string, unknown>): DecisionSearch => ({
+function validateDecisionSearch(search: Record<string, unknown>): DecisionSearch {
+  return {
     valor:
       typeof search.valor === "number" && Number.isFinite(search.valor) && search.valor > 0
         ? search.valor
         : undefined,
     comparar: search.comparar === true ? true : undefined,
-  }),
+  };
+}
+
+const decisionRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: "/comparar",
+  component: Decision,
+  validateSearch: validateDecisionSearch,
+});
+
+/** Comparar was called Decidir; its old address, and the links to it, still lead there. */
+const oldDecisionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/decidir",
+  beforeLoad: ({ location }) => {
+    throw redirect({
+      to: "/comparar",
+      search: validateDecisionSearch(location.search),
+      replace: true,
+    });
+  },
 });
 
 const marketRoute = createRoute({
@@ -147,6 +165,7 @@ const settingsRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
+  oldDecisionRoute,
   shellRoute.addChildren([
     homeRoute,
     mortgageRoute,

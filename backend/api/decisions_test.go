@@ -73,21 +73,24 @@ type verdictMarketData struct {
 }
 
 type decisionVerdict struct {
-	Type          string            `json:"type"`
-	Maturity      string            `json:"maturity"`
-	Rate          string            `json:"rate"`
-	Unavailable   string            `json:"unavailable"`
-	UnitPrice     string            `json:"unit_price"`
-	MinimumAmount string            `json:"minimum_amount"`
-	Quantity      string            `json:"quantity"`
-	Advantage     string            `json:"advantage"`
-	AvoidedCost   string            `json:"avoided_cost"`
-	BreakEvenRate string            `json:"break_even_rate"`
-	NoBreakEven   string            `json:"no_break_even"`
-	Invest        *decisionScenario `json:"invest"`
-	Prepay        *decisionScenario `json:"prepay"`
-	ProjectedBy   []projectedBy     `json:"projected_by"`
-	MarketData    verdictMarketData `json:"market_data"`
+	Type           string            `json:"type"`
+	Maturity       string            `json:"maturity"`
+	Rate           string            `json:"rate"`
+	Unavailable    string            `json:"unavailable"`
+	UnitPrice      string            `json:"unit_price"`
+	MinimumAmount  string            `json:"minimum_amount"`
+	Quantity       string            `json:"quantity"`
+	Advantage      string            `json:"advantage"`
+	AdvantageShare string            `json:"advantage_share"`
+	NearTie        *bool             `json:"near_tie"`
+	HorizonMonths  *int              `json:"horizon_months"`
+	AvoidedCost    string            `json:"avoided_cost"`
+	BreakEvenRate  string            `json:"break_even_rate"`
+	NoBreakEven    string            `json:"no_break_even"`
+	Invest         *decisionScenario `json:"invest"`
+	Prepay         *decisionScenario `json:"prepay"`
+	ProjectedBy    []projectedBy     `json:"projected_by"`
+	MarketData     verdictMarketData `json:"market_data"`
 }
 
 type decisionResult struct {
@@ -175,6 +178,26 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	assert.Equal(t, "0.00", v.AvoidedCost)
 	assert.Equal(t, []projectedBy{}, v.ProjectedBy)
 	assert.Equal(t, verdictMarketData{Bonds: status.Bonds, Focus: status.Focus, Indexes: []indexStatus{}}, v.MarketData)
+
+	// The advantages, 1,229.89 and 5,384.51 on 5,000.00, are 0.2460 and 1.0769 of it, far from a tie.
+	// 2026-10-28 is 26 whole months from 2029-01-01, which falls before the 28th of its month, and
+	// 122 from 2037-01-01.
+	type yardstick struct {
+		share   string
+		nearTie *bool
+		months  *int
+	}
+
+	yardsticks := make([]yardstick, 0, len(got.Verdicts))
+
+	for _, w := range got.Verdicts {
+		yardsticks = append(yardsticks, yardstick{w.AdvantageShare, w.NearTie, w.HorizonMonths})
+	}
+
+	assert.Equal(t, []yardstick{
+		{"0.2460", new(false), new(26)},
+		{"1.0769", new(false), new(122)},
+	}, yardsticks)
 
 	maturity := &decisionAmount{
 		Gross: "6470.00", IOF: "0.00", IncomeTax: "217.04", CustodyFee: "28.22", Net: "6224.74", ProjectedBy: []projectedBy{},

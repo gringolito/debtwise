@@ -51,10 +51,11 @@ describe("navigation", () => {
     stubMortgageApi({ mortgage: registeredMortgage });
     renderAt("/");
 
-    fireEvent.click(await screen.findByRole("link", { name: "Financiamento" }));
+    const [sidebar] = await screen.findAllByRole("navigation", { name: "Principal" });
+    fireEvent.click(within(sidebar).getByRole("link", { name: "Financiamento" }));
 
     expect(await installmentsTable()).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("link", { name: "Início" }));
+    fireEvent.click(within(sidebar).getByRole("link", { name: "Início" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Início" })).toBeInTheDocument();
   });
 });
@@ -508,12 +509,21 @@ describe("a schedule that changed on the server", () => {
     renderAt("/financiamento");
     expect(await screen.findByText("R$ 10.640,50")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("link", { name: "Ajustes" }));
+    fireEvent.click(
+      within(screen.getAllByRole("navigation", { name: "Principal" })[0]).getByRole("link", {
+        name: "Ajustes",
+      }),
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Excluir financiamento" }));
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
     await completeOnboarding();
-    fireEvent.click(await screen.findByRole("link", { name: "Financiamento" }));
+    fireEvent.click(
+      within((await screen.findAllByRole("navigation", { name: "Principal" }))[0]).getByRole(
+        "link",
+        { name: "Financiamento" },
+      ),
+    );
 
     await expectOnlyNewSchedule();
   });
@@ -534,12 +544,21 @@ describe("prepayments and statements of a mortgage deleted and registered again"
     fireEvent.click(screen.getByRole("radio", { name: "Extratos" }));
     expect(await screen.findByText("R$ 41.000,00")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("link", { name: "Ajustes" }));
+    fireEvent.click(
+      within(screen.getAllByRole("navigation", { name: "Principal" })[0]).getByRole("link", {
+        name: "Ajustes",
+      }),
+    );
     fireEvent.click(await screen.findByRole("button", { name: "Excluir financiamento" }));
     const dialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Excluir" }));
     await completeOnboarding();
-    fireEvent.click(await screen.findByRole("link", { name: "Financiamento" }));
+    fireEvent.click(
+      within((await screen.findAllByRole("navigation", { name: "Principal" }))[0]).getByRole(
+        "link",
+        { name: "Financiamento" },
+      ),
+    );
 
     fireEvent.click(await screen.findByRole("radio", { name: "Amortizações" }));
     expect(screen.queryByText("R$ 12.500,50")).not.toBeInTheDocument();

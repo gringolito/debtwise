@@ -18,16 +18,16 @@ export function DashboardSkeleton() {
   return (
     <Loading label="Carregando início" className="gap-10">
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-3 rounded-lg bg-foreground/5 p-6">
-          <Skeleton className="h-4 w-48" />
+        <div className="flex flex-col gap-3 rounded-lg bg-foreground/5 p-6 sm:p-8">
+          <Skeleton className="h-4 w-48 max-w-full" />
           <Skeleton className="h-7 w-2/3" />
           <Skeleton className="h-5 w-1/2" />
-          <div className="mt-4 flex gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             <Skeleton className="h-11 w-36" />
             <Skeleton className="h-11 w-28" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <PanelSkeleton />
           <PanelSkeleton />
         </div>

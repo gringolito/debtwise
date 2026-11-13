@@ -17,7 +17,7 @@ import { effectOf, effectSearch, projectionsOf } from "@/lib/investments";
 import { useDeleteLot, useLots } from "@/lib/lotQueries";
 import { projectedByText } from "@/lib/projectionMethods";
 import { EarlySalePanel } from "@/pages/investments/EarlySalePanel";
-import { Coupons, Deductions, KeyFigures } from "@/pages/investments/LotFigures";
+import { Coupons, Deductions, LotKeyFigures } from "@/pages/investments/LotFigures";
 
 const route = getRouteApi("/shell/investimentos/compras/$lotId");
 
@@ -60,7 +60,7 @@ function Detail({ lot }: { lot: LotValued }) {
   return (
     <>
       <PageHeader className="flex-col items-stretch gap-1">
-        <div className="flex items-baseline justify-between gap-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
           <PageTitle>{label}</PageTitle>
           <div className="flex items-center gap-6">
             <Button variant="link" size="inline" onClick={() => setEditing(true)}>
@@ -85,7 +85,7 @@ function Detail({ lot }: { lot: LotValued }) {
         </Alert>
       )}
       {lot.values ? (
-        <KeyFigures lot={lot} values={lot.values} />
+        <LotKeyFigures lot={lot} values={lot.values} />
       ) : (
         <p className="rounded-lg glass p-6 text-body">
           Os valores desta compra dependem de um número-índice do IPCA que ainda não foi divulgado

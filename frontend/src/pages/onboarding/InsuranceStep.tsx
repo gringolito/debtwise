@@ -9,15 +9,24 @@ import { firstChargeOf, type Insurance, insuranceFields, rowLocation } from "@/l
 import { InputRow } from "@/components/patterns/FieldRows";
 import type { StepProps } from "@/pages/onboarding/StepFrame";
 
-const insurances: { insurance: Insurance; label: string; hint: string; needsBase: string }[] = [
+const insurances: {
+  insurance: Insurance;
+  /** The list's name in the API, which locates what it rejects: "mip_rates[0].rate". */
+  location: string;
+  label: string;
+  hint: string;
+  needsBase: string;
+}[] = [
   {
     insurance: "MIP",
+    location: "mip_rates",
     label: "MIP · Morte e invalidez",
     hint: "Sobre o saldo devedor.",
     needsBase: "Preencha o valor financiado para calcular a taxa.",
   },
   {
     insurance: "DFI",
+    location: "dfi_rates",
     label: "DFI · Danos ao imóvel",
     hint: "Sobre o valor de avaliação.",
     needsBase: "Preencha o valor de avaliação para calcular a taxa.",
@@ -52,7 +61,7 @@ export function InsuranceStep({ values, set, messageOf }: StepProps) {
       <GroupedListSection>
         <GroupedListHeader>Seguros</GroupedListHeader>
         <GroupedList>
-          {insurances.map(({ insurance, label, hint }) => {
+          {insurances.map(({ insurance, location, label, hint }) => {
             const { rates } = insuranceFields[insurance];
             const [row] = values[rates];
             return (
@@ -66,7 +75,7 @@ export function InsuranceStep({ values, set, messageOf }: StepProps) {
                 suffix="% ao mês"
                 value={row.rate}
                 onChange={(rate) => set(rates, [{ ...row, rate }])}
-                message={messageOf(rates, rowLocation(rates, 0, "rate"))}
+                message={messageOf(location, rowLocation(location, 0, "rate"))}
               />
             );
           })}
@@ -104,7 +113,7 @@ export function InsuranceStep({ values, set, messageOf }: StepProps) {
                   onChange={(value) => set(charge, value)}
                   message={
                     !derived.needsBase && values[charge].trim() !== "" && derived.rate === undefined
-                      ? "Valor inválido."
+                      ? "Use só números, como 25,00."
                       : undefined
                   }
                 />

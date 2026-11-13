@@ -84,6 +84,14 @@ func (x Decimal) Sub(y Decimal) Decimal {
 	return z
 }
 
+// Abs returns |x|, x without its sign.
+func (x Decimal) Abs() Decimal {
+	var z Decimal
+	z.d.Abs(&x.d)
+
+	return z
+}
+
 // Mul returns x × y.
 func (x Decimal) Mul(y Decimal) Decimal {
 	var z Decimal

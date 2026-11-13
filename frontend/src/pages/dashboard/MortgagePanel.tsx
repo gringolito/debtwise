@@ -34,7 +34,7 @@ export function MortgagePanel({ mortgage, schedule: { installments }, today }: M
         )}
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-border" aria-hidden="true">
           <div
-            className="h-full w-(--paid) rounded-full bg-accent-soft"
+            className="h-full w-(--paid) rounded-full bg-accent-mark"
             style={{ "--paid": `${paid}%` } as React.CSSProperties}
           />
         </div>

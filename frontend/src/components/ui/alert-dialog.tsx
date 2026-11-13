@@ -36,6 +36,8 @@ function AlertDialogOverlay({
   );
 }
 
+// Under sm a confirmation is a bottom sheet, like a dialog: full width at the bottom edge, its top
+// corners rounded, its bottom padding clear of the home indicator, sliding up unless motion is reduced.
 function AlertDialogContent({
   className,
   ...props
@@ -46,7 +48,7 @@ function AlertDialogContent({
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 flex w-full max-w-100 -translate-x-1/2 -translate-y-1/2 flex-col gap-6 rounded-lg bg-popover p-6 text-center text-popover-foreground shadow-sheet duration-150 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 flex w-full max-w-100 -translate-x-1/2 -translate-y-1/2 flex-col gap-6 rounded-lg bg-popover p-6 text-center text-popover-foreground shadow-sheet duration-150 outline-none sm:data-open:animate-in sm:data-open:fade-in-0 sm:data-open:zoom-in-95 sm:data-closed:animate-out sm:data-closed:fade-out-0 sm:data-closed:zoom-out-95 max-sm:top-auto max-sm:bottom-0 max-sm:left-0 max-sm:max-h-[92svh] max-sm:max-w-none max-sm:translate-none max-sm:overflow-y-auto max-sm:rounded-t-sheet max-sm:rounded-b-none max-sm:pb-[calc(--spacing(6)+env(safe-area-inset-bottom))] max-sm:overscroll-contain motion-safe:max-sm:data-open:animate-sheet-in motion-safe:max-sm:data-closed:animate-sheet-out",
           className,
         )}
         {...props}

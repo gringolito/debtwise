@@ -13,6 +13,7 @@ export function EffectControl({
 }) {
   return (
     <SegmentedControl
+      fill
       aria-label="Efeito da amortização"
       value={value}
       onValueChange={onValueChange}

@@ -1,5 +1,6 @@
 import {
   GroupedList,
+  GroupedListChevron,
   GroupedListHeader,
   GroupedListItem,
   GroupedListLabel,
@@ -7,7 +8,6 @@ import {
   GroupedListSection,
   GroupedListValue,
 } from "@/components/patterns/GroupedList";
-import { Button } from "@/components/ui/button";
 import type { MortgageTerms, Schedule } from "@/lib/api";
 import { latestDue, today } from "@/lib/dashboard";
 import { formatMoney, formatMonthYear, formatRate } from "@/lib/format";
@@ -36,11 +36,11 @@ function interestSummary(terms: MortgageTerms): string {
 interface ReviewStepProps {
   terms: MortgageTerms;
   schedule: Schedule;
-  /** Goes back to the first step to change what was informed. */
-  onEdit: () => void;
+  /** Opens the step that asked for a parameter, to change it and come back here. */
+  onEditStep: (step: number) => void;
 }
 
-export function ReviewStep({ terms, schedule, onEdit }: ReviewStepProps) {
+export function ReviewStep({ terms, schedule, onEditStep }: ReviewStepProps) {
   const now = today();
   const { installments } = schedule;
   const due = latestDue(installments, now);
@@ -76,27 +76,28 @@ export function ReviewStep({ terms, schedule, onEdit }: ReviewStepProps) {
       </section>
 
       <GroupedListSection aria-label="Parâmetros informados">
-        <div className="flex items-baseline justify-between">
-          <GroupedListHeader>Parâmetros informados</GroupedListHeader>
-          <Button type="button" variant="link" size="inline" onClick={onEdit}>
-            Editar
-          </Button>
-        </div>
+        <GroupedListHeader>Parâmetros informados</GroupedListHeader>
         <GroupedList>
-          {[
-            ["Contrato", `${formatMoney(terms.original_amount)} · ${terms.term_months} meses`],
-            ["Sistema", amortizationSystemLabels[terms.amortization_system]],
-            ["Correção", indexerLabels[terms.indexer]],
-            ["Juros", interestSummary(terms)],
+          {(
             [
-              "Seguros e taxas",
-              `MIP ${formatRate(mip.rate)} · DFI ${formatRate(dfi.rate)} · ${formatMoney(fee.amount)}`,
-            ],
-          ].map(([label, value]) => (
+              [1, "Contrato", `${formatMoney(terms.original_amount)} · ${terms.term_months} meses`],
+              [2, "Sistema", amortizationSystemLabels[terms.amortization_system]],
+              [3, "Correção", indexerLabels[terms.indexer]],
+              [4, "Juros", interestSummary(terms)],
+              [
+                5,
+                "Seguros e taxas",
+                `MIP ${formatRate(mip.rate)} · DFI ${formatRate(dfi.rate)} · ${formatMoney(fee.amount)}`,
+              ],
+            ] as const
+          ).map(([step, label, value]) => (
             <GroupedListItem key={label}>
-              <GroupedListRow>
-                <GroupedListLabel>{label}</GroupedListLabel>
-                <GroupedListValue>{value}</GroupedListValue>
+              <GroupedListRow asChild>
+                <button type="button" onClick={() => onEditStep(step)}>
+                  <GroupedListLabel className="flex-none">{label}</GroupedListLabel>
+                  <GroupedListValue className="min-w-0 flex-1">{value}</GroupedListValue>
+                  <GroupedListChevron />
+                </button>
               </GroupedListRow>
             </GroupedListItem>
           ))}

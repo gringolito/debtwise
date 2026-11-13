@@ -26,50 +26,48 @@ function StatementTable({
   onEdit: (statement: StatementDrift) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg glass px-2">
-      <Table aria-label="Extratos registrados">
-        <TableHeader>
-          <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column}>
-                <span className="text-footnote tracking-wide text-muted-foreground uppercase">
-                  {column}
-                </span>
-              </TableHead>
-            ))}
-            <TableHead>
-              <span className="sr-only">Ações</span>
+    <Table variant="panel" aria-label="Extratos registrados">
+      <TableHeader>
+        <TableRow>
+          {columns.map((column) => (
+            <TableHead key={column}>
+              <span className="text-footnote tracking-wide text-muted-foreground uppercase">
+                {column}
+              </span>
             </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {statements.map((statement) => (
-            <TableRow key={statement.id}>
-              <TableCell>{formatDate(statement.date)}</TableCell>
-              <TableCell>{formatMoney(statement.outstanding_balance)}</TableCell>
-              <TableCell>
-                <span className="text-muted-foreground">
-                  {formatMoney(statement.computed_balance)}
-                </span>
-              </TableCell>
-              <TableCell>
-                <Drift amount={statement.drift} withinRounding={statement.within_rounding} />
-              </TableCell>
-              <TableCell className="w-10">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Editar extrato de ${formatDate(statement.date)}`}
-                  onClick={() => onEdit(statement)}
-                >
-                  <ChevronRightIcon aria-hidden="true" strokeWidth={1.5} />
-                </Button>
-              </TableCell>
-            </TableRow>
           ))}
-        </TableBody>
-      </Table>
-    </div>
+          <TableHead>
+            <span className="sr-only">Ações</span>
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {statements.map((statement) => (
+          <TableRow key={statement.id}>
+            <TableCell>{formatDate(statement.date)}</TableCell>
+            <TableCell>{formatMoney(statement.outstanding_balance)}</TableCell>
+            <TableCell>
+              <span className="text-muted-foreground">
+                {formatMoney(statement.computed_balance)}
+              </span>
+            </TableCell>
+            <TableCell>
+              <Drift amount={statement.drift} withinRounding={statement.within_rounding} />
+            </TableCell>
+            <TableCell className="w-10">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Editar extrato de ${formatDate(statement.date)}`}
+                onClick={() => onEdit(statement)}
+              >
+                <ChevronRightIcon aria-hidden="true" strokeWidth={1.5} />
+              </Button>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 

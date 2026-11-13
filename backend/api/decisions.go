@@ -29,21 +29,24 @@ type decision struct {
 }
 
 type verdict struct {
-	Type          bondType          `json:"type" doc:"The type of the bond compared."`
-	Maturity      string            `json:"maturity" format:"date" doc:"The date the bond matures: the horizon both scenarios are valued on."`
-	Rate          string            `json:"rate" doc:"The buy rate of the bond's quote, as a decimal fraction. For ntn_b_principal and ntn_b it is the real rate over IPCA."`
-	Unavailable   string            `json:"unavailable,omitempty" enum:"missing_ipca,amount_too_small" doc:"Why the verdict has no scenarios. missing_ipca: the IPCA the bond's VNA follows is not available yet; amount_too_small: the amount buys less than a hundredth of the bond. Absent when it has them."`
-	UnitPrice     string            `json:"unit_price,omitempty" doc:"The price of one bond at the rate for settlement on the date, in reais, as a decimal string. Absent when the verdict is unavailable for missing_ipca."`
-	Quantity      string            `json:"quantity,omitempty" doc:"How many bonds the amount buys, in hundredths of a bond, as a decimal string. Absent when the verdict is unavailable for missing_ipca."`
-	MinimumAmount string            `json:"minimum_amount,omitempty" doc:"The smallest amount that buys a hundredth of the bond at the unit price, in reais, as a decimal string. Only when the verdict is unavailable for amount_too_small."`
-	Advantage     string            `json:"advantage,omitempty" doc:"The invest scenario's net worth on the horizon less the prepay scenario's, in reais, as a decimal string. Positive favours investing. Absent when the verdict is unavailable."`
-	AvoidedCost   string            `json:"avoided_cost,omitempty" doc:"What prepaying the amount saves by the horizon beyond the amount itself, in reais, as a decimal string. Absent when the verdict is unavailable."`
-	BreakEvenRate string            `json:"break_even_rate,omitempty" doc:"The yearly bond rate, as a decimal fraction of at most 10 places, at which buying the bond with the amount on the date gives an advantage within a centavo of zero; where the hundredths the amount buys make the advantage jump over zero, the lowest rate at which it is positive. For ntn_b_principal and ntn_b it is the real rate over IPCA, priced through the VNA of the date. Absent when the verdict is unavailable or has no_break_even."`
-	NoBreakEven   string            `json:"no_break_even,omitempty" enum:"below_range,above_range" doc:"Why no yearly bond rate from 0% to 100% is a break-even rate. below_range: investing wins even at 0%; above_range: prepaying wins even at 100%. Absent when the verdict has a break_even_rate or is unavailable."`
-	Invest        *scenario         `json:"invest,omitempty" doc:"Investing the amount in the bond. Absent when the verdict is unavailable."`
-	Prepay        *scenario         `json:"prepay,omitempty" doc:"Prepaying the amount. Absent when the verdict is unavailable."`
-	ProjectedBy   []projectedBy     `json:"projected_by" nullable:"false" doc:"The projection method of each index a projected value of the verdict comes from. Empty when it reads published values only."`
-	MarketData    verdictMarketData `json:"market_data" doc:"How fresh the market data the verdict reads is."`
+	Type           bondType          `json:"type" doc:"The type of the bond compared."`
+	Maturity       string            `json:"maturity" format:"date" doc:"The date the bond matures: the horizon both scenarios are valued on."`
+	Rate           string            `json:"rate" doc:"The buy rate of the bond's quote, as a decimal fraction. For ntn_b_principal and ntn_b it is the real rate over IPCA."`
+	Unavailable    string            `json:"unavailable,omitempty" enum:"missing_ipca,amount_too_small" doc:"Why the verdict has no scenarios. missing_ipca: the IPCA the bond's VNA follows is not available yet; amount_too_small: the amount buys less than a hundredth of the bond. Absent when it has them."`
+	UnitPrice      string            `json:"unit_price,omitempty" doc:"The price of one bond at the rate for settlement on the date, in reais, as a decimal string. Absent when the verdict is unavailable for missing_ipca."`
+	Quantity       string            `json:"quantity,omitempty" doc:"How many bonds the amount buys, in hundredths of a bond, as a decimal string. Absent when the verdict is unavailable for missing_ipca."`
+	MinimumAmount  string            `json:"minimum_amount,omitempty" doc:"The smallest amount that buys a hundredth of the bond at the unit price, in reais, as a decimal string. Only when the verdict is unavailable for amount_too_small."`
+	Advantage      string            `json:"advantage,omitempty" doc:"The invest scenario's net worth on the horizon less the prepay scenario's, in reais, as a decimal string. Positive favours investing. Absent when the verdict is unavailable."`
+	AdvantageShare string            `json:"advantage_share,omitempty" doc:"How large the advantage is against the amount, without its sign: its absolute value divided by the amount, as a decimal fraction rounded to 4 places, such as 0.0814 for 8.14%. Absent when the verdict is unavailable."`
+	NearTie        *bool             `json:"near_tie,omitempty" doc:"Whether the advantage is so small against the amount that investing and prepaying give practically the same result. Absent when the verdict is unavailable."`
+	HorizonMonths  *int              `json:"horizon_months,omitempty" doc:"The whole calendar months from the date to the bond's maturity, counting a month only once its day of the month is reached. Absent when the verdict is unavailable."`
+	AvoidedCost    string            `json:"avoided_cost,omitempty" doc:"What prepaying the amount saves by the horizon beyond the amount itself, in reais, as a decimal string. Absent when the verdict is unavailable."`
+	BreakEvenRate  string            `json:"break_even_rate,omitempty" doc:"The yearly bond rate, as a decimal fraction of at most 10 places, at which buying the bond with the amount on the date gives an advantage within a centavo of zero; where the hundredths the amount buys make the advantage jump over zero, the lowest rate at which it is positive. For ntn_b_principal and ntn_b it is the real rate over IPCA, priced through the VNA of the date. Absent when the verdict is unavailable or has no_break_even."`
+	NoBreakEven    string            `json:"no_break_even,omitempty" enum:"below_range,above_range" doc:"Why no yearly bond rate from 0% to 100% is a break-even rate. below_range: investing wins even at 0%; above_range: prepaying wins even at 100%. Absent when the verdict has a break_even_rate or is unavailable."`
+	Invest         *scenario         `json:"invest,omitempty" doc:"Investing the amount in the bond. Absent when the verdict is unavailable."`
+	Prepay         *scenario         `json:"prepay,omitempty" doc:"Prepaying the amount. Absent when the verdict is unavailable."`
+	ProjectedBy    []projectedBy     `json:"projected_by" nullable:"false" doc:"The projection method of each index a projected value of the verdict comes from. Empty when it reads published values only."`
+	MarketData     verdictMarketData `json:"market_data" doc:"How fresh the market data the verdict reads is."`
 }
 
 type verdictMarketData struct {
@@ -224,6 +227,7 @@ func newVerdict(v comparison.Verdict, status marketdata.Status) verdict {
 	}
 
 	out.Advantage, out.AvoidedCost = v.Advantage.String(), v.AvoidedCost.String()
+	out.AdvantageShare, out.NearTie, out.HorizonMonths = v.AdvantageShare.String(), new(v.NearTie), new(v.HorizonMonths)
 	out.NoBreakEven = string(v.NoBreakEven)
 
 	if v.NoBreakEven == "" {

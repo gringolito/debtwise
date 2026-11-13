@@ -10,7 +10,7 @@ export function NotFound() {
         <p aria-hidden="true" className="mb-4 text-hero-figure text-tertiary-foreground">
           404
         </p>
-        <h1 className="mb-3 text-large-title">Esta página não existe</h1>
+        <h1 className="mb-3 text-page-title">Esta página não existe</h1>
         <p className="mb-8 text-muted-foreground">O endereço pode ter mudado.</p>
         <Button asChild>
           <Link to="/">Voltar ao início</Link>

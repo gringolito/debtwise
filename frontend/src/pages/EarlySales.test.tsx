@@ -23,7 +23,7 @@ const rows = (list: HTMLElement) => within(list).getAllByRole("link").map(words)
 const lots = [ipca2035, ipca2035Again, prefixado2029, waitingOnIpca];
 
 describe("Venda antecipada", () => {
-  it("lists what selling each lot gains over holding it, in the order the API ranks them", async () => {
+  it("says in words which option earns more and until when, in the order the API ranks the lots", async () => {
     stubInvestments({
       lots,
       checks: [
@@ -37,14 +37,19 @@ describe("Venda antecipada", () => {
 
     const list = await checksList();
     expect(rows(list)).toEqual([
-      "Tesouro IPCA+ 2035 Compra em 18/11/2024 + R$ 120,00 vender",
-      "Tesouro IPCA+ 2035 Compra em 12/05/2024 − R$ 2.140,00 manter",
-      "Tesouro Prefixado com Juros Semestrais 2029 Compra em 10/01/2025 R$ 0,00 manter",
+      "Tesouro IPCA+ 2035 Compra em 18/11/2024 Vender rende R$ 120,00 a mais até 15/05/2035",
+      "Tesouro IPCA+ 2035 Compra em 12/05/2024 Manter rende R$ 2.140,00 a mais até 15/05/2035",
+      "Tesouro Prefixado com Juros Semestrais 2029 Compra em 10/01/2025 Vender e manter rendem o mesmo até 01/01/2029",
       "Tesouro IPCA+ 2045 Compra em 01/06/2026 Aguardando o IPCA",
     ]);
-    expect(within(list).getByText("+ R$ 120,00")).toHaveClass("text-positive");
-    expect(within(list).getByText("− R$ 2.140,00")).toHaveClass("text-destructive");
-    expect(within(list).getByText("R$ 0,00")).not.toHaveClass("text-positive", "text-destructive");
+    expect(within(list).getByText("R$ 120,00")).toHaveClass("text-positive");
+    expect(within(list).getByText("R$ 2.140,00")).not.toHaveClass("text-positive");
+    expect(within(list).getByText("R$ 2.140,00").closest(".text-destructive")).toBeNull();
+    expect(
+      screen.getByText(
+        "Cada compra mostra a opção que rende mais até o vencimento. O DebtWise compara; a decisão é sua.",
+      ),
+    ).toBeVisible();
   });
 
   it("compares again for the effect picked and opens a lot with it", async () => {
@@ -58,14 +63,14 @@ describe("Venda antecipada", () => {
     renderAt("/investimentos/venda-antecipada");
 
     expect(rows(await checksList())).toEqual([
-      "Tesouro IPCA+ 2035 Compra em 12/05/2024 − R$ 2.140,00 manter",
+      "Tesouro IPCA+ 2035 Compra em 12/05/2024 Manter rende R$ 2.140,00 a mais até 15/05/2035",
     ]);
 
     fireEvent.click(screen.getByRole("radio", { name: "Reduzir prestação" }));
 
     await waitFor(async () =>
       expect(rows(await checksList())).toEqual([
-        "Tesouro IPCA+ 2035 Compra em 12/05/2024 + R$ 310,55 vender",
+        "Tesouro IPCA+ 2035 Compra em 12/05/2024 Vender rende R$ 310,55 a mais até 15/05/2035",
       ]),
     );
     expect(

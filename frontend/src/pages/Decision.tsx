@@ -10,23 +10,27 @@ import { moneyToInput } from "@/lib/format";
 import { Comparison } from "@/pages/decision/Comparison";
 import { DecisionSentence } from "@/pages/decision/DecisionSentence";
 
-const route = getRouteApi("/shell/decidir");
+const route = getRouteApi("/shell/comparar");
 
 function ComparisonSkeleton() {
   return (
     <Loading label="Comparando">
-      <div className="flex flex-col gap-3 rounded-lg glass p-8">
-        <Skeleton className="h-4 w-36" />
-        <Skeleton className="h-7 w-56" />
-        <Skeleton className="mt-2 h-14 w-80" />
-        <Skeleton className="h-5 w-64" />
+      <div className="flex flex-col gap-6 rounded-lg glass p-5 sm:p-8">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-7 w-72 max-w-full" />
+          <Skeleton className="h-5 w-56 max-w-full" />
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Skeleton className="h-52 w-full" />
+          <Skeleton className="h-52 w-full" />
+        </div>
+        <Skeleton className="h-7 w-64 max-w-full" />
       </div>
-      <Skeleton className="h-80 w-full" />
     </Loading>
   );
 }
 
-/** Decision is Decidir: amortizar ou investir, compared for the amount, date and effect asked. */
+/** Decision is Comparar: amortizar ou investir, compared for the amount, date and effect asked. */
 export function Decision() {
   const { valor, comparar } = route.useSearch();
   const [values, setValues] = useState(() => ({
@@ -53,7 +57,7 @@ export function Decision() {
   return (
     <Page>
       <PageHeader className="flex-col items-start gap-1">
-        <PageTitle>Decidir</PageTitle>
+        <PageTitle>Comparar</PageTitle>
         <p className="text-callout text-muted-foreground">
           Amortizar ou investir? Compare usando o mesmo dinheiro.
         </p>

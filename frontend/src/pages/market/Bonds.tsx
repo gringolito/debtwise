@@ -54,7 +54,7 @@ function BondsTable({
   sides: (keyof typeof sideNames)[];
 }) {
   return (
-    <Table variant="grouped" aria-label={label}>
+    <Table variant="grouped" reflow="folded" aria-label={label}>
       <TableHeader>
         <TableRow variant="grouped">
           <TableHead variant="grouped">Título</TableHead>

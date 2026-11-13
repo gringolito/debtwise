@@ -120,10 +120,10 @@ describe("the registered mortgage", () => {
   it("fills every term in and lists each dated change by its start", async () => {
     await openPage();
 
-    expect(screen.getByLabelText("Data do contrato")).toHaveValue("2023-12-10");
+    expect(screen.getByLabelText("Data do contrato")).toHaveValue("10/12/2023");
     expect(screen.getByLabelText("Valor financiado")).toHaveValue("60.000,00");
     expect(screen.getByLabelText("Prazo")).toHaveValue("6");
-    expect(screen.getByLabelText("Primeira prestação")).toHaveValue("2024-01-10");
+    expect(screen.getByLabelText("Primeira prestação")).toHaveValue("10/01/2024");
     expect(screen.getByLabelText("Valor de avaliação")).toHaveValue("100.000,00");
     expect(screen.getByRole("radio", { name: "SAC" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "Nenhum" })).toBeChecked();
@@ -141,7 +141,7 @@ describe("the registered mortgage", () => {
 
     const sheet = openChange(/^A partir de 10\/12\/2023/);
     expect(within(sheet).getByRole("heading", { name: "Mudança de taxa" })).toBeInTheDocument();
-    expect(within(sheet).getByLabelText("A partir de")).toHaveValue("2023-12-10");
+    expect(within(sheet).getByLabelText("A partir de")).toHaveValue("10/12/2023");
     expect(within(sheet).getByLabelText("Taxa")).toHaveValue("12");
     expect(within(sheet).getByRole("radio", { name: "Nominal" })).toBeChecked();
     expect(
@@ -253,7 +253,7 @@ describe("saving", () => {
 
     fireEvent.click(await screen.findByRole("link", { name: "Editar contrato" }));
     await screen.findByRole("button", { name: "Salvar" });
-    fill("Data do contrato", "2023-12-11");
+    fill("Data do contrato", "11/12/2023");
     fill("Valor financiado", "250.000,00");
     const sheet = openChange(/^MIP a partir de 01\/04\/2024/);
     fill("Taxa", "0,06", sheet);
@@ -296,8 +296,8 @@ describe("saving", () => {
 
   it.each([
     ["1.250.000,00", "1.250.000,00", "1250000.00"],
-    ["1.250.000", "1.250.000", "1250000"],
-    ["1250000,5", "1.250.000,5", "1250000.5"],
+    ["1.250.000", "1.250.000,00", "1250000"],
+    ["1250000,5", "1.250.000,50", "1250000.5"],
     ["60000.00", "60000.00", "60000.00"],
   ])("shows money typed as %s as %s and sends it as %s", async (typed, shown, sent) => {
     const requests = await openPage({ onSave: rejected([]) });
@@ -314,10 +314,10 @@ describe("saving", () => {
     const requests = await openPage({ onSave: () => registeredMortgage });
 
     fill("Valor de avaliação", "1250000");
-    expect(screen.getByLabelText("Valor de avaliação")).toHaveValue("1.250.000");
+    expect(screen.getByLabelText("Valor de avaliação")).toHaveValue("1.250.000,00");
     const sheet = openChange(/^Taxa de administração/);
     fill("Valor", "1250", sheet);
-    expect(within(sheet).getByLabelText("Valor")).toHaveValue("1.250");
+    expect(within(sheet).getByLabelText("Valor")).toHaveValue("1.250,00");
     finish(sheet);
     expect(changes("Taxas")).toEqual([
       "Taxa de administração a partir de 10/12/2023, R$ 1.250,00 por mês",
@@ -387,7 +387,7 @@ describe("cancelling", () => {
 
     let sheet = openChange(/^Taxa de administração/);
     fill("Valor", "99,00", sheet);
-    fill("A partir de", "2024-02-10", sheet);
+    fill("A partir de", "10/02/2024", sheet);
     cancel(sheet);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     sheet = addChange("Juros do contrato");
@@ -527,19 +527,19 @@ describe("adding and removing changes", () => {
     expect(
       within(sheet).queryByRole("button", { name: "Remover mudança" }),
     ).not.toBeInTheDocument();
-    fill("A partir de", "2025-01-10", sheet);
+    fill("A partir de", "10/01/2025", sheet);
     fill("Taxa", "10", sheet);
     finish(sheet);
 
     sheet = addChange("Taxas");
-    fill("A partir de", "2025-01-10", sheet);
+    fill("A partir de", "10/01/2025", sheet);
     fill("Valor", "12,5", sheet);
     finish(sheet);
 
     sheet = addChange("Seguros");
     expect(within(sheet).getByRole("radio", { name: "MIP" })).toBeChecked();
     fireEvent.click(within(sheet).getByRole("radio", { name: "DFI" }));
-    fill("A partir de", "2024-02-01", sheet);
+    fill("A partir de", "01/02/2024", sheet);
     fill("Taxa", "0,02", sheet);
     finish(sheet);
 
@@ -584,7 +584,7 @@ describe("adding and removing changes", () => {
     const requests = await openPage({ onSave: () => registeredMortgage });
 
     const sheet = addChange("Seguros");
-    fill("A partir de", "2024-01-01", sheet);
+    fill("A partir de", "01/01/2024", sheet);
     fill("Taxa", "0,04", sheet);
     finish(sheet);
 
@@ -619,7 +619,7 @@ describe("adding and removing changes", () => {
     });
 
     let sheet = addChange("Seguros");
-    fill("A partir de", "2024-01-01", sheet);
+    fill("A partir de", "01/01/2024", sheet);
     fill("Taxa", "0,04", sheet);
     finish(sheet);
     save();
@@ -788,7 +788,7 @@ describe("a rejected mortgage", () => {
     const requests = await openPage({ onSave: rejection });
     fill("Valor financiado", "abc");
     const sheet = addChange("Taxas");
-    fill("A partir de", "2023-12-10", sheet);
+    fill("A partir de", "10/12/2023", sheet);
     fill("Valor", "15,00", sheet);
     finish(sheet);
     save();
@@ -1078,7 +1078,7 @@ describe("the insurance charged on the first installment", () => {
     let sheet = openChange(/^MIP a partir de 10\/12\/2023/);
     fill("Valor na primeira prestação", "15,48", sheet);
     finish(sheet);
-    fill("Primeira prestação", "2024-04-10");
+    fill("Primeira prestação", "10/04/2024");
 
     expect(changes("Seguros")).toEqual([
       "MIP a partir de 10/12/2023, 0,0258 % ao mês",
@@ -1168,7 +1168,7 @@ describe("the insurance charged on the first installment", () => {
     ]);
     sheet = openChange(/^DFI/);
     expect(within(sheet).getByLabelText("Valor na primeira prestação")).toHaveAccessibleDescription(
-      "Preencha para calcular a taxa pelo valor cobrado.",
+      "Para calcular a taxa.",
     );
   });
 

@@ -7,13 +7,15 @@ import type { StepProps } from "@/pages/onboarding/StepFrame";
 
 export function IndexerStep({ values, set, messageOf }: StepProps) {
   const id = useId();
-  const invalid = messageOf("indexer") !== undefined;
+  const message = messageOf("indexer");
+  const invalid = message !== undefined;
   return (
     <div className="flex flex-col gap-4">
       <div className="overflow-hidden rounded-lg glass">
         <RadioGroup
           aria-label="Índice de correção"
           aria-invalid={invalid || undefined}
+          aria-describedby={invalid ? `${id}-message` : undefined}
           value={values.indexer}
           onValueChange={(value) => set("indexer", value as Indexer)}
           layout="rows"
@@ -43,7 +45,11 @@ export function IndexerStep({ values, set, messageOf }: StepProps) {
           ))}
         </RadioGroup>
       </div>
-      {invalid && <p className="text-callout text-destructive">Escolha um índice.</p>}
+      {invalid && (
+        <p id={`${id}-message`} className="text-callout text-destructive">
+          {message}
+        </p>
+      )}
       <p className="flex items-center gap-3 rounded-lg bg-accent-tint px-4 py-3 text-callout text-accent">
         <InfoIcon aria-hidden="true" strokeWidth={1.5} className="size-5 shrink-0" />O índice define
         com quais títulos do Tesouro o DebtWise compara.

@@ -175,9 +175,9 @@ export function ScheduleChart({
     >
       <header className="flex flex-wrap items-center justify-between gap-4">
         <h2 className="text-headline">{titles[view]}</h2>
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 max-sm:w-full">
           {view !== "composition" && <TrendLegend />}
-          <SegmentedControl value={view} onValueChange={setView} aria-label="Gráfico">
+          <SegmentedControl fill value={view} onValueChange={setView} aria-label="Gráfico">
             <SegmentedControlItem value="balance">Saldo</SegmentedControlItem>
             <SegmentedControlItem value="installment">Prestação</SegmentedControlItem>
             <SegmentedControlItem value="composition">Composição</SegmentedControlItem>

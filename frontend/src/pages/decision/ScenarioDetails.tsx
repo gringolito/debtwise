@@ -1,30 +1,29 @@
 import { AmountRow, AmountsHeader } from "@/components/lots/LotValuesTables";
-import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { Table, TableBody } from "@/components/ui/table";
 import type { Scenario } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
+import { standing } from "@/lib/yardstick";
 import { CashFlowTable } from "@/pages/decision/CashFlowTable";
 
-function SummaryRow({ name, value }: { name: string; value: string }) {
-  return (
-    <TableRow>
-      <TableHead scope="row">{name}</TableHead>
-      <TableCell>{formatMoney(value)}</TableCell>
-    </TableRow>
-  );
-}
-
-/** ScenarioDetails shows what a scenario ends with on the horizon and every cash flow on the way. */
+/**
+ * ScenarioDetails shows what a scenario leaves the owner with on the horizon, in words and with no
+ * negative amount, and every cash flow on the way.
+ */
 export function ScenarioDetails({ title, scenario }: { title: string; scenario: Scenario }) {
+  const { owes, amount } = standing(scenario);
   return (
     <section aria-label={title} className="flex flex-col gap-4">
-      <h4 className="font-medium">{title}</h4>
-      <Table aria-label={`Resumo de ${title}`}>
-        <TableBody>
-          <SummaryRow name="Patrimônio líquido no horizonte" value={scenario.net_worth} />
-          <SummaryRow name="Caixa retido no horizonte" value={scenario.cash} />
-          <SummaryRow name="Saldo devedor no horizonte" value={scenario.outstanding_balance} />
-        </TableBody>
-      </Table>
+      <h3 className="text-headline">{title}</h3>
+      <dl className="flex flex-col gap-1 text-callout">
+        <div className="flex justify-between gap-4">
+          <dt>No fim</dt>
+          <dd className="font-semibold tabular-nums">{`${owes ? "Você deve" : "Você tem"} ${amount}`}</dd>
+        </div>
+        <div className="flex justify-between gap-4 text-muted-foreground">
+          <dt>Saldo devedor</dt>
+          <dd className="tabular-nums">{formatMoney(scenario.outstanding_balance)}</dd>
+        </div>
+      </dl>
       {scenario.bond && (
         <Table aria-label={`Valor no vencimento de ${title}`}>
           <AmountsHeader />

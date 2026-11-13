@@ -1,24 +1,11 @@
 import type { EarlySaleCheck, LotValued, ProjectedBy, VerdictMarketData } from "@/lib/api";
-import { bondLabel } from "@/lib/bondKinds";
 import { isZero } from "@/lib/decisions";
 import type { PrepaymentEffect } from "@/lib/mortgageEvents";
 
-/** BondGroup is every lot of one bond, in the order the API lists them. */
-export interface BondGroup {
-  label: string;
-  lots: LotValued[];
-}
-
-/** groupByBond groups lots by bond, the bonds maturing first leading. */
-export function groupByBond(lots: LotValued[]): BondGroup[] {
-  const groups = new Map<string, LotValued[]>();
-  for (const lot of lots) {
-    const key = `${lot.maturity} ${lot.type}`;
-    groups.set(key, [...(groups.get(key) ?? []), lot]);
-  }
-  return [...groups.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([, bondLots]) => ({ label: bondLabel(bondLots[0]), lots: bondLots }));
+/** inMaturityOrder lists lots with the bonds maturing first leading, each bond's in the order given. */
+export function inMaturityOrder(lots: LotValued[]): LotValued[] {
+  const bondOf = (lot: LotValued) => `${lot.maturity} ${lot.type}`;
+  return [...lots].sort((a, b) => bondOf(a).localeCompare(bondOf(b)));
 }
 
 /**

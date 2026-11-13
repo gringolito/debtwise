@@ -113,6 +113,7 @@ const percentFormat = new Intl.NumberFormat("pt-BR", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 6,
 });
+const shareFormat = new Intl.NumberFormat("pt-BR", { style: "percent", maximumFractionDigits: 1 });
 
 // Intl.NumberFormat accepts a decimal string but the standard library's typing only knows numeric
 // literal types.
@@ -126,6 +127,11 @@ export function formatMoney(decimal: string): string {
 /** formatRate writes a decimal fraction string as a percent: "0.0258" is "2,58%". */
 export function formatRate(fraction: string): string {
   return percentFormat.format(fraction as DecimalString);
+}
+
+/** formatShare writes a decimal fraction string as a percent to one place: "0.0814" is "8,1%". */
+export function formatShare(fraction: string): string {
+  return shareFormat.format(fraction as DecimalString);
 }
 
 /**

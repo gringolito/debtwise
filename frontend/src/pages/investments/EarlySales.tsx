@@ -28,37 +28,47 @@ import { StaleNote } from "@/pages/marketdata/StaleNote";
 
 const route = getRouteApi("/shell/investimentos/venda-antecipada");
 
-const verdictWords: Record<NonNullable<EarlySaleCheck["verdict"]>, string> = {
-  sell: "vender",
-  hold: "manter",
-};
-
+/** Outcome says in words which option earns more over holding to maturity, and by how much. */
 function Outcome({ check }: { check: EarlySaleCheck }) {
-  if (check.unavailable) return <>{earlySaleUnavailableLabels[check.unavailable]}</>;
+  if (check.unavailable) {
+    return <span className="text-callout">{earlySaleUnavailableLabels[check.unavailable]}</span>;
+  }
   if (!check.verdict || check.advantage === undefined) return null;
+  const gain = saleGain(check.advantage);
   return (
-    <span className="flex items-baseline gap-3">
-      <SaleGainAmount gain={saleGain(check.advantage)} className="text-headline" />
-      <span className="w-14 text-left">{verdictWords[check.verdict]}</span>
-    </span>
+    <>
+      <span className="text-callout font-medium text-foreground">
+        {gain.kind === "even" ? (
+          "Vender e manter rendem o mesmo"
+        ) : (
+          <>
+            {gain.kind === "gain" ? "Vender" : "Manter"} rende <SaleGainAmount gain={gain} /> a mais
+          </>
+        )}
+      </span>
+      <span className="text-callout">até {formatDate(check.lot.maturity)}</span>
+    </>
   );
 }
 
+/** CheckRow is one lot: the bond and purchase, with the outcome beside them, under them on phones. */
 function CheckRow({ check, search }: { check: EarlySaleCheck; search: EffectSearch }) {
   const { lot } = check;
   return (
     <GroupedListItem>
       <GroupedListRow asChild>
         <Link to="/investimentos/compras/$lotId" params={{ lotId: String(lot.id) }} search={search}>
-          <GroupedListLabel className="flex flex-col gap-0.5">
-            <span className="text-headline">{bondLabel(lot)}</span>
-            <span className="text-callout text-muted-foreground">
-              Compra em {formatDate(lot.purchase_date)}
+          <GroupedListLabel className="flex flex-col gap-x-4 gap-y-1 sm:flex-row sm:items-center sm:justify-between">
+            <span className="flex flex-col gap-0.5">
+              <span className="text-headline">{bondLabel(lot)}</span>
+              <span className="text-callout text-muted-foreground">
+                Compra em {formatDate(lot.purchase_date)}
+              </span>
             </span>
+            <GroupedListValue className="flex flex-col gap-0.5 text-left sm:shrink-0 sm:text-right">
+              <Outcome check={check} />
+            </GroupedListValue>
           </GroupedListLabel>
-          <GroupedListValue>
-            <Outcome check={check} />
-          </GroupedListValue>
           <GroupedListChevron />
         </Link>
       </GroupedListRow>
@@ -92,7 +102,7 @@ function Checks({ search }: { search: EffectSearch }) {
         ))}
       </GroupedList>
       <p className="px-1 text-footnote text-muted-foreground">
-        Valores positivos indicam que vender e amortizar rende mais. O DebtWise compara; a decisão é
+        Cada compra mostra a opção que rende mais até o vencimento. O DebtWise compara; a decisão é
         sua.
       </p>
       {marketData && <StaleNote marketData={marketData} />}
@@ -109,12 +119,12 @@ export function EarlySales() {
   const navigate = route.useNavigate();
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <p className="text-callout text-muted-foreground">
           Para cada compra, comparamos vender hoje e amortizar com manter até o vencimento.
         </p>
         <EffectControl
-          className="shrink-0"
+          className="sm:shrink-0"
           value={effectOf(search)}
           onValueChange={(effect) => navigate({ search: effectSearch(effect), replace: true })}
         />

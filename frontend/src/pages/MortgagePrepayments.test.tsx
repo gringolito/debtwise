@@ -144,7 +144,7 @@ describe("recording a prepayment", () => {
     renderAt("/financiamento");
 
     const form = await openNewSheet();
-    expect(within(form).getByLabelText("Data")).toHaveValue("2024-02-20");
+    expect(within(form).getByLabelText("Data")).toHaveValue("20/02/2024");
     expect(within(form).getByRole("radio", { name: "Reduzir prazo" })).toBeChecked();
     fill(form, "Valor", "5.000,00");
 
@@ -192,7 +192,7 @@ describe("recording a prepayment", () => {
     renderAt("/financiamento");
 
     const form = await openNewSheet();
-    fill(form, "Data", "2024-02-20");
+    fill(form, "Data", "20/02/2024");
     fill(form, "Valor", "5.000,00");
     expect(await within(form).findByRole("status")).toHaveTextContent(
       "A quitação continua em junho de 2024.",
@@ -219,7 +219,7 @@ describe("recording a prepayment", () => {
 
     fireEvent.click(await screen.findByRole("radio", { name: "Prestações" }));
     const form = await openNewSheet();
-    fill(form, "Data", "2024-02-20");
+    fill(form, "Data", "20/02/2024");
     fill(form, "Valor", "5.000,00");
     fireEvent.click(within(form).getByRole("button", { name: "Registrar" }));
 
@@ -339,7 +339,7 @@ describe("a prepayment the server rejects", () => {
     renderAt("/financiamento");
 
     const form = await openNewSheet();
-    fill(form, "Data", "2023-12-09");
+    fill(form, "Data", "09/12/2023");
     fill(form, "Valor", "0");
 
     await within(form).findByText("Precisa ser maior que zero.");
@@ -375,7 +375,7 @@ describe("a prepayment the server rejects", () => {
     renderAt("/financiamento");
 
     const form = await openNewSheet();
-    fill(form, "Data", "2024-02-20");
+    fill(form, "Data", "20/02/2024");
     fill(form, "Valor", "5.000,00");
     fireEvent.click(within(form).getByRole("button", { name: "Registrar" }));
 
@@ -398,10 +398,10 @@ describe("editing a prepayment", () => {
     renderAt("/financiamento");
 
     const form = await openEditSheet("15/03/2024");
-    expect(within(form).getByLabelText("Data")).toHaveValue("2024-03-15");
+    expect(within(form).getByLabelText("Data")).toHaveValue("15/03/2024");
     expect(within(form).getByLabelText("Valor")).toHaveValue("12.500,50");
     expect(within(form).getByRole("radio", { name: "Reduzir prestação" })).toBeChecked();
-    fill(form, "Data", "2024-01-20");
+    fill(form, "Data", "20/01/2024");
     fill(form, "Valor", "13.000,00");
     fireEvent.click(within(form).getByRole("radio", { name: "Reduzir prazo" }));
     await waitFor(() =>
