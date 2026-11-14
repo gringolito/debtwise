@@ -43,7 +43,7 @@ function RadioGroupItem({
     <RadioGroupPrimitive.Item
       data-slot="radio-group-item"
       className={cn(
-        "group/radio-group-item peer relative flex aspect-square size-6 shrink-0 rounded-full border border-control bg-card after:absolute after:-inset-x-3 after:-inset-y-2 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-checked:border-accent-mark data-checked:bg-accent-mark data-checked:text-graphite-foreground",
+        "group/radio-group-item peer relative flex aspect-square size-6 shrink-0 rounded-full border border-control bg-card after:absolute after:-inset-x-3 after:-inset-y-2 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-checked:border-accent-mark data-checked:bg-accent-mark data-checked:text-accent-foreground",
         className,
       )}
       {...props}

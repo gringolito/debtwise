@@ -8,12 +8,10 @@ colors:
   on-surface-tertiary: '#AEAEB2'
   separator: '#E5E5EA'
   control: '#8E8E93'
-  graphite: '#1D1D1F'
-  graphite-raised: '#2C2C2E'
-  on-graphite: '#FFFFFF'
-  on-graphite-secondary: '#A1A1A2'
   primary: '#1D1D1F'
   on-primary: '#FFFFFF'
+  primary-hover: '#2C2C2E'
+  on-primary-secondary: '#A1A1A2'
   accent: '#26705F'
   accent-mark: '#3E8E7C'
   accent-soft: '#82C7B7'
@@ -574,8 +572,8 @@ in the roles shadcn has no variable for (tertiary text, control, positive, cauti
 derives from them, so any theme, such as a dark palette or one tried in
 [tweakcn](https://tweakcn.com), reaches every surface:
 
-- Graphite is `--primary` and on-graphite `--primary-foreground`; graphite-raised, the graphite
-  card's gradient and on-graphite-secondary are lighter, darker and mixed versions of them.
+- The primary's hover and on-primary-secondary are a lighter `--primary` and a mix of
+  `--primary-foreground` into it; the primary card's gradient is lighter and darker `--primary`.
 - The accent mark, soft and tint keep their lightness and take their hue and chroma from
   `--accent`.
 - Glass panels and the tab bar are `--card` at partial opacity, the sidebar `--sidebar` with a
@@ -599,10 +597,10 @@ derives from them, so any theme, such as a dark palette or one tried in
 | control | `border-control`, `bg-control` |
 | primary, on-primary | `bg-primary`, `text-primary-foreground` |
 | secondary, on-secondary (the button under a confirmation) | `bg-secondary`, `text-secondary-foreground` |
-| graphite, graphite-raised | `bg-graphite`, `bg-graphite-raised` |
-| on-graphite, on-graphite-secondary | `text-graphite-foreground`, `text-graphite-muted-foreground` |
+| primary-hover | `hover:bg-primary-hover` |
+| on-primary-secondary | `text-primary-muted-foreground` |
 | accent, accent-mark, accent-soft, accent-tint | `text-accent`, `accent-mark`, `accent-soft`, `accent-tint` |
-| focus | `--ring`, the outline every `:focus-visible` element draws; white inside `glass-graphite` |
+| focus | `--ring`, the outline every `:focus-visible` element draws; `--primary-foreground` inside `glass-primary` |
 | positive, caution, caution-tint | `text-positive`, `text-caution`, `bg-caution-tint` |
 | critical | `text-destructive` |
 | chart-mortgage, chart-investment, chart-projection | `var(--chart-mortgage)` and so on |
@@ -612,6 +610,6 @@ derives from them, so any theme, such as a dark palette or one tried in
 | spacing xs, sm, md, lg, xl, xxl | Tailwind's 4px steps 1, 2, 4, 6, 10, 16 |
 | content column | `max-w-content` |
 | sheet shadow | `shadow-sheet` |
-| glass | `glass`, `glass-graphite`, `glass-sidebar`, `glass-bar` |
+| glass | `glass`, `glass-primary`, `glass-sidebar`, `glass-bar` |
 
 There is no dark palette yet, so the tokens have no `.dark` values.

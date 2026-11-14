@@ -11,14 +11,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-graphite-raised",
+        default: "bg-primary text-primary-foreground hover:bg-primary-hover",
         inverse: "bg-card text-foreground shadow-raised hover:bg-card/90",
         outline:
           "border-border bg-card hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         plain: "text-muted-foreground hover:text-foreground",
-        "plain-inverse": "text-graphite-muted-foreground hover:text-graphite-foreground",
+        "plain-inverse": "text-primary-muted-foreground hover:text-primary-foreground",
         /** A destructive text action, such as "Excluir" beside "Editar" in a page's header. */
         "plain-destructive": "text-destructive hover:text-destructive/80",
         destructive: "bg-destructive/10 text-destructive hover:bg-destructive/20",

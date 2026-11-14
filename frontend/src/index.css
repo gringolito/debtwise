@@ -62,7 +62,7 @@
   --shadow-glass:
     0 10px 30px -5px rgb(0 0 0 / 0.04), 0 1px 2px 0 rgb(0 0 0 / 0.02),
     inset 0 1px 1px 0 rgb(255 255 255 / 0.9);
-  --shadow-glass-graphite:
+  --shadow-glass-primary:
     0 16px 40px -10px rgb(0 0 0 / 0.35), inset 0 1px 1px 0 rgb(255 255 255 / 0.3),
     inset 0 -1px 1px 0 rgb(0 0 0 / 0.4);
   --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.12), inset 0 1px 1px rgb(255 255 255);
@@ -136,26 +136,26 @@
   backdrop-filter: blur(24px) saturate(180%);
 }
 
-/* The graphite card in glass, lit along its top edge from white into the soft accent. Focus rings
-   inside it are white, since the strong accent doesn't read on graphite. */
-@utility glass-graphite {
-  --ring: var(--graphite-foreground);
+/* The primary card in glass, lit along its top edge from its foreground into the soft accent. Focus
+   rings inside it take its foreground, since the strong accent doesn't read on the primary. */
+@utility glass-primary {
+  --ring: var(--primary-foreground);
   background:
     linear-gradient(
       90deg,
       transparent,
-      color-mix(in oklab, var(--graphite-foreground) 45%, transparent) 30%,
+      color-mix(in oklab, var(--primary-foreground) 45%, transparent) 30%,
       color-mix(in oklab, var(--accent-soft) 60%, transparent) 70%,
       transparent
     )
     top / 100% 1px no-repeat,
     linear-gradient(
       135deg,
-      oklch(from var(--graphite) calc(l + 0.02) c h / 0.92),
-      oklch(from var(--graphite) calc(l - 0.0356) c h / 0.96)
+      oklch(from var(--primary) calc(l + 0.02) c h / 0.92),
+      oklch(from var(--primary) calc(l - 0.0356) c h / 0.96)
     );
-  border: 1px solid color-mix(in oklab, var(--graphite-foreground) 18%, transparent);
-  box-shadow: var(--shadow-glass-graphite);
+  border: 1px solid color-mix(in oklab, var(--primary-foreground) 18%, transparent);
+  box-shadow: var(--shadow-glass-primary);
   backdrop-filter: blur(32px) saturate(190%);
 }
 
@@ -237,10 +237,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-graphite: var(--graphite);
-  --color-graphite-raised: var(--graphite-raised);
-  --color-graphite-foreground: var(--graphite-foreground);
-  --color-graphite-muted-foreground: var(--graphite-muted-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-muted-foreground: var(--primary-muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-soft: var(--accent-soft);
@@ -282,10 +280,8 @@
   --ring: #26705f;
   --sidebar: #ffffff;
   --sidebar-border: rgb(0 0 0 / 0.06);
-  --graphite: var(--primary);
-  --graphite-raised: oklch(from var(--graphite) calc(l + 0.0623) c h);
-  --graphite-foreground: var(--primary-foreground);
-  --graphite-muted-foreground: color-mix(in oklab, var(--graphite-foreground) 62%, var(--graphite));
+  --primary-hover: oklch(from var(--primary) calc(l + 0.0623) c h);
+  --primary-muted-foreground: color-mix(in oklab, var(--primary-foreground) 62%, var(--primary));
   --accent: #26705f;
   --accent-foreground: #ffffff;
   --accent-mark: oklch(from var(--accent) 0.5915 calc(c * 1.076) calc(h + 1.4));

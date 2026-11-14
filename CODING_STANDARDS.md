@@ -506,7 +506,7 @@ shadcn's premise is that its CSS variables are the theme (`--background`, `--car
 `.dark` palette and any theme built for shadcn change the look by setting those variables and
 nothing else. A color written anywhere else leaves that contract, and the surface keeps its look
 through every theme change. When a role has a shadcn variable, use that variable. When a new role
-is a shade of one, such as `accent-tint` or `graphite-raised`, derive it under `:root` with
+is a shade of one, such as `accent-tint` or `primary-hover`, derive it under `:root` with
 `oklch(from var(--accent) …)` or `color-mix()` rather than writing its hex value. Only roles shadcn
 has nothing for, such as `positive` or `caution`, get a literal value of their own. Inside
 `@utility` blocks and other rules, a color is always a `var()` or a mix of one; only black and

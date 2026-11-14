@@ -21,7 +21,7 @@ function Yardstick({ verdict }: { verdict: ComparedVerdict }) {
   if (favoured(verdict.advantage) === "even") return <>Nenhuma diferença até {until}.</>;
   return (
     <>
-      <span className="font-semibold text-graphite-foreground">{advantageAmount(verdict)}</span>
+      <span className="font-semibold text-primary-foreground">{advantageAmount(verdict)}</span>
       {verdict.near_tie ? " de diferença" : " a mais"} até {until}, {advantageShare(verdict)} do
       valor em {horizon(verdict)}.
     </>
@@ -44,11 +44,11 @@ export function AnswerCard({ decision }: { decision: Decision }) {
     <div className="flex flex-col gap-2">
       <section
         aria-labelledby={titleId}
-        className="rounded-lg glass-graphite p-6 text-graphite-foreground sm:p-8"
+        className="rounded-lg glass-primary p-6 text-primary-foreground sm:p-8"
       >
         <div className="flex items-center justify-between gap-8">
           <div className="flex min-w-0 max-w-120 flex-col gap-2">
-            <p className="flex items-center gap-2 text-footnote text-graphite-muted-foreground">
+            <p className="flex items-center gap-2 text-footnote text-primary-muted-foreground">
               <span
                 aria-hidden="true"
                 className="size-1.5 shrink-0 rounded-full bg-accent-soft shadow-glow"
@@ -58,7 +58,7 @@ export function AnswerCard({ decision }: { decision: Decision }) {
             <h2 id={titleId} className="text-title-2">
               {best ? verdictHeadline(best) : "Amortizar ou investir? Veja a comparação."}
             </h2>
-            <p className="text-callout text-graphite-muted-foreground">
+            <p className="text-callout text-primary-muted-foreground">
               {best ? (
                 <Yardstick verdict={best} />
               ) : (
