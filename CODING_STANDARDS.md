@@ -499,6 +499,35 @@ rather than writing values into `@theme`, so a dark palette can add `.dark` valu
 }
 ```
 
+### Colors derive from shadcn's variables
+
+A theme previewed live in tweakcn sets only shadcn's variables (`--background`, `--card`,
+`--primary`, `--accent`, `--sidebar`, `--chart-1` and the others it lists), so a surface whose color
+lives anywhere else stays the same when the theme changes. When a role has a shadcn variable, use
+that variable. When a new role is a shade of one, such as `accent-tint` or `graphite-raised`, derive
+it under `:root` with `oklch(from var(--accent) …)` or `color-mix()` rather than writing its hex
+value. Only roles shadcn has nothing for, such as `positive` or `caution`, get a literal value of
+their own. Inside `@utility` blocks and other rules, a color is always a `var()` or a mix of one;
+only black and white for shadows and highlights are written as literals.
+
+Every shadcn variable declared under `:root` also gets its `--color-<name>` line in
+`@theme inline`, so a class taken from shadcn's code, such as `text-accent-foreground`, generates
+CSS. A shadcn component whose class has no CSS behind it renders with its text in the wrong color,
+and no lint rule notices.
+
+To check a change, set a shadcn variable on `<html>` in the browser's developer tools and confirm
+that what the change touched follows it.
+
+### Text takes its font from its role
+
+Body text inherits `--font-sans`. Headings are `h1` to `h6` elements, which take `--font-heading`
+from the base styles in `src/index.css`. A title or section label is marked up as a heading so it
+takes that font; a styled `span` or `p` keeps the body font. The brand name is shown with the
+`Wordmark` component's outlined lettering rather than as styled text. Code outside
+`components/ui/` does not set `font-family` or a `font-*` family class. A new role gets a variable
+that tweakcn sets, as the heading font reads `--font-serif`, or the live preview cannot try faces
+for it.
+
 ### Composites are assembled from parts
 
 A component that grows boolean props to switch sections on and off, such as `showDelete` or
