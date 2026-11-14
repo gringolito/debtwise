@@ -17,8 +17,6 @@
   --breakpoint-md: 900px;
 
   --font-sans: system-ui, -apple-system, "SF Pro Text", "Inter Variable", sans-serif;
-  /* The headings' font: --font-serif, one of the three fonts a shadcn theme defines, so the theme
-     sets it. Until a heading face is chosen it is the body font. */
   --font-serif: var(--font-sans);
 
   --text-hero-figure: 56px;
