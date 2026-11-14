@@ -22,7 +22,7 @@ const features: { icon: LucideIcon; text: string }[] = [
 export function Welcome({ onStart }: { onStart: () => void }) {
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-140 flex-col items-center justify-center px-4 py-16 text-center">
-      <div className="mb-8 flex size-18 items-center justify-center rounded-lg bg-graphite">
+      <div className="mb-8 flex size-18 items-center justify-center rounded-lg bg-primary">
         <HouseIcon aria-hidden="true" strokeWidth={1.5} className="size-8 text-accent-soft" />
       </div>
       <h1 className="mb-3 text-large-title">Seu financiamento, com clareza.</h1>

@@ -8,12 +8,10 @@ colors:
   on-surface-tertiary: '#AEAEB2'
   separator: '#E5E5EA'
   control: '#8E8E93'
-  graphite: '#1D1D1F'
-  graphite-raised: '#2C2C2E'
-  on-graphite: '#FFFFFF'
-  on-graphite-secondary: '#A1A1A6'
   primary: '#1D1D1F'
   on-primary: '#FFFFFF'
+  primary-hover: '#2C2C2E'
+  on-primary-secondary: '#A1A1A2'
   accent: '#26705F'
   accent-mark: '#3E8E7C'
   accent-soft: '#82C7B7'
@@ -85,7 +83,7 @@ whitespace. Hairline separators for structure inside panels.
   Liquid Glass's own navigation, and Início's answer card as described there.
 
 Graphite is the signature: primary buttons and at most one card per screen are near-black, like a
-premium card. The graphite card is glass as well: a diagonal gradient from `#202226` to `#141518`
+premium card. The graphite card is glass as well: a diagonal gradient from `#222224` to `#151517`
 at 92–96%, a white rim at 18%, a deep shadow and a 1px rim light along its top edge that fades in
 from white to the soft accent. A graphite surface carries only white and grey text, such as the
 Início hero that states the current suggestion. Any card that shows a colored result (a green gain,
@@ -98,7 +96,7 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
 
 - The canvas is the gradient above; panels white glass, text `#1D1D1F`. The accent appears only in
   its accent roles below and the faint top-left wash.
-- Secondary text is `#636366` on white and `#A1A1A6` on graphite, which keeps AA on the canvas's
+- Secondary text is `#636366` on white and `#A1A1A2` on graphite, which keeps AA on the canvas's
   bluest corner and on a segmented control's grey track. Calm comes from restraint, not from faint
   text. `#AEAEB2` (tertiary) marks what is placeholder, disabled or set back: placeholders, a unit
   beside an empty field, disabled states, a checklist step still to do and the 404 figure. Text the
@@ -136,15 +134,18 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
 
 ## Typography
 
-The system font first, so Apple devices render SF Pro, as Wallet and Stocks do, with Inter where
-there is none; tabular numerals everywhere. Large Title 34 bold for page titles, Title 2 22
-semibold for sections, Headline 17 semibold, Body 17, Callout 15 for explanations, Footnote 13 for
-metadata and Caption 11 medium for the tab bar's labels alone. Key figures use a 56px semibold hero
-figure when a screen has one figure alone; figures sharing a row, such as the Início summary
-panels, use Large Title at semibold weight. On a phone the hero figure scales with the screen,
-`clamp(34px, 11.4vw, 48px)`, and Large Title figures inside panels step down to 28px, while page
-titles keep 34px. A key figure never wraps: "novembro de 2056" stays on one line, and its panel
-stacks instead. The wordmark's text is Title 2. These eight sizes are the whole scale.
+Three roles. Body text takes the system font first, so Apple devices render SF Pro, as Wallet and
+Stocks do, with Inter where there is none; tabular numerals everywhere. Headings, every `h1` to `h6`
+and a dialog's title, take the heading font, which is the body font until a heading face is chosen.
+The wordmark is lettering rather than text: "Debtwise" outlined from Inter Semibold at Title 2 with
+tight tracking, so the brand keeps its shape whatever fonts the app uses. Large Title 34 bold for
+page titles, Title 2 22 semibold for sections, Headline 17 semibold, Body 17, Callout 15 for
+explanations, Footnote 13 for metadata and Caption 11 medium for the tab bar's labels alone. Key
+figures use a 56px semibold hero figure when a screen has one figure alone; figures sharing a row,
+such as the Início summary panels, use Large Title at semibold weight. On a phone the hero figure
+scales with the screen, `clamp(34px, 11.4vw, 48px)`, and Large Title figures inside panels step
+down to 28px, while page titles keep 34px. A key figure never wraps: "novembro de 2056" stays on one
+line, and its panel stacks instead. These eight sizes are the whole scale.
 
 ## Layout and components
 
@@ -564,7 +565,26 @@ R$ 650.000,00. Today is sexta-feira, 6 de novembro de 2026.
 
 `frontend/src/index.css` declares these tokens and removes Tailwind's default palette, type scale,
 radii and breakpoints, so a class outside them generates no CSS and the `shadcn` lint rules reject
-it. Colors keep shadcn's names where shadcn has the role:
+it. Colors keep shadcn's names where shadcn has the role.
+
+A color is set only in shadcn's variables, which are the theme for everything built on shadcn, and
+in the roles shadcn has no variable for (tertiary text, control, positive, caution). Everything else
+derives from them, so any theme, such as a dark palette or one tried in
+[tweakcn](https://tweakcn.com), reaches every surface:
+
+- The primary's hover and on-primary-secondary are a lighter `--primary` and a mix of
+  `--primary-foreground` into it; the primary card's gradient is lighter and darker `--primary`.
+- The accent mark, soft and tint keep their lightness and take their hue and chroma from
+  `--accent`.
+- Glass panels and the tab bar are `--card` at partial opacity, the sidebar `--sidebar` with a
+  `--sidebar-border` hairline, and the opaque panel fill `--card` over `--background`.
+- The canvas runs from a tint of the accent tint through `--background` to a darker, bluer
+  `--background`.
+- The chart roles name shadcn's `--chart-1` (mortgage), `--chart-2` (investment, amortization),
+  `--chart-3` (projection, charges) and `--chart-4` (interest).
+- Body text is `--font-sans` and headings `--font-heading`, which reads `--font-serif`, one of the
+  three fonts a shadcn theme defines, so the theme sets the heading face too. It holds the body
+  font until a heading face is chosen.
 
 | Token | Utility |
 | --- | --- |
@@ -576,19 +596,20 @@ it. Colors keep shadcn's names where shadcn has the role:
 | separator | `border-border`, `border-input` |
 | control | `border-control`, `bg-control` |
 | primary, on-primary | `bg-primary`, `text-primary-foreground` |
-| graphite, graphite-raised | `bg-graphite`, `bg-graphite-raised` |
-| on-graphite, on-graphite-secondary | `text-graphite-foreground`, `text-graphite-muted-foreground` |
+| secondary, on-secondary (the button under a confirmation) | `bg-secondary`, `text-secondary-foreground` |
+| primary-hover | `hover:bg-primary-hover` |
+| on-primary-secondary | `text-primary-muted-foreground` |
 | accent, accent-mark, accent-soft, accent-tint | `text-accent`, `accent-mark`, `accent-soft`, `accent-tint` |
-| focus | `--ring`, the outline every `:focus-visible` element draws; white inside `glass-graphite` |
+| focus | `--ring`, the outline every `:focus-visible` element draws; `--primary-foreground` inside `glass-primary` |
 | positive, caution, caution-tint | `text-positive`, `text-caution`, `bg-caution-tint` |
 | critical | `text-destructive` |
 | chart-mortgage, chart-investment, chart-projection | `var(--chart-mortgage)` and so on |
-| typography | `text-large-title`, `text-title-2`, `text-headline`, `text-body`, `text-callout`, `text-footnote`, `text-caption`, `text-hero-figure` (which scales on a phone) |
+| typography | `text-large-title`, `text-title-2`, `text-headline`, `text-body`, `text-callout`, `text-footnote`, `text-caption`, `text-hero-figure` (which scales on a phone); `font-sans` for the body and `font-heading` for headings |
 | breakpoints | `sm` 600px (phones are below it), `md` 900px (the sidebar) |
 | roundness | `rounded-lg` |
 | spacing xs, sm, md, lg, xl, xxl | Tailwind's 4px steps 1, 2, 4, 6, 10, 16 |
 | content column | `max-w-content` |
 | sheet shadow | `shadow-sheet` |
-| glass | `glass`, `glass-graphite`, `glass-sidebar`, `glass-bar` |
+| glass | `glass`, `glass-primary`, `glass-sidebar`, `glass-bar` |
 
 There is no dark palette yet, so the tokens have no `.dark` values.
