@@ -17,6 +17,9 @@
   --breakpoint-md: 900px;
 
   --font-sans: system-ui, -apple-system, "SF Pro Text", "Inter Variable", sans-serif;
+  /* The headings' font. It is --font-serif because that is the slot tweakcn's live preview sets
+     besides the body's; until a heading face is chosen it is the body font. */
+  --font-serif: var(--font-sans);
 
   --text-hero-figure: 56px;
   --text-hero-figure--line-height: 60px;
@@ -66,7 +69,7 @@
     inset 0 -1px 1px 0 rgb(0 0 0 / 0.4);
   --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.12), inset 0 1px 1px rgb(255 255 255);
   --shadow-glow: 0 0 8px var(--accent-soft);
-  --drop-shadow-glow: 0 10px 20px rgb(130 199 183 / 0.15);
+  --drop-shadow-glow: 0 10px 20px color-mix(in oklab, var(--accent-soft) 15%, transparent);
   /* A modal's bottom sheet on a phone slides up with the iOS ease. */
   --animate-sheet-in: sheet-in 320ms cubic-bezier(0.32, 0.72, 0, 1) both;
   --animate-sheet-out: sheet-out 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
@@ -127,10 +130,10 @@
   }
 }
 
-/* Frosted white panel: the canvas tint shows through, edges come from the shadow and a white rim. */
+/* Frosted card panel: the canvas tint shows through, edges come from the shadow and a light rim. */
 @utility glass {
-  background-color: rgb(255 255 255 / 0.72);
-  border: 1px solid rgb(255 255 255 / 0.85);
+  background-color: color-mix(in oklab, var(--card) 72%, transparent);
+  border: 1px solid color-mix(in oklab, var(--card) 85%, transparent);
   box-shadow: var(--shadow-glass);
   backdrop-filter: blur(24px) saturate(180%);
 }
@@ -143,28 +146,32 @@
     linear-gradient(
       90deg,
       transparent,
-      rgb(255 255 255 / 0.45) 30%,
-      rgb(130 199 183 / 0.6) 70%,
+      color-mix(in oklab, var(--graphite-foreground) 45%, transparent) 30%,
+      color-mix(in oklab, var(--accent-soft) 60%, transparent) 70%,
       transparent
     )
     top / 100% 1px no-repeat,
-    linear-gradient(135deg, rgb(32 34 38 / 0.92), rgb(20 21 24 / 0.96));
-  border: 1px solid rgb(255 255 255 / 0.18);
+    linear-gradient(
+      135deg,
+      oklch(from var(--graphite) calc(l + 0.02) c h / 0.92),
+      oklch(from var(--graphite) calc(l - 0.0356) c h / 0.96)
+    );
+  border: 1px solid color-mix(in oklab, var(--graphite-foreground) 18%, transparent);
   box-shadow: var(--shadow-glass-graphite);
   backdrop-filter: blur(32px) saturate(190%);
 }
 
 @utility glass-sidebar {
-  background-color: rgb(255 255 255 / 0.75);
-  border-right: 1px solid rgb(0 0 0 / 0.06);
+  background-color: color-mix(in oklab, var(--sidebar) 75%, transparent);
+  border-right: 1px solid var(--sidebar-border);
   box-shadow: 1px 0 20px 0 rgb(0 0 0 / 0.02);
   backdrop-filter: blur(28px) saturate(180%);
 }
 
 /* The phone's floating tab bar and its Ajustes button: glass that lifts off the page under it. */
 @utility glass-bar {
-  background-color: rgb(255 255 255 / 0.72);
-  border: 1px solid rgb(255 255 255 / 0.9);
+  background-color: color-mix(in oklab, var(--card) 72%, transparent);
+  border: 1px solid color-mix(in oklab, var(--card) 90%, transparent);
   box-shadow:
     0 8px 28px -6px rgb(0 0 0 / 0.18),
     0 1px 2px rgb(0 0 0 / 0.06),
@@ -214,7 +221,7 @@
 }
 
 @theme inline {
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-serif);
   --radius-lg: var(--radius);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -224,6 +231,8 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-tertiary-foreground: var(--tertiary-foreground);
@@ -235,6 +244,7 @@
   --color-graphite-foreground: var(--graphite-foreground);
   --color-graphite-muted-foreground: var(--graphite-muted-foreground);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-accent-soft: var(--accent-soft);
   --color-accent-mark: var(--accent-mark);
   --color-accent-tint: var(--accent-tint);
@@ -252,6 +262,8 @@
   --color-chart-charges: var(--chart-charges);
 }
 
+/* A tweakcn theme sets shadcn's variables; every other color derives from them, so a theme
+   previewed live reaches every surface. */
 :root {
   --background: #eff1f4;
   --foreground: #1d1d1f;
@@ -263,8 +275,6 @@
   --primary-foreground: #ffffff;
   --muted: #f5f5f7;
   --muted-foreground: #636366;
-  /* The app doesn't use --secondary, --secondary-foreground or --accent-foreground; tweakcn's live
-     preview refuses to theme a page without them. */
   --secondary: #f5f5f7;
   --secondary-foreground: #1d1d1f;
   --tertiary-foreground: #aeaeb2;
@@ -272,28 +282,34 @@
   --input: #e5e5ea;
   --control: #8e8e93;
   --ring: #26705f;
-  --graphite: #1d1d1f;
-  --graphite-raised: #2c2c2e;
-  --graphite-foreground: #ffffff;
-  --graphite-muted-foreground: #a1a1a6;
+  --sidebar: #ffffff;
+  --sidebar-border: rgb(0 0 0 / 0.06);
+  --graphite: var(--primary);
+  --graphite-raised: oklch(from var(--graphite) calc(l + 0.0623) c h);
+  --graphite-foreground: var(--primary-foreground);
+  --graphite-muted-foreground: color-mix(in oklab, var(--graphite-foreground) 62%, var(--graphite));
   --accent: #26705f;
   --accent-foreground: #ffffff;
-  --accent-mark: #3e8e7c;
-  --accent-soft: #82c7b7;
-  --accent-tint: #e8f5f1;
+  --accent-mark: oklch(from var(--accent) 0.5915 calc(c * 1.076) calc(h + 1.4));
+  --accent-soft: oklch(from var(--accent) 0.7791 calc(c * 0.949) calc(h + 3.1));
+  --accent-tint: oklch(from var(--accent) 0.9593 calc(c * 0.189) calc(h + 0.8));
   --positive: #1e7a36;
   --caution: #a84a00;
   --caution-tint: #fff4e5;
   /* What a glass panel looks like over the canvas, opaque: the fill of what must hide the content
      scrolling under it. */
-  --panel: #fafbfc;
+  --panel: color-mix(in srgb, var(--card) 72%, var(--background));
   --destructive: #d70015;
-  --chart-mortgage: #1d1d1f;
-  --chart-investment: #3e8e7c;
-  --chart-projection: #8e8e93;
-  --chart-amortization: #3e8e7c;
-  --chart-interest: #c7c7cc;
-  --chart-charges: #8e8e93;
+  --chart-1: #1d1d1f;
+  --chart-2: #3e8e7c;
+  --chart-3: #8e8e93;
+  --chart-4: #c7c7cc;
+  --chart-mortgage: var(--chart-1);
+  --chart-investment: var(--chart-2);
+  --chart-projection: var(--chart-3);
+  --chart-amortization: var(--chart-2);
+  --chart-interest: var(--chart-4);
+  --chart-charges: var(--chart-3);
   --radius: 12px;
 }
 
@@ -327,11 +343,28 @@
     @apply font-sans antialiased;
     font-variant-numeric: tabular-nums;
   }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+  }
   body {
     @apply text-body text-foreground;
     background:
-      radial-gradient(circle at 15% 10%, rgb(130 199 183 / 0.1), transparent 45%),
-      linear-gradient(135deg, #eef4f1 0%, #eff1f4 50%, #e3e9f3 100%);
+      radial-gradient(
+        circle at 15% 10%,
+        color-mix(in oklab, var(--accent-soft) 10%, transparent),
+        transparent 45%
+      ),
+      linear-gradient(
+        135deg,
+        oklch(from var(--accent-tint) calc(l + 0.0025) calc(c * 0.51) calc(h - 10.8)) 0%,
+        var(--background) 50%,
+        oklch(from var(--background) calc(l - 0.0251) calc(c * 3.291) calc(h + 2.4)) 100%
+      );
     background-attachment: fixed;
   }
 }

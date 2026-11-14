@@ -25,7 +25,7 @@ const buttonVariants = cva(
         /** The action that confirms a deletion. */
         critical: "bg-destructive text-primary-foreground hover:bg-destructive/90",
         /** "Cancelar" under a confirmation's action. */
-        secondary: "bg-muted text-foreground hover:bg-border",
+        secondary: "bg-secondary text-secondary-foreground hover:bg-border",
         link: "text-accent underline-offset-4 hover:underline",
       },
       size: {
