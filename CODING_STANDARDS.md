@@ -501,16 +501,18 @@ rather than writing values into `@theme`, so a dark palette can add `.dark` valu
 
 ### Colors derive from shadcn's variables
 
-A theme previewed live in tweakcn sets only shadcn's variables (`--background`, `--card`,
-`--primary`, `--accent`, `--sidebar`, `--chart-1` and the others it lists), so a surface whose color
-lives anywhere else stays the same when the theme changes. When a role has a shadcn variable, use
-that variable. When a new role is a shade of one, such as `accent-tint` or `graphite-raised`, derive
-it under `:root` with `oklch(from var(--accent) …)` or `color-mix()` rather than writing its hex
-value. Only roles shadcn has nothing for, such as `positive` or `caution`, get a literal value of
-their own. Inside `@utility` blocks and other rules, a color is always a `var()` or a mix of one;
-only black and white for shadows and highlights are written as literals.
+shadcn's premise is that its CSS variables are the theme (`--background`, `--card`, `--primary`,
+`--accent`, `--sidebar`, `--chart-1` and the rest of its list): components copied from shadcn, a
+`.dark` palette and any theme built for shadcn change the look by setting those variables and
+nothing else. A color written anywhere else leaves that contract, and the surface keeps its look
+through every theme change. When a role has a shadcn variable, use that variable. When a new role
+is a shade of one, such as `accent-tint` or `graphite-raised`, derive it under `:root` with
+`oklch(from var(--accent) …)` or `color-mix()` rather than writing its hex value. Only roles shadcn
+has nothing for, such as `positive` or `caution`, get a literal value of their own. Inside
+`@utility` blocks and other rules, a color is always a `var()` or a mix of one; only black and
+white for shadows and highlights are written as literals.
 
-Every shadcn variable declared under `:root` also gets its `--color-<name>` line in
+Every shadcn color variable declared under `:root` also gets its `--color-<name>` line in
 `@theme inline`, so a class taken from shadcn's code, such as `text-accent-foreground`, generates
 CSS. A shadcn component whose class has no CSS behind it renders with its text in the wrong color,
 and no lint rule notices.
@@ -524,9 +526,9 @@ Body text inherits `--font-sans`. Headings are `h1` to `h6` elements, which take
 from the base styles in `src/index.css`. A title or section label is marked up as a heading so it
 takes that font; a styled `span` or `p` keeps the body font. The brand name is shown with the
 `Wordmark` component's outlined lettering rather than as styled text. Code outside
-`components/ui/` does not set `font-family` or a `font-*` family class. A new role gets a variable
-that tweakcn sets, as the heading font reads `--font-serif`, or the live preview cannot try faces
-for it.
+`components/ui/` does not set `font-family` or a `font-*` family class. A font role reads one of
+the font variables a shadcn theme defines, as the heading font reads `--font-serif`, so the theme
+sets every face.
 
 ### Composites are assembled from parts
 

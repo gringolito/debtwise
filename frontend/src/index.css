@@ -17,8 +17,8 @@
   --breakpoint-md: 900px;
 
   --font-sans: system-ui, -apple-system, "SF Pro Text", "Inter Variable", sans-serif;
-  /* The headings' font. It is --font-serif because that is the slot tweakcn's live preview sets
-     besides the body's; until a heading face is chosen it is the body font. */
+  /* The headings' font: --font-serif, one of the three fonts a shadcn theme defines, so the theme
+     sets it. Until a heading face is chosen it is the body font. */
   --font-serif: var(--font-sans);
 
   --text-hero-figure: 56px;
@@ -262,8 +262,8 @@
   --color-chart-charges: var(--chart-charges);
 }
 
-/* A tweakcn theme sets shadcn's variables; every other color derives from them, so a theme
-   previewed live reaches every surface. */
+/* shadcn's variables are the theme; every other color derives from them, so any theme reaches
+   every surface. */
 :root {
   --background: #eff1f4;
   --foreground: #1d1d1f;

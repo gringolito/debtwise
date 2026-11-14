@@ -569,9 +569,10 @@ R$ 650.000,00. Today is sexta-feira, 6 de novembro de 2026.
 radii and breakpoints, so a class outside them generates no CSS and the `shadcn` lint rules reject
 it. Colors keep shadcn's names where shadcn has the role.
 
-A color is set only in shadcn's variables, the ones a [tweakcn](https://tweakcn.com) theme sets, and
+A color is set only in shadcn's variables, which are the theme for everything built on shadcn, and
 in the roles shadcn has no variable for (tertiary text, control, positive, caution). Everything else
-derives from them, so a theme previewed live in tweakcn reaches every surface:
+derives from them, so any theme, such as a dark palette or one tried in
+[tweakcn](https://tweakcn.com), reaches every surface:
 
 - Graphite is `--primary` and on-graphite `--primary-foreground`; graphite-raised, the graphite
   card's gradient and on-graphite-secondary are lighter, darker and mixed versions of them.
@@ -583,9 +584,9 @@ derives from them, so a theme previewed live in tweakcn reaches every surface:
   `--background`.
 - The chart roles name shadcn's `--chart-1` (mortgage), `--chart-2` (investment, amortization),
   `--chart-3` (projection, charges) and `--chart-4` (interest).
-- Body text is `--font-sans` and headings `--font-heading`, which reads `--font-serif`: the second
-  font tweakcn sets, so a heading face can be tried live. It holds the body font until one is
-  chosen.
+- Body text is `--font-sans` and headings `--font-heading`, which reads `--font-serif`, one of the
+  three fonts a shadcn theme defines, so the theme sets the heading face too. It holds the body
+  font until a heading face is chosen.
 
 | Token | Utility |
 | --- | --- |
