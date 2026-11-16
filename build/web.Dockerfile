@@ -4,7 +4,7 @@ FROM --platform=${BUILDPLATFORM} node:26.13.0-slim AS build
 WORKDIR /app
 
 # renovate: datasource=npm depName=pnpm
-ARG PNPM_VERSION=12.18.0
+ARG PNPM_VERSION=12.21.0
 RUN --mount=type=cache,target=/root/.npm \
     npm install --global pnpm@${PNPM_VERSION}
 
