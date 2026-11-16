@@ -29,6 +29,17 @@
     "schedule": ["before 6am"]
   },
 
+  "customManagers": [
+    {
+      "description": "Renovate's gomod manager leaves the go directive in go.work alone, and Go refuses to build when it is older than go.mod's.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^go\\.work$/"],
+      "matchStrings": ["(?m)^go (?<currentValue>\\d+\\.\\d+(?:\\.\\d+)?)$"],
+      "depNameTemplate": "go",
+      "datasourceTemplate": "golang-version"
+    }
+  ],
+
   "packageRules": [
     {
       "matchManagers": ["gomod"],
@@ -64,11 +75,11 @@
       "groupName": "minor-patch (toolchain)"
     },
     {
-      "description": "Wait for Go updates in go.mod, mise.toml and Dockerfile.",
-      "matchManagers": ["gomod", "mise", "dockerfile"],
+      "description": "Wait for Go updates in go.mod, go.work, mise.toml and Dockerfile.",
+      "matchManagers": ["gomod", "custom.regex", "mise", "dockerfile"],
       "matchDepNames": ["go", "golang"],
       "groupName": "go toolchain",
-      "minimumGroupSize": 3
+      "minimumGroupSize": 4
     },
     {
       "description": "Wait for Node updates in mise.toml, package.json devEngines and Dockerfile.",
