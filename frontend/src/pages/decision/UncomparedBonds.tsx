@@ -1,7 +1,6 @@
 import { useId } from "react";
 import {
   GroupedList,
-  GroupedListChevron,
   GroupedListHeader,
   GroupedListItem,
   GroupedListLabel,
@@ -12,7 +11,6 @@ import {
 import type { Verdict } from "@/lib/api";
 import { bondRate } from "@/lib/bondKinds";
 import {
-  type ComparedVerdict,
   type NoComparison,
   noComparisonOf,
   unavailableLabels,
@@ -20,7 +18,6 @@ import {
   verdictTitle,
 } from "@/lib/decisions";
 import { formatMoney } from "@/lib/format";
-import { advantageComparison } from "@/lib/yardstick";
 import { NoComparisonFix } from "@/pages/decision/NoComparisonPanel";
 
 function BondName({ verdict }: { verdict: Verdict }) {
@@ -75,44 +72,22 @@ function UnavailableRow({
   );
 }
 
-interface OtherBondsProps {
-  /** The compared verdicts besides the one on the verdict panel, ranked. */
-  compared: ComparedVerdict[];
+interface UncomparedBondsProps {
   /** The verdicts with no comparison, each with why. */
-  unavailable: Verdict[];
-  onSelect: (verdict: ComparedVerdict) => void;
+  verdicts: Verdict[];
   /** Puts the amount in the sentence and compares it. */
   onUseAmount: (amount: string) => void;
 }
 
-/**
- * OtherBonds lists the bonds besides the one on the verdict panel, ranked by their Advantage, and
- * opens the one the owner picks on the panel. The bonds with no comparison follow, with why and
- * what to try.
- */
-export function OtherBonds({ compared, unavailable, onSelect, onUseAmount }: OtherBondsProps) {
+/** UncomparedBonds lists the bonds the decision could not compare, with why and what to try. */
+export function UncomparedBonds({ verdicts, onUseAmount }: UncomparedBondsProps) {
   const headerId = useId();
-  if (compared.length === 0 && unavailable.length === 0) return null;
+  if (verdicts.length === 0) return null;
   return (
     <GroupedListSection aria-labelledby={headerId}>
-      <GroupedListHeader id={headerId}>Outros títulos</GroupedListHeader>
+      <GroupedListHeader id={headerId}>Títulos sem comparação</GroupedListHeader>
       <GroupedList>
-        {compared.map((verdict) => (
-          <GroupedListItem key={verdictKey(verdict)}>
-            <GroupedListRow asChild>
-              <button type="button" onClick={() => onSelect(verdict)}>
-                <GroupedListLabel>
-                  <BondName verdict={verdict} />
-                </GroupedListLabel>
-                <GroupedListValue className="font-medium text-foreground">
-                  {advantageComparison(verdict)}
-                </GroupedListValue>
-                <GroupedListChevron />
-              </button>
-            </GroupedListRow>
-          </GroupedListItem>
-        ))}
-        {unavailable.map((verdict) => (
+        {verdicts.map((verdict) => (
           <GroupedListItem key={verdictKey(verdict)}>
             <UnavailableRow verdict={verdict} onUseAmount={onUseAmount} />
           </GroupedListItem>

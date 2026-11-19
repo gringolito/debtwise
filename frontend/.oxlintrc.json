@@ -21,7 +21,10 @@
       "error",
       {
         "allow": ["layout"],
-        "contracts": [{ "pattern": "^PopoverContent$", "allow": ["layout", "p-0"] }]
+        "contracts": [
+          { "pattern": "^PopoverContent$", "allow": ["layout", "p-0"] },
+          { "pattern": "^TabsList$", "allow": ["layout", "px-2", "sm:px-5"] }
+        ]
       }
     ],
     "shadcn/no-unknown-classes": "error",
