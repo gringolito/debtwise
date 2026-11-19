@@ -2,7 +2,7 @@ import { Outlet, useLocation, useNavigate } from "@tanstack/react-router";
 import { SegmentedControl, SegmentedControlItem } from "@/components/patterns/SegmentedControl";
 
 interface Section {
-  to: "/mercado" | "/mercado/titulos" | "/investimentos" | "/investimentos/venda-antecipada";
+  to: "/mercado" | "/mercado/titulos";
   label: string;
 }
 

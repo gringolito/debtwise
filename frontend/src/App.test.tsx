@@ -41,7 +41,6 @@ describe("shell", () => {
     ["/financiamento", "Financiamento"],
     ["/financiamento/editar", "Financiamento"],
     ["/investimentos", "Investimentos"],
-    ["/investimentos/venda-antecipada", "Investimentos"],
     ["/investimentos/importar", "Investimentos"],
     ["/mercado", "Mercado"],
     ["/mercado/titulos", "Mercado"],
@@ -89,16 +88,23 @@ describe("shell", () => {
     expect(router.state.location.href).toBe(address);
   });
 
-  it.each([
-    ["/mercado/", "Índices"],
-    ["/investimentos/", "Compras"],
-  ])("selects the section %s opens, trailing slash and all", async (path, section) => {
-    // Investimentos shows its sections once it has a lot to show in them.
+  it("takes the old Venda antecipada address to Investimentos", async () => {
     stubRoutes({ "GET /api/lots": () => Response.json({ lots: [ipca2035] }) });
 
-    renderAt(path);
+    const router = renderAt("/investimentos/venda-antecipada?efeito=reduzir-prestacao");
 
-    expect(await screen.findByRole("radio", { name: section })).toHaveAttribute(
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Investimentos" }),
+    ).toBeInTheDocument();
+    expect(router.state.location.href).toBe("/investimentos");
+  });
+
+  it("selects the section /mercado/ opens, trailing slash and all", async () => {
+    stubRoutes({});
+
+    renderAt("/mercado/");
+
+    expect(await screen.findByRole("radio", { name: "Índices" })).toHaveAttribute(
       "aria-checked",
       "true",
     );

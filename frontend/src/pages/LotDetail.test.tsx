@@ -158,7 +158,7 @@ describe("a lot's detail", () => {
     ).toEqual(["shorten_term", "lower_installment"]);
   });
 
-  it("opens with the effect a link from Venda antecipada carries", async () => {
+  it("opens with the effect its address carries", async () => {
     stubInvestments({
       lots: [ipca2035],
       checks: {

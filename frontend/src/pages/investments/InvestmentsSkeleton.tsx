@@ -1,7 +1,7 @@
 import { Loading } from "@/components/patterns/Loading";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function RowsSkeleton({ rows }: { rows: number }) {
+function RowsSkeleton({ rows }: { rows: number }) {
   return (
     <div className="flex flex-col rounded-lg glass">
       {Array.from({ length: rows }, (_, row) => (
@@ -17,20 +17,16 @@ export function RowsSkeleton({ rows }: { rows: number }) {
   );
 }
 
-/** InvestmentsSkeleton is Compras' layout in skeletons while the lots load. */
+/** InvestmentsSkeleton is Investimentos' layout in skeletons while the lots load. */
 export function InvestmentsSkeleton() {
   return (
     <Loading label="Carregando investimentos">
-      <Skeleton className="h-8 w-64" />
       <div className="flex flex-col gap-3 rounded-lg glass p-6">
         <Skeleton className="h-4 w-44" />
         <Skeleton className="h-12 w-64" />
         <Skeleton className="h-4 w-72" />
       </div>
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-5 w-48" />
-        <RowsSkeleton rows={2} />
-      </div>
+      <RowsSkeleton rows={2} />
     </Loading>
   );
 }

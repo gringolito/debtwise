@@ -27,7 +27,7 @@ const marketValue = {
 };
 const sellingAll = [ipca2035, ipca2035Again, prefixado2029];
 
-describe("Compras", () => {
+describe("Investimentos", () => {
   it("shows the net Market Value with what each deduction took off the gross, and lists every lot in one list, the bonds maturing first leading", async () => {
     stubInvestments({
       lots: [ipca2035, prefixado2029, ipca2035Again],
@@ -65,7 +65,7 @@ describe("Compras", () => {
     expect(within(list).getByText("R$ 120,00")).toHaveClass("text-positive");
   });
 
-  it("says under the total how many purchases would earn more sold, and links to Venda antecipada", async () => {
+  it("says under the total how many purchases would earn more sold", async () => {
     stubInvestments({
       lots: sellingAll,
       marketValue,
@@ -76,14 +76,6 @@ describe("Compras", () => {
     expect(
       await screen.findByText("3 compras valeriam mais a pena vendidas para amortizar."),
     ).toBeVisible();
-
-    fireEvent.click(screen.getByRole("link", { name: "Ver venda antecipada" }));
-
-    expect(
-      await screen.findByRole("list", {
-        name: "Compras, das que mais valem a pena vender às que menos valem",
-      }),
-    ).toBeInTheDocument();
   });
 
   it("says it in the singular for one purchase", async () => {
@@ -109,7 +101,27 @@ describe("Compras", () => {
 
     await screen.findByText("Manter até o vencimento");
     expect(screen.queryByText(/valeria/)).toBeNull();
-    expect(screen.queryByRole("link", { name: "Ver venda antecipada" })).toBeNull();
+  });
+
+  it("notes stale market data that any lot's early sale check reads, not only the first", async () => {
+    const prefixado = checkFor(prefixado2029, "-55.00");
+    const ipca = checkFor(ipca2035, "2140.00");
+    stubInvestments({
+      lots: [ipca2035, prefixado2029],
+      checks: [
+        { ...prefixado, market_data: { ...prefixado.market_data, indexes: [] } },
+        {
+          ...ipca,
+          market_data: {
+            ...ipca.market_data,
+            indexes: [{ index: "ipca", status: "stale", refreshed_at: "2026-11-01T12:00:00Z" }],
+          },
+        },
+      ],
+    });
+    renderAt("/investimentos");
+
+    expect(await screen.findByText("IPCA de 01/11.")).toBeInTheDocument();
   });
 
   it("says a lot waits on the IPCA instead of showing a value", async () => {
@@ -141,7 +153,6 @@ describe("Compras", () => {
     expect(
       within(empty).getByRole("heading", { name: "Nenhum título por aqui ainda" }),
     ).toBeVisible();
-    expect(screen.queryByRole("group", { name: "Investimentos" })).toBeNull();
 
     fireEvent.click(within(empty).getByRole("link", { name: "Importar planilha" }));
     expect(
