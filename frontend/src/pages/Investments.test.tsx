@@ -37,7 +37,7 @@ describe("Investimentos", () => {
 
     const total = await screen.findByRole("region", { name: "Valor de mercado" });
     expect(words(total)).toBe(
-      "Valor de mercado R$ 33.016,50 Líquido, se vender tudo hoje Bruto R$ 34.800,12 Descontos do bruto R$ 1.700,00 de IR, R$ 70,50 de IOF e R$ 13,12 de custódia 1 compra sem valor de mercado ficou fora do total.",
+      "Valor de mercado R$ 33.016,50 Líquido, se vender tudo hoje Bruto R$ 34.800,12 Descontos R$ 1.700,00 de IR, R$ 70,50 de IOF e R$ 13,12 de custódia 1 compra sem valor de mercado ficou fora do total.",
     );
 
     expect(screen.queryByRole("heading", { name: /^Tesouro/ })).toBeNull();
@@ -56,9 +56,7 @@ describe("Investimentos", () => {
     renderAt("/investimentos");
 
     const total = await screen.findByRole("region", { name: "Valor de mercado" });
-    expect(within(total).getByText("Descontos do bruto").nextElementSibling).toHaveTextContent(
-      taken,
-    );
+    expect(within(total).getByText("Descontos").nextElementSibling).toHaveTextContent(taken);
   });
 
   it("says under each lot whether selling it early beats holding it, with a gain in green", async () => {

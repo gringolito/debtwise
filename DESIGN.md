@@ -385,7 +385,7 @@ check lives in the lot's detail.
 - The page: a white panel titled "Valor de mercado" with the net total as a hero figure, "Líquido,
   se vender tudo hoje" in Callout under it and, when any lot would do better sold, one quiet Callout
   line in secondary grey, "2 compras valeriam mais a pena vendidas para amortizar."; then, under a
-  hairline, "Bruto" with the gross total beside "Descontos do bruto" with each deduction named in
+  hairline, "Bruto" with the gross total beside "Descontos" with each deduction named in
   words ("R$ 2.304,22 de IR e R$ 111,40 de custódia"), zero ones left out, or "Nenhum". No amount
   carries a minus sign; the label says which way it goes.
   Then every lot in one inset grouped list, the bonds maturing first leading. Each lot is a row

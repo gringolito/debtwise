@@ -61,7 +61,7 @@ function GrossToNet({ amount }: { amount: NonNullable<LotList["market_value"]> }
         <dd className="text-callout tabular-nums">{formatMoney(amount.gross)}</dd>{" "}
       </div>
       <div className="flex flex-col gap-0.5">
-        <dt className="text-footnote text-muted-foreground">Descontos do bruto</dt>{" "}
+        <dt className="text-footnote text-muted-foreground">Descontos</dt>{" "}
         <dd className="text-callout tabular-nums">
           {taken.length > 0 ? deductionList.format(taken) : "Nenhum"}
         </dd>{" "}
