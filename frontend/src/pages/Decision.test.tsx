@@ -427,6 +427,9 @@ describe("the verdict panel", () => {
 
     const panel = await verdictPanel();
     expect(
+      within(panel).getByRole("heading", { name: "Amortizar vale mais a pena" }),
+    ).toBeVisible();
+    expect(
       within(panel).getByText("Amortizar termina devendo R$ 250,30 a menos"),
     ).toBeInTheDocument();
     expect(
@@ -444,6 +447,9 @@ describe("the verdict panel", () => {
       within(panel).getByRole("heading", {
         name: "Investir em Tesouro Prefixado 2029 ou amortizar dá praticamente no mesmo",
       }),
+    ).toBeInTheDocument();
+    expect(
+      within(panel).getByText("Investir termina devendo R$ 39,64 a menos"),
     ).toBeInTheDocument();
     expect(
       within(panel).getByText("0,4% dos R$ 10.000,00 em 2 anos e 2 meses. Na prática, um empate."),
