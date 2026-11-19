@@ -557,8 +557,9 @@ atual…"). Server state and refresh mechanics appear only on Ajustes and in the
 Money in prose never carries a sign: say which option is worth more and the projected difference in
 its favour ("Diferença a favor de investir: R$ 814,22", "R$ 814,22 de diferença a favor", "R$ 120,10
 a menos"), and what is owed as "Você deve R$ …", never as a negative amount. That difference is in
-net worth, debt less money held, so prose never words it as debt owed or cash held. A difference
-under 1% of the amount is named as what it is, practically the same, rather than as a win.
+net worth, the cash held and the bond's net value less what is owed, so prose never words it as
+debt owed or cash held. A difference under 1% of the amount is named as what it is, practically
+the same, rather than as a win.
 
 ## Sample data for mockups
 
