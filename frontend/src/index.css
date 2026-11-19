@@ -159,6 +159,51 @@
   backdrop-filter: blur(32px) saturate(190%);
 }
 
+/* PROTOTYPE: Início's answer illustration in a Liquid Glass app-icon tile, paired with glass or
+   glass-primary for its material: a top-left sheen and accent floor glow under the art, a specular
+   rim over it. */
+@utility glass-icon {
+  position: relative;
+  isolation: isolate;
+  flex-shrink: 0;
+  border-radius: 28%;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background:
+      radial-gradient(120% 80% at 25% 0%, rgb(255 255 255 / 0.28), transparent 55%),
+      radial-gradient(
+        45% 30% at 50% 100%,
+        color-mix(in oklab, var(--accent-soft) 25%, transparent),
+        transparent
+      );
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.45),
+      inset 0 -1px 0 rgb(0 0 0 / 0.25),
+      inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  }
+
+  & > img {
+    position: absolute;
+    inset: 14%;
+    width: 72%;
+    height: 72%;
+    object-fit: contain;
+  }
+}
+
 @utility glass-sidebar {
   background-color: color-mix(in oklab, var(--sidebar) 75%, transparent);
   border-right: 1px solid var(--sidebar-border);

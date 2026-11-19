@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 import { advantageAmount, advantageShare, horizon, verdictHeadline } from "@/lib/yardstick";
 import { AnswerCard } from "@/pages/dashboard/AnswerCard";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
-import "./AnswerHero.prototype.css";
 
 export const ANSWER_VARIANTS: PrototypeVariant[] = [
   { key: "atual", name: "Card graphite atual" },
@@ -36,13 +35,12 @@ function AnswerIcon({ side, className }: { side: keyof typeof illustrations; cla
   return (
     <div
       aria-hidden="true"
-      className={cn("answer-icon", light ? "glass" : "glass-primary", className)}
+      className={cn("glass-icon", light ? "glass" : "glass-primary", className)}
     >
-      <div className="answer-icon-floor" />
       <img
         src={illustrations[side]}
         alt=""
-        className={cn("answer-icon-art", light ? "drop-shadow-sm" : "drop-shadow-glow")}
+        className={light ? "drop-shadow-sm" : "drop-shadow-glow"}
       />
     </div>
   );
