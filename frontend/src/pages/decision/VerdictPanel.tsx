@@ -131,13 +131,13 @@ function Ledger({ verdict, best, titleId, amount, date }: LedgerProps) {
  */
 function BondTabs({ verdicts }: { verdicts: ComparedVerdict[] }) {
   return (
-    <TabsList
-      variant="line"
-      aria-label="Títulos comparados"
-      className="-mx-5 px-2 sm:-mx-8 sm:px-5"
-    >
+    <TabsList variant="line" aria-label="Títulos comparados" className="-mx-5 sm:-mx-8">
       {verdicts.map((verdict, rank) => (
-        <TabsTrigger key={verdictKey(verdict)} value={verdictKey(verdict)} className="max-w-48">
+        <TabsTrigger
+          key={verdictKey(verdict)}
+          value={verdictKey(verdict)}
+          className="max-w-48 first:ml-2 last:mr-2 sm:first:ml-5 sm:last:mr-5"
+        >
           {rank === 0 && (
             <>
               <span className="text-footnote font-semibold text-accent">Melhor título</span>{" "}
