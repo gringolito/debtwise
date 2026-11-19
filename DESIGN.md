@@ -444,8 +444,16 @@ field typed as dd/mm/aaaa and reads "em 15/12/2026" once a date is chosen, and t
 its message sits under the sentence in red Footnote. Arriving from Início fills in the amount and,
 from "Ver comparação", compares it at once.
 
-- The verdict is a white panel for the bond of the highest advantage that shows where the money is
-  on its maturity in each option. Its Title 2 headline names the option that ends with more,
+- The verdict is a white panel that shows where the money is, on the bond's maturity, in each
+  option. With more than one bond compared, the bonds head it as tabs over a hairline, ranked by
+  their advantage, the one of the highest advantage first and open: each tab names the bond in
+  Callout medium over how it compares in Footnote grey ("R$ 344,03 a mais", "R$ 120,10 a menos"),
+  and the first carries "Melhor título" in Footnote semibold in the strong accent above its name,
+  so it stands above the others, which align at the hairline. The open tab's name is in the text
+  colour, underlined in the accent mark, which grows in when picked; the others are in secondary
+  grey. Picking one puts its verdict and its Detalhes on the panel. Tabs that don't fit scroll
+  sideways inside the panel, the strip reaching its edges. With one bond compared there are no
+  tabs. Its Title 2 headline names the option that ends with more,
   "Investir em Tesouro Prefixado 2032 vale mais a pena" or "Amortizar vale mais a pena" (naming the
   bond, "… que investir em Tesouro IPCA+ 2032", only on a bond the owner picks while another beats
   prepaying), or, when the difference is a near tie, under 1% of the amount, "Investir em … ou
@@ -471,12 +479,10 @@ from "Ver comparação", compares it at once.
   per index above the table ("Taxa TR projetada pela média dos últimos 12 meses a partir de
   15/11/2026.") and "Os valores projetados aparecem em cinza."; tapping or focusing a projected
   value opens a popover with its own period ("…no período de 15/11/2026 a 15/12/2026.").
-- Outros títulos: an inset grouped list of the other bonds ranked by their advantage, each row with
-  the bond's name, its rate in secondary grey, how it compares in the text colour ("R$ 344,03 a
-  mais", "R$ 120,10 a menos") and a chevron; picking one puts it in the verdict. A bond with no
-  comparison follows with why in a few words as its value ("Valor pequeno demais", "Aguardando o
-  IPCA") and no chevron, and under its name one Footnote sentence on why and the same fix as an
-  accent text action as the panel below.
+- Títulos sem comparação: an inset grouped list under Detalhes of the bonds the decision could
+  not compare, each with the bond's name and its rate in secondary grey, why in a few words as its
+  value ("Valor pequeno demais", "Aguardando o IPCA"), and under its name one Footnote sentence on
+  why and the same fix as an accent text action as the panel below.
 - A Footnote centered at the bottom names the projections the verdict reads and closes with "O
   DebtWise compara; a decisão é sua."
 - With no bond to compare, a centered white panel replaces the results: an info icon on a grey

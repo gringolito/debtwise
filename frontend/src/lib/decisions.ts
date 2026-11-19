@@ -66,9 +66,10 @@ export const earlySaleUnavailableReasons: Record<
   matured: "O título deste lote já venceu.",
 };
 
-/** verdictKey tells the verdicts of one decision apart: one per bond. */
+/** verdictKey tells the verdicts of one decision apart: one per bond. It has no space, as tabs
+ * build element IDs from it. */
 export function verdictKey({ type, maturity }: Verdict): string {
-  return `${type} ${maturity}`;
+  return `${type}:${maturity}`;
 }
 
 /** An available verdict: one with an Advantage, its yardstick and both scenarios. */

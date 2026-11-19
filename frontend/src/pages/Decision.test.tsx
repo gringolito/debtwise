@@ -219,7 +219,7 @@ async function compare(verdicts: Verdict[], amount = "10000", input: Partial<Dec
 /** The verdict panel, which its headline names: who ends with more, or that it is a tie. */
 const verdictPanel = () =>
   screen.findByRole("region", { name: / vale mais a pena| dá (praticamente )?no mesmo/ });
-const otherBonds = () => screen.getByRole("region", { name: "Outros títulos" });
+const uncomparedBonds = () => screen.getByRole("region", { name: "Títulos sem comparação" });
 
 /** What one option of the verdict panel says: its title, what it is, what it ends with and why. */
 const outcome = (panel: HTMLElement, title: string) =>
@@ -520,7 +520,7 @@ describe("the verdict panel", () => {
   });
 });
 
-describe("the other bonds", () => {
+describe("the bonds on the verdict panel", () => {
   const ltn2031: Verdict = { ...ltnVerdict, maturity: "2031-01-01", advantage: "80.00" };
   const tooSmall: Verdict = {
     type: "ntn_f",
@@ -542,13 +542,30 @@ describe("the other bonds", () => {
     market_data: freshMarketData,
   };
 
-  it("ranks the others by their advantage in words, then those with no comparison, why and what to try", async () => {
+  const bondTabs = () =>
+    within(screen.getByRole("tablist", { name: "Títulos comparados" }))
+      .getAllByRole("tab")
+      .map((tab) => [text(tab), tab.getAttribute("aria-selected")]);
+
+  it("ranks the compared bonds as tabs, the best open and marked, how each compares in words", async () => {
     await compare([missingIpca, ntnbPrincipalVerdict, tooSmall, ltn2031, ltnVerdict]);
 
     await verdictPanel();
-    expect(rows(otherBonds())).toEqual([
-      ["Tesouro Prefixado 2031 · 12,76%", "R$ 80,00 a mais"],
-      ["Tesouro IPCA+ 2032 · IPCA + 6,72%", "R$ 250,30 a menos"],
+    expect(bondTabs()).toEqual([
+      ["Melhor título Tesouro Prefixado 2029 R$ 1.234,56 a mais", "true"],
+      ["Tesouro Prefixado 2031 R$ 80,00 a mais", "false"],
+      ["Tesouro IPCA+ 2032 R$ 250,30 a menos", "false"],
+    ]);
+    expect(
+      screen.getByRole("region", { name: "Investir em Tesouro Prefixado 2029 vale mais a pena" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lists the bonds with no comparison under the details, why and what to try", async () => {
+    await compare([missingIpca, ntnbPrincipalVerdict, tooSmall, ltn2031, ltnVerdict]);
+
+    await verdictPanel();
+    expect(rows(uncomparedBonds())).toEqual([
       [
         "Tesouro IPCA+ 2035 · IPCA + 6,88%",
         "Depende de um IPCA que ainda não foi divulgado nem pode ser projetado.",
@@ -563,7 +580,7 @@ describe("the other bonds", () => {
       ],
     ]);
     expect(
-      within(otherBonds()).getByRole("link", { name: "Ver projeções do IPCA" }),
+      within(uncomparedBonds()).getByRole("link", { name: "Ver projeções do IPCA" }),
     ).toHaveAttribute("href", "/mercado/indices/ipca");
   });
 
@@ -571,7 +588,7 @@ describe("the other bonds", () => {
     const requests = await compare([tooSmall, ltnVerdict]);
     await verdictPanel();
 
-    fireEvent.click(within(otherBonds()).getByRole("button", { name: /^Usar R\$\s8,81$/ }));
+    fireEvent.click(within(uncomparedBonds()).getByRole("button", { name: /^Usar R\$\s8,81$/ }));
 
     await screen.findByDisplayValue("8,81");
     expect(asked(requests)).toEqual([
@@ -580,11 +597,11 @@ describe("the other bonds", () => {
     ]);
   });
 
-  it("puts the bond the owner picks on the verdict panel", async () => {
+  it("opens the bond the owner picks on the panel and its details", async () => {
     await compare([ntnbPrincipalVerdict, ltnVerdict]);
     await verdictPanel();
 
-    fireEvent.click(within(otherBonds()).getByRole("button", { name: /Tesouro IPCA\+ 2032/ }));
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Tesouro IPCA\+ 2032/ }));
 
     const panel = screen.getByRole("region", {
       name: "Amortizar vale mais a pena que investir em Tesouro IPCA+ 2032",
@@ -592,14 +609,34 @@ describe("the other bonds", () => {
     expect(
       within(panel).getByText("Diferença a favor de amortizar: R$ 250,30"),
     ).toBeInTheDocument();
-    expect(rows(otherBonds())).toEqual([["Tesouro Prefixado 2029 · 12,76%", "R$ 1.234,56 a mais"]]);
+    expect(bondTabs()).toEqual([
+      ["Melhor título Tesouro Prefixado 2029 R$ 1.234,56 a mais", "false"],
+      ["Tesouro IPCA+ 2032 R$ 250,30 a menos", "true"],
+    ]);
+    const tabpanel = screen.getByRole("tabpanel", {
+      name: /^Tesouro IPCA\+ 2032 R\$\s250,30 a menos$/,
+    });
+    expect(
+      within(tabpanel).getByRole("heading", {
+        name: "Amortizar vale mais a pena que investir em Tesouro IPCA+ 2032",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { selected: true })).toHaveAttribute(
+      "aria-controls",
+      tabpanel.id,
+    );
+    expect(rows(screen.getByRole("region", { name: "Detalhes" }))[0]).toEqual([
+      "Taxa de hoje",
+      "IPCA + 6,72%",
+    ]);
   });
 
-  it("leaves the list out when the panel holds the only bond", async () => {
+  it("shows no tabs nor list when the panel holds the only bond", async () => {
     await compare([ltnVerdict]);
 
     await verdictPanel();
-    expect(screen.queryByRole("region", { name: "Outros títulos" })).toBeNull();
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Títulos sem comparação" })).toBeNull();
   });
 });
 
@@ -668,8 +705,11 @@ describe("the details of the verdict on the panel", () => {
     expect(
       within(details).getByText("Empata com amortizar se a taxa cair para 13,99%."),
     ).toBeInTheDocument();
-    expect(rows(otherBonds())).toEqual([
-      ["Tesouro IPCA+ 2032 · IPCA + 6,72%", "R$ 250,30 a menos"],
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Tesouro IPCA\+ 2032/ }));
+    expect(rows(screen.getByRole("region", { name: "Detalhes" }))[0]).toEqual([
+      "Taxa de hoje",
+      "IPCA + 6,72%",
     ]);
   });
 

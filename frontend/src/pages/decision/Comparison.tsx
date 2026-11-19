@@ -20,9 +20,9 @@ import {
 import { formatMoney, formatNumber } from "@/lib/format";
 import { projectedByText } from "@/lib/projectionMethods";
 import { NoComparisonPanel } from "@/pages/decision/NoComparisonPanel";
-import { OtherBonds } from "@/pages/decision/OtherBonds";
 import { ScenarioDetails } from "@/pages/decision/ScenarioDetails";
 import { Scenarios } from "@/pages/decision/Scenarios";
+import { UncomparedBonds } from "@/pages/decision/UncomparedBonds";
 import { VerdictPanel } from "@/pages/decision/VerdictPanel";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
 
@@ -64,9 +64,9 @@ interface ComparisonProps {
 }
 
 /**
- * Comparison shows a decision: the verdict of the highest Advantage on the panel, or the one the
- * owner picks from the others, and its details. A decision that compares no bond says why
- * instead.
+ * Comparison shows a decision: the compared bonds as tabs on the verdict panel, the one of the
+ * highest Advantage open first, and the details of the one open. The bonds it couldn't compare
+ * follow. A decision that compares no bond says why instead.
  */
 export function Comparison({ decision, onUseAmount }: ComparisonProps) {
   const { compared, unavailable } = rankVerdicts(decision.verdicts);
@@ -88,23 +88,16 @@ export function Comparison({ decision, onUseAmount }: ComparisonProps) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <VerdictPanel
-          verdict={selected}
-          best={compared[0]}
+          verdicts={compared}
+          selected={selected}
+          onSelect={(verdict) => setSelectedKey(verdictKey(verdict))}
           amount={decision.amount}
           date={decision.date}
         />
         <StaleNote marketData={selected.market_data} />
       </div>
       <Details verdict={selected} />
-      <OtherBonds
-        compared={compared.filter((verdict) => verdict !== selected)}
-        unavailable={unavailable}
-        onSelect={(verdict) => {
-          setSelectedKey(verdictKey(verdict));
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
-        onUseAmount={onUseAmount}
-      />
+      <UncomparedBonds verdicts={unavailable} onUseAmount={onUseAmount} />
       <p className="text-center text-footnote text-muted-foreground">
         {selected.projected_by.length === 0
           ? "Somente valores publicados."
