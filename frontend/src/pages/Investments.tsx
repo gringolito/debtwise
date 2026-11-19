@@ -1,7 +1,6 @@
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { TrendingUpIcon } from "lucide-react";
 import { useState } from "react";
-import { SectionLayout } from "@/components/layout/SectionLayout";
 import { Page, PageHeader, PageTitle } from "@/components/layout/Page";
 import { type LotChange, LotFeedback } from "@/components/lots/LotFeedback";
 import { LotSheet } from "@/components/lots/LotSheet";
@@ -9,6 +8,7 @@ import { ErrorPanel } from "@/components/patterns/ErrorPanel";
 import { Button } from "@/components/ui/button";
 import { useLots } from "@/lib/lotQueries";
 import { InvestmentsSkeleton } from "@/pages/investments/InvestmentsSkeleton";
+import { Purchases } from "@/pages/investments/Purchases";
 
 function Empty({ onAdd }: { onAdd: () => void }) {
   return (
@@ -47,27 +47,16 @@ function Content({ onAdd }: { onAdd: () => void }) {
     return <InvestmentsSkeleton />;
   }
   if (lots.data.lots.length === 0) return <Empty onAdd={onAdd} />;
-  return (
-    <SectionLayout
-      label="Investimentos"
-      sections={[
-        { to: "/investimentos", label: "Compras" },
-        { to: "/investimentos/venda-antecipada", label: "Venda antecipada" },
-      ]}
-    />
-  );
+  return <Purchases lots={lots.data} />;
 }
 
 /**
- * Investments is Investimentos: the lots bought, under Compras, and whether selling each early is
- * worth it, under Venda antecipada. Compras records lots in a sheet or imports them.
+ * Investments is Investimentos: every lot bought, each with whether selling it early is worth it.
+ * The page records lots in a sheet or imports them.
  */
 export function Investments() {
   const [adding, setAdding] = useState(false);
   const [feedback, setFeedback] = useState<LotChange | null>(null);
-  const onPurchases = useLocation({
-    select: (location) => location.pathname.replace(/\/+$/, "") === "/investimentos",
-  });
   const { data } = useLots();
   const hasLots = (data?.lots.length ?? 0) > 0;
 
@@ -75,7 +64,7 @@ export function Investments() {
     <Page className="gap-6">
       <PageHeader className="flex-wrap items-center">
         <PageTitle>Investimentos</PageTitle>
-        {onPurchases && hasLots && (
+        {hasLots && (
           <div className="flex items-center gap-6">
             <Button variant="link" size="inline" asChild>
               <Link to="/investimentos/importar">Importar planilha</Link>

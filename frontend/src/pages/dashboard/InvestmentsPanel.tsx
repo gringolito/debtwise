@@ -80,7 +80,7 @@ export function InvestmentsPanel({
           </p>
         )}
       </SummaryBody>
-      <SummaryLink to="/investimentos/venda-antecipada">
+      <SummaryLink to="/investimentos">
         <EarlySaleSummary />
       </SummaryLink>
     </SummaryPanel>

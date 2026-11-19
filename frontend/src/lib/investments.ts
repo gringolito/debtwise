@@ -66,8 +66,8 @@ export function marketDataOf(checks: EarlySaleCheck[]): VerdictMarketData | unde
 }
 
 /**
- * EffectSearch is what an Investimentos address says about the effect of the early sales it
- * compares: `efeito=reduzir-prestacao` lowers the installment; without it, the term is shortened.
+ * EffectSearch is what a lot's address says about the effect of the early sale it compares:
+ * `efeito=reduzir-prestacao` lowers the installment; without it, the term is shortened.
  */
 export interface EffectSearch {
   efeito?: "reduzir-prestacao";

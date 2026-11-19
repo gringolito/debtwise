@@ -27,8 +27,8 @@ const marketValue = {
 };
 const sellingAll = [ipca2035, ipca2035Again, prefixado2029];
 
-describe("Compras", () => {
-  it("shows the net Market Value with what each deduction took off the gross, and lists every lot in one list, the bonds maturing first leading", async () => {
+describe("Investimentos", () => {
+  it("shows the net Market Value with the gross and what the deductions took off it, and lists every lot in one list, the bonds maturing first leading", async () => {
     stubInvestments({
       lots: [ipca2035, prefixado2029, ipca2035Again],
       marketValue,
@@ -37,7 +37,7 @@ describe("Compras", () => {
 
     const total = await screen.findByRole("region", { name: "Valor de mercado" });
     expect(words(total)).toBe(
-      "Valor de mercado R$ 33.016,50 Líquido, se vender tudo hoje Bruto R$ 34.800,12 IR − R$ 1.700,00 IOF − R$ 70,50 Custódia − R$ 13,12 1 compra sem valor de mercado ficou fora do total.",
+      "Valor de mercado R$ 33.016,50 Líquido, se vender tudo hoje Bruto R$ 34.800,12 Descontos R$ 1.700,00 de IR, R$ 70,50 de IOF e R$ 13,12 de custódia 1 compra sem valor de mercado ficou fora do total.",
     );
 
     expect(screen.queryByRole("heading", { name: /^Tesouro/ })).toBeNull();
@@ -46,6 +46,17 @@ describe("Compras", () => {
       "Tesouro IPCA+ 2035 R$ 18.204,10 Compra em 12/05/2024 · IPCA + 6,21%",
       "Tesouro IPCA+ 2035 R$ 14.812,40 Compra em 18/11/2024 · IPCA + 6,45%",
     ]);
+  });
+
+  it.each([
+    [{ iof: "0.00" }, "R$ 1.700,00 de IR e R$ 13,12 de custódia"],
+    [{ iof: "0.00", income_tax: "0.00", custody_fee: "0.00" }, "Nenhum"],
+  ])("names only the deductions that took something off the gross, %j", async (zeroed, taken) => {
+    stubInvestments({ lots: [ipca2035], marketValue: { ...marketValue, ...zeroed } });
+    renderAt("/investimentos");
+
+    const total = await screen.findByRole("region", { name: "Valor de mercado" });
+    expect(within(total).getByText("Descontos").nextElementSibling).toHaveTextContent(taken);
   });
 
   it("says under each lot whether selling it early beats holding it, with a gain in green", async () => {
@@ -65,7 +76,7 @@ describe("Compras", () => {
     expect(within(list).getByText("R$ 120,00")).toHaveClass("text-positive");
   });
 
-  it("says under the total how many purchases would earn more sold, and links to Venda antecipada", async () => {
+  it("says under the total how many purchases would earn more sold", async () => {
     stubInvestments({
       lots: sellingAll,
       marketValue,
@@ -76,14 +87,6 @@ describe("Compras", () => {
     expect(
       await screen.findByText("3 compras valeriam mais a pena vendidas para amortizar."),
     ).toBeVisible();
-
-    fireEvent.click(screen.getByRole("link", { name: "Ver venda antecipada" }));
-
-    expect(
-      await screen.findByRole("list", {
-        name: "Compras, das que mais valem a pena vender às que menos valem",
-      }),
-    ).toBeInTheDocument();
   });
 
   it("says it in the singular for one purchase", async () => {
@@ -109,7 +112,59 @@ describe("Compras", () => {
 
     await screen.findByText("Manter até o vencimento");
     expect(screen.queryByText(/valeria/)).toBeNull();
-    expect(screen.queryByRole("link", { name: "Ver venda antecipada" })).toBeNull();
+  });
+
+  it("notes stale market data that any lot's early sale check reads, not only the first", async () => {
+    const prefixado = checkFor(prefixado2029, "-55.00");
+    const ipca = checkFor(ipca2035, "2140.00");
+    stubInvestments({
+      lots: [ipca2035, prefixado2029],
+      checks: [
+        { ...prefixado, market_data: { ...prefixado.market_data, indexes: [] } },
+        {
+          ...ipca,
+          market_data: {
+            ...ipca.market_data,
+            indexes: [{ index: "ipca", status: "stale", refreshed_at: "2026-11-01T12:00:00Z" }],
+          },
+        },
+      ],
+    });
+    renderAt("/investimentos");
+
+    expect(await screen.findByText("IPCA de 01/11.")).toBeInTheDocument();
+  });
+
+  it("keeps the lots listed when the early sale checks fail, and compares again", async () => {
+    let fail = true;
+    stubInvestments({
+      lots: [ipca2035],
+      routes: {
+        "GET /api/early-sale-checks": () =>
+          fail
+            ? problem(500, "Internal Server Error", "boom")
+            : Response.json({
+                date: "2026-11-06",
+                effect: "shorten_term",
+                checks: [checkFor(ipca2035, "2140.00")],
+              }),
+      },
+    });
+    renderAt("/investimentos");
+
+    const error = await screen.findByRole("alert");
+    expect(
+      within(error).getByText("Não foi possível comparar a venda das suas compras."),
+    ).toBeVisible();
+    expect(rowsOf(await comprasList())).toEqual([
+      "Tesouro IPCA+ 2035 R$ 18.204,10 Compra em 12/05/2024 · IPCA + 6,21%",
+    ]);
+
+    fail = false;
+    fireEvent.click(within(error).getByRole("button", { name: "Tentar novamente" }));
+
+    expect(await screen.findByText("Manter até o vencimento")).toBeVisible();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("says a lot waits on the IPCA instead of showing a value", async () => {
@@ -141,7 +196,6 @@ describe("Compras", () => {
     expect(
       within(empty).getByRole("heading", { name: "Nenhum título por aqui ainda" }),
     ).toBeVisible();
-    expect(screen.queryByRole("group", { name: "Investimentos" })).toBeNull();
 
     fireEvent.click(within(empty).getByRole("link", { name: "Importar planilha" }));
     expect(

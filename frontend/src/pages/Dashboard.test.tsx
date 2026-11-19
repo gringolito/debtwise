@@ -568,7 +568,7 @@ describe("the investments panel", () => {
     const investments = await region("Investimentos");
     expect(await within(investments).findByRole("link", { name: summary })).toHaveAttribute(
       "href",
-      "/investimentos/venda-antecipada",
+      "/investimentos",
     );
   });
 

@@ -15,8 +15,6 @@ import { Dashboard } from "@/pages/Dashboard";
 import { Decision } from "@/pages/Decision";
 import { ImportLots } from "@/pages/ImportLots";
 import { Investments } from "@/pages/Investments";
-import { EarlySales } from "@/pages/investments/EarlySales";
-import { Purchases } from "@/pages/investments/Purchases";
 import { LotDetail } from "@/pages/LotDetail";
 import { Market } from "@/pages/Market";
 import { Bonds } from "@/pages/market/Bonds";
@@ -66,17 +64,13 @@ const investmentsRoute = createRoute({
   component: Investments,
 });
 
-const purchasesRoute = createRoute({
-  getParentRoute: () => investmentsRoute,
-  path: "/",
-  component: Purchases,
-});
-
-const earlySaleRoute = createRoute({
-  getParentRoute: () => investmentsRoute,
-  path: "/venda-antecipada",
-  component: EarlySales,
-  validateSearch: validateEffectSearch,
+/** Venda antecipada was a section of Investimentos; its old address leads to Investimentos. */
+const oldEarlySaleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/investimentos/venda-antecipada",
+  beforeLoad: () => {
+    throw redirect({ to: "/investimentos", replace: true });
+  },
 });
 
 const lotRoute = createRoute({
@@ -166,11 +160,12 @@ const settingsRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   oldDecisionRoute,
+  oldEarlySaleRoute,
   shellRoute.addChildren([
     homeRoute,
     mortgageRoute,
     contractRoute,
-    investmentsRoute.addChildren([purchasesRoute, earlySaleRoute]),
+    investmentsRoute,
     lotRoute,
     importLotsRoute,
     decisionRoute,

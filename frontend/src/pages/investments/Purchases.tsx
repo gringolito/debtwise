@@ -10,33 +10,63 @@ import {
   GroupedListSection,
   GroupedListValue,
 } from "@/components/patterns/GroupedList";
+import { Button } from "@/components/ui/button";
 import type { EarlySaleCheck, LotList, LotValued } from "@/lib/api";
 import { bondLabel, bondRate } from "@/lib/bondKinds";
 import { today } from "@/lib/dashboard";
+import { isZero } from "@/lib/decisions";
 import { useEarlySaleChecks } from "@/lib/earlySaleQueries";
 import { formatDate, formatMoney } from "@/lib/format";
-import { checkOf, inMaturityOrder, leftOutOfMarketTotal, saleGain } from "@/lib/investments";
-import { useLots } from "@/lib/lotQueries";
+import {
+  checkOf,
+  inMaturityOrder,
+  leftOutOfMarketTotal,
+  marketDataOf,
+  saleGain,
+} from "@/lib/investments";
 import { SaleGainAmount } from "@/pages/investments/SaleGainAmount";
+import { StaleNote } from "@/pages/marketdata/StaleNote";
 
-/** SaleSummary says how many lots would earn more sold and prepaid, and links to the comparison. */
+/** SaleSummary says how many lots would earn more sold and prepaid. */
 function SaleSummary({ checks }: { checks: EarlySaleCheck[] }) {
   const selling = checks.filter((check) => check.verdict === "sell").length;
   if (selling === 0) return null;
   return (
-    <p className="flex flex-wrap items-center gap-x-2 text-callout text-muted-foreground">
-      <span>
-        {selling === 1
-          ? "1 compra valeria mais a pena vendida para amortizar."
-          : `${selling} compras valeriam mais a pena vendidas para amortizar.`}
-      </span>
-      <Link
-        to="/investimentos/venda-antecipada"
-        className="inline-flex items-center font-medium text-accent hover:underline max-sm:min-h-11"
-      >
-        Ver venda antecipada
-      </Link>
+    <p className="text-callout text-muted-foreground">
+      {selling === 1
+        ? "1 compra valeria mais a pena vendida para amortizar."
+        : `${selling} compras valeriam mais a pena vendidas para amortizar.`}
     </p>
+  );
+}
+
+const deductionList = new Intl.ListFormat("pt-BR", { type: "conjunction" });
+
+/**
+ * GrossToNet shows the gross beside what the taxes and the custody fee take off it, each named in
+ * words so no amount needs a minus sign.
+ */
+function GrossToNet({ amount }: { amount: NonNullable<LotList["market_value"]> }) {
+  const taken = [
+    [amount.income_tax, "de IR"],
+    [amount.iof, "de IOF"],
+    [amount.custody_fee, "de custódia"],
+  ]
+    .filter(([value]) => !isZero(value))
+    .map(([value, name]) => `${formatMoney(value)} ${name}`);
+  return (
+    <dl className="flex flex-wrap gap-x-10 gap-y-3 border-t border-border pt-4">
+      <div className="flex flex-col gap-0.5">
+        <dt className="text-footnote text-muted-foreground">Bruto</dt>{" "}
+        <dd className="text-callout tabular-nums">{formatMoney(amount.gross)}</dd>{" "}
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <dt className="text-footnote text-muted-foreground">Descontos</dt>{" "}
+        <dd className="text-callout tabular-nums">
+          {taken.length > 0 ? deductionList.format(taken) : "Nenhum"}
+        </dd>{" "}
+      </div>
+    </dl>
   );
 }
 
@@ -67,21 +97,7 @@ function MarketTotal({
           </p>
         )}
       </div>
-      {market_value && (
-        <dl className="flex flex-wrap gap-x-10 gap-y-2 border-t border-border pt-4">
-          {[
-            ["Bruto", formatMoney(market_value.gross)],
-            ["IR", `− ${formatMoney(market_value.income_tax)}`],
-            ["IOF", `− ${formatMoney(market_value.iof)}`],
-            ["Custódia", `− ${formatMoney(market_value.custody_fee)}`],
-          ].map(([name, amount]) => (
-            <div key={name} className="flex flex-col gap-0.5">
-              <dt className="text-footnote text-muted-foreground">{name}</dt>{" "}
-              <dd className="text-callout tabular-nums">{amount}</dd>{" "}
-            </div>
-          ))}
-        </dl>
-      )}
+      {market_value && <GrossToNet amount={market_value} />}
       {market_value && leftOut > 0 && (
         <p className="text-footnote text-muted-foreground">
           {leftOut === 1
@@ -170,24 +186,38 @@ function LotRow({ lot, check }: { lot: LotValued; check: EarlySaleCheck | undefi
   );
 }
 
-/** Purchases is Compras: the lots' total Market Value, then every lot in one list. */
-export function Purchases() {
-  const { data } = useLots();
+/**
+ * Purchases is the lots' total Market Value, then every lot in one list, each with what its early
+ * sale check favours.
+ */
+export function Purchases({ lots }: { lots: LotList }) {
   const checks = useEarlySaleChecks("shorten_term");
-  if (!data) return null;
   const listed = checks.data?.checks ?? [];
+  const marketData = marketDataOf(listed);
   return (
     <div className="flex flex-col gap-6">
-      <MarketTotal lots={data} checks={listed} />
+      <MarketTotal lots={lots} checks={listed} />
       <GroupedListSection aria-label="Compras">
         <GroupedList>
-          {inMaturityOrder(data.lots).map((lot) => (
+          {inMaturityOrder(lots.lots).map((lot) => (
             <LotRow key={lot.id} lot={lot} check={checkOf(listed, lot.id)} />
           ))}
         </GroupedList>
+        {checks.isError && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center gap-x-2 px-1 text-callout text-muted-foreground"
+          >
+            <span>Não foi possível comparar a venda das suas compras.</span>
+            <Button variant="link" size="inline" onClick={() => void checks.refetch()}>
+              Tentar novamente
+            </Button>
+          </div>
+        )}
         <p className="px-1 text-footnote text-muted-foreground">
           Cada compra em uma data diferente aparece separada.
         </p>
+        {marketData && <StaleNote marketData={marketData} />}
       </GroupedListSection>
     </div>
   );

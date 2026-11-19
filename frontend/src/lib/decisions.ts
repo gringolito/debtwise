@@ -66,16 +66,6 @@ export const earlySaleUnavailableReasons: Record<
   matured: "O título deste lote já venceu.",
 };
 
-/** earlySaleUnavailableLabels say in a few words, in a list row, why a check has no scenarios. */
-export const earlySaleUnavailableLabels: Record<
-  NonNullable<EarlySaleCheck["unavailable"]>,
-  string
-> = {
-  missing_ipca: "Aguardando o IPCA",
-  no_market_value: "Sem preço de venda",
-  matured: "Vencido",
-};
-
 /** verdictKey tells the verdicts of one decision apart: one per bond. */
 export function verdictKey({ type, maturity }: Verdict): string {
   return `${type} ${maturity}`;

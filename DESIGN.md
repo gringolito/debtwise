@@ -182,10 +182,9 @@ line, and its panel stacks instead. These eight sizes are the whole scale.
   inválido.".
 - Segmented controls for two- or three-way choices: a translucent grey track with the selected
   segment raised in white. A destination split into sections, such as Mercado (Índices,
-  Títulos) and Investimentos (Compras, Venda antecipada), switches them with a segmented control
-  at the top of the page. Large selectable cards with a small schematic chart for conceptual
-  choices like SAC vs Price; a selected card has the accent-mark border, the tint background and a
-  check in an accent-mark disc.
+  Títulos), switches them with a segmented control at the top of the page. Large selectable
+  cards with a small schematic chart for conceptual choices like SAC vs Price; a selected card has
+  the accent-mark border, the tint background and a check in an accent-mark disc.
 - Buttons: graphite primary; white on a graphite card; plain text buttons in secondary grey
   ("Cancelar", "Voltar", "Mudar valor"); links and text actions in the strong accent, except a
   destructive one beside them, such as "Excluir" next to "Editar", which is red text.
@@ -266,7 +265,7 @@ then:
     opening Financiamento.
   - Investimentos: "Valor de mercado líquido", the counts ("3 compras · 2 títulos"), a Footnote
     when lots without a market value were left out of the total, and the early sale summary
-    ("Venda antecipada · 1 vale a pena agora") opening Venda antecipada. With no lot, the panel
+    ("Venda antecipada · 1 vale a pena agora") opening Investimentos. With no lot, the panel
     holds the investments icon on an accent-tint tile, one Callout sentence and an accent
     "Adicionar compra".
 - "Próximos passos": set up the mortgage, record the bank's latest statement, add the Tesouro
@@ -378,20 +377,25 @@ holds from its date until the next one.
 
 ## Investimentos
 
-A lot is a "compra". Investimentos opens on Compras; once a lot is recorded, the page title carries
-"Importar planilha" as an accent text action and a graphite "Adicionar compra", and a segmented
-control switches Compras and Venda antecipada. With no lot, the page shows only its empty state.
+A lot is a "compra". Investimentos is one view: once a lot is recorded, the page title carries
+"Importar planilha" as an accent text action and a graphite "Adicionar compra". With no lot, the
+page shows only its empty state. The list says what each lot's early sale check favours; the full
+check lives in the lot's detail.
 
-- Compras: a white panel titled "Valor de mercado" with the net total as a hero figure, "Líquido, se
-  vender tudo hoje" in Callout under it and, when any lot would do better sold, one quiet Callout
-  line in secondary grey, "2 compras valeriam mais a pena vendidas para amortizar.", with an accent
-  "Ver venda antecipada"; then, under a hairline, the gross total, then IR, IOF and Custódia each
-  with what it takes off it. Then every lot in one inset grouped list, the bonds maturing first
-  leading. Each lot is a row with the bond's name in Headline and its net Market Value, or why it
-  has none, on the first line; "Compra em" its date with its rate in Callout grey under it; then, at
-  Callout size behind a glyph, what its early sale check favours: a rising arrow in green and
-  "Vender e amortizar vale mais a pena: R$ 1.314,60 de diferença a favor" with the amount green, or
-  a calendar clock in grey and "Manter até o vencimento".
+- The page: a white panel titled "Valor de mercado" with the net total as a hero figure, "Líquido,
+  se vender tudo hoje" in Callout under it and, when any lot would do better sold, one quiet Callout
+  line in secondary grey, "2 compras valeriam mais a pena vendidas para amortizar."; then, under a
+  hairline, "Bruto" with the gross total beside "Descontos" with each deduction named in
+  words ("R$ 2.304,22 de IR e R$ 111,40 de custódia"), zero ones left out, or "Nenhum". No amount
+  carries a minus sign; the label says which way it goes.
+  Then every lot in one inset grouped list, the bonds maturing first leading. Each lot is a row
+  with the bond's name in Headline and its net Market Value, or why it has none, on the first line;
+  "Compra em" its date with its rate in Callout grey under it; then, at Callout size behind a
+  glyph, what its early sale check favours: a rising arrow in green and "Vender e amortizar vale
+  mais a pena: R$ 1.314,60 de diferença a favor" with the amount green, or a calendar clock in grey
+  and "Manter até o vencimento". Under the list, a Footnote and, when the market data the checks
+  read is stale, the note saying so. When the checks fail, the rows stay without their hints and
+  one Callout line under the list says the comparison failed, with an accent "Tentar novamente".
 - A lot's detail: an accent "‹ Investimentos" back link, the bond's name as the Large Title with
   "Editar" and a red "Excluir", one line on the purchase, then the net Market, Accrual and Maturity
   Values side by side in one white panel. Under it, a white panel on the early sale with its own
@@ -400,12 +404,6 @@ control switches Compras and Venda antecipada. With no lot, the page shows only 
   assumes in Footnote. Then the Descontos table (gross, income tax, custody fee, IOF and net of each
   value) and the Cupons table for coupon bonds, each scrolling inside its panel on a phone, and the
   date of the values and any projection they read, centered in Footnote.
-- Venda antecipada: one sentence on what is compared beside the effect's segmented control, then
-  every lot in one inset grouped list, the lots most worth selling first. Each row says in words
-  which option is worth more and by how much: "Vender vale mais a pena" over "R$ 5.277,53 de
-  diferença a favor até 15/05/2045" with the amount in green, or "Manter vale mais a pena" with the
-  amount in the text colour, since holding is no loss. On a phone the outcome moves under the bond's
-  name.
 - Adicionar compra and Editar compra are sheets: the bond picked from those Tesouro Direto quotes
   ("Outro título" types any other), the purchase date, rate, unit price and quantity typed in
   place, a Footnote on where to find them, and a tinted "Valor investido" row with what the
