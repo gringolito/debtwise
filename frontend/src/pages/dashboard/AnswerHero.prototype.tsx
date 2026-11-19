@@ -1,7 +1,7 @@
 // PROTOTYPE: does Início's answer read as the page's main information, rather than an ad, once it
 // leaves the graphite card? Four variants on `/?variant=`: the current card, then three without a
 // card or black fill, set straight on the page's background. Throwaway; lives on its branch only.
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { useId } from "react";
 import investIllustration from "@/assets/answer-invest.webp";
 import prepayIllustration from "@/assets/answer-prepay.webp";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { advantageAmount, advantageShare, horizon, verdictHeadline } from "@/lib/yardstick";
 import { AnswerCard } from "@/pages/dashboard/AnswerCard";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
+import "./AnswerHero.prototype.css";
 
 export const ANSWER_VARIANTS: PrototypeVariant[] = [
   { key: "atual", name: "Card graphite atual" },
@@ -24,6 +25,28 @@ export const ANSWER_VARIANTS: PrototypeVariant[] = [
 ];
 
 const illustrations = { invest: investIllustration, prepay: prepayIllustration };
+
+/**
+ * The illustration inside a Liquid Glass app-icon tile: a squircle with a specular rim, a top-left
+ * sheen and a soft floor shadow. `?icone=claro` swaps the graphite glass for the frosted light one.
+ */
+function AnswerIcon({ side, className }: { side: keyof typeof illustrations; className?: string }) {
+  const search = useSearch({ strict: false }) as { icone?: unknown };
+  const light = search.icone === "claro";
+  return (
+    <div
+      aria-hidden="true"
+      className={cn("answer-icon", light ? "glass" : "glass-primary", className)}
+    >
+      <div className="answer-icon-floor" />
+      <img
+        src={illustrations[side]}
+        alt=""
+        className={cn("answer-icon-art", light ? "drop-shadow-sm" : "drop-shadow-glow")}
+      />
+    </div>
+  );
+}
 
 function useAnswer(decision: Decision) {
   const best = bestVerdict(decision.verdicts);
@@ -101,14 +124,7 @@ function Headline({ decision }: { decision: Decision }) {
           </p>
           <Actions best={best} valor={valor} className="mt-3" />
         </div>
-        {winner && (
-          <img
-            src={illustrations[winner]}
-            alt=""
-            aria-hidden="true"
-            className="hidden size-44 shrink-0 object-contain drop-shadow-glow sm:block"
-          />
-        )}
+        {winner && <AnswerIcon side={winner} className="hidden size-36 sm:block" />}
       </div>
       {best && <StaleNote marketData={best.market_data} />}
     </section>
@@ -173,14 +189,7 @@ function Centered({ decision }: { decision: Decision }) {
       aria-labelledby={titleId}
       className="flex flex-col items-center gap-3 border-b pt-2 pb-10 text-center"
     >
-      {winner && (
-        <img
-          src={illustrations[winner]}
-          alt=""
-          aria-hidden="true"
-          className="size-32 object-contain drop-shadow-glow"
-        />
-      )}
+      {winner && <AnswerIcon side={winner} className="mb-2 size-24" />}
       <Lead amount={amount} />
       <h2 id={titleId} className="max-w-160 text-large-title font-semibold text-balance">
         {best ? verdictHeadline(best) : "Amortizar ou investir? Veja a comparação."}

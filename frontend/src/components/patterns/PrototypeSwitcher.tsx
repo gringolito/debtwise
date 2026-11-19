@@ -15,13 +15,16 @@ export function usePrototypeVariant(variants: PrototypeVariant[]): string {
   return variants.some((variant) => variant.key === key) ? key : variants[0].key;
 }
 
-export function PrototypeSwitcher({
-  variants,
-  current,
-}: {
+interface PrototypeSwitcherProps {
   variants: PrototypeVariant[];
   current: string;
-}) {
+}
+
+export function PrototypeSwitcher(props: PrototypeSwitcherProps) {
+  return import.meta.env.DEV ? <Switcher {...props} /> : null;
+}
+
+function Switcher({ variants, current }: PrototypeSwitcherProps) {
   const navigate = useNavigate();
   const index = variants.findIndex((variant) => variant.key === current);
 
@@ -44,8 +47,6 @@ export function PrototypeSwitcher({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
-
-  if (!import.meta.env.DEV) return null;
 
   const variant = variants[index];
   return (
