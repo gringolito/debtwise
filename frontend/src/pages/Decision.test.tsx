@@ -613,6 +613,18 @@ describe("the bonds on the verdict panel", () => {
       ["Melhor título Tesouro Prefixado 2029 R$ 1.234,56 a mais", "false"],
       ["Tesouro IPCA+ 2032 R$ 250,30 a menos", "true"],
     ]);
+    const tabpanel = screen.getByRole("tabpanel", {
+      name: /^Tesouro IPCA\+ 2032 R\$\s250,30 a menos$/,
+    });
+    expect(
+      within(tabpanel).getByRole("heading", {
+        name: "Amortizar vale mais a pena que investir em Tesouro IPCA+ 2032",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { selected: true })).toHaveAttribute(
+      "aria-controls",
+      tabpanel.id,
+    );
     expect(rows(screen.getByRole("region", { name: "Detalhes" }))[0]).toEqual([
       "Taxa de hoje",
       "IPCA + 6,72%",
