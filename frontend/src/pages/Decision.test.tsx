@@ -192,6 +192,7 @@ function decisionOf(verdicts: Verdict[], input: Partial<Decision> = {}): Decisio
     amount: "10000.00",
     date: today(),
     effect: "shorten_term",
+    prepay_slack: false,
     verdicts,
     ...input,
   };
@@ -376,6 +377,59 @@ describe("the question as a sentence", () => {
       { amount: "10000", date: "2026-02-28", effect: "shorten_term" },
     ]);
   });
+
+  it("starts with the slack switch off on every visit and asks without prepay_slack", async () => {
+    const requests = await compare([ltnVerdict]);
+
+    await verdictPanel();
+    expect(
+      screen.getByRole("switch", { name: "Amortizar a folga da prestação todo mês" }),
+    ).not.toBeChecked();
+    expect(asked(requests)).toEqual([{ amount: "10000", effect: "shorten_term" }]);
+  });
+
+  it("sends prepay_slack true once the owner turns the switch on, and only when they compare", async () => {
+    const requests = stubDecisions(() =>
+      Response.json(decisionOf([ltnVerdict], { prepay_slack: true })),
+    );
+    renderAt("/comparar");
+    await sentence();
+    fill("Valor", "10000");
+
+    fireEvent.click(
+      screen.getByRole("switch", { name: "Amortizar a folga da prestação todo mês" }),
+    );
+
+    expect(screen.getByRole("switch")).toBeChecked();
+    expect(screen.getByRole("switch")).toHaveAccessibleDescription(
+      "Com a folga amortizada todo mês, reduzir o prazo ou a prestação dá quase no mesmo, mas exige a disciplina de fazer isso.",
+    );
+    expect(asked(requests)).toEqual([]);
+    fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
+
+    await verdictPanel();
+    expect(asked(requests)).toEqual([
+      { amount: "10000", effect: "shorten_term", prepay_slack: true },
+    ]);
+  });
+
+  it("keeps the switch out of the address and the storage, and off again on the next visit", async () => {
+    stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
+    const router = renderAt("/comparar");
+    await sentence();
+    fireEvent.click(screen.getByRole("switch"));
+
+    expect(screen.getByRole("switch")).toBeChecked();
+    expect(router.state.location.search).toEqual({});
+    expect(window.localStorage.length).toBe(0);
+    expect(window.sessionStorage.length).toBe(0);
+
+    await router.navigate({ to: "/mercado" });
+    await router.navigate({ to: "/comparar" });
+
+    await sentence();
+    expect(screen.getByRole("switch")).not.toBeChecked();
+  });
 });
 
 describe("the verdict panel", () => {
@@ -467,6 +521,33 @@ describe("the verdict panel", () => {
     ).toBeInTheDocument();
     expect(within(panel).getByText("As duas opções terminam iguais.")).toBeInTheDocument();
     expect(within(panel).queryByText(/ dos R\$ /)).toBeNull();
+  });
+
+  it("says what lowering the installment gives by the horizon, from the verdict's lowered installment", async () => {
+    await compare(
+      [
+        {
+          ...ltnVerdict,
+          lowered_installment: { charges_avoided: "12345.67", paid_less: "9876.54" },
+        },
+      ],
+      "10000",
+      { effect: "lower_installment" },
+    );
+
+    const panel = await verdictPanel();
+    expect(
+      within(panel).getByText(
+        "Até 01/01/2029, reduzir a prestação evita R$ 12.345,67 em juros, seguros e taxas, e você paga R$ 9.876,54 a menos em prestações.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing of lowering the installment when the verdict has no lowered installment", async () => {
+    await compare([ltnVerdict], "10000", { effect: "lower_installment" });
+
+    const panel = await verdictPanel();
+    expect(within(panel).queryByText(/reduzir a prestação evita/)).toBeNull();
   });
 
   it("reads what an option leaves the owner with, not a negative amount", async () => {

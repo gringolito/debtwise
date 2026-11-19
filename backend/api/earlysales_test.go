@@ -75,14 +75,21 @@ func earlySaleFlowOf(f decisionFlow) earlySaleFlow {
 // after the purchase, the 485.95 gain pays 20% of income tax after the 8.00 custody fee, 4,782.36
 // net. Held 364 days to maturity, the 600.00 gain pays 17.5% after the 9.97 custody fee, 4,886.77
 // net. Prepaying the sale leaves 10,217.64, which SAC spreads evenly over the 11 months it needs at
-// most 1,000.00 a month when the term is shortened, or over the 15 months left when the installment
-// is lowered; either way equal outflow prepays the rest of each 1,000.00. With no interest, holding
-// is better by the difference of the two net values, 104.41. 2.00 NTN-F maturing on 2027-01-01,
-// bought on 2026-07-02 for 1,000.00 each and so paid no coupon before maturity, sell at 1,025.12:
-// 2,037.91 net against 2,076.42 held, 38.51 better held. The checks with an advantage lead, lowest
-// first; after them, by purchase date, an LTN that matured on 2026-01-01, an LTN maturing on
-// 2028-01-01 that Tesouro Direto doesn't quote, and an NTN-B Principal whose VNA needs IBGE's index
-// number of June 2000, which this server never fetched.
+// most 1,000.00 a month when the term is shortened, 928.88 each as 10,217.64 over 11 is 928.876, or
+// over the 15 months left, 681.18 each, when the installment is lowered. The installment's slack is
+// ignored, so what either leaves below 1,000.00 is neither prepaid nor held: on the horizon,
+// 2027-01-01, the 2 installments of 2026-11-10 and 2026-12-10 leave 8,359.88 owed when shortened
+// (10,217.64 less 2 x 928.88) or 8,855.28 when lowered (less 2 x 681.18). Holding owes 13,000.00 and
+// nets 4,886.77, worth -8,113.23, so holding is better by 246.65 shortened, or 742.05 lowered.
+// 2.00 NTN-F maturing on 2027-01-01, bought on 2026-07-02 for 1,000.00 each and so paid no coupon
+// before maturity, sell at 1,025.12: 2,037.91 net against 2,076.42 held, which owes 13,000.00:
+// -10,923.58 held. The sale leaves 12,962.09 owed, 997.08 a month over the 13 months it needs when
+// shortened, which leaves 10,967.93 after the two installments, or 864.14 and 864.14 over the 15
+// months left when lowered, which leaves 11,233.81: holding is better by 44.35 shortened and 310.23
+// lowered. The checks
+// with an advantage lead, lowest first; after them, by purchase date, an LTN that matured on
+// 2026-01-01, an LTN maturing on 2028-01-01 that Tesouro Direto doesn't quote, and an NTN-B
+// Principal whose VNA needs IBGE's index number of June 2000, which this server never fetched.
 func TestEarlySaleChecksListEveryLotRankedByAdvantage(t *testing.T) {
 	t.Parallel()
 
@@ -94,18 +101,25 @@ func TestEarlySaleChecksListEveryLotRankedByAdvantage(t *testing.T) {
 	}
 
 	tests := []struct {
-		effect             string
-		november, december earlySaleFlow
+		effect                               string
+		november, december                   earlySaleFlow
+		balance, ltnAdvantage, ntnfAdvantage string
 	}{
 		{
-			effect:   "shorten_term",
-			november: sellInstallment("2026-11-10", 10, "928.88", "71.12", "9217.64", "-9217.64"),
-			december: sellInstallment("2026-12-10", 11, "921.76", "78.24", "8217.64", "-8217.64"),
+			effect:        "shorten_term",
+			november:      sellInstallment("2026-11-10", 10, "928.88", "0.00", "9288.76", "-9288.76"),
+			december:      sellInstallment("2026-12-10", 11, "928.88", "0.00", "8359.88", "-8359.88"),
+			balance:       "8359.88",
+			ltnAdvantage:  "246.65",
+			ntnfAdvantage: "44.35",
 		},
 		{
-			effect:   "lower_installment",
-			november: sellInstallment("2026-11-10", 10, "681.18", "318.82", "9217.64", "-9217.64"),
-			december: sellInstallment("2026-12-10", 11, "658.40", "341.60", "8217.64", "-8217.64"),
+			effect:        "lower_installment",
+			november:      sellInstallment("2026-11-10", 10, "681.18", "0.00", "9536.46", "-9536.46"),
+			december:      sellInstallment("2026-12-10", 11, "681.18", "0.00", "8855.28", "-8855.28"),
+			balance:       "8855.28",
+			ltnAdvantage:  "742.05",
+			ntnfAdvantage: "310.23",
 		},
 	}
 
@@ -142,8 +156,8 @@ func TestEarlySaleChecksListEveryLotRankedByAdvantage(t *testing.T) {
 			}
 
 			assert.Equal(t, []ranked{
-				{ntnf.ID, "", "hold", "38.51"},
-				{ltn.ID, "", "hold", "104.41"},
+				{ntnf.ID, "", "hold", tt.ntnfAdvantage},
+				{ltn.ID, "", "hold", tt.ltnAdvantage},
 				{matured.ID, "matured", "", ""},
 				{unquoted.ID, "no_market_value", "", ""},
 				{ntnbPrincipal.ID, "missing_ipca", "", ""},
@@ -163,7 +177,7 @@ func TestEarlySaleChecksListEveryLotRankedByAdvantage(t *testing.T) {
 			maturity := &decisionAmount{Gross: "5000.00", IOF: "0.00", IncomeTax: "103.26", CustodyFee: "9.97", Net: "4886.77", ProjectedBy: []projectedBy{}}
 			assert.Equal(t, earlySaleCheck{
 				Lot: ltn, Verdict: "hold", SellPrice: &bondPrice{Rate: "0.1347", UnitPrice: "977.19"},
-				MarketValue: sold, Advantage: "104.41",
+				MarketValue: sold, Advantage: tt.ltnAdvantage,
 				Hold: &earlySaleScenario{
 					NetWorth: "-8113.23", Cash: "0.00", OutstandingBalance: "13000.00", Bond: maturity,
 					CashFlows: []earlySaleFlow{
@@ -174,12 +188,12 @@ func TestEarlySaleChecksListEveryLotRankedByAdvantage(t *testing.T) {
 					},
 				},
 				Sell: &earlySaleScenario{
-					NetWorth: "-8217.64", Cash: "0.00", OutstandingBalance: "8217.64",
+					NetWorth: "-" + tt.balance, Cash: "0.00", OutstandingBalance: tt.balance,
 					CashFlows: []earlySaleFlow{
 						{decisionFlow{Date: "2026-10-28", Invested: "0.00", Prepaid: "4782.36", Held: "0.00", OutstandingBalance: "10217.64", NetWorth: "-10217.64"}, sold},
 						tt.november,
 						tt.december,
-						earlySaleFlowOf(decisionFlow{Date: "2027-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "8217.64", NetWorth: "-8217.64"}),
+						earlySaleFlowOf(decisionFlow{Date: "2027-01-01", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: tt.balance, NetWorth: "-" + tt.balance}),
 					},
 				},
 				ProjectedBy: []projectedBy{}, MarketData: none,
@@ -207,9 +221,14 @@ func ipcaStatuses(status marketDataStatus) []indexStatus {
 // from a VNA grown by the IPCA projected by its trailing 12 months, and its Maturity Value nets
 // 4,476.67. The interest-free mortgage, lent on 2011-01-10, owes 13,000.00. Sold at 2,250.00 each,
 // the 500.00 gain over the 4,000.00 paid pays 20% of income tax after 202 days, no custody fee being
-// charged before 2020: 4,400.00 net, which leaves 8,600.00, spread over the 9 months it needs. Held,
-// the coupon leaves 7,898.13 over the 8 months left. With no interest, holding is better by the
-// coupon and the Maturity Value less the sale, 178.54.
+// charged before 2020: 4,400.00 net, which leaves 8,600.00, spread over the 9 months it needs: 955.56
+// or 955.55 each, SAC rounding each balance over the months left to the centavo. The installment's
+// slack is ignored, so the 44.44 or so each leaves below 1,000.00 is not prepaid, nothing is held
+// after the mortgage is paid off on 2012-09-10, and selling is worth 0.00 on the horizon. Held, the
+// coupon is still prepaid on its date, leaving 7,898.13 over the 8 months left, 987.27 or 987.26 each
+// instead of the 1,000.00 that SAC levels, as 7,898.13 over 8 is 987.2663; the 6 of them that fall by
+// the Maturity Value's date leave 1,974.53 owed against the 4,476.67 it nets. With no interest,
+// holding is better by what that leaves, 2,502.14.
 func TestAnIPCAPlusLotIsCheckedAgainstAMortgageWithoutIPCA(t *testing.T) {
 	t.Parallel()
 
@@ -246,54 +265,49 @@ func TestAnIPCAPlusLotIsCheckedAgainstAMortgageWithoutIPCA(t *testing.T) {
 	sold := &decisionAmount{Gross: "4500.00", IOF: "0.00", IncomeTax: "100.00", CustodyFee: "0.00", Net: "4400.00", ProjectedBy: []projectedBy{}}
 	maturity := &decisionAmount{Gross: "4577.78", IOF: "0.00", IncomeTax: "101.11", CustodyFee: "0.00", Net: "4476.67", ProjectedBy: trailing}
 	coupon := &decisionAmount{Gross: "127.34", IOF: "0.00", IncomeTax: "25.47", CustodyFee: "0.00", Net: "101.87", ProjectedBy: trailing}
-	installment := func(day string, number int, amount, prepaid, held, balance, netWorth string) earlySaleFlow {
+	installment := func(day string, number int, amount, prepaid, balance, netWorth string) earlySaleFlow {
 		return earlySaleFlowOf(decisionFlow{
 			Date: day, Installment: &decisionInstallment{Number: number, Amount: amount},
-			Invested: "0.00", Prepaid: prepaid, Held: held, OutstandingBalance: balance, NetWorth: netWorth,
+			Invested: "0.00", Prepaid: prepaid, Held: "0.00", OutstandingBalance: balance, NetWorth: netWorth,
 		})
-	}
-	held := func(day, netWorth string) earlySaleFlow {
-		return earlySaleFlowOf(decisionFlow{Date: day, Invested: "0.00", Prepaid: "0.00", Held: "1000.00", OutstandingBalance: "0.00", NetWorth: netWorth})
 	}
 
 	assert.Equal(t, earlySale{Date: "2012-01-03", Effect: "shorten_term", Check: earlySaleCheck{
 		Lot: lot, Verdict: "hold", SellPrice: &bondPrice{Rate: "0.05", UnitPrice: "2250.00"},
-		MarketValue: sold, Advantage: "178.54",
+		MarketValue: sold, Advantage: "2502.14",
 		Hold: &earlySaleScenario{
-			NetWorth: "2578.54", Cash: "0.00", OutstandingBalance: "1898.13", Bond: maturity,
+			NetWorth: "2502.14", Cash: "0.00", OutstandingBalance: "1974.53", Bond: maturity,
 			CashFlows: []earlySaleFlow{
 				earlySaleFlowOf(decisionFlow{Date: "2012-01-03", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "13000.00", NetWorth: "-8633.90"}),
-				installment("2012-01-10", 12, "1000.00", "0.00", "0.00", "12000.00", "-7629.64"),
-				installment("2012-02-10", 13, "1000.00", "0.00", "0.00", "11000.00", "-6610.71"),
-				installment("2012-03-10", 14, "1000.00", "0.00", "0.00", "10000.00", "-5591.90"),
-				installment("2012-04-10", 15, "1000.00", "0.00", "0.00", "9000.00", "-4572.57"),
-				installment("2012-05-10", 16, "1000.00", "0.00", "0.00", "8000.00", "-3553.45"),
+				installment("2012-01-10", 12, "1000.00", "0.00", "12000.00", "-7629.64"),
+				installment("2012-02-10", 13, "1000.00", "0.00", "11000.00", "-6610.71"),
+				installment("2012-03-10", 14, "1000.00", "0.00", "10000.00", "-5591.90"),
+				installment("2012-04-10", 15, "1000.00", "0.00", "9000.00", "-4572.57"),
+				installment("2012-05-10", 16, "1000.00", "0.00", "8000.00", "-3553.45"),
 				earlySaleFlowOf(decisionFlow{Date: "2012-05-15", Invested: "0.00", Coupon: coupon, Prepaid: "101.87", Held: "0.00", OutstandingBalance: "7898.13", NetWorth: "-3550.23"}),
-				installment("2012-06-10", 17, "987.27", "12.73", "0.00", "6898.13", "-2523.11"),
-				installment("2012-07-10", 18, "985.45", "14.55", "0.00", "5898.13", "-1503.74"),
-				installment("2012-08-10", 19, "983.02", "16.98", "0.00", "4898.13", "-484.05"),
-				installment("2012-09-10", 20, "979.63", "20.37", "0.00", "3898.13", "535.64"),
-				installment("2012-10-10", 21, "974.53", "25.47", "0.00", "2898.13", "1555.31"),
-				installment("2012-11-10", 22, "966.04", "33.96", "0.00", "1898.13", "2575.32"),
-				earlySaleFlowOf(decisionFlow{Date: "2012-11-15", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "1898.13", NetWorth: "2578.54"}),
+				installment("2012-06-10", 17, "987.27", "0.00", "6910.86", "-2535.84"),
+				installment("2012-07-10", 18, "987.27", "0.00", "5923.59", "-1529.20"),
+				installment("2012-08-10", 19, "987.27", "0.00", "4936.32", "-522.24"),
+				installment("2012-09-10", 20, "987.26", "0.00", "3949.06", "484.71"),
+				installment("2012-10-10", 21, "987.27", "0.00", "2961.79", "1491.65"),
+				installment("2012-11-10", 22, "987.26", "0.00", "1974.53", "2498.92"),
+				earlySaleFlowOf(decisionFlow{Date: "2012-11-15", Invested: "0.00", Prepaid: "0.00", Held: "0.00", Redeemed: maturity, OutstandingBalance: "1974.53", NetWorth: "2502.14"}),
 			},
 		},
 		Sell: &earlySaleScenario{
-			NetWorth: "2400.00", Cash: "2400.00", OutstandingBalance: "0.00",
+			NetWorth: "0.00", Cash: "0.00", OutstandingBalance: "0.00",
 			CashFlows: []earlySaleFlow{
 				{decisionFlow{Date: "2012-01-03", Invested: "0.00", Prepaid: "4400.00", Held: "0.00", OutstandingBalance: "8600.00", NetWorth: "-8600.00"}, sold},
-				installment("2012-01-10", 12, "955.56", "44.44", "0.00", "7600.00", "-7600.00"),
-				installment("2012-02-10", 13, "950.00", "50.00", "0.00", "6600.00", "-6600.00"),
-				installment("2012-03-10", 14, "942.86", "57.14", "0.00", "5600.00", "-5600.00"),
-				installment("2012-04-10", 15, "933.33", "66.67", "0.00", "4600.00", "-4600.00"),
-				installment("2012-05-10", 16, "920.00", "80.00", "0.00", "3600.00", "-3600.00"),
-				installment("2012-06-10", 17, "900.00", "100.00", "0.00", "2600.00", "-2600.00"),
-				installment("2012-07-10", 18, "866.67", "133.33", "0.00", "1600.00", "-1600.00"),
-				installment("2012-08-10", 19, "800.00", "200.00", "0.00", "600.00", "-600.00"),
-				installment("2012-09-10", 20, "600.00", "0.00", "400.00", "0.00", "400.00"),
-				held("2012-10-10", "1400.00"),
-				held("2012-11-10", "2400.00"),
-				earlySaleFlowOf(decisionFlow{Date: "2012-11-15", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "0.00", NetWorth: "2400.00"}),
+				installment("2012-01-10", 12, "955.56", "0.00", "7644.44", "-7644.44"),
+				installment("2012-02-10", 13, "955.56", "0.00", "6688.88", "-6688.88"),
+				installment("2012-03-10", 14, "955.55", "0.00", "5733.33", "-5733.33"),
+				installment("2012-04-10", 15, "955.56", "0.00", "4777.77", "-4777.77"),
+				installment("2012-05-10", 16, "955.55", "0.00", "3822.22", "-3822.22"),
+				installment("2012-06-10", 17, "955.56", "0.00", "2866.66", "-2866.66"),
+				installment("2012-07-10", 18, "955.55", "0.00", "1911.11", "-1911.11"),
+				installment("2012-08-10", 19, "955.56", "0.00", "955.55", "-955.55"),
+				installment("2012-09-10", 20, "955.55", "0.00", "0.00", "0.00"),
+				earlySaleFlowOf(decisionFlow{Date: "2012-11-15", Invested: "0.00", Prepaid: "0.00", Held: "0.00", OutstandingBalance: "0.00", NetWorth: "0.00"}),
 			},
 		},
 		ProjectedBy: trailing,
@@ -301,10 +315,15 @@ func TestAnIPCAPlusLotIsCheckedAgainstAMortgageWithoutIPCA(t *testing.T) {
 	}}, got)
 }
 
-// A mortgage charging 40% a year costs far more than the 12.88% a year an LTN maturing on
-// 2029-01-01 still yields at its sell price, so selling the lot and prepaying wins. The check of a
-// single lot answers the same as its entry in the list.
-func TestAnEarlySaleCheckOfOneLotFavoursSellingWhenTheMortgageCostsMore(t *testing.T) {
+// A mortgage charging 40% a year doesn't make selling the lot win: an early sale check ignores the
+// installment's slack, so the interest that prepaying the sale would save is not counted. The 10.00
+// LTN maturing on 2029-01-01, bought on 2025-01-02, are held 1,460 days to maturity, 10,000.00
+// gross: the custody fee is 0.20% a year of it, 80.00, and income tax is 15% of the 3,500.00 gain
+// left after it, 513.00, which leaves 9,407.00 net. Either scenario owes nothing on the horizon, the
+// mortgage's last installment being on 2028-01-10, and the sale, which doesn't pay it off, holds
+// nothing: it is worth 0.00 and holding is better by the whole 9,407.00. The check of a single lot
+// answers the same as its entry in the list.
+func TestAnEarlySaleCheckOfOneLotDoesNotCountTheInterestSellingWouldSaveOnAMortgageChargingMore(t *testing.T) {
 	t.Parallel()
 
 	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
@@ -320,8 +339,14 @@ func TestAnEarlySaleCheckOfOneLotFavoursSellingWhenTheMortgageCostsMore(t *testi
 	assert.Equal(t, "2026-10-28", got.Date)
 	assert.Equal(t, "lower_installment", got.Effect)
 	assert.Equal(t, ltn, got.Check.Lot)
-	assert.Equal(t, "sell", got.Check.Verdict)
-	assert.True(t, strings.HasPrefix(got.Check.Advantage, "-"), got.Check.Advantage)
+	assert.Equal(t, "hold", got.Check.Verdict)
+	assert.Equal(t, "9407.00", got.Check.Advantage)
+	assert.Equal(t, "9407.00", got.Check.Hold.NetWorth)
+	assert.Equal(t, "0.00", got.Check.Hold.OutstandingBalance)
+	assert.Equal(t, &decisionAmount{Gross: "10000.00", IOF: "0.00", IncomeTax: "513.00", CustodyFee: "80.00", Net: "9407.00", ProjectedBy: []projectedBy{}}, got.Check.Hold.Bond)
+	assert.Equal(t, "0.00", got.Check.Sell.NetWorth)
+	assert.Equal(t, "0.00", got.Check.Sell.Cash)
+	assert.Equal(t, "0.00", got.Check.Sell.OutstandingBalance)
 
 	var list earlySaleCheckList
 	require.NoError(t, json.Unmarshal([]byte(do(t, s.handler, http.MethodGet, "/early-sale-checks?effect=lower_installment", "", http.StatusOK)), &list))

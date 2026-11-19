@@ -63,9 +63,15 @@ func TestALotComparesWithPrepayingOnItsPurchaseDate(t *testing.T) {
 	assert.Empty(t, recorded.Lots)
 }
 
-// A mortgage charging 40% a year costs far more than an LTN bought at 11% a year earns, so prepaying
-// the lot's amount invested on its purchase date wins, with either effect.
-func TestALotComparisonFavoursPrepayingWhenTheMortgageCostsMore(t *testing.T) {
+// A mortgage charging 40% a year doesn't make prepaying win a lot comparison: the lot's amount
+// invested on its purchase date is 6,500.00 and the lot is held 1,064 days to maturity, 10,000.00
+// gross, and a lot comparison ignores the installment's slack, so the interest that prepaying would
+// have saved is not counted. Either way, shortened or lowered, the installments pay the mortgage off
+// by 2028-01-10, before the horizon of 2029-01-01, and nothing is held, so prepaying is worth 0.00
+// there and investing is better by the lot's whole Maturity Value: the 58.30 custody fee is 0.20% a
+// year of 10,000.00 over 1,064 days, and income tax of 15% on the 3,500.00 gain left after it is
+// 516.26, which leaves 9,425.44 net, a gain of 2,925.44 over the 6,500.00.
+func TestALotComparisonDoesNotCountTheInterestPrepayingWouldSaveOnAMortgageChargingMore(t *testing.T) {
 	t.Parallel()
 
 	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
@@ -79,9 +85,14 @@ func TestALotComparisonFavoursPrepayingWhenTheMortgageCostsMore(t *testing.T) {
 	assert.Equal(t, "shorten_term", shortened.Effect)
 	assert.Equal(t, "lower_installment", lowered.Effect)
 
+	maturity := &decisionAmount{Gross: "10000.00", IOF: "0.00", IncomeTax: "516.26", CustodyFee: "58.30", Net: "9425.44", ProjectedBy: []projectedBy{}}
+
 	for _, c := range []lotComparison{shortened, lowered} {
 		assert.Empty(t, c.Unavailable)
-		assert.True(t, strings.HasPrefix(c.Advantage, "-"), c.Advantage)
+		assert.Equal(t, "6500.00", c.AmountInvested)
+		assert.Equal(t, maturity, c.Maturity)
+		assert.Equal(t, "2925.44", c.Gain)
+		assert.Equal(t, "9425.44", c.Advantage)
 	}
 }
 

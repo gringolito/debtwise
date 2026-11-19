@@ -16,43 +16,51 @@ import (
 )
 
 type decisionInput struct {
-	Amount string `json:"amount" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"The amount to prepay or invest, in reais, as a decimal string."`
-	Date   string `json:"date,omitempty" format:"date" required:"false" doc:"The date the amount is prepaid or invested on. Today when absent; it must not be before today."`
-	Effect string `json:"effect" enum:"shorten_term,lower_installment" doc:"What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it."`
+	Amount      string `json:"amount" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"The amount to prepay or invest, in reais, as a decimal string."`
+	Date        string `json:"date,omitempty" format:"date" required:"false" doc:"The date the amount is prepaid or invested on. Today when absent; it must not be before today."`
+	Effect      string `json:"effect" enum:"shorten_term,lower_installment" doc:"What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it."`
+	PrepaySlack bool   `json:"prepay_slack,omitempty" required:"false" doc:"Whether every month each scenario pays what the status quo's installment is, prepaying what its own installment leaves of it on its due date and holding what nothing is owed for, so both cost the same out of pocket. When false or absent, the slack goes to the owner's other spending and neither scenario holds nor prepays it."`
 }
 
 type decision struct {
-	Amount   string    `json:"amount" doc:"The amount prepaid or invested, in reais, as a decimal string."`
-	Date     string    `json:"date" format:"date" doc:"The date the amount is prepaid or invested on."`
-	Effect   string    `json:"effect" enum:"shorten_term,lower_installment" doc:"What each prepayment changes."`
-	Verdicts []verdict `json:"verdicts" nullable:"false" doc:"A verdict for every bond on offer that follows the mortgage's indexer and matures after the date, in the order of the bond catalogue."`
+	Amount      string    `json:"amount" doc:"The amount prepaid or invested, in reais, as a decimal string."`
+	Date        string    `json:"date" format:"date" doc:"The date the amount is prepaid or invested on."`
+	Effect      string    `json:"effect" enum:"shorten_term,lower_installment" doc:"What each prepayment changes."`
+	PrepaySlack bool      `json:"prepay_slack" doc:"Whether each scenario prepays its installment's slack every month."`
+	Verdicts    []verdict `json:"verdicts" nullable:"false" doc:"A verdict for every bond on offer that follows the mortgage's indexer and matures after the date, in the order of the bond catalogue."`
 }
 
 type verdict struct {
-	Type           bondType          `json:"type" doc:"The type of the bond compared."`
-	Maturity       string            `json:"maturity" format:"date" doc:"The date the bond matures: the horizon both scenarios are valued on."`
-	Rate           string            `json:"rate" doc:"The buy rate of the bond's quote, as a decimal fraction. For ntn_b_principal and ntn_b it is the real rate over IPCA."`
-	Unavailable    string            `json:"unavailable,omitempty" enum:"missing_ipca,amount_too_small" doc:"Why the verdict has no scenarios. missing_ipca: the IPCA the bond's VNA follows is not available yet; amount_too_small: the amount buys less than a hundredth of the bond. Absent when it has them."`
-	UnitPrice      string            `json:"unit_price,omitempty" doc:"The price of one bond at the rate for settlement on the date, in reais, as a decimal string. Absent when the verdict is unavailable for missing_ipca."`
-	Quantity       string            `json:"quantity,omitempty" doc:"How many bonds the amount buys, in hundredths of a bond, as a decimal string. Absent when the verdict is unavailable for missing_ipca."`
-	MinimumAmount  string            `json:"minimum_amount,omitempty" doc:"The smallest amount that buys a hundredth of the bond at the unit price, in reais, as a decimal string. Only when the verdict is unavailable for amount_too_small."`
-	Advantage      string            `json:"advantage,omitempty" doc:"The invest scenario's net worth on the horizon less the prepay scenario's, in reais, as a decimal string. Positive favours investing. Absent when the verdict is unavailable."`
-	AdvantageShare string            `json:"advantage_share,omitempty" doc:"How large the advantage is against the amount, without its sign: its absolute value divided by the amount, as a decimal fraction rounded to 4 places, such as 0.0814 for 8.14%. Absent when the verdict is unavailable."`
-	NearTie        *bool             `json:"near_tie,omitempty" doc:"Whether the advantage is so small against the amount that investing and prepaying give practically the same result. Absent when the verdict is unavailable."`
-	HorizonMonths  *int              `json:"horizon_months,omitempty" doc:"The whole calendar months from the date to the bond's maturity, counting a month only once its day of the month is reached. Absent when the verdict is unavailable."`
-	AvoidedCost    string            `json:"avoided_cost,omitempty" doc:"What prepaying the amount saves by the horizon beyond the amount itself, in reais, as a decimal string. Absent when the verdict is unavailable."`
-	BreakEvenRate  string            `json:"break_even_rate,omitempty" doc:"The yearly bond rate, as a decimal fraction of at most 10 places, at which buying the bond with the amount on the date gives an advantage within a centavo of zero; where the hundredths the amount buys make the advantage jump over zero, the lowest rate at which it is positive. For ntn_b_principal and ntn_b it is the real rate over IPCA, priced through the VNA of the date. Absent when the verdict is unavailable or has no_break_even."`
-	NoBreakEven    string            `json:"no_break_even,omitempty" enum:"below_range,above_range" doc:"Why no yearly bond rate from 0% to 100% is a break-even rate. below_range: investing wins even at 0%; above_range: prepaying wins even at 100%. Absent when the verdict has a break_even_rate or is unavailable."`
-	Invest         *scenario         `json:"invest,omitempty" doc:"Investing the amount in the bond. Absent when the verdict is unavailable."`
-	Prepay         *scenario         `json:"prepay,omitempty" doc:"Prepaying the amount. Absent when the verdict is unavailable."`
-	ProjectedBy    []projectedBy     `json:"projected_by" nullable:"false" doc:"The projection method of each index a projected value of the verdict comes from. Empty when it reads published values only."`
-	MarketData     verdictMarketData `json:"market_data" doc:"How fresh the market data the verdict reads is."`
+	Type               bondType            `json:"type" doc:"The type of the bond compared."`
+	Maturity           string              `json:"maturity" format:"date" doc:"The date the bond matures: the horizon both scenarios are valued on."`
+	Rate               string              `json:"rate" doc:"The buy rate of the bond's quote, as a decimal fraction. For ntn_b_principal and ntn_b it is the real rate over IPCA."`
+	Unavailable        string              `json:"unavailable,omitempty" enum:"missing_ipca,amount_too_small" doc:"Why the verdict has no scenarios. missing_ipca: the IPCA the bond's VNA follows is not available yet; amount_too_small: the amount buys less than a hundredth of the bond. Absent when it has them."`
+	UnitPrice          string              `json:"unit_price,omitempty" doc:"The price of one bond at the rate for settlement on the date, in reais, as a decimal string. Absent when the verdict is unavailable for missing_ipca."`
+	Quantity           string              `json:"quantity,omitempty" doc:"How many bonds the amount buys, in hundredths of a bond, as a decimal string. Absent when the verdict is unavailable for missing_ipca."`
+	MinimumAmount      string              `json:"minimum_amount,omitempty" doc:"The smallest amount that buys a hundredth of the bond at the unit price, in reais, as a decimal string. Only when the verdict is unavailable for amount_too_small."`
+	Advantage          string              `json:"advantage,omitempty" doc:"The invest scenario's net worth on the horizon less the prepay scenario's, in reais, as a decimal string. Positive favours investing. Absent when the verdict is unavailable."`
+	AdvantageShare     string              `json:"advantage_share,omitempty" doc:"How large the advantage is against the amount, without its sign: its absolute value divided by the amount, as a decimal fraction rounded to 4 places, such as 0.0814 for 8.14%. Absent when the verdict is unavailable."`
+	NearTie            *bool               `json:"near_tie,omitempty" doc:"Whether the advantage is so small against the amount that investing and prepaying give practically the same result. Absent when the verdict is unavailable."`
+	HorizonMonths      *int                `json:"horizon_months,omitempty" doc:"The whole calendar months from the date to the bond's maturity, counting a month only once its day of the month is reached. Absent when the verdict is unavailable."`
+	AvoidedCost        string              `json:"avoided_cost,omitempty" doc:"What prepaying the amount saves by the horizon beyond the amount itself, in reais, as a decimal string. Absent when the verdict is unavailable."`
+	LoweredInstallment *loweredInstallment `json:"lowered_installment,omitempty" doc:"What lowering the installment gives by the horizon. Only when the effect is lower_installment and prepay_slack is false, and the verdict is available."`
+	BreakEvenRate      string              `json:"break_even_rate,omitempty" doc:"The yearly bond rate, as a decimal fraction of at most 10 places, at which buying the bond with the amount on the date gives an advantage within a centavo of zero; where the hundredths the amount buys make the advantage jump over zero, the lowest rate at which it is positive. For ntn_b_principal and ntn_b it is the real rate over IPCA, priced through the VNA of the date. Absent when the verdict is unavailable or has no_break_even."`
+	NoBreakEven        string              `json:"no_break_even,omitempty" enum:"below_range,above_range" doc:"Why no yearly bond rate from 0% to 100% is a break-even rate. below_range: investing wins even at 0%; above_range: prepaying wins even at 100%. Absent when the verdict has a break_even_rate or is unavailable."`
+	Invest             *scenario           `json:"invest,omitempty" doc:"Investing the amount in the bond. Absent when the verdict is unavailable."`
+	Prepay             *scenario           `json:"prepay,omitempty" doc:"Prepaying the amount. Absent when the verdict is unavailable."`
+	ProjectedBy        []projectedBy       `json:"projected_by" nullable:"false" doc:"The projection method of each index a projected value of the verdict comes from. Empty when it reads published values only."`
+	MarketData         verdictMarketData   `json:"market_data" doc:"How fresh the market data the verdict reads is."`
 }
 
 type verdictMarketData struct {
 	Bonds   bondsStatus   `json:"bonds" doc:"How fresh the bond prices are."`
 	Focus   focusStatus   `json:"focus" doc:"How fresh the Focus expectations are."`
 	Indexes []indexStatus `json:"indexes" nullable:"false" doc:"How fresh each index the verdict reads is."`
+}
+
+type loweredInstallment struct {
+	ChargesAvoided string `json:"charges_avoided" doc:"The interest, insurance and fees the prepay scenario's installments due after the date and by the horizon charge less than the status quo's, in reais, as a decimal string."`
+	PaidLess       string `json:"paid_less" doc:"How much less in all those installments charge than the status quo's, in reais, as a decimal string."`
 }
 
 type scenario struct {
@@ -70,7 +78,7 @@ type cashFlow struct {
 	Sold               *lotAmount           `json:"sold,omitempty" doc:"The Market Value the lot was sold for that day, gross and net of IOF, income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only on the first day of an early sale check's sell scenario."`
 	Coupon             *lotAmount           `json:"coupon,omitempty" doc:"The bond's coupon paid that day, gross and net of income tax and the custody fee. Its net is prepaid that day, and held as far as nothing is owed. Only for an ntn_f or ntn_b, in a decision's invest scenario and an early sale check's hold scenario."`
 	Prepaid            string               `json:"prepaid" doc:"What the scenario's prepayments that day took off the outstanding balance, in reais, as a decimal string."`
-	Held               string               `json:"held" doc:"The cash set aside that day because nothing is owed to prepay with it, in reais, as a decimal string. Negative when the scenario's installment is above the status quo's."`
+	Held               string               `json:"held" doc:"The cash set aside that day because nothing is owed to prepay with it, in reais, as a decimal string. With prepay_slack, negative when the scenario's installment is above the status quo's."`
 	Redeemed           *lotAmount           `json:"redeemed,omitempty" doc:"The bond's Maturity Value paid that day. Only on the horizon of a decision's invest scenario and an early sale check's hold scenario."`
 	OutstandingBalance string               `json:"outstanding_balance" doc:"What is owed once the day's flows are done, in reais, as a decimal string."`
 	NetWorth           string               `json:"net_worth" doc:"The scenario's net worth once the day's flows are done: the cash held by then and the bond's net value, its accrual value before the horizon and its Maturity Value on it, less the outstanding balance, in reais, as a decimal string."`
@@ -94,7 +102,7 @@ func registerDecisions(humaAPI huma.API, services Services, now func() time.Time
 		Method:      http.MethodPost,
 		Path:        "/decisions",
 		Summary:     "Compare prepaying an amount with buying a bond",
-		Description: "Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.",
+		Description: "Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. Each scenario prepays its installment's slack every month only with prepay_slack. It is computed on request and not stored.",
 		Tags:        []string{"Decisions"},
 	}, func(ctx context.Context, in *struct{ Body decisionInput }) (*struct{ Body decision }, error) {
 		today := dateOf(now())
@@ -115,10 +123,11 @@ func registerDecisions(humaAPI huma.API, services Services, now func() time.Time
 		}
 
 		out := &struct{ Body decision }{Body: decision{
-			Amount:   d.Amount.String(),
-			Date:     d.Date.Format(time.DateOnly),
-			Effect:   string(d.Effect),
-			Verdicts: make([]verdict, 0, len(verdicts)),
+			Amount:      d.Amount.String(),
+			Date:        d.Date.Format(time.DateOnly),
+			Effect:      string(d.Effect),
+			PrepaySlack: d.PrepaySlack,
+			Verdicts:    make([]verdict, 0, len(verdicts)),
 		}}
 
 		for _, v := range verdicts {
@@ -153,7 +162,7 @@ func readDecision(ctx context.Context, mortgages Mortgages, body decisionInput, 
 		violations = append(violations, mortgage.Violation{Field: "date", Rule: mortgage.RuleBeforeToday})
 	}
 
-	d := comparison.Decision{Amount: prepayment.Amount, Date: prepayment.Date, Effect: prepayment.Effect}
+	d := comparison.Decision{Amount: prepayment.Amount, Date: prepayment.Date, Effect: prepayment.Effect, PrepaySlack: body.PrepaySlack}
 
 	return d, terms, violationsFailure(violations)
 }
@@ -229,6 +238,10 @@ func newVerdict(v comparison.Verdict, status marketdata.Status) verdict {
 	out.Advantage, out.AvoidedCost = v.Advantage.String(), v.AvoidedCost.String()
 	out.AdvantageShare, out.NearTie, out.HorizonMonths = v.AdvantageShare.String(), new(v.NearTie), new(v.HorizonMonths)
 	out.NoBreakEven = string(v.NoBreakEven)
+
+	if l := v.LoweredInstallment; l != nil {
+		out.LoweredInstallment = &loweredInstallment{ChargesAvoided: l.ChargesAvoided.String(), PaidLess: l.PaidLess.String()}
+	}
 
 	if v.NoBreakEven == "" {
 		out.BreakEvenRate = v.BreakEvenRate.String()

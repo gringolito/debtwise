@@ -21,10 +21,17 @@ export interface DecisionFormValues {
   amount: string;
   date: string;
   effect: PrepaymentEffect;
+  /** Whether every month's slack of the installment is prepaid; never saved, off on every visit. */
+  prepaySlack: boolean;
 }
 
 /** blankDecision leaves the date empty: the API reads that as its own today. */
-export const blankDecision: DecisionFormValues = { amount: "", date: "", effect: "shorten_term" };
+export const blankDecision: DecisionFormValues = {
+  amount: "",
+  date: "",
+  effect: "shorten_term",
+  prepaySlack: false,
+};
 
 /** decisionInput builds the request body. Text the API cannot read goes through for it to reject. */
 export function decisionInput(values: DecisionFormValues): DecisionInput {
@@ -32,6 +39,8 @@ export function decisionInput(values: DecisionFormValues): DecisionInput {
     amount: inputToMoney(values.amount),
     date: values.date === "" ? undefined : values.date,
     effect: values.effect,
+    // Absent is what the API reads as off, which keeps Início's request the same.
+    prepay_slack: values.prepaySlack || undefined,
   };
 }
 

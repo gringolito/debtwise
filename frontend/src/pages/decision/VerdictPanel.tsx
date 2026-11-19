@@ -120,6 +120,11 @@ function Ledger({ verdict, best, titleId, amount, date }: LedgerProps) {
             </p>
           </>
         )}
+        {verdict.lowered_installment && (
+          <p className="text-callout text-muted-foreground">
+            {`Até ${formatDate(verdict.maturity)}, reduzir a prestação evita ${formatMoney(verdict.lowered_installment.charges_avoided)} em juros, seguros e taxas, e você paga ${formatMoney(verdict.lowered_installment.paid_less)} a menos em prestações.`}
+          </p>
+        )}
       </div>
     </div>
   );

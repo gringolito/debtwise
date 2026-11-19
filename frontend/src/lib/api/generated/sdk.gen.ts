@@ -28,7 +28,7 @@ export const listBonds = <ThrowOnError extends boolean = false>(options?: Option
 /**
  * Compare prepaying an amount with buying a bond
  *
- * Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.
+ * Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. Each scenario prepays its installment's slack every month only with prepay_slack. It is computed on request and not stored.
  */
 export const decide = <ThrowOnError extends boolean = false>(options: Options<DecideData, ThrowOnError>) => (options.client ?? client).post<DecideResponses, DecideErrors, ThrowOnError>({
     url: '/decisions',
@@ -42,14 +42,14 @@ export const decide = <ThrowOnError extends boolean = false>(options: Options<De
 /**
  * Check every lot for an early sale
  *
- * Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.
+ * Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, valued on the bond's maturity. Neither scenario prepays its installment's slack.
  */
 export const checkEarlySales = <ThrowOnError extends boolean = false>(options: Options<CheckEarlySalesData, ThrowOnError>) => (options.client ?? client).get<CheckEarlySalesResponses, CheckEarlySalesErrors, ThrowOnError>({ url: '/early-sale-checks', ...options });
 
 /**
  * Check a lot for an early sale
  *
- * Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.
+ * Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, valued on the bond's maturity. Neither scenario prepays its installment's slack.
  */
 export const checkEarlySale = <ThrowOnError extends boolean = false>(options: Options<CheckEarlySaleData, ThrowOnError>) => (options.client ?? client).get<CheckEarlySaleResponses, CheckEarlySaleErrors, ThrowOnError>({ url: '/early-sale-checks/{id}', ...options });
 
@@ -119,7 +119,7 @@ export const addLot = <ThrowOnError extends boolean = false>(options: Options<Ad
 /**
  * Compare a lot with prepaying
  *
- * Compares buying the lot with prepaying its amount invested on its purchase date instead, under equal outflow, valued on the bond's maturity. The lot need not be recorded; it is computed on request and not stored.
+ * Compares buying the lot with prepaying its amount invested on its purchase date instead, valued on the bond's maturity. Neither scenario prepays its installment's slack. The lot need not be recorded; it is computed on request and not stored.
  */
 export const compareLot = <ThrowOnError extends boolean = false>(options: Options<CompareLotData, ThrowOnError>) => (options.client ?? client).post<CompareLotResponses, CompareLotErrors, ThrowOnError>({
     url: '/lots/comparison',

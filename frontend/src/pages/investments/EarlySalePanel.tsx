@@ -57,7 +57,7 @@ function Basis({ check }: { check: EarlySaleCheck }) {
   const { lot, sell_price: sellPrice } = check;
   return (
     <p className="text-footnote text-muted-foreground">
-      Comparação até {formatDate(lot.maturity)}, com a mesma saída de dinheiro todo mês.
+      Comparação até {formatDate(lot.maturity)}, sem amortizar a folga da prestação.
       {sellPrice &&
         ` O Tesouro Direto recompra hoje a ${bondRate(lot.type, sellPrice.rate)}, ${formatMoney(sellPrice.unit_price)} por título.`}
     </p>

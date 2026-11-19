@@ -70,7 +70,7 @@ export type CashFlow = {
      */
     date: string;
     /**
-     * The cash set aside that day because nothing is owed to prepay with it, in reais, as a decimal string. Negative when the scenario's installment is above the status quo's.
+     * The cash set aside that day because nothing is owed to prepay with it, in reais, as a decimal string. With prepay_slack, negative when the scenario's installment is above the status quo's.
      */
     held: string;
     /**
@@ -225,6 +225,10 @@ export type Decision = {
      */
     effect: 'shorten_term' | 'lower_installment';
     /**
+     * Whether each scenario prepays its installment's slack every month.
+     */
+    prepay_slack: boolean;
+    /**
      * A verdict for every bond on offer that follows the mortgage's indexer and matures after the date, in the order of the bond catalogue.
      */
     verdicts: Array<Verdict>;
@@ -243,6 +247,10 @@ export type DecisionInput = {
      * What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.
      */
     effect: 'shorten_term' | 'lower_installment';
+    /**
+     * Whether every month each scenario pays what the status quo's installment is, prepaying what its own installment leaves of it on its due date and holding what nothing is owed for, so both cost the same out of pocket. When false or absent, the slack goes to the owner's other spending and neither scenario holds nor prepays it.
+     */
+    prepay_slack?: boolean;
 };
 
 export type EarlySale = {
@@ -715,6 +723,17 @@ export type LotValues = {
      * The date the lot is valued on.
      */
     on: string;
+};
+
+export type LoweredInstallment = {
+    /**
+     * The interest, insurance and fees the prepay scenario's installments due after the date and by the horizon charge less than the status quo's, in reais, as a decimal string.
+     */
+    charges_avoided: string;
+    /**
+     * How much less in all those installments charge than the status quo's, in reais, as a decimal string.
+     */
+    paid_less: string;
 };
 
 export type MarketDataStatus = {
@@ -1247,6 +1266,10 @@ export type Verdict = {
      * Investing the amount in the bond. Absent when the verdict is unavailable.
      */
     invest?: Scenario;
+    /**
+     * What lowering the installment gives by the horizon. Only when the effect is lower_installment and prepay_slack is false, and the verdict is available.
+     */
+    lowered_installment?: LoweredInstallment;
     /**
      * How fresh the market data the verdict reads is.
      */
