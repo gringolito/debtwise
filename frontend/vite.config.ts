@@ -21,6 +21,9 @@ export default defineConfig({
     // Dates are shown in the browser's time zone, so tests pin one.
     env: { TZ: "UTC" },
     setupFiles: "./src/setupTests.ts",
+    // Setting reporters turns off the github-actions one Vitest adds in CI, so it is listed here.
+    reporters: process.env.GITHUB_ACTIONS ? ["default", "github-actions", "junit"] : ["default"],
+    outputFile: { junit: "reports/junit.xml" },
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary"],

@@ -1,4 +1,5 @@
 bin/
 cover.out
+test-report.json
 *.db
 *.db-*
