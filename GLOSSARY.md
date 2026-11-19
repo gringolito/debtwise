@@ -214,6 +214,14 @@ cash that frees up going to the mortgage. It spares a comparison from guessing w
 would earn elsewhere.
 _Avoid_: Same budget (doesn't say where freed cash goes)
 
+**Slack** (folga):
+The difference in a month between the status quo's installment and a compared scenario's, the whole
+installment once that scenario's mortgage is paid off, and negative when its installment is the
+larger. Prepaying it every month is what makes shortening the term and lowering the installment end
+up alike, and it takes the discipline of doing so.
+_Avoid_: Freed cash (also covers coupons and amounts held because nothing is owed), sobra
+(informal, with no fixed meaning)
+
 **Advantage**:
 How much better off the owner is on the horizon by investing instead of prepaying, in money. A
 positive advantage favours investing, a negative one prepaying.

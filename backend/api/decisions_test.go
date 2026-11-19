@@ -72,32 +72,39 @@ type verdictMarketData struct {
 	Indexes []indexStatus `json:"indexes"`
 }
 
+type decisionLoweredInstallment struct {
+	ChargesAvoided string `json:"charges_avoided"`
+	PaidLess       string `json:"paid_less"`
+}
+
 type decisionVerdict struct {
-	Type           string            `json:"type"`
-	Maturity       string            `json:"maturity"`
-	Rate           string            `json:"rate"`
-	Unavailable    string            `json:"unavailable"`
-	UnitPrice      string            `json:"unit_price"`
-	MinimumAmount  string            `json:"minimum_amount"`
-	Quantity       string            `json:"quantity"`
-	Advantage      string            `json:"advantage"`
-	AdvantageShare string            `json:"advantage_share"`
-	NearTie        *bool             `json:"near_tie"`
-	HorizonMonths  *int              `json:"horizon_months"`
-	AvoidedCost    string            `json:"avoided_cost"`
-	BreakEvenRate  string            `json:"break_even_rate"`
-	NoBreakEven    string            `json:"no_break_even"`
-	Invest         *decisionScenario `json:"invest"`
-	Prepay         *decisionScenario `json:"prepay"`
-	ProjectedBy    []projectedBy     `json:"projected_by"`
-	MarketData     verdictMarketData `json:"market_data"`
+	Type               string                      `json:"type"`
+	Maturity           string                      `json:"maturity"`
+	Rate               string                      `json:"rate"`
+	Unavailable        string                      `json:"unavailable"`
+	UnitPrice          string                      `json:"unit_price"`
+	MinimumAmount      string                      `json:"minimum_amount"`
+	Quantity           string                      `json:"quantity"`
+	Advantage          string                      `json:"advantage"`
+	AdvantageShare     string                      `json:"advantage_share"`
+	NearTie            *bool                       `json:"near_tie"`
+	HorizonMonths      *int                        `json:"horizon_months"`
+	AvoidedCost        string                      `json:"avoided_cost"`
+	LoweredInstallment *decisionLoweredInstallment `json:"lowered_installment"`
+	BreakEvenRate      string                      `json:"break_even_rate"`
+	NoBreakEven        string                      `json:"no_break_even"`
+	Invest             *decisionScenario           `json:"invest"`
+	Prepay             *decisionScenario           `json:"prepay"`
+	ProjectedBy        []projectedBy               `json:"projected_by"`
+	MarketData         verdictMarketData           `json:"market_data"`
 }
 
 type decisionResult struct {
-	Amount   string            `json:"amount"`
-	Date     string            `json:"date"`
-	Effect   string            `json:"effect"`
-	Verdicts []decisionVerdict `json:"verdicts"`
+	Amount      string            `json:"amount"`
+	Date        string            `json:"date"`
+	Effect      string            `json:"effect"`
+	PrepaySlack bool              `json:"prepay_slack"`
+	Verdicts    []decisionVerdict `json:"verdicts"`
 }
 
 // installmentFlow is a cash flow on an installment's due date.
@@ -148,22 +155,24 @@ func (s server) decide(t *testing.T, body string) decisionResult {
 // at 0.20% a year and 217.04 of income tax at 15% on the gain: 6,224.74. The figures are worked out
 // in Python's decimal module.
 //
-// Prepaying shortens the mortgage by 5 months, so the 5,000.00 it would have paid from 2027-09-10
-// to 2028-01-10 is held. Investing leaves the mortgage unchanged and holds 5.15 from the start.
-// With no interest, prepaying avoids nothing, and the advantage is the bond's net gain.
+// With the slack prepaid, prepaying shortens the mortgage by 5 months, so the 5,000.00 it would have
+// paid from 2027-09-10 to 2028-01-10 is held. Investing leaves the mortgage unchanged and holds 5.15
+// from the start. With no interest, prepaying avoids nothing, and the advantage is the bond's net
+// gain.
 func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	t.Parallel()
 
 	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
 	do(t, s.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
 
-	got := s.decide(t, `{"amount": "5000.00", "effect": "shorten_term"}`)
+	got := s.decide(t, `{"amount": "5000.00", "effect": "shorten_term", "prepay_slack": true}`)
 	status := s.status(t)
 
 	require.Len(t, got.Verdicts, 2)
 	assert.Equal(t, "5000.00", got.Amount)
 	assert.Equal(t, "2026-10-28", got.Date, "today by default")
 	assert.Equal(t, "shorten_term", got.Effect)
+	assert.True(t, got.PrepaySlack)
 
 	assert.Equal(t, "ntn_f", got.Verdicts[1].Type)
 
@@ -176,6 +185,7 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	assert.Equal(t, "6.47", v.Quantity)
 	assert.Equal(t, "1229.89", v.Advantage)
 	assert.Equal(t, "0.00", v.AvoidedCost)
+	assert.Nil(t, v.LoweredInstallment)
 	assert.Equal(t, []projectedBy{}, v.ProjectedBy)
 	assert.Equal(t, verdictMarketData{Bonds: status.Bonds, Focus: status.Focus, Indexes: []indexStatus{}}, v.MarketData)
 
@@ -263,48 +273,147 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	}, worths)
 }
 
+// Without prepay_slack, the 5,000.00 prepaid on the interest-free mortgage above, here with a 0.1%
+// MIP on the balance, leaves 10,000.00, and each scenario pays only its own installments.
+// Shortening the term pays it off at 1,000.00 a month by 2027-08-10, charging 10.00 down to 1.00 of
+// MIP, 55.00. Lowering the installment spreads it over the 15 months left, each amortizing what is
+// owed over the months left, to the centavo: its MIP of 10.00, 9.33, 8.67, 8.00, 7.33, 6.67, 6.00,
+// 5.33, 4.67, 4.00, 3.33, 2.67, 2.00, 1.33 and 0.67 adds up to 80.00. The status quo's 15
+// installments charge 15.00 down to 1.00, 120.00, so prepaying avoids 65.00 or 40.00. Nothing is
+// held, so prepaying ends with nothing, while investing still ends with the bond, 6,229.89 ahead.
+// Only the lowered installment says what it gives: 40.00 of insurance avoided, and installments
+// that charge 15,120.00 − 10,080.00 = 5,040.00 less.
+func TestADecisionIgnoresTheSlackUnlessAskedToPrepayIt(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		effect  string
+		paidTo  string
+		avoided string
+		lowered *decisionLoweredInstallment
+	}{
+		{effect: "shorten_term", paidTo: "2027-08-10", avoided: "65.00"},
+		{
+			effect: "lower_installment", paidTo: "2028-01-10", avoided: "40.00",
+			lowered: &decisionLoweredInstallment{ChargesAvoided: "40.00", PaidLess: "5040.00"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.effect, func(t *testing.T) {
+			t.Parallel()
+
+			s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
+
+			var terms map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal([]byte(fmt.Sprintf(interestFreeMortgage, "none")), &terms))
+			terms["mip_rates"] = json.RawMessage(`[{"effective_from": "2026-01-10", "rate": "0.001"}]`)
+			body, err := json.Marshal(terms)
+			require.NoError(t, err)
+			do(t, s.handler, http.MethodPut, "/mortgage", string(body), http.StatusOK)
+
+			got := s.decide(t, fmt.Sprintf(`{"amount": "5000.00", "effect": %q}`, tt.effect))
+			assert.False(t, got.PrepaySlack)
+
+			// Both bonds mature after the mortgage ends, so the prepay scenario, and with it the
+			// avoided cost and what lowering the installment gives, is the same for each.
+			type slackOff struct {
+				bond, avoided string
+				lowered       *decisionLoweredInstallment
+			}
+
+			verdicts := make([]slackOff, 0, len(got.Verdicts))
+			for _, v := range got.Verdicts {
+				verdicts = append(verdicts, slackOff{v.Type, v.AvoidedCost, v.LoweredInstallment})
+			}
+
+			assert.Equal(t, []slackOff{{"ltn", tt.avoided, tt.lowered}, {"ntn_f", tt.avoided, tt.lowered}}, verdicts)
+			require.Len(t, got.Verdicts, 2)
+
+			v := got.Verdicts[0]
+			assert.Equal(t, "6229.89", v.Advantage)
+
+			require.NotNil(t, v.Prepay)
+			assert.Equal(t, []string{"0.00", "0.00", "0.00"}, []string{v.Prepay.NetWorth, v.Prepay.Cash, v.Prepay.OutstandingBalance})
+
+			flows := v.Prepay.CashFlows
+			require.GreaterOrEqual(t, len(flows), 2)
+			assert.Equal(t, tt.paidTo, flows[len(flows)-2].Date)
+			assert.Equal(t, "2029-01-01", flows[len(flows)-1].Date)
+
+			for _, f := range flows[1:] {
+				assert.Equal(t, []string{"0.00", "0.00"}, []string{f.Prepaid, f.Held}, f.Date)
+			}
+		})
+	}
+}
+
 // Quoted back as the LTN's buy rate, the Break-even Rate the API answers leaves investing and
-// prepaying within a centavo of each other on the horizon.
+// prepaying within a centavo of each other on the horizon, whether the slack is prepaid or not.
 func TestABreakEvenRateQuotedBackGivesAnAdvantageOfZero(t *testing.T) {
 	t.Parallel()
 
-	mortgage := fmt.Sprintf(interestFreeMortgage, "none")
-	decision := `{"amount": "5000.00", "effect": "shorten_term"}`
-	today := onDay(date(2026, time.October, 28))
+	tests := []struct {
+		name, mortgage, decision string
+	}{
+		{
+			name:     "slack prepaid",
+			mortgage: fmt.Sprintf(interestFreeMortgage, "none"),
+			decision: `{"amount": "5000.00", "effect": "shorten_term", "prepay_slack": true}`,
+		},
+		{
+			name:     "slack ignored",
+			mortgage: expensiveLongMortgage(),
+			decision: `{"amount": "5000.00", "effect": "lower_installment"}`,
+		},
+	}
 
-	s := newServer(t, sgsWithRows(nil), quotingRadar(), today)
-	do(t, s.handler, http.MethodPut, "/mortgage", mortgage, http.StatusOK)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	got := s.decide(t, decision)
-	require.NotEmpty(t, got.Verdicts)
+			today := onDay(date(2026, time.October, 28))
 
-	v := got.Verdicts[0]
-	require.Equal(t, "ltn", v.Type)
-	require.Empty(t, v.NoBreakEven)
+			s := newServer(t, sgsWithRows(nil), quotingRadar(), today)
+			do(t, s.handler, http.MethodPut, "/mortgage", tt.mortgage, http.StatusOK)
 
-	breakEven := decimal.MustParse(v.BreakEvenRate)
-	assert.Positive(t, breakEven.Cmp(decimal.MustParse("0")), "a bond at 0% loses its custody fee")
-	assert.Negative(t, breakEven.Cmp(decimal.MustParse(v.Rate)), "the LTN's buy rate favours investing")
+			got := s.decide(t, tt.decision)
 
-	ltn := radarBonds()[1]
-	require.Equal(t, ltn2029, ltn.Name)
-	ltn.InvestmentRate = &breakEven
-	quoted := radarWithBonds([]string{ltn2029}, ltn)
-	fedBack := newServer(t, sgsWithRows(nil), quoted, today)
-	do(t, fedBack.handler, http.MethodPut, "/mortgage", mortgage, http.StatusOK)
+			types := make([]string, 0, len(got.Verdicts))
+			for _, v := range got.Verdicts {
+				types = append(types, v.Type)
+			}
 
-	again := fedBack.decide(t, decision)
-	require.Len(t, again.Verdicts, 1)
-	assert.Equal(t, v.BreakEvenRate, again.Verdicts[0].Rate)
+			require.Equal(t, []string{"ltn", "ntn_f"}, types)
 
-	advantage := decimal.MustParse(again.Verdicts[0].Advantage)
-	assert.LessOrEqual(t, advantage.Cmp(decimal.MustParse("0.01")), 0, advantage.String())
-	assert.GreaterOrEqual(t, advantage.Cmp(decimal.MustParse("-0.01")), 0, advantage.String())
+			v := got.Verdicts[0]
+			require.Empty(t, v.NoBreakEven)
+
+			breakEven := decimal.MustParse(v.BreakEvenRate)
+			assert.Positive(t, breakEven.Cmp(decimal.MustParse("0")), "a bond at 0% loses its custody fee")
+			assert.Negative(t, breakEven.Cmp(decimal.MustParse(v.Rate)), "the LTN's buy rate favours investing")
+
+			ltn := radarBonds()[1]
+			require.Equal(t, ltn2029, ltn.Name)
+			ltn.InvestmentRate = &breakEven
+			quoted := radarWithBonds([]string{ltn2029}, ltn)
+			fedBack := newServer(t, sgsWithRows(nil), quoted, today)
+			do(t, fedBack.handler, http.MethodPut, "/mortgage", tt.mortgage, http.StatusOK)
+
+			again := fedBack.decide(t, tt.decision)
+			require.Len(t, again.Verdicts, 1)
+			assert.Equal(t, v.BreakEvenRate, again.Verdicts[0].Rate)
+
+			advantage := decimal.MustParse(again.Verdicts[0].Advantage)
+			assert.LessOrEqual(t, advantage.Cmp(decimal.MustParse("0.01")), 0, advantage.String())
+			assert.GreaterOrEqual(t, advantage.Cmp(decimal.MustParse("-0.01")), 0, advantage.String())
+		})
+	}
 }
 
-// A mortgage at 900% a year costs more by 2029 than the LTN maturing then would pay at 100% a year,
-// so no rate makes it come out even. The NTN-F, held to 2037, compounds for years after the
-// mortgage is paid off in 2028, so some rate does.
+// With the slack prepaid, a mortgage at 900% a year costs more by 2029 than the LTN maturing then
+// would pay at 100% a year, so no rate makes it come out even. The NTN-F, held to 2037, compounds
+// for years after the mortgage is paid off in 2028, so some rate does.
 func TestAVerdictWithoutABreakEvenRateSaysWhy(t *testing.T) {
 	t.Parallel()
 
@@ -317,7 +426,7 @@ func TestAVerdictWithoutABreakEvenRateSaysWhy(t *testing.T) {
 	require.NoError(t, err)
 	do(t, s.handler, http.MethodPut, "/mortgage", string(body), http.StatusOK)
 
-	got := s.decide(t, `{"amount": "5000.00", "effect": "shorten_term"}`)
+	got := s.decide(t, `{"amount": "5000.00", "effect": "shorten_term", "prepay_slack": true}`)
 
 	require.Len(t, got.Verdicts, 2)
 
@@ -331,7 +440,7 @@ func TestAVerdictWithoutABreakEvenRateSaysWhy(t *testing.T) {
 // The NTN-F on offer costs 880.904015 at 12.88% on 2026-10-28, so 5,000.00 buys 5.67 of them for
 // 4,994.73. Each coupon of 276.75 is taxed on its yield only: the first, on 2027-01-01, pays just
 // 23.62 of income tax, as most of it returns the interest the price paid the seller for. Its net is
-// prepaid that day, and equal outflow prepays what the lower installments leave of the 1,000.00.
+// prepaid that day, and with prepay_slack what the lower installments leave of the 1,000.00 is too.
 // Once the mortgage is paid off on 2028-01-10, every later coupon is held. The figures are worked
 // out in Python's decimal module over ANBIMA's holiday list.
 func TestAnNTNFVerdictListsEachCouponItPrepays(t *testing.T) {
@@ -340,7 +449,7 @@ func TestAnNTNFVerdictListsEachCouponItPrepays(t *testing.T) {
 	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
 	do(t, s.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
 
-	got := s.decide(t, `{"amount": "5000.00", "effect": "shorten_term"}`)
+	got := s.decide(t, `{"amount": "5000.00", "effect": "shorten_term", "prepay_slack": true}`)
 	require.Len(t, got.Verdicts, 2)
 
 	v := got.Verdicts[1]

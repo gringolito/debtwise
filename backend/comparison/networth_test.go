@@ -51,10 +51,10 @@ func accruedNetWorths(t *testing.T, s comparison.Scenario, lot bonds.Lot) []stri
 	return out
 }
 
-// Prepaying 5,000.00 of the 12,000.00 owed on 2025-01-10 leaves 7,000.00 owed, and the net worth
-// climbs by the 1,000.00 each installment pays off until the mortgage ends on 2025-08-10; from then
-// on the 1,000.00 the owner would still have paid each month is held, up to 5,000.00 on the
-// horizon, which is the scenario's net worth.
+// With the slack prepaid, prepaying 5,000.00 of the 12,000.00 owed on 2025-01-10 leaves 7,000.00
+// owed, and the net worth climbs by the 1,000.00 each installment pays off until the mortgage ends
+// on 2025-08-10; from then on the 1,000.00 the owner would still have paid each month is held, up to
+// 5,000.00 on the horizon, which is the scenario's net worth.
 func TestAPrepayScenarioHasANetWorthOnEachDate(t *testing.T) {
 	t.Parallel()
 
@@ -65,7 +65,7 @@ func TestAPrepayScenarioHasANetWorthOnEachDate(t *testing.T) {
 			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
 			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
 		}}},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm},
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm, PrepaySlack: true},
 		decided,
 	)
 	require.NoError(t, err)
@@ -78,11 +78,11 @@ func TestAPrepayScenarioHasANetWorthOnEachDate(t *testing.T) {
 	assert.Equal(t, "5000.00", verdicts[0].Prepay.NetWorth.String())
 }
 
-// 5,000.00 on 2025-01-10 buys 5.14 NTN-F maturing on 2027-01-01 at 12% a year, 970.884128 each, for
-// 4,990.34. Right after buying, the 9.66 held and the bond at its cost leave the owner 7,000.00
-// below the 12,000.00 owed, as prepaying does. Until the horizon the bond is worth its Accrual that
-// day, net of its taxes and fee, and on the horizon its Maturity Value; the last flow's net worth is
-// the scenario's.
+// With the slack prepaid, 5,000.00 on 2025-01-10 buys 5.14 NTN-F maturing on 2027-01-01 at 12% a
+// year, 970.884128 each, for 4,990.34. Right after buying, the 9.66 held and the bond at its cost
+// leave the owner 7,000.00 below the 12,000.00 owed, as prepaying does. Until the horizon the bond
+// is worth its Accrual that day, net of its taxes and fee, and on the horizon its Maturity Value;
+// the last flow's net worth is the scenario's.
 func TestAnInvestScenarioValuesTheBondAtItsAccrualUntilTheHorizon(t *testing.T) {
 	t.Parallel()
 
@@ -97,7 +97,7 @@ func TestAnInvestScenarioValuesTheBondAtItsAccrualUntilTheHorizon(t *testing.T) 
 			}},
 			Taxes: lotTaxes(t),
 		},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm},
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm, PrepaySlack: true},
 		decided,
 	)
 	require.NoError(t, err)
@@ -147,8 +147,11 @@ func TestTheLastFlowsNetWorthIsTheScenariosNetWorth(t *testing.T) {
 }
 
 // Selling the lot on 2025-01-10 prepays its 4,404.89 net Market Value, which leaves 7,595.11 owed
-// and no bond. Holding it keeps the 12,000.00 owed and the bond, worth its Accrual that day until
-// the horizon; the last flows' net worths are the scenarios'.
+// and no bond. Shortening the term spreads it over the fewest months whose installment fits in the
+// 1,000.00 one, 8 of 949.39 or 949.38, and the net worth climbs by each until the mortgage ends on
+// 2025-09-10; with the slack ignored nothing is held after. Holding the lot keeps the 12,000.00 owed
+// and the bond, worth its Accrual that day until the horizon; the last flows' net worths are the
+// scenarios'.
 func TestAnEarlySaleCheckHasANetWorthOnEachDateOfBothScenarios(t *testing.T) {
 	t.Parallel()
 
@@ -169,11 +172,12 @@ func TestAnEarlySaleCheckHasANetWorthOnEachDateOfBothScenarios(t *testing.T) {
 
 	c := checks[0]
 
+	sell := netWorths(c.Sell)
 	assert.Equal(t, []string{
-		"-7595.11", "-6595.11", "-5595.11", "-4595.11", "-3595.11", "-2595.11", "-1595.11", "-595.11",
-		"404.89", "1404.89", "2404.89", "3404.89", "4404.89", "4404.89",
-	}, netWorths(c.Sell))
-	assert.Equal(t, c.Sell.NetWorth.String(), netWorths(c.Sell)[13])
+		"-7595.11", "-6645.72", "-5696.33", "-4746.94", "-3797.55", "-2848.16", "-1898.77", "-949.38",
+		"0.00", "0.00",
+	}, sell)
+	assert.Equal(t, c.Sell.NetWorth.String(), sell[len(sell)-1])
 
 	hold := netWorths(c.Hold)
 	require.Len(t, hold, 14)

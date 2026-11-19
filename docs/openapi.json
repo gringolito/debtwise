@@ -117,7 +117,7 @@
             "type": "string"
           },
           "held": {
-            "description": "The cash set aside that day because nothing is owed to prepay with it, in reais, as a decimal string. Negative when the scenario's installment is above the status quo's.",
+            "description": "The cash set aside that day because nothing is owed to prepay with it, in reais, as a decimal string. With prepay_slack, negative when the scenario's installment is above the status quo's.",
             "type": "string"
           },
           "installment": {
@@ -362,6 +362,10 @@
             ],
             "type": "string"
           },
+          "prepay_slack": {
+            "description": "Whether the comparison assumed the owner prepays the installment's slack every month.",
+            "type": "boolean"
+          },
           "verdicts": {
             "description": "A verdict for every bond on offer that follows the mortgage's indexer and matures after the date, in the order of the bond catalogue.",
             "items": {
@@ -374,6 +378,7 @@
           "amount",
           "date",
           "effect",
+          "prepay_slack",
           "verdicts"
         ],
         "type": "object"
@@ -398,6 +403,10 @@
               "lower_installment"
             ],
             "type": "string"
+          },
+          "prepay_slack": {
+            "description": "Whether the comparison assumes the owner prepays the installment's slack every month. False when absent.",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1242,6 +1251,24 @@
           "on",
           "maturity",
           "coupons"
+        ],
+        "type": "object"
+      },
+      "LoweredInstallment": {
+        "additionalProperties": false,
+        "properties": {
+          "charges_avoided": {
+            "description": "The interest, insurance and fees the prepay scenario's installments due after the date and by the horizon charge less than the status quo's, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "paid_less": {
+            "description": "How much less in all those installments charge than the status quo's, in reais, as a decimal string.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "charges_avoided",
+          "paid_less"
         ],
         "type": "object"
       },
@@ -2175,6 +2202,10 @@
             "$ref": "#/components/schemas/Scenario",
             "description": "Investing the amount in the bond. Absent when the verdict is unavailable."
           },
+          "lowered_installment": {
+            "$ref": "#/components/schemas/LoweredInstallment",
+            "description": "What lowering the installment gives by the horizon. Only when the effect is lower_installment and prepay_slack is false, and the verdict is available."
+          },
           "market_data": {
             "$ref": "#/components/schemas/VerdictMarketData",
             "description": "How fresh the market data the verdict reads is."
@@ -2319,7 +2350,7 @@
     },
     "/decisions": {
       "post": {
-        "description": "Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, under equal outflow, valued on the bond's maturity. It is computed on request and not stored.",
+        "description": "Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. It is computed on request and not stored.",
         "operationId": "decide",
         "requestBody": {
           "content": {
@@ -2361,7 +2392,7 @@
     },
     "/early-sale-checks": {
       "get": {
-        "description": "Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.",
+        "description": "Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, valued on the bond's maturity.",
         "operationId": "check-early-sales",
         "parameters": [
           {
@@ -2410,7 +2441,7 @@
     },
     "/early-sale-checks/{id}": {
       "get": {
-        "description": "Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.",
+        "description": "Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, valued on the bond's maturity.",
         "operationId": "check-early-sale",
         "parameters": [
           {
@@ -2772,7 +2803,7 @@
     },
     "/lots/comparison": {
       "post": {
-        "description": "Compares buying the lot with prepaying its amount invested on its purchase date instead, under equal outflow, valued on the bond's maturity. The lot need not be recorded; it is computed on request and not stored.",
+        "description": "Compares buying the lot with prepaying its amount invested on its purchase date instead, valued on the bond's maturity. The lot need not be recorded; it is computed on request and not stored.",
         "operationId": "compare-lot",
         "parameters": [
           {

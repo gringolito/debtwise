@@ -404,9 +404,11 @@ check lives in the lot's detail.
   Values side by side in one white panel. Under it, a white panel on the early sale with its own
   Reduzir prazo / Reduzir prestação segmented control: a Title 2 verdict, one sentence on how much
   more the better option is worth, the amount green only when selling wins, and what the comparison
-  assumes in Footnote. Then the Descontos table (gross, income tax, custody fee, IOF and net of each
-  value) and the Cupons table for coupon bonds, each scrolling inside its panel on a phone, and the
-  date of the values and any projection they read, centered in Footnote.
+  assumes in Footnote, "Comparação até 15/05/2035, sem amortizar a folga da prestação." followed by
+  the price Tesouro Direto buys the bond back at. Then the Descontos table (gross, income tax,
+  custody fee, IOF and net of each value) and the Cupons table for coupon bonds, each scrolling
+  inside its panel on a phone, and the date of the values and any projection they read, centered in
+  Footnote.
 - Adicionar compra and Editar compra are sheets: the bond picked from those Tesouro Direto quotes
   ("Outro título" types any other), the purchase date, rate, unit price and quantity typed in
   place, a Footnote on where to find them, and a tinted "Valor investido" row with what the
@@ -447,6 +449,14 @@ field typed as dd/mm/aaaa and reads "em 15/12/2026" once a date is chosen, and t
 its message sits under the sentence in red Footnote. Arriving from Início fills in the amount and,
 from "Ver comparação", compares it at once.
 
+Under the sentence, behind a hairline in the same panel, a switch, off on every visit and never
+saved, not even in the address: "Amortizar a folga da prestação todo mês" in Callout, with "Com a
+folga amortizada todo mês, reduzir o prazo ou a prestação dá quase no mesmo, mas exige a disciplina
+de fazer isso." in Footnote grey under it. Off, the comparison assumes the slack of the
+installment, what a lower installment leaves over, goes to the owner's other spending; on, it is
+prepaid every month. Turning it on or off, like picking another effect, compares nothing until
+"Comparar".
+
 - The verdict is a white panel that shows where the money is, on the bond's maturity, in each
   option. With more than one bond compared, the bonds head it as tabs over a hairline, ranked by
   their advantage, the one of the highest advantage first and open: each tab names the bond in
@@ -470,6 +480,12 @@ from "Ver comparação", compares it at once.
   panel in Title 2, in the text colour, "Diferença a favor de investir: R$ 814,22", over its
   yardstick in Callout grey, "8,1% dos R$ 10.000,00 em 5 anos e 1 mês.", which adds "Na prática, um
   empate." for a near tie. No amount carries a sign.
+  With the switch off and the effect "reduzir a prestação", one more Callout line in grey closes
+  the panel with what lowering the installment gives by the date: "Até 01/01/2032, reduzir a
+  prestação evita R$ 12.345,67 em juros, seguros e taxas, e você paga R$ 9.876,54 a menos em
+  prestações." Amounts carry no sign, so when lowering costs more the wording turns: "reduzir a
+  prestação cobra R$ 583,33 a mais em juros, seguros e taxas" and "você paga R$ 120,00 a mais em
+  prestações". It is left out when the response doesn't carry it.
 - Detalhes: an inset grouped list with today's rate, the bond's price, the quantity bought and the
   cost prepaying avoids, the rate at which both options tie in Footnote under it ("Empata com
   amortizar se a taxa cair para 13,99%."), then "Ver cenários", which opens both scenarios' figures

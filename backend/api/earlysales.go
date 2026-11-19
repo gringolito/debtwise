@@ -51,7 +51,7 @@ func registerEarlySales(humaAPI huma.API, services Services, now func() time.Tim
 		Method:      http.MethodGet,
 		Path:        "/early-sale-checks",
 		Summary:     "Check every lot for an early sale",
-		Description: "Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.",
+		Description: "Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, valued on the bond's maturity.",
 		Tags:        []string{earlySaleChecksTag},
 	}, func(ctx context.Context, in *earlySaleInput) (*struct{ Body earlySaleCheckList }, error) {
 		today := dateOf(now())
@@ -84,7 +84,7 @@ func registerEarlySales(humaAPI huma.API, services Services, now func() time.Tim
 		Method:      http.MethodGet,
 		Path:        "/early-sale-checks/{id}",
 		Summary:     "Check a lot for an early sale",
-		Description: "Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, under equal outflow, valued on the bond's maturity.",
+		Description: "Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, valued on the bond's maturity.",
 		Tags:        []string{earlySaleChecksTag},
 	}, func(ctx context.Context, in *struct {
 		ID     int64  `path:"id" doc:"The ID the lot was recorded with."`

@@ -8,7 +8,7 @@ import {
 } from "@/lib/api";
 import { bondKinds, bondRate } from "@/lib/bondKinds";
 import { compareDecimals } from "@/lib/decimals";
-import { inputToMoney } from "@/lib/format";
+import { formatDate, formatMoney, inputToMoney } from "@/lib/format";
 import type { PrepaymentEffect } from "@/lib/mortgageEvents";
 
 /** verdictTitle names a verdict's bond the way Tesouro Direto does: its kind and maturity year. */
@@ -16,15 +16,38 @@ export function verdictTitle({ type, maturity }: Verdict): string {
   return `${bondKinds[type].name} ${maturity.slice(0, 4)}`;
 }
 
+/**
+ * loweredInstallmentNote says what lowering the installment gives by the verdict's horizon, from
+ * its lowered_installment: the charges it avoids and how much less it pays in installments. Money
+ * in prose carries no sign, so an amount below zero reads the other way around ("a mais").
+ */
+export function loweredInstallmentNote({
+  maturity,
+  lowered_installment: lowered,
+}: Verdict): string | undefined {
+  if (!lowered) return undefined;
+  const unsigned = (amount: string) => formatMoney(amount.replace(/^-/, ""));
+  const charges = lowered.charges_avoided.startsWith("-") && !isZero(lowered.charges_avoided);
+  const paid = lowered.paid_less.startsWith("-") && !isZero(lowered.paid_less);
+  return `Até ${formatDate(maturity)}, reduzir a prestação ${charges ? "cobra" : "evita"} ${unsigned(lowered.charges_avoided)}${charges ? " a mais" : ""} em juros, seguros e taxas, e você paga ${unsigned(lowered.paid_less)} a ${paid ? "mais" : "menos"} em prestações.`;
+}
+
 /** DecisionFormValues is what the owner typed for a decision, as text, the way the inputs show it. */
 export interface DecisionFormValues {
   amount: string;
   date: string;
   effect: PrepaymentEffect;
+  /** Whether every month's slack of the installment is prepaid; never saved, off on every visit. */
+  prepaySlack: boolean;
 }
 
 /** blankDecision leaves the date empty: the API reads that as its own today. */
-export const blankDecision: DecisionFormValues = { amount: "", date: "", effect: "shorten_term" };
+export const blankDecision: DecisionFormValues = {
+  amount: "",
+  date: "",
+  effect: "shorten_term",
+  prepaySlack: false,
+};
 
 /** decisionInput builds the request body. Text the API cannot read goes through for it to reject. */
 export function decisionInput(values: DecisionFormValues): DecisionInput {
@@ -32,6 +55,8 @@ export function decisionInput(values: DecisionFormValues): DecisionInput {
     amount: inputToMoney(values.amount),
     date: values.date === "" ? undefined : values.date,
     effect: values.effect,
+    // Absent is what the API reads as off, which keeps Início's request the same.
+    prepay_slack: values.prepaySlack || undefined,
   };
 }
 

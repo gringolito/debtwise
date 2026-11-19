@@ -3,6 +3,7 @@ import { type FormEvent, useId, useState } from "react";
 import { DateInput } from "@/components/patterns/DateInput";
 import { useTypedValue } from "@/components/patterns/useTypedValue";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import type { DecisionFormValues } from "@/lib/decisions";
 import { formatDate } from "@/lib/format";
 import type { PrepaymentEffect } from "@/lib/mortgageEvents";
@@ -189,6 +190,24 @@ export function DecisionSentence({
           {message}
         </p>
       ))}
+      <div className="flex items-start justify-between gap-6 border-t pt-3">
+        <div className="flex flex-col gap-0.5">
+          <label htmlFor={`${id}-slack`} className="text-callout">
+            Amortizar a folga da prestação todo mês
+          </label>
+          <p id={`${id}-slack-hint`} className="text-footnote text-muted-foreground">
+            Com a folga amortizada todo mês, reduzir o prazo ou a prestação dá quase no mesmo, mas
+            exige a disciplina de fazer isso.
+          </p>
+        </div>
+        <Switch
+          id={`${id}-slack`}
+          checked={values.prepaySlack}
+          onCheckedChange={(prepaySlack) => onChange({ ...values, prepaySlack })}
+          aria-describedby={`${id}-slack-hint`}
+          className="mt-1 max-md:after:-inset-y-3.5"
+        />
+      </div>
     </form>
   );
 }

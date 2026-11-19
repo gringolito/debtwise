@@ -142,7 +142,7 @@ describe("a lot's detail", () => {
     expect(within(panel).getByText("R$ 2.140,00")).not.toHaveClass("text-positive");
     expect(within(panel).getByText("R$ 2.140,00").closest(".text-destructive")).toBeNull();
     expect(
-      within(panel).getByText(/^Comparação até 15\/05\/2035, com a mesma saída de dinheiro/),
+      within(panel).getByText(/^Comparação até 15\/05\/2035, sem amortizar a folga da prestação\./),
     ).toHaveTextContent("O Tesouro Direto recompra hoje a IPCA + 6,40%, R$ 2.250,00 por título.");
 
     fireEvent.click(within(panel).getByRole("radio", { name: "Reduzir prestação" }));
