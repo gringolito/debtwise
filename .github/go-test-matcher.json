@@ -5,7 +5,7 @@
       "severity": "error",
       "pattern": [
         {
-          "regexp": "^\\s*(/.+\\.go):(\\d+):(?:(\\d+):)? (.+)$",
+          "regexp": "\"Output\":\"\\s*(/[^\"]+?\\.go):(\\d+):(?:(\\d+):)? (.*)\\\\n\",\"OutputType\":\"error\"\\}$",
           "file": 1,
           "line": 2,
           "column": 3,
