@@ -124,6 +124,38 @@ describe("Investimentos", () => {
     expect(await screen.findByText("IPCA de 01/11.")).toBeInTheDocument();
   });
 
+  it("keeps the lots listed when the early sale checks fail, and compares again", async () => {
+    let fail = true;
+    stubInvestments({
+      lots: [ipca2035],
+      routes: {
+        "GET /api/early-sale-checks": () =>
+          fail
+            ? problem(500, "Internal Server Error", "boom")
+            : Response.json({
+                date: "2026-11-06",
+                effect: "shorten_term",
+                checks: [checkFor(ipca2035, "2140.00")],
+              }),
+      },
+    });
+    renderAt("/investimentos");
+
+    const error = await screen.findByRole("alert");
+    expect(
+      within(error).getByText("Não foi possível comparar a venda das suas compras."),
+    ).toBeVisible();
+    expect(rowsOf(await comprasList())).toEqual([
+      "Tesouro IPCA+ 2035 R$ 18.204,10 Compra em 12/05/2024 · IPCA + 6,21%",
+    ]);
+
+    fail = false;
+    fireEvent.click(within(error).getByRole("button", { name: "Tentar novamente" }));
+
+    expect(await screen.findByText("Manter até o vencimento")).toBeVisible();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("says a lot waits on the IPCA instead of showing a value", async () => {
     stubInvestments({ lots: [waitingOnIpca] });
     renderAt("/investimentos");

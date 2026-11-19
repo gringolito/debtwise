@@ -10,6 +10,7 @@ import {
   GroupedListSection,
   GroupedListValue,
 } from "@/components/patterns/GroupedList";
+import { Button } from "@/components/ui/button";
 import type { EarlySaleCheck, LotList, LotValued } from "@/lib/api";
 import { bondLabel, bondRate } from "@/lib/bondKinds";
 import { today } from "@/lib/dashboard";
@@ -185,6 +186,17 @@ export function Purchases({ lots }: { lots: LotList }) {
             <LotRow key={lot.id} lot={lot} check={checkOf(listed, lot.id)} />
           ))}
         </GroupedList>
+        {checks.isError && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center gap-x-2 px-1 text-callout text-muted-foreground"
+          >
+            <span>Não foi possível comparar a venda das suas compras.</span>
+            <Button variant="link" size="inline" onClick={() => void checks.refetch()}>
+              Tentar novamente
+            </Button>
+          </div>
+        )}
         <p className="px-1 text-footnote text-muted-foreground">
           Cada compra em uma data diferente aparece separada.
         </p>

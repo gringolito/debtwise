@@ -392,7 +392,8 @@ check lives in the lot's detail.
   its early sale check favours: a rising arrow in green and "Vender e amortizar vale mais a pena:
   R$ 1.314,60 de diferença a favor" with the amount green, or a calendar clock in grey and "Manter
   até o vencimento". Under the list, a Footnote and, when the market data the checks read is stale,
-  the note saying so.
+  the note saying so. When the checks fail, the rows stay without their hints and one Callout line
+  under the list says the comparison failed, with an accent "Tentar novamente".
 - A lot's detail: an accent "‹ Investimentos" back link, the bond's name as the Large Title with
   "Editar" and a red "Excluir", one line on the purchase, then the net Market, Accrual and Maturity
   Values side by side in one white panel. Under it, a white panel on the early sale with its own
