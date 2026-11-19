@@ -378,10 +378,15 @@ func TestABreakEvenRateQuotedBackGivesAnAdvantageOfZero(t *testing.T) {
 			do(t, s.handler, http.MethodPut, "/mortgage", tt.mortgage, http.StatusOK)
 
 			got := s.decide(t, tt.decision)
-			require.NotEmpty(t, got.Verdicts)
+
+			types := make([]string, 0, len(got.Verdicts))
+			for _, v := range got.Verdicts {
+				types = append(types, v.Type)
+			}
+
+			require.Equal(t, []string{"ltn", "ntn_f"}, types)
 
 			v := got.Verdicts[0]
-			require.Equal(t, "ltn", v.Type)
 			require.Empty(t, v.NoBreakEven)
 
 			breakEven := decimal.MustParse(v.BreakEvenRate)
