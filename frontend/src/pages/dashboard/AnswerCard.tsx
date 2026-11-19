@@ -7,14 +7,7 @@ import type { Decision } from "@/lib/api";
 import { bestVerdict } from "@/lib/dashboard";
 import { type ComparedVerdict, favoured } from "@/lib/decisions";
 import { formatDate, formatMoney } from "@/lib/format";
-import {
-  advantageAmount,
-  advantageShare,
-  ahead,
-  horizon,
-  leader,
-  verdictHeadline,
-} from "@/lib/yardstick";
+import { advantageAmount, advantageShare, horizon, verdictHeadline } from "@/lib/yardstick";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
 
 const illustrations = {
@@ -29,18 +22,10 @@ function Yardstick({ verdict }: { verdict: ComparedVerdict }) {
   const amount = (
     <span className="font-semibold text-primary-foreground">{advantageAmount(verdict)}</span>
   );
-  const share = `${advantageShare(verdict)} do valor em ${horizon(verdict)}.`;
-  if (verdict.near_tie) {
-    return (
-      <>
-        {amount} de diferença até {until}, {share}
-      </>
-    );
-  }
-  const { lead, trail } = ahead(leader(verdict).net_worth);
   return (
     <>
-      Você termina {lead} {amount} {trail} em {until}, {share}
+      {amount} {verdict.near_tie ? "de diferença" : "de diferença a favor"} até {until},{" "}
+      {advantageShare(verdict)} do valor em {horizon(verdict)}.
     </>
   );
 }

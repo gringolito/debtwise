@@ -36,8 +36,6 @@ func TestALotComparesWithPrepayingItsAmountInvestedOnItsPurchaseDate(t *testing.
 	assert.Empty(t, c.Unavailable)
 	assert.Equal(t, amountView{Gross: "5000.00", IOF: "0.00", IncomeTax: "147.04", CustodyFee: "19.75", Net: "4833.21"}, amountOf(&c.Maturity))
 	assert.Equal(t, "833.21", c.Gain().String())
-	assert.Equal(t, "4833.21", c.InvestNetWorth.String())
-	assert.Equal(t, "4000.00", c.PrepayNetWorth.String())
 	assert.Equal(t, "833.21", c.Advantage.String())
 	assert.Empty(t, c.ProjectedBy)
 }

@@ -21,7 +21,6 @@ import {
   marketDataOf,
   saleGain,
 } from "@/lib/investments";
-import { ahead } from "@/lib/yardstick";
 import { EffectControl } from "@/pages/investments/EffectControl";
 import { RowsSkeleton } from "@/pages/investments/InvestmentsSkeleton";
 import { SaleGainAmount } from "@/pages/investments/SaleGainAmount";
@@ -47,20 +46,16 @@ function Outcome({ check }: { check: EarlySaleCheck }) {
       </>
     );
   }
-  const leading = gain.kind === "gain" ? check.sell : check.hold;
-  if (!leading) return null;
-  const { lead, trail } = ahead(leading.net_worth);
   return (
     <>
       <span className="text-callout font-medium text-foreground">
         {gain.kind === "gain" ? "Vender" : "Manter"} vale mais a pena
       </span>
       <span className="text-callout">
-        Você termina {lead}{" "}
         <span className="whitespace-nowrap">
-          <SaleGainAmount gain={gain} /> {trail}
+          <SaleGainAmount gain={gain} /> de diferença a favor
         </span>{" "}
-        em {until}
+        até {until}
       </span>
     </>
   );

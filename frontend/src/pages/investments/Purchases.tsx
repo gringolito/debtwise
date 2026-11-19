@@ -17,7 +17,6 @@ import { useEarlySaleChecks } from "@/lib/earlySaleQueries";
 import { formatDate, formatMoney } from "@/lib/format";
 import { checkOf, inMaturityOrder, leftOutOfMarketTotal, saleGain } from "@/lib/investments";
 import { useLots } from "@/lib/lotQueries";
-import { ahead } from "@/lib/yardstick";
 import { SaleGainAmount } from "@/pages/investments/SaleGainAmount";
 
 /** SaleSummary says how many lots would earn more sold and prepaid, and links to the comparison. */
@@ -104,8 +103,7 @@ function marketFigure(lot: LotValued): { text: string; muted: boolean } {
 
 /** SaleHint says whether selling the lot early and prepaying beats holding it, with a glyph. */
 function SaleHint({ check }: { check: EarlySaleCheck | undefined }) {
-  if (check?.verdict === "sell" && check.advantage !== undefined && check.sell) {
-    const { lead, trail } = ahead(check.sell.net_worth);
+  if (check?.verdict === "sell" && check.advantage !== undefined) {
     return (
       <span className="flex items-start gap-1.5 text-callout">
         <TrendingUpIcon
@@ -114,9 +112,9 @@ function SaleHint({ check }: { check: EarlySaleCheck | undefined }) {
           className="mt-0.5 size-4 shrink-0 text-positive"
         />
         <span>
-          Vender e amortizar vale mais a pena: você termina {lead}{" "}
+          Vender e amortizar vale mais a pena:{" "}
           <span className="whitespace-nowrap">
-            <SaleGainAmount gain={saleGain(check.advantage)} /> {trail}
+            <SaleGainAmount gain={saleGain(check.advantage)} /> de diferença a favor
           </span>
         </span>
       </span>

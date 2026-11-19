@@ -13,7 +13,6 @@ import { compareDecimals } from "@/lib/decimals";
 import { favoured } from "@/lib/decisions";
 import { formatDate, formatMoney } from "@/lib/format";
 import { useLotComparison } from "@/lib/lotQueries";
-import { ahead } from "@/lib/yardstick";
 
 /** What the lot sheet saved: a new lot, or an edit of one. */
 export type LotChange =
@@ -53,9 +52,6 @@ function ComparisonNote({ comparison }: { comparison: LotComparison }) {
       </CelebrationNote>
     );
   }
-  const leading = side === "invest" ? comparison.invest_net_worth : comparison.prepay_net_worth;
-  if (leading === undefined) return null;
-  const { lead, trail } = ahead(leading);
   const amount = (
     <>
       {formatMoney(advantage.replace("-", ""))}
@@ -64,13 +60,13 @@ function ComparisonNote({ comparison }: { comparison: LotComparison }) {
   );
   return side === "invest" ? (
     <CelebrationNote>
-      Na projeção, você termina {lead} {amount} {trail} em {until} do que se amortizasse reduzindo o
-      prazo.
+      Diferença projetada a favor desta compra, em vez de amortizar reduzindo o prazo: {amount} até{" "}
+      {until}.
     </CelebrationNote>
   ) : (
     <CelebrationNote>
-      Amortizar reduzindo o prazo valeria mais a pena. Na projeção, você terminaria {lead} {amount}{" "}
-      {trail} em {until}.
+      Amortizar reduzindo o prazo valeria mais a pena. Diferença projetada a favor de amortizar:{" "}
+      {amount} até {until}.
     </CelebrationNote>
   );
 }

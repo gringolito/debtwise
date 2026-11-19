@@ -23,30 +23,15 @@ export function advantageAmount(verdict: ComparedVerdict): string {
   return formatMoney(verdict.advantage.replace("-", ""));
 }
 
-const owes = (netWorth: string) => netWorth.startsWith("-") && !isZero(netWorth);
-
 /**
  * standing is where a scenario leaves the owner on the horizon: whether they owe or have, and the
  * amount without its sign, so no negative money is read. Net worth is only checked for its sign.
  */
 export function standing({ net_worth: netWorth }: Scenario): { owes: boolean; amount: string } {
-  return { owes: owes(netWorth), amount: formatMoney(netWorth.replace("-", "")) };
-}
-
-/**
- * ahead is the words around the amount the option that ends with more is ahead by, from that
- * option's net worth on the horizon: "devendo R$ 814,22 a menos" while it still owes, "com R$
- * 814,22 a mais" once nothing is owed.
- */
-export function ahead(leaderNetWorth: string): { lead: string; trail: string } {
-  return owes(leaderNetWorth)
-    ? { lead: "devendo", trail: "a menos" }
-    : { lead: "com", trail: "a mais" };
-}
-
-/** leader is the scenario of the option the verdict's advantage favours. */
-export function leader(verdict: ComparedVerdict): Scenario {
-  return favoured(verdict.advantage) === "prepay" ? verdict.prepay : verdict.invest;
+  return {
+    owes: netWorth.startsWith("-") && !isZero(netWorth),
+    amount: formatMoney(netWorth.replace("-", "")),
+  };
 }
 
 /**

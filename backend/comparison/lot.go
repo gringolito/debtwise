@@ -23,9 +23,6 @@ type LotComparison struct {
 	Unavailable Unavailable
 	// Maturity is the lot's Maturity Value. It is set unless the lot's VNA is MissingIPCA.
 	Maturity bonds.Amount
-	// InvestNetWorth and PrepayNetWorth are the investing and prepaying scenarios' net worth on the
-	// horizon.
-	InvestNetWorth, PrepayNetWorth decimal.Decimal
 	// Advantage is the investing scenario's net worth on the horizon less the prepaying one's.
 	Advantage decimal.Decimal
 	// ProjectedBy names the projection method of each index a projected value of the comparison
@@ -74,7 +71,6 @@ func CompareLot(m Mortgage, market Market, l bonds.Lot, effect mortgage.Prepayme
 	statusQuo := c.plan(zero, nil, nil)
 	invest := c.scenario(statusQuo, zero, l.Cost(), zero, nil, valuation.Coupons, &valuation.Maturity)
 	prepay := c.scenario(statusQuo, l.Cost(), zero, zero, nil, nil, nil)
-	out.InvestNetWorth, out.PrepayNetWorth = invest.NetWorth, prepay.NetWorth
 	out.Advantage = invest.NetWorth.Sub(prepay.NetWorth)
 
 	methods := [][]indexes.ProjectionMethod{valuation.Maturity.ProjectedBy, readBy(statusQuo), invest.projectedBy, prepay.projectedBy}

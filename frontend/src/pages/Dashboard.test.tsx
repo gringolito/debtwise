@@ -42,12 +42,11 @@ const flow = (date: string, outstanding_balance: string): CashFlow => ({
   net_worth: "0.00",
 });
 
-/** Both options still owe on the horizon, as a verdict well before the payoff does. */
 const scenario: Scenario = {
-  net_worth: "-150000.00",
+  net_worth: "0.00",
   cash: "0.00",
-  outstanding_balance: "150000.00",
-  cash_flows: [flow("2024-03-20", "30000.00"), flow("2029-01-01", "150000.00")],
+  outstanding_balance: "0.00",
+  cash_flows: [flow("2024-03-20", "30000.00"), flow("2029-01-01", "0.00")],
 };
 
 const ltn: Verdict = {
@@ -227,7 +226,7 @@ describe("the answer card", () => {
     expect(
       paragraph(
         card,
-        "Você termina devendo R$ 1.234,56 a menos em 01/01/2029, 12,3% do valor em 4 anos e 9 meses.",
+        "R$ 1.234,56 de diferença a favor até 01/01/2029, 12,3% do valor em 4 anos e 9 meses.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -278,7 +277,7 @@ describe("the answer card", () => {
     expect(
       paragraph(
         card,
-        "Você termina devendo R$ 250,30 a menos em 01/01/2035, 2,5% do valor em 10 anos e 9 meses.",
+        "R$ 250,30 de diferença a favor até 01/01/2035, 2,5% do valor em 10 anos e 9 meses.",
       ),
     ).toBeInTheDocument();
     expect(card.querySelector("img")).toBeInTheDocument();

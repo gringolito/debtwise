@@ -19,8 +19,6 @@ type lotComparison struct {
 	Effect         string        `json:"effect" enum:"shorten_term,lower_installment" doc:"What prepaying changes."`
 	Unavailable    string        `json:"unavailable,omitempty" enum:"missing_ipca,before_contract" doc:"Why the comparison has no advantage. missing_ipca: the IPCA the lot's values follow is not available yet; before_contract: the lot was bought before the mortgage's contract date. Absent when it has one."`
 	Advantage      string        `json:"advantage,omitempty" doc:"The net worth on the horizon of buying the lot less that of prepaying its amount invested on its purchase date instead, in reais, as a decimal string. Positive favours the lot. Absent when the comparison is unavailable."`
-	InvestNetWorth string        `json:"invest_net_worth,omitempty" doc:"The net worth on the horizon of buying the lot, what is held less what is still owed, in reais, as a decimal string. Negative while something is owed. Absent when the comparison is unavailable."`
-	PrepayNetWorth string        `json:"prepay_net_worth,omitempty" doc:"The net worth on the horizon of prepaying the lot's amount invested on its purchase date instead, what is held less what is still owed, in reais, as a decimal string. Negative while something is owed. Absent when the comparison is unavailable."`
 	ProjectedBy    []projectedBy `json:"projected_by" nullable:"false" doc:"The projection method of each index a projected value of the advantage comes from. Empty when it reads published values only, or when the comparison is unavailable."`
 }
 
@@ -80,7 +78,6 @@ func newLotComparison(c comparison.LotComparison, effect string) lotComparison {
 
 	if c.Unavailable == "" {
 		out.Advantage = c.Advantage.String()
-		out.InvestNetWorth, out.PrepayNetWorth = c.InvestNetWorth.String(), c.PrepayNetWorth.String()
 	}
 
 	return out

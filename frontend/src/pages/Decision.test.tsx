@@ -412,7 +412,7 @@ describe("the verdict panel", () => {
       "R$ 12.877,00",
     ]);
     expect(
-      within(panel).getByText("Investir termina devendo R$ 1.234,56 a menos"),
+      within(panel).getByText("Diferença a favor de investir: R$ 1.234,56"),
     ).toBeInTheDocument();
     expect(
       within(panel).getByText("12,3% dos R$ 10.000,00 em 2 anos e 2 meses."),
@@ -430,7 +430,7 @@ describe("the verdict panel", () => {
       within(panel).getByRole("heading", { name: "Amortizar vale mais a pena" }),
     ).toBeVisible();
     expect(
-      within(panel).getByText("Amortizar termina devendo R$ 250,30 a menos"),
+      within(panel).getByText("Diferença a favor de amortizar: R$ 250,30"),
     ).toBeInTheDocument();
     expect(
       within(panel).getByText("2,5% dos R$ 10.000,00 em 5 anos e 10 meses."),
@@ -448,9 +448,7 @@ describe("the verdict panel", () => {
         name: "Investir em Tesouro Prefixado 2029 ou amortizar dá praticamente no mesmo",
       }),
     ).toBeInTheDocument();
-    expect(
-      within(panel).getByText("Investir termina devendo R$ 39,64 a menos"),
-    ).toBeInTheDocument();
+    expect(within(panel).getByText("Diferença a favor de investir: R$ 39,64")).toBeInTheDocument();
     expect(
       within(panel).getByText("0,4% dos R$ 10.000,00 em 2 anos e 2 meses. Na prática, um empate."),
     ).toBeInTheDocument();
@@ -479,7 +477,6 @@ describe("the verdict panel", () => {
     const panel = await verdictPanel();
     expect(outcome(panel, "Se investir").slice(2, 4)).toEqual(["No fim, você tem", "R$ 5.000,00"]);
     expect(outcome(panel, "Se amortizar").slice(2, 4)).toEqual(["No fim, você tem", "R$ 0,00"]);
-    expect(within(panel).getByText("Investir termina com R$ 1.234,56 a mais")).toBeInTheDocument();
   });
 
   it("says when the amount is for a later date than today", async () => {
@@ -593,7 +590,7 @@ describe("the other bonds", () => {
       name: "Amortizar vale mais a pena que investir em Tesouro IPCA+ 2032",
     });
     expect(
-      within(panel).getByText("Amortizar termina devendo R$ 250,30 a menos"),
+      within(panel).getByText("Diferença a favor de amortizar: R$ 250,30"),
     ).toBeInTheDocument();
     expect(rows(otherBonds())).toEqual([["Tesouro Prefixado 2029 · 12,76%", "R$ 1.234,56 a mais"]]);
   });

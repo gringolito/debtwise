@@ -7,9 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   advantageAmount,
   advantageShare,
-  ahead,
   horizon,
-  leader,
   standing,
   verdictHeadline,
 } from "@/lib/yardstick";
@@ -80,7 +78,6 @@ interface VerdictPanelProps {
 export function VerdictPanel({ verdict, best, amount, date }: VerdictPanelProps) {
   const titleId = useId();
   const side = favoured(verdict.advantage);
-  const { lead, trail } = ahead(leader(verdict).net_worth);
   const marked = verdict.near_tie ? "even" : side;
   const when = date === today() ? "hoje" : `em ${formatDate(date)}`;
   return (
@@ -113,7 +110,7 @@ export function VerdictPanel({ verdict, best, amount, date }: VerdictPanelProps)
         ) : (
           <>
             <p className="text-title-2">
-              {`${side === "invest" ? "Investir" : "Amortizar"} termina ${lead} ${advantageAmount(verdict)} ${trail}`}
+              {`Diferença a favor de ${side === "invest" ? "investir" : "amortizar"}: ${advantageAmount(verdict)}`}
             </p>
             <p className="text-callout text-muted-foreground">
               {`${advantageShare(verdict)} dos ${formatMoney(amount)} em ${horizon(verdict)}.${verdict.near_tie ? " Na prática, um empate." : ""}`}

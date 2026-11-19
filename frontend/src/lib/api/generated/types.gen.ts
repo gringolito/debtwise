@@ -532,17 +532,9 @@ export type LotComparison = {
      */
     horizon: string;
     /**
-     * The net worth on the horizon of buying the lot, what is held less what is still owed, in reais, as a decimal string. Negative while something is owed. Absent when the comparison is unavailable.
-     */
-    invest_net_worth?: string;
-    /**
      * The lot's Maturity Value, gross and net of IOF, income tax and the custody fee. Absent when unavailable is missing_ipca.
      */
     maturity?: LotAmount;
-    /**
-     * The net worth on the horizon of prepaying the lot's amount invested on its purchase date instead, what is held less what is still owed, in reais, as a decimal string. Negative while something is owed. Absent when the comparison is unavailable.
-     */
-    prepay_net_worth?: string;
     /**
      * The projection method of each index a projected value of the advantage comes from. Empty when it reads published values only, or when the comparison is unavailable.
      */

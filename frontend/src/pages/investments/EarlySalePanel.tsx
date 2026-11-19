@@ -7,7 +7,6 @@ import { earlySaleUnavailableReasons } from "@/lib/decisions";
 import { useEarlySaleChecks } from "@/lib/earlySaleQueries";
 import { formatDate, formatMoney } from "@/lib/format";
 import { checkOf, saleGain } from "@/lib/investments";
-import { ahead } from "@/lib/yardstick";
 import type { PrepaymentEffect } from "@/lib/mortgageEvents";
 import { ScenarioDetails } from "@/pages/decision/ScenarioDetails";
 import { Scenarios } from "@/pages/decision/Scenarios";
@@ -24,9 +23,8 @@ function Verdict({ check }: { check: EarlySaleCheck }) {
       </>
     );
   }
-  if (check.advantage === undefined || !check.hold || !check.sell) return null;
+  if (check.advantage === undefined) return null;
   const gain = saleGain(check.advantage);
-  const { lead, trail } = ahead((gain.kind === "gain" ? check.sell : check.hold).net_worth);
   return (
     <>
       <h3 className="text-title-2">
@@ -41,15 +39,13 @@ function Verdict({ check }: { check: EarlySaleCheck }) {
           "Vender hoje e amortizar ficaria igual a manter até o vencimento."
         ) : gain.kind === "gain" ? (
           <>
-            Vendendo hoje e amortizando, você termina {lead}{" "}
-            <SaleGainAmount gain={gain} className="font-semibold" /> {trail} do que mantendo o
-            título até o vencimento.
+            Diferença projetada a favor de vender hoje e amortizar, em vez de manter até o
+            vencimento: <SaleGainAmount gain={gain} className="font-semibold" />.
           </>
         ) : (
           <>
-            Mantendo o título até o vencimento, você termina {lead}{" "}
-            <SaleGainAmount gain={gain} className="font-semibold" /> {trail} do que vendendo hoje e
-            amortizando.
+            Diferença projetada a favor de manter até o vencimento, em vez de vender hoje e
+            amortizar: <SaleGainAmount gain={gain} className="font-semibold" />.
           </>
         )}
       </p>

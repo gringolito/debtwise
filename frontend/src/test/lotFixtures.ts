@@ -5,7 +5,6 @@ import type {
   LotList,
   LotValued,
   MarketDataStatus,
-  Scenario,
   VerdictMarketData,
 } from "@/lib/api";
 import type { PrepaymentEffect } from "@/lib/mortgageEvents";
@@ -104,18 +103,7 @@ export const freshMarketData: VerdictMarketData = {
   indexes: FRESH_STATUS.indexes,
 };
 
-/** owing is a scenario that still owes on the horizon, worth netWorth. */
-const owing = (netWorth: number): Scenario => ({
-  net_worth: netWorth.toFixed(2),
-  cash: "0.00",
-  outstanding_balance: (-netWorth).toFixed(2),
-  cash_flows: [],
-});
-
-/**
- * checkFor is a lot's early sale check with an Advantage, positive favouring holding, both
- * scenarios still owing on the horizon.
- */
+/** checkFor is a lot's early sale check with an Advantage, positive favouring holding. */
 export function checkFor(lot: LotValued, advantage: string): EarlySaleCheck {
   const { values: _values, values_unavailable: _unavailable, ...bought } = lot;
   return {
@@ -123,8 +111,6 @@ export function checkFor(lot: LotValued, advantage: string): EarlySaleCheck {
     verdict: advantage.startsWith("-") ? "sell" : "hold",
     advantage,
     sell_price: { rate: "0.0640", unit_price: "2250.00" },
-    hold: owing(-300000 + Number(advantage)),
-    sell: owing(-300000),
     projected_by: [],
     market_data: freshMarketData,
   };
@@ -149,8 +135,6 @@ export const lotComparison: LotComparison = {
   horizon: "2029-01-01",
   effect: "shorten_term",
   advantage: "2180.40",
-  invest_net_worth: "-297819.60",
-  prepay_net_worth: "-300000.00",
   projected_by: [{ index: "tr", method: "trailing_12" }],
 };
 
