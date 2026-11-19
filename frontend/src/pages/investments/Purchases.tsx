@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import type { EarlySaleCheck, LotList, LotValued } from "@/lib/api";
 import { bondLabel, bondRate } from "@/lib/bondKinds";
 import { today } from "@/lib/dashboard";
+import { subtractDecimals } from "@/lib/decimals";
+import { isZero } from "@/lib/decisions";
 import { useEarlySaleChecks } from "@/lib/earlySaleQueries";
 import { formatDate, formatMoney } from "@/lib/format";
 import {
@@ -36,6 +38,41 @@ function SaleSummary({ checks }: { checks: EarlySaleCheck[] }) {
         ? "1 compra valeria mais a pena vendida para amortizar."
         : `${selling} compras valeriam mais a pena vendidas para amortizar.`}
     </p>
+  );
+}
+
+const deductionList = new Intl.ListFormat("pt-BR", { type: "conjunction" });
+
+/**
+ * GrossToNet shows how the net total comes from the gross: the gross, then what the taxes and the
+ * custody fee take off it, each named in words so no amount needs a minus sign.
+ */
+function GrossToNet({ amount }: { amount: NonNullable<LotList["market_value"]> }) {
+  const taken = [
+    [amount.income_tax, "de IR"],
+    [amount.iof, "de IOF"],
+    [amount.custody_fee, "de custódia"],
+  ]
+    .filter(([value]) => !isZero(value))
+    .map(([value, name]) => `${formatMoney(value)} ${name}`);
+  return (
+    <dl className="flex flex-wrap gap-x-10 gap-y-3 border-t border-border pt-4">
+      <div className="flex flex-col gap-0.5">
+        <dt className="text-footnote text-muted-foreground">Bruto</dt>{" "}
+        <dd className="text-callout tabular-nums">{formatMoney(amount.gross)}</dd>{" "}
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <dt className="text-footnote text-muted-foreground">Descontos</dt>{" "}
+        <dd className="text-callout tabular-nums">
+          {formatMoney(subtractDecimals(amount.gross, amount.net))}
+        </dd>{" "}
+        {taken.length > 0 && (
+          <dd className="text-footnote text-muted-foreground tabular-nums">
+            {deductionList.format(taken)}
+          </dd>
+        )}
+      </div>
+    </dl>
   );
 }
 
@@ -66,21 +103,7 @@ function MarketTotal({
           </p>
         )}
       </div>
-      {market_value && (
-        <dl className="flex flex-wrap gap-x-10 gap-y-2 border-t border-border pt-4">
-          {[
-            ["Bruto", formatMoney(market_value.gross)],
-            ["IR", `− ${formatMoney(market_value.income_tax)}`],
-            ["IOF", `− ${formatMoney(market_value.iof)}`],
-            ["Custódia", `− ${formatMoney(market_value.custody_fee)}`],
-          ].map(([name, amount]) => (
-            <div key={name} className="flex flex-col gap-0.5">
-              <dt className="text-footnote text-muted-foreground">{name}</dt>{" "}
-              <dd className="text-callout tabular-nums">{amount}</dd>{" "}
-            </div>
-          ))}
-        </dl>
-      )}
+      {market_value && <GrossToNet amount={market_value} />}
       {market_value && leftOut > 0 && (
         <p className="text-footnote text-muted-foreground">
           {leftOut === 1

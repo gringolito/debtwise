@@ -385,15 +385,17 @@ check lives in the lot's detail.
 - The page: a white panel titled "Valor de mercado" with the net total as a hero figure, "Líquido,
   se vender tudo hoje" in Callout under it and, when any lot would do better sold, one quiet Callout
   line in secondary grey, "2 compras valeriam mais a pena vendidas para amortizar."; then, under a
-  hairline, the gross total, then IR, IOF and Custódia each with what it takes off it. Then every
-  lot in one inset grouped list, the bonds maturing first leading. Each lot is a row with the
-  bond's name in Headline and its net Market Value, or why it has none, on the first line; "Compra
-  em" its date with its rate in Callout grey under it; then, at Callout size behind a glyph, what
-  its early sale check favours: a rising arrow in green and "Vender e amortizar vale mais a pena:
-  R$ 1.314,60 de diferença a favor" with the amount green, or a calendar clock in grey and "Manter
-  até o vencimento". Under the list, a Footnote and, when the market data the checks read is stale,
-  the note saying so. When the checks fail, the rows stay without their hints and one Callout line
-  under the list says the comparison failed, with an accent "Tentar novamente".
+  hairline, "Bruto" with the gross total beside "Descontos" with what came off it, and under that
+  total, in Footnote grey, each deduction named in words ("R$ 2.304,22 de IR e R$ 111,40 de
+  custódia"), zero ones left out. No amount carries a minus sign; the labels say which way it goes.
+  Then every lot in one inset grouped list, the bonds maturing first leading. Each lot is a row
+  with the bond's name in Headline and its net Market Value, or why it has none, on the first line;
+  "Compra em" its date with its rate in Callout grey under it; then, at Callout size behind a
+  glyph, what its early sale check favours: a rising arrow in green and "Vender e amortizar vale
+  mais a pena: R$ 1.314,60 de diferença a favor" with the amount green, or a calendar clock in grey
+  and "Manter até o vencimento". Under the list, a Footnote and, when the market data the checks
+  read is stale, the note saying so. When the checks fail, the rows stay without their hints and
+  one Callout line under the list says the comparison failed, with an accent "Tentar novamente".
 - A lot's detail: an accent "‹ Investimentos" back link, the bond's name as the Large Title with
   "Editar" and a red "Excluir", one line on the purchase, then the net Market, Accrual and Maturity
   Values side by side in one white panel. Under it, a white panel on the early sale with its own

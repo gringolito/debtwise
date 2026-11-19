@@ -28,7 +28,7 @@ const marketValue = {
 const sellingAll = [ipca2035, ipca2035Again, prefixado2029];
 
 describe("Investimentos", () => {
-  it("shows the net Market Value with what each deduction took off the gross, and lists every lot in one list, the bonds maturing first leading", async () => {
+  it("shows the net Market Value with the gross and what the deductions took off it, and lists every lot in one list, the bonds maturing first leading", async () => {
     stubInvestments({
       lots: [ipca2035, prefixado2029, ipca2035Again],
       marketValue,
@@ -37,7 +37,7 @@ describe("Investimentos", () => {
 
     const total = await screen.findByRole("region", { name: "Valor de mercado" });
     expect(words(total)).toBe(
-      "Valor de mercado R$ 33.016,50 Líquido, se vender tudo hoje Bruto R$ 34.800,12 IR − R$ 1.700,00 IOF − R$ 70,50 Custódia − R$ 13,12 1 compra sem valor de mercado ficou fora do total.",
+      "Valor de mercado R$ 33.016,50 Líquido, se vender tudo hoje Bruto R$ 34.800,12 Descontos R$ 1.783,62 R$ 1.700,00 de IR, R$ 70,50 de IOF e R$ 13,12 de custódia 1 compra sem valor de mercado ficou fora do total.",
     );
 
     expect(screen.queryByRole("heading", { name: /^Tesouro/ })).toBeNull();
@@ -46,6 +46,18 @@ describe("Investimentos", () => {
       "Tesouro IPCA+ 2035 R$ 18.204,10 Compra em 12/05/2024 · IPCA + 6,21%",
       "Tesouro IPCA+ 2035 R$ 14.812,40 Compra em 18/11/2024 · IPCA + 6,45%",
     ]);
+  });
+
+  it("names only the deductions that took something off the gross", async () => {
+    stubInvestments({
+      lots: [ipca2035],
+      marketValue: { ...marketValue, iof: "0.00", net: "33087.00" },
+    });
+    renderAt("/investimentos");
+
+    const total = await screen.findByRole("region", { name: "Valor de mercado" });
+    expect(within(total).getByText("R$ 1.700,00 de IR e R$ 13,12 de custódia")).toBeInTheDocument();
+    expect(within(total).getByText("R$ 1.713,12")).toBeInTheDocument();
   });
 
   it("says under each lot whether selling it early beats holding it, with a gain in green", async () => {
