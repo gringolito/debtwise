@@ -2,7 +2,13 @@ import { useId } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Scenario } from "@/lib/api";
 import { today } from "@/lib/dashboard";
-import { type ComparedVerdict, favoured, verdictKey, verdictTitle } from "@/lib/decisions";
+import {
+  type ComparedVerdict,
+  favoured,
+  loweredInstallmentNote,
+  verdictKey,
+  verdictTitle,
+} from "@/lib/decisions";
 import { formatDate, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -83,6 +89,7 @@ function Ledger({ verdict, best, titleId, amount, date }: LedgerProps) {
   const side = favoured(verdict.advantage);
   const marked = verdict.near_tie ? "even" : side;
   const when = date === today() ? "hoje" : `em ${formatDate(date)}`;
+  const note = loweredInstallmentNote(verdict);
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -120,11 +127,7 @@ function Ledger({ verdict, best, titleId, amount, date }: LedgerProps) {
             </p>
           </>
         )}
-        {verdict.lowered_installment && (
-          <p className="text-callout text-muted-foreground">
-            {`Até ${formatDate(verdict.maturity)}, reduzir a prestação evita ${formatMoney(verdict.lowered_installment.charges_avoided)} em juros, seguros e taxas, e você paga ${formatMoney(verdict.lowered_installment.paid_less)} a menos em prestações.`}
-          </p>
-        )}
+        {note && <p className="text-callout text-muted-foreground">{note}</p>}
       </div>
     </div>
   );

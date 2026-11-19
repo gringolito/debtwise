@@ -103,6 +103,11 @@ func TestABreakEvenRateFedBackGivesAnAdvantageOfZero(t *testing.T) {
 			rate: "0.1504", amount: "30000.00", decision: "2025-01-08", prepaySlack: true,
 		},
 		{
+			name: "NTN-F against a TR mortgage, slack ignored", m: trMortgage(t),
+			bond: bonds.Bond{Type: bonds.NTNF, Maturity: date(t, "2031-01-01")},
+			rate: "0.1388", amount: "10000.00", decision: "2025-01-08",
+		},
+		{
 			name: "NTN-F against a TR mortgage, slack prepaid", m: trMortgage(t),
 			bond: bonds.Bond{Type: bonds.NTNF, Maturity: date(t, "2031-01-01")},
 			rate: "0.1388", amount: "5000.00", decision: "2025-01-08", prepaySlack: true,

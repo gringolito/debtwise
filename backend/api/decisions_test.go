@@ -273,22 +273,30 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	}, worths)
 }
 
-// Without prepay_slack, the 5,000.00 prepaid on the interest-free mortgage above leaves 10,000.00,
-// and each scenario pays only its own installments: shortening the term pays it off at 1,000.00 a
-// month by 2027-08-10, and lowering the installment spreads it over the 15 months left. Nothing is
+// Without prepay_slack, the 5,000.00 prepaid on the interest-free mortgage above, here with a 0.1%
+// MIP on the balance, leaves 10,000.00, and each scenario pays only its own installments.
+// Shortening the term pays it off at 1,000.00 a month by 2027-08-10, charging 10.00 down to 1.00 of
+// MIP, 55.00. Lowering the installment spreads it over the 15 months left, each amortizing what is
+// owed over the months left, to the centavo: its MIP of 10.00, 9.33, 8.67, 8.00, 7.33, 6.67, 6.00,
+// 5.33, 4.67, 4.00, 3.33, 2.67, 2.00, 1.33 and 0.67 adds up to 80.00. The status quo's 15
+// installments charge 15.00 down to 1.00, 120.00, so prepaying avoids 65.00 or 40.00. Nothing is
 // held, so prepaying ends with nothing, while investing still ends with the bond, 6,229.89 ahead.
-// Prepaying avoids nothing beyond the 5,000.00 the installments charge less. Only the lowered
-// installment says so: it avoids no interest, insurance or fee and charges 5,000.00 less.
+// Only the lowered installment says what it gives: 40.00 of insurance avoided, and installments
+// that charge 15,120.00 − 10,080.00 = 5,040.00 less.
 func TestADecisionIgnoresTheSlackUnlessAskedToPrepayIt(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		effect  string
 		paidTo  string
+		avoided string
 		lowered *decisionLoweredInstallment
 	}{
-		{effect: "shorten_term", paidTo: "2027-08-10"},
-		{effect: "lower_installment", paidTo: "2028-01-10", lowered: &decisionLoweredInstallment{ChargesAvoided: "0.00", PaidLess: "5000.00"}},
+		{effect: "shorten_term", paidTo: "2027-08-10", avoided: "65.00"},
+		{
+			effect: "lower_installment", paidTo: "2028-01-10", avoided: "40.00",
+			lowered: &decisionLoweredInstallment{ChargesAvoided: "40.00", PaidLess: "5040.00"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -296,18 +304,28 @@ func TestADecisionIgnoresTheSlackUnlessAskedToPrepayIt(t *testing.T) {
 			t.Parallel()
 
 			s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
-			do(t, s.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
+
+			var terms map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal([]byte(fmt.Sprintf(interestFreeMortgage, "none")), &terms))
+			terms["mip_rates"] = json.RawMessage(`[{"effective_from": "2026-01-10", "rate": "0.001"}]`)
+			body, err := json.Marshal(terms)
+			require.NoError(t, err)
+			do(t, s.handler, http.MethodPut, "/mortgage", string(body), http.StatusOK)
 
 			got := s.decide(t, fmt.Sprintf(`{"amount": "5000.00", "effect": %q}`, tt.effect))
 			assert.False(t, got.PrepaySlack)
-			require.NotEmpty(t, got.Verdicts)
+
+			types := make([]string, 0, len(got.Verdicts))
+			for _, v := range got.Verdicts {
+				types = append(types, v.Type)
+			}
+
+			require.Equal(t, []string{"ltn", "ntn_f"}, types)
 
 			v := got.Verdicts[0]
-			require.Equal(t, "ltn", v.Type)
 			assert.Equal(t, "6229.89", v.Advantage)
-			assert.Equal(t, "0.00", v.AvoidedCost)
+			assert.Equal(t, tt.avoided, v.AvoidedCost)
 			assert.Equal(t, tt.lowered, v.LoweredInstallment)
-
 			require.NotNil(t, v.Prepay)
 			assert.Equal(t, []string{"0.00", "0.00", "0.00"}, []string{v.Prepay.NetWorth, v.Prepay.Cash, v.Prepay.OutstandingBalance})
 

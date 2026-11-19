@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   CashFlow,
@@ -429,6 +429,48 @@ describe("the question as a sentence", () => {
 
     await sentence();
     expect(screen.getByRole("switch")).not.toBeChecked();
+  });
+
+  it("omits prepay_slack again once the owner turns the switch off in the same visit", async () => {
+    const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
+    renderAt("/comparar");
+    await sentence();
+    fill("Valor", "10000");
+
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
+    await verdictPanel();
+    fireEvent.click(screen.getByRole("switch"));
+    expect(screen.getByRole("switch")).not.toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
+
+    await waitFor(() => expect(asked(requests)).toHaveLength(2));
+    expect(asked(requests)).toEqual([
+      { amount: "10000", effect: "shorten_term", prepay_slack: true },
+      { amount: "10000", effect: "shorten_term" },
+    ]);
+  });
+});
+
+describe("what lowering the installment gives", () => {
+  it("reads an amount below zero unsigned and the other way around", async () => {
+    await compare(
+      [
+        {
+          ...ltnVerdict,
+          lowered_installment: { charges_avoided: "-583.33", paid_less: "-120.00" },
+        },
+      ],
+      "10000",
+      { effect: "lower_installment" },
+    );
+
+    const panel = await verdictPanel();
+    expect(
+      within(panel).getByText(
+        "Até 01/01/2029, reduzir a prestação cobra R$ 583,33 a mais em juros, seguros e taxas, e você paga R$ 120,00 a mais em prestações.",
+      ),
+    ).toBeInTheDocument();
   });
 });
 

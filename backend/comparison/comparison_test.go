@@ -243,29 +243,77 @@ func TestWithTheSlackIgnoredNoScenarioPrepaysOrHoldsIt(t *testing.T) {
 	}
 }
 
+// The slack can be negative, and ignored it is neither held nor prepaid either. Prepaying 5,000.00
+// of the 12,000.00 owed on 2025-01-10 shortens the term to end on 2025-08-10. The bank's statement
+// of 2025-03-10 then reports 10,000.00 owed after that day's installment, as it does for the status
+// quo, so the 5 months left charge 2,000.00 each against the status quo's 1,000.00.
+func TestWithTheSlackIgnoredAnInstallmentAboveTheStatusQuosHoldsNothing(t *testing.T) {
+	t.Parallel()
+
+	decided := date(t, "2025-01-10")
+	events := mortgage.Events{Statements: []mortgage.Statement{{Date: date(t, "2025-03-10"), OutstandingBalance: dec(t, "10000.00")}}}
+
+	verdicts, err := comparison.Decide(
+		comparison.Mortgage{Terms: interestFreeTerms(t), Events: events},
+		comparison.Market{Quotes: []bonds.Quote{{
+			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
+			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
+		}}},
+		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm},
+		decided,
+	)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	prepay := verdicts[0].Prepay
+	assert.Equal(t, []flow{
+		{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "7000.00"},
+		{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "6000.00"},
+		{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "10000.00"},
+		{"2025-04-10", "2000.00", "0.00", "0.00", "0.00", "", "8000.00"},
+		{"2025-05-10", "2000.00", "0.00", "0.00", "0.00", "", "6000.00"},
+		{"2025-06-10", "2000.00", "0.00", "0.00", "0.00", "", "4000.00"},
+		{"2025-07-10", "2000.00", "0.00", "0.00", "0.00", "", "2000.00"},
+		{"2025-08-10", "2000.00", "0.00", "0.00", "0.00", "", "0.00"},
+		{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
+	}, flows(prepay))
+	assert.Equal(t, "0.00", prepay.Cash.String())
+}
+
 // Lowering the installment with the slack ignored gives the owner what its installments charge less
 // by the horizon. With a 0.1% MIP on the balance and nothing else charged, the status quo's 12
 // installments from 2025-02-10 amortize 1,000.00 each of the 12,000.00 owed and charge 12.00 down
 // to 1.00 of MIP, 78.00 in all. Prepaying 5,000.00 leaves 7,000.00, amortized 583.33 or 583.34 a
 // month, whose MIP of 7.00, 6.42, 5.83, 5.25, 4.67, 4.08, 3.50, 2.92, 2.33, 1.75, 1.17 and 0.58 adds
 // up to 45.50. The installments avoid 32.50 of MIP and charge 12,078.00 − 7,045.50 = 5,032.50 less.
-// Shortening the term, or prepaying the slack, lowers no installment the owner keeps.
+// A bond maturing on 2025-07-01 counts only the 5 installments due by then: 12.00 down to 8.00 of
+// MIP, 50.00, against 7.00 + 6.42 + 5.83 + 5.25 + 4.67 = 29.17, so 20.83 is avoided, and the
+// installments charge 5,050.00 − (583.33 × 4 + 583.34 + 29.17) = 2,104.17 less. Shortening the
+// term, or prepaying the slack, lowers no installment the owner keeps.
 func TestLoweringTheInstallmentWithTheSlackIgnoredSaysWhatItGivesByTheHorizon(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name        string
+		maturity    string
 		effect      mortgage.PrepaymentEffect
 		prepaySlack bool
 		want        *comparison.LoweredInstallment
 	}{
 		{
-			name:   "lowered installment",
-			effect: mortgage.LowerInstallment,
-			want:   &comparison.LoweredInstallment{ChargesAvoided: dec(t, "32.50"), PaidLess: dec(t, "5032.50")},
+			name:     "lowered installment",
+			maturity: "2027-01-01",
+			effect:   mortgage.LowerInstallment,
+			want:     &comparison.LoweredInstallment{ChargesAvoided: dec(t, "32.50"), PaidLess: dec(t, "5032.50")},
 		},
-		{name: "shortened term", effect: mortgage.ShortenTerm},
-		{name: "slack prepaid", effect: mortgage.LowerInstallment, prepaySlack: true},
+		{
+			name:     "horizon before the mortgage ends",
+			maturity: "2025-07-01",
+			effect:   mortgage.LowerInstallment,
+			want:     &comparison.LoweredInstallment{ChargesAvoided: dec(t, "20.83"), PaidLess: dec(t, "2104.17")},
+		},
+		{name: "shortened term", maturity: "2027-01-01", effect: mortgage.ShortenTerm},
+		{name: "slack prepaid", maturity: "2027-01-01", effect: mortgage.LowerInstallment, prepaySlack: true},
 	}
 
 	for _, tt := range tests {
@@ -279,7 +327,7 @@ func TestLoweringTheInstallmentWithTheSlackIgnoredSaysWhatItGivesByTheHorizon(t 
 			verdicts, err := comparison.Decide(
 				comparison.Mortgage{Terms: terms},
 				comparison.Market{Quotes: []bonds.Quote{{
-					Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
+					Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, tt.maturity)},
 					Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
 				}}},
 				comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: tt.effect, PrepaySlack: tt.prepaySlack},

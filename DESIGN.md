@@ -483,7 +483,9 @@ prepaid every month. Turning it on or off, like picking another effect, compares
   With the switch off and the effect "reduzir a prestação", one more Callout line in grey closes
   the panel with what lowering the installment gives by the date: "Até 01/01/2032, reduzir a
   prestação evita R$ 12.345,67 em juros, seguros e taxas, e você paga R$ 9.876,54 a menos em
-  prestações." It is left out when the response doesn't carry it.
+  prestações." Amounts carry no sign, so when lowering costs more the wording turns: "reduzir a
+  prestação cobra R$ 583,33 a mais em juros, seguros e taxas" and "você paga R$ 120,00 a mais em
+  prestações". It is left out when the response doesn't carry it.
 - Detalhes: an inset grouped list with today's rate, the bond's price, the quantity bought and the
   cost prepaying avoids, the rate at which both options tie in Footnote under it ("Empata com
   amortizar se a taxa cair para 13,99%."), then "Ver cenários", which opens both scenarios' figures

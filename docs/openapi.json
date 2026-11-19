@@ -363,7 +363,7 @@
             "type": "string"
           },
           "prepay_slack": {
-            "description": "Whether each scenario prepays its installment's slack every month.",
+            "description": "Whether the comparison assumed the owner prepays the installment's slack every month.",
             "type": "boolean"
           },
           "verdicts": {
@@ -405,7 +405,7 @@
             "type": "string"
           },
           "prepay_slack": {
-            "description": "Whether every month each scenario pays what the status quo's installment is, prepaying what its own installment leaves of it on its due date and holding what nothing is owed for, so both cost the same out of pocket. When false or absent, the slack goes to the owner's other spending and neither scenario holds nor prepays it.",
+            "description": "Whether the comparison assumes the owner prepays the installment's slack every month. False when absent.",
             "type": "boolean"
           }
         },
@@ -2350,7 +2350,7 @@
     },
     "/decisions": {
       "post": {
-        "description": "Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. Each scenario prepays its installment's slack every month only with prepay_slack. It is computed on request and not stored.",
+        "description": "Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. It is computed on request and not stored.",
         "operationId": "decide",
         "requestBody": {
           "content": {
@@ -2392,7 +2392,7 @@
     },
     "/early-sale-checks": {
       "get": {
-        "description": "Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, valued on the bond's maturity. Neither scenario prepays its installment's slack.",
+        "description": "Compares, for every lot recorded, selling it today at its Market Value and prepaying the proceeds with holding it to maturity, valued on the bond's maturity.",
         "operationId": "check-early-sales",
         "parameters": [
           {
@@ -2441,7 +2441,7 @@
     },
     "/early-sale-checks/{id}": {
       "get": {
-        "description": "Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, valued on the bond's maturity. Neither scenario prepays its installment's slack.",
+        "description": "Compares selling the lot today at its Market Value and prepaying the proceeds with holding it to maturity, valued on the bond's maturity.",
         "operationId": "check-early-sale",
         "parameters": [
           {
@@ -2803,7 +2803,7 @@
     },
     "/lots/comparison": {
       "post": {
-        "description": "Compares buying the lot with prepaying its amount invested on its purchase date instead, valued on the bond's maturity. Neither scenario prepays its installment's slack. The lot need not be recorded; it is computed on request and not stored.",
+        "description": "Compares buying the lot with prepaying its amount invested on its purchase date instead, valued on the bond's maturity. The lot need not be recorded; it is computed on request and not stored.",
         "operationId": "compare-lot",
         "parameters": [
           {

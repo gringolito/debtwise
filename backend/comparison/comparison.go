@@ -466,14 +466,16 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 		}
 	}
 
-	for _, i := range statusQuo.Installments {
-		if !c.decision.PrepaySlack || !i.DueDate.After(c.decision.Date) || charged[i.Number] {
-			continue
-		}
+	if c.decision.PrepaySlack {
+		for _, i := range statusQuo.Installments {
+			if !i.DueDate.After(c.decision.Date) || charged[i.Number] {
+				continue
+			}
 
-		f := on(i.DueDate)
-		f.OutstandingBalance = planned.Balance
-		hold(f, i.Amount)
+			f := on(i.DueDate)
+			f.OutstandingBalance = planned.Balance
+			hold(f, i.Amount)
+		}
 	}
 
 	horizon := on(c.bond.Maturity)

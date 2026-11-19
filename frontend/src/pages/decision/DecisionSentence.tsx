@@ -205,7 +205,7 @@ export function DecisionSentence({
           checked={values.prepaySlack}
           onCheckedChange={(prepaySlack) => onChange({ ...values, prepaySlack })}
           aria-describedby={`${id}-slack-hint`}
-          className="mt-1"
+          className="mt-1 max-md:after:-inset-y-3.5"
         />
       </div>
     </form>

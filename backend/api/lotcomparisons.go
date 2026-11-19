@@ -28,7 +28,7 @@ func registerLotComparisons(humaAPI huma.API, services Services, now func() time
 		Method:      http.MethodPost,
 		Path:        lotsPath + "/comparison",
 		Summary:     "Compare a lot with prepaying",
-		Description: "Compares buying the lot with prepaying its amount invested on its purchase date instead, valued on the bond's maturity. Neither scenario prepays its installment's slack. The lot need not be recorded; it is computed on request and not stored.",
+		Description: "Compares buying the lot with prepaying its amount invested on its purchase date instead, valued on the bond's maturity. The lot need not be recorded; it is computed on request and not stored.",
 		Tags:        []string{lotsTag},
 	}, func(ctx context.Context, in *struct {
 		Effect string `query:"effect" required:"true" enum:"shorten_term,lower_installment" doc:"What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments."`

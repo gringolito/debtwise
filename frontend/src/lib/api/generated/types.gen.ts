@@ -225,7 +225,7 @@ export type Decision = {
      */
     effect: 'shorten_term' | 'lower_installment';
     /**
-     * Whether each scenario prepays its installment's slack every month.
+     * Whether the comparison assumed the owner prepays the installment's slack every month.
      */
     prepay_slack: boolean;
     /**
@@ -248,7 +248,7 @@ export type DecisionInput = {
      */
     effect: 'shorten_term' | 'lower_installment';
     /**
-     * Whether every month each scenario pays what the status quo's installment is, prepaying what its own installment leaves of it on its due date and holding what nothing is owed for, so both cost the same out of pocket. When false or absent, the slack goes to the owner's other spending and neither scenario holds nor prepays it.
+     * Whether the comparison assumes the owner prepays the installment's slack every month. False when absent.
      */
     prepay_slack?: boolean;
 };

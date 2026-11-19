@@ -19,14 +19,14 @@ type decisionInput struct {
 	Amount      string `json:"amount" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"The amount to prepay or invest, in reais, as a decimal string."`
 	Date        string `json:"date,omitempty" format:"date" required:"false" doc:"The date the amount is prepaid or invested on. Today when absent; it must not be before today."`
 	Effect      string `json:"effect" enum:"shorten_term,lower_installment" doc:"What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it."`
-	PrepaySlack bool   `json:"prepay_slack,omitempty" required:"false" doc:"Whether every month each scenario pays what the status quo's installment is, prepaying what its own installment leaves of it on its due date and holding what nothing is owed for, so both cost the same out of pocket. When false or absent, the slack goes to the owner's other spending and neither scenario holds nor prepays it."`
+	PrepaySlack bool   `json:"prepay_slack,omitempty" required:"false" doc:"Whether the comparison assumes the owner prepays the installment's slack every month. False when absent."`
 }
 
 type decision struct {
 	Amount      string    `json:"amount" doc:"The amount prepaid or invested, in reais, as a decimal string."`
 	Date        string    `json:"date" format:"date" doc:"The date the amount is prepaid or invested on."`
 	Effect      string    `json:"effect" enum:"shorten_term,lower_installment" doc:"What each prepayment changes."`
-	PrepaySlack bool      `json:"prepay_slack" doc:"Whether each scenario prepays its installment's slack every month."`
+	PrepaySlack bool      `json:"prepay_slack" doc:"Whether the comparison assumed the owner prepays the installment's slack every month."`
 	Verdicts    []verdict `json:"verdicts" nullable:"false" doc:"A verdict for every bond on offer that follows the mortgage's indexer and matures after the date, in the order of the bond catalogue."`
 }
 
@@ -102,7 +102,7 @@ func registerDecisions(humaAPI huma.API, services Services, now func() time.Time
 		Method:      http.MethodPost,
 		Path:        "/decisions",
 		Summary:     "Compare prepaying an amount with buying a bond",
-		Description: "Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. Each scenario prepays its installment's slack every month only with prepay_slack. It is computed on request and not stored.",
+		Description: "Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. It is computed on request and not stored.",
 		Tags:        []string{"Decisions"},
 	}, func(ctx context.Context, in *struct{ Body decisionInput }) (*struct{ Body decision }, error) {
 		today := dateOf(now())

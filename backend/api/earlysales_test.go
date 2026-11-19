@@ -345,25 +345,29 @@ func TestAnEarlySaleCheckOfOneLotFavoursSellingWhenTheMortgageCostsMoreAndTheTer
 	}
 
 	for _, tt := range tests {
-		var got earlySale
-		require.NoError(t, json.Unmarshal([]byte(do(t, s.handler, http.MethodGet,
-			fmt.Sprintf("/early-sale-checks/%d?effect=%s", ltn.ID, tt.effect), "", http.StatusOK)), &got))
+		t.Run(tt.effect, func(t *testing.T) {
+			t.Parallel()
 
-		assert.Equal(t, "2026-10-28", got.Date)
-		assert.Equal(t, tt.effect, got.Effect)
-		assert.Equal(t, ltn, got.Check.Lot)
-		assert.Equal(t, tt.verdict, got.Check.Verdict)
-		assert.Equal(t, tt.advantage, got.Check.Advantage)
-		assert.Equal(t, "-290572.32", got.Check.Hold.NetWorth)
-		assert.Equal(t, "299979.32", got.Check.Hold.OutstandingBalance)
-		assert.Equal(t, maturity, got.Check.Hold.Bond)
-		assert.Equal(t, "-"+tt.sellBalance, got.Check.Sell.NetWorth)
-		assert.Equal(t, "0.00", got.Check.Sell.Cash)
-		assert.Equal(t, tt.sellBalance, got.Check.Sell.OutstandingBalance)
+			var got earlySale
+			require.NoError(t, json.Unmarshal([]byte(do(t, s.handler, http.MethodGet,
+				fmt.Sprintf("/early-sale-checks/%d?effect=%s", ltn.ID, tt.effect), "", http.StatusOK)), &got))
 
-		var list earlySaleCheckList
-		require.NoError(t, json.Unmarshal([]byte(do(t, s.handler, http.MethodGet, "/early-sale-checks?effect="+tt.effect, "", http.StatusOK)), &list))
-		assert.Equal(t, []earlySaleCheck{got.Check}, list.Checks)
+			assert.Equal(t, "2026-10-28", got.Date)
+			assert.Equal(t, tt.effect, got.Effect)
+			assert.Equal(t, ltn, got.Check.Lot)
+			assert.Equal(t, tt.verdict, got.Check.Verdict)
+			assert.Equal(t, tt.advantage, got.Check.Advantage)
+			assert.Equal(t, "-290572.32", got.Check.Hold.NetWorth)
+			assert.Equal(t, "299979.32", got.Check.Hold.OutstandingBalance)
+			assert.Equal(t, maturity, got.Check.Hold.Bond)
+			assert.Equal(t, "-"+tt.sellBalance, got.Check.Sell.NetWorth)
+			assert.Equal(t, "0.00", got.Check.Sell.Cash)
+			assert.Equal(t, tt.sellBalance, got.Check.Sell.OutstandingBalance)
+
+			var list earlySaleCheckList
+			require.NoError(t, json.Unmarshal([]byte(do(t, s.handler, http.MethodGet, "/early-sale-checks?effect="+tt.effect, "", http.StatusOK)), &list))
+			assert.Equal(t, []earlySaleCheck{got.Check}, list.Checks)
+		})
 	}
 }
 
