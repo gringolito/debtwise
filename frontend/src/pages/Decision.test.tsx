@@ -453,25 +453,35 @@ describe("the question as a sentence", () => {
 });
 
 describe("what lowering the installment gives", () => {
-  it("reads an amount below zero unsigned and the other way around", async () => {
-    await compare(
-      [
-        {
-          ...ltnVerdict,
-          lowered_installment: { charges_avoided: "-583.33", paid_less: "-120.00" },
-        },
-      ],
-      "10000",
-      { effect: "lower_installment" },
-    );
+  it.each([
+    [
+      "both below zero",
+      { charges_avoided: "-583.33", paid_less: "-120.00" },
+      "cobra R$ 583,33 a mais em juros, seguros e taxas, e você paga R$ 120,00 a mais em prestações.",
+    ],
+    [
+      "charges below zero only",
+      { charges_avoided: "-12.34", paid_less: "5000.00" },
+      "cobra R$ 12,34 a mais em juros, seguros e taxas, e você paga R$ 5.000,00 a menos em prestações.",
+    ],
+    [
+      "paid less below zero only",
+      { charges_avoided: "12.34", paid_less: "-5000.00" },
+      "evita R$ 12,34 em juros, seguros e taxas, e você paga R$ 5.000,00 a mais em prestações.",
+    ],
+  ])(
+    "reads an amount below zero unsigned and the other way around: %s",
+    async (_, lowered, line) => {
+      await compare([{ ...ltnVerdict, lowered_installment: lowered }], "10000", {
+        effect: "lower_installment",
+      });
 
-    const panel = await verdictPanel();
-    expect(
-      within(panel).getByText(
-        "Até 01/01/2029, reduzir a prestação cobra R$ 583,33 a mais em juros, seguros e taxas, e você paga R$ 120,00 a mais em prestações.",
-      ),
-    ).toBeInTheDocument();
-  });
+      const panel = await verdictPanel();
+      expect(
+        within(panel).getByText(`Até 01/01/2029, reduzir a prestação ${line}`),
+      ).toBeInTheDocument();
+    },
+  );
 });
 
 describe("the verdict panel", () => {
@@ -589,7 +599,8 @@ describe("the verdict panel", () => {
     await compare([ltnVerdict], "10000", { effect: "lower_installment" });
 
     const panel = await verdictPanel();
-    expect(within(panel).queryByText(/reduzir a prestação evita/)).toBeNull();
+    expect(within(panel).queryByText(/reduzir a prestação (evita|cobra)/)).toBeNull();
+    expect(within(panel).queryByText(/em juros, seguros e taxas/)).toBeNull();
   });
 
   it("reads what an option leaves the owner with, not a negative amount", async () => {

@@ -288,14 +288,18 @@ func TestWithTheSlackIgnoredAnInstallmentAboveTheStatusQuosHoldsNothing(t *testi
 // up to 45.50. The installments avoid 32.50 of MIP and charge 12,078.00 − 7,045.50 = 5,032.50 less.
 // A bond maturing on 2025-07-01 counts only the 5 installments due by then: 12.00 down to 8.00 of
 // MIP, 50.00, against 7.00 + 6.42 + 5.83 + 5.25 + 4.67 = 29.17, so 20.83 is avoided, and the
-// installments charge 5,050.00 − (583.33 × 4 + 583.34 + 29.17) = 2,104.17 less. Shortening the
-// term, or prepaying the slack, lowers no installment the owner keeps.
+// installments charge 5,050.00 − (583.33 × 4 + 583.34 + 29.17) = 2,104.17 less. Charging 1% a month
+// of interest from 2025-02-01 too, those 5 installments charge 120.00 down to 80.00 of it on the
+// status quo's balance, 500.00, and 70.00 + 64.17 + 58.33 + 52.50 + 46.67 = 291.67 on the lowered
+// one's: they avoid 550.00 − 320.84 = 229.16 and charge 5,550.00 − 3,237.50 = 2,312.50 less.
+// Shortening the term, or prepaying the slack, lowers no installment the owner keeps.
 func TestLoweringTheInstallmentWithTheSlackIgnoredSaysWhatItGivesByTheHorizon(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name        string
 		maturity    string
+		interest    bool
 		effect      mortgage.PrepaymentEffect
 		prepaySlack bool
 		want        *comparison.LoweredInstallment
@@ -312,6 +316,13 @@ func TestLoweringTheInstallmentWithTheSlackIgnoredSaysWhatItGivesByTheHorizon(t 
 			effect:   mortgage.LowerInstallment,
 			want:     &comparison.LoweredInstallment{ChargesAvoided: dec(t, "20.83"), PaidLess: dec(t, "2104.17")},
 		},
+		{
+			name:     "interest charged, horizon before the mortgage ends",
+			maturity: "2025-07-01",
+			interest: true,
+			effect:   mortgage.LowerInstallment,
+			want:     &comparison.LoweredInstallment{ChargesAvoided: dec(t, "229.16"), PaidLess: dec(t, "2312.50")},
+		},
 		{name: "shortened term", maturity: "2027-01-01", effect: mortgage.ShortenTerm},
 		{name: "slack prepaid", maturity: "2027-01-01", effect: mortgage.LowerInstallment, prepaySlack: true},
 	}
@@ -322,6 +333,13 @@ func TestLoweringTheInstallmentWithTheSlackIgnoredSaysWhatItGivesByTheHorizon(t 
 
 			terms := interestFreeTerms(t)
 			terms.MIPRates[0].Rate = dec(t, "0.001")
+
+			if tt.interest {
+				terms.ContractRates = append(terms.ContractRates, mortgage.ContractRate{
+					EffectiveFrom: date(t, "2025-02-01"), Rate: dec(t, "0.12"), Basis: mortgage.Nominal,
+				})
+			}
+
 			decided := date(t, "2025-01-10")
 
 			verdicts, err := comparison.Decide(

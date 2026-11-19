@@ -315,17 +315,24 @@ func TestADecisionIgnoresTheSlackUnlessAskedToPrepayIt(t *testing.T) {
 			got := s.decide(t, fmt.Sprintf(`{"amount": "5000.00", "effect": %q}`, tt.effect))
 			assert.False(t, got.PrepaySlack)
 
-			types := make([]string, 0, len(got.Verdicts))
-			for _, v := range got.Verdicts {
-				types = append(types, v.Type)
+			// Both bonds mature after the mortgage ends, so the prepay scenario, and with it the
+			// avoided cost and what lowering the installment gives, is the same for each.
+			type slackOff struct {
+				bond, avoided string
+				lowered       *decisionLoweredInstallment
 			}
 
-			require.Equal(t, []string{"ltn", "ntn_f"}, types)
+			verdicts := make([]slackOff, 0, len(got.Verdicts))
+			for _, v := range got.Verdicts {
+				verdicts = append(verdicts, slackOff{v.Type, v.AvoidedCost, v.LoweredInstallment})
+			}
+
+			assert.Equal(t, []slackOff{{"ltn", tt.avoided, tt.lowered}, {"ntn_f", tt.avoided, tt.lowered}}, verdicts)
+			require.Len(t, got.Verdicts, 2)
 
 			v := got.Verdicts[0]
 			assert.Equal(t, "6229.89", v.Advantage)
-			assert.Equal(t, tt.avoided, v.AvoidedCost)
-			assert.Equal(t, tt.lowered, v.LoweredInstallment)
+
 			require.NotNil(t, v.Prepay)
 			assert.Equal(t, []string{"0.00", "0.00", "0.00"}, []string{v.Prepay.NetWorth, v.Prepay.Cash, v.Prepay.OutstandingBalance})
 
@@ -342,42 +349,61 @@ func TestADecisionIgnoresTheSlackUnlessAskedToPrepayIt(t *testing.T) {
 }
 
 // Quoted back as the LTN's buy rate, the Break-even Rate the API answers leaves investing and
-// prepaying within a centavo of each other on the horizon.
+// prepaying within a centavo of each other on the horizon, whether the slack is prepaid or not.
 func TestABreakEvenRateQuotedBackGivesAnAdvantageOfZero(t *testing.T) {
 	t.Parallel()
 
-	mortgage := fmt.Sprintf(interestFreeMortgage, "none")
-	decision := `{"amount": "5000.00", "effect": "shorten_term", "prepay_slack": true}`
-	today := onDay(date(2026, time.October, 28))
+	tests := []struct {
+		name, mortgage, decision string
+	}{
+		{
+			name:     "slack prepaid",
+			mortgage: fmt.Sprintf(interestFreeMortgage, "none"),
+			decision: `{"amount": "5000.00", "effect": "shorten_term", "prepay_slack": true}`,
+		},
+		{
+			name:     "slack ignored",
+			mortgage: expensiveLongMortgage(),
+			decision: `{"amount": "5000.00", "effect": "lower_installment"}`,
+		},
+	}
 
-	s := newServer(t, sgsWithRows(nil), quotingRadar(), today)
-	do(t, s.handler, http.MethodPut, "/mortgage", mortgage, http.StatusOK)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	got := s.decide(t, decision)
-	require.NotEmpty(t, got.Verdicts)
+			today := onDay(date(2026, time.October, 28))
 
-	v := got.Verdicts[0]
-	require.Equal(t, "ltn", v.Type)
-	require.Empty(t, v.NoBreakEven)
+			s := newServer(t, sgsWithRows(nil), quotingRadar(), today)
+			do(t, s.handler, http.MethodPut, "/mortgage", tt.mortgage, http.StatusOK)
 
-	breakEven := decimal.MustParse(v.BreakEvenRate)
-	assert.Positive(t, breakEven.Cmp(decimal.MustParse("0")), "a bond at 0% loses its custody fee")
-	assert.Negative(t, breakEven.Cmp(decimal.MustParse(v.Rate)), "the LTN's buy rate favours investing")
+			got := s.decide(t, tt.decision)
+			require.NotEmpty(t, got.Verdicts)
 
-	ltn := radarBonds()[1]
-	require.Equal(t, ltn2029, ltn.Name)
-	ltn.InvestmentRate = &breakEven
-	quoted := radarWithBonds([]string{ltn2029}, ltn)
-	fedBack := newServer(t, sgsWithRows(nil), quoted, today)
-	do(t, fedBack.handler, http.MethodPut, "/mortgage", mortgage, http.StatusOK)
+			v := got.Verdicts[0]
+			require.Equal(t, "ltn", v.Type)
+			require.Empty(t, v.NoBreakEven)
 
-	again := fedBack.decide(t, decision)
-	require.Len(t, again.Verdicts, 1)
-	assert.Equal(t, v.BreakEvenRate, again.Verdicts[0].Rate)
+			breakEven := decimal.MustParse(v.BreakEvenRate)
+			assert.Positive(t, breakEven.Cmp(decimal.MustParse("0")), "a bond at 0% loses its custody fee")
+			assert.Negative(t, breakEven.Cmp(decimal.MustParse(v.Rate)), "the LTN's buy rate favours investing")
 
-	advantage := decimal.MustParse(again.Verdicts[0].Advantage)
-	assert.LessOrEqual(t, advantage.Cmp(decimal.MustParse("0.01")), 0, advantage.String())
-	assert.GreaterOrEqual(t, advantage.Cmp(decimal.MustParse("-0.01")), 0, advantage.String())
+			ltn := radarBonds()[1]
+			require.Equal(t, ltn2029, ltn.Name)
+			ltn.InvestmentRate = &breakEven
+			quoted := radarWithBonds([]string{ltn2029}, ltn)
+			fedBack := newServer(t, sgsWithRows(nil), quoted, today)
+			do(t, fedBack.handler, http.MethodPut, "/mortgage", tt.mortgage, http.StatusOK)
+
+			again := fedBack.decide(t, tt.decision)
+			require.Len(t, again.Verdicts, 1)
+			assert.Equal(t, v.BreakEvenRate, again.Verdicts[0].Rate)
+
+			advantage := decimal.MustParse(again.Verdicts[0].Advantage)
+			assert.LessOrEqual(t, advantage.Cmp(decimal.MustParse("0.01")), 0, advantage.String())
+			assert.GreaterOrEqual(t, advantage.Cmp(decimal.MustParse("-0.01")), 0, advantage.String())
+		})
+	}
 }
 
 // With the slack prepaid, a mortgage at 900% a year costs more by 2029 than the LTN maturing then
