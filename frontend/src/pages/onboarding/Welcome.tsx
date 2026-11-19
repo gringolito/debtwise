@@ -27,7 +27,7 @@ export function Welcome({ onStart }: { onStart: () => void }) {
       </div>
       <h1 className="mb-3 text-large-title">Seu financiamento, com clareza.</h1>
       <p className="mb-8 text-muted-foreground">
-        Acompanhe o saldo devedor e descubra, a cada mês, se vale mais amortizar ou investir.
+        Acompanhe o saldo devedor e descubra, a cada mês, se vale mais a pena amortizar ou investir.
       </p>
       <GroupedList className="mb-8 w-full text-left">
         {features.map(({ icon: Icon, text }) => (

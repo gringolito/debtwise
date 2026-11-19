@@ -108,7 +108,7 @@ describe("Compras", () => {
     renderAt("/investimentos");
 
     await screen.findByText("Manter até o vencimento");
-    expect(screen.queryByText(/renderi/)).toBeNull();
+    expect(screen.queryByText(/valeria/)).toBeNull();
     expect(screen.queryByRole("link", { name: "Ver venda antecipada" })).toBeNull();
   });
 
