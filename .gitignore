@@ -13,7 +13,6 @@
 *.out
 
 /backend/bin/
-/backend/test-report.json
 
 ### SQLite ###
 *.db
