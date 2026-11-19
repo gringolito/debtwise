@@ -60,7 +60,8 @@ function ComparisonNote({ comparison }: { comparison: LotComparison }) {
     case "prepay":
       return (
         <CelebrationNote>
-          Amortizar reduzindo o prazo renderia {amount} a mais até {until}.
+          Amortizar reduzindo o prazo valeria mais a pena: você ficaria com {amount} a mais até{" "}
+          {until}.
         </CelebrationNote>
       );
     case "even":

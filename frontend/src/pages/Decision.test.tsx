@@ -218,7 +218,7 @@ async function compare(verdicts: Verdict[], amount = "10000", input: Partial<Dec
 
 /** The verdict panel, which its headline names: who ends with more, or that it is a tie. */
 const verdictPanel = () =>
-  screen.findByRole("region", { name: / rende mais| dá (praticamente )?no mesmo/ });
+  screen.findByRole("region", { name: / vale mais a pena| dá (praticamente )?no mesmo/ });
 const otherBonds = () => screen.getByRole("region", { name: "Outros títulos" });
 
 /** What one option of the verdict panel says: its title, what it is, what it ends with and why. */
@@ -384,7 +384,9 @@ describe("the verdict panel", () => {
 
     const panel = await verdictPanel();
     expect(
-      within(panel).getByRole("heading", { name: "Investir em Tesouro Prefixado 2029 rende mais" }),
+      within(panel).getByRole("heading", {
+        name: "Investir em Tesouro Prefixado 2029 vale mais a pena",
+      }),
     ).toBeInTheDocument();
     expect(
       within(panel).getByText("Onde está o dinheiro em 01/01/2029, em cada opção."),
@@ -423,7 +425,9 @@ describe("the verdict panel", () => {
 
     const panel = await verdictPanel();
     expect(
-      within(panel).getByRole("heading", { name: "Amortizar rende mais que Tesouro IPCA+ 2032" }),
+      within(panel).getByRole("heading", {
+        name: "Amortizar vale mais a pena que investir em Tesouro IPCA+ 2032",
+      }),
     ).toBeInTheDocument();
     expect(within(panel).getByText("Amortizar termina com R$ 250,30 a mais")).toBeInTheDocument();
     expect(
@@ -581,7 +585,7 @@ describe("the other bonds", () => {
     fireEvent.click(within(otherBonds()).getByRole("button", { name: /Tesouro IPCA\+ 2032/ }));
 
     const panel = screen.getByRole("region", {
-      name: "Amortizar rende mais que Tesouro IPCA+ 2032",
+      name: "Amortizar vale mais a pena que investir em Tesouro IPCA+ 2032",
     });
     expect(within(panel).getByText("Amortizar termina com R$ 250,30 a mais")).toBeInTheDocument();
     expect(rows(otherBonds())).toEqual([["Tesouro Prefixado 2029 · 12,76%", "R$ 1.234,56 a mais"]]);
@@ -695,8 +699,8 @@ describe("the details of the verdict on the panel", () => {
   });
 
   it.each([
-    ["below_range", "Investir rende mais mesmo a 0,00% ao ano."],
-    ["above_range", "Amortizar rende mais mesmo a 100,00% ao ano."],
+    ["below_range", "Investir vale mais a pena mesmo a 0,00% ao ano."],
+    ["above_range", "Amortizar vale mais a pena mesmo a 100,00% ao ano."],
   ] as const)("says why no rate breaks even when it is %s", async (reason, note) => {
     await compare([{ ...ltnVerdict, break_even_rate: undefined, no_break_even: reason }]);
     await verdictPanel();

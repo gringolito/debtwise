@@ -128,13 +128,15 @@ describe("a lot's detail", () => {
     renderAt("/investimentos/compras/1");
 
     const panel = await earlySale();
-    expect(await within(panel).findByRole("heading", { name: "Manter rende mais" })).toBeVisible();
+    expect(
+      await within(panel).findByRole("heading", { name: "Manter vale mais a pena" }),
+    ).toBeVisible();
     expect(
       within(panel).getByText(
         (_, element) =>
           element?.tagName === "P" &&
           text(element) ===
-            "Manter até o vencimento rende R$ 2.140,00 a mais do que vender hoje e amortizar.",
+            "Manter até o vencimento termina com R$ 2.140,00 a mais do que vender hoje e amortizar.",
       ),
     ).toBeInTheDocument();
     expect(within(panel).getByText("R$ 2.140,00")).not.toHaveClass("text-positive");
@@ -145,7 +147,9 @@ describe("a lot's detail", () => {
 
     fireEvent.click(within(panel).getByRole("radio", { name: "Reduzir prestação" }));
 
-    expect(await within(panel).findByRole("heading", { name: "Vender rende mais" })).toBeVisible();
+    expect(
+      await within(panel).findByRole("heading", { name: "Vender vale mais a pena" }),
+    ).toBeVisible();
     expect(within(panel).getByText("R$ 310,55")).toHaveClass("text-positive");
     expect(
       requests
@@ -165,7 +169,9 @@ describe("a lot's detail", () => {
     renderAt("/investimentos/compras/1?efeito=reduzir-prestacao");
 
     const panel = await earlySale();
-    expect(await within(panel).findByRole("heading", { name: "Vender rende mais" })).toBeVisible();
+    expect(
+      await within(panel).findByRole("heading", { name: "Vender vale mais a pena" }),
+    ).toBeVisible();
     expect(within(panel).getByRole("radio", { name: "Reduzir prestação" })).toBeChecked();
   });
 

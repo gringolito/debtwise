@@ -26,8 +26,13 @@ function verdict(advantage: string, nearTie: boolean): ComparedVerdict {
 
 describe("verdictHeadline", () => {
   it.each([
-    ["investing ahead", "814.22", false, "Investir em Tesouro Prefixado 2032 rende mais"],
-    ["prepaying ahead", "-814.22", false, "Amortizar rende mais que Tesouro Prefixado 2032"],
+    ["investing ahead", "814.22", false, "Investir em Tesouro Prefixado 2032 vale mais a pena"],
+    [
+      "prepaying ahead",
+      "-814.22",
+      false,
+      "Amortizar vale mais a pena que investir em Tesouro Prefixado 2032",
+    ],
     [
       "investing a near tie ahead",
       "39.64",

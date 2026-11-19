@@ -11,7 +11,9 @@ export function verdictHeadline(verdict: ComparedVerdict): string {
   const side = favoured(verdict.advantage);
   if (side === "even") return `Investir em ${bond} ou amortizar dá no mesmo`;
   if (verdict.near_tie) return `Investir em ${bond} ou amortizar dá praticamente no mesmo`;
-  return side === "invest" ? `Investir em ${bond} rende mais` : `Amortizar rende mais que ${bond}`;
+  return side === "invest"
+    ? `Investir em ${bond} vale mais a pena`
+    : `Amortizar vale mais a pena que investir em ${bond}`;
 }
 
 /** advantageAmount is the advantage without its sign: "R$ 814,22". */

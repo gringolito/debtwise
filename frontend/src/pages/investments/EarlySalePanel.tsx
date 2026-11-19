@@ -29,9 +29,9 @@ function Verdict({ check }: { check: EarlySaleCheck }) {
     <>
       <h3 className="text-title-2">
         {gain.kind === "gain"
-          ? "Vender rende mais"
+          ? "Vender vale mais a pena"
           : gain.kind === "loss"
-            ? "Manter rende mais"
+            ? "Manter vale mais a pena"
             : "Vender ou manter dá no mesmo"}
       </h3>
       <p className="text-body">
@@ -39,13 +39,15 @@ function Verdict({ check }: { check: EarlySaleCheck }) {
           "Vender hoje e amortizar ficaria igual a manter até o vencimento."
         ) : gain.kind === "gain" ? (
           <>
-            Vender hoje e amortizar rende <SaleGainAmount gain={gain} className="font-semibold" /> a
-            mais do que manter até o vencimento.
+            Vender hoje e amortizar termina com{" "}
+            <SaleGainAmount gain={gain} className="font-semibold" /> a mais do que manter até o
+            vencimento.
           </>
         ) : (
           <>
-            Manter até o vencimento rende <SaleGainAmount gain={gain} className="font-semibold" /> a
-            mais do que vender hoje e amortizar.
+            Manter até o vencimento termina com{" "}
+            <SaleGainAmount gain={gain} className="font-semibold" /> a mais do que vender hoje e
+            amortizar.
           </>
         )}
       </p>

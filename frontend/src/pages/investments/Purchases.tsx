@@ -27,8 +27,8 @@ function SaleSummary({ checks }: { checks: EarlySaleCheck[] }) {
     <p className="flex flex-wrap items-center gap-x-2 text-callout text-muted-foreground">
       <span>
         {selling === 1
-          ? "1 compra renderia mais vendida para amortizar."
-          : `${selling} compras renderiam mais vendidas para amortizar.`}
+          ? "1 compra valeria mais a pena vendida para amortizar."
+          : `${selling} compras valeriam mais a pena vendidas para amortizar.`}
       </span>
       <Link
         to="/investimentos/venda-antecipada"
@@ -112,7 +112,7 @@ function SaleHint({ check }: { check: EarlySaleCheck | undefined }) {
           className="mt-0.5 size-4 shrink-0 text-positive"
         />
         <span>
-          Vender e amortizar rende{" "}
+          Vender e amortizar vale mais a pena:{" "}
           <span className="whitespace-nowrap">
             <SaleGainAmount gain={saleGain(check.advantage)} /> a mais
           </span>

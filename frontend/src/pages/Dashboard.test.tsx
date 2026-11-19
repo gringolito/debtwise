@@ -140,7 +140,7 @@ function stubInicio(routes: Routes = {}) {
 }
 
 const region = (name: string | RegExp) => screen.findByRole("region", { name });
-const answerCard = () => region(/rende mais|no mesmo|Amortizar ou investir\?/);
+const answerCard = () => region(/vale mais a pena|no mesmo|Amortizar ou investir\?/);
 
 /** paragraph finds the paragraph that reads content, across the elements it is split into. */
 const paragraph = (container: HTMLElement, content: string) =>
@@ -218,7 +218,9 @@ describe("the answer card", () => {
 
     const card = await answerCard();
     expect(
-      within(card).getByRole("heading", { name: "Investir em Tesouro Prefixado 2029 rende mais" }),
+      within(card).getByRole("heading", {
+        name: "Investir em Tesouro Prefixado 2029 vale mais a pena",
+      }),
     ).toBeInTheDocument();
     expect(within(card).getByText("Na projeção atual, para R$ 10.000,00 hoje")).toBeInTheDocument();
     expect(
@@ -256,7 +258,7 @@ describe("the answer card", () => {
     const card = await answerCard();
     expect(
       within(card).getByRole("heading", {
-        name: "Investir em Tesouro Prefixado com Juros Semestrais 2035 rende mais",
+        name: "Investir em Tesouro Prefixado com Juros Semestrais 2035 vale mais a pena",
       }),
     ).toBeInTheDocument();
   });
@@ -268,7 +270,7 @@ describe("the answer card", () => {
     const card = await answerCard();
     expect(
       within(card).getByRole("heading", {
-        name: "Amortizar rende mais que Tesouro Prefixado com Juros Semestrais 2035",
+        name: "Amortizar vale mais a pena que investir em Tesouro Prefixado com Juros Semestrais 2035",
       }),
     ).toBeInTheDocument();
     expect(

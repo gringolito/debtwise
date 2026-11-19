@@ -59,7 +59,7 @@ describe("Compras", () => {
     await waitFor(() =>
       expect(rowsOf(list)).toEqual([
         "Tesouro IPCA+ 2035 R$ 18.204,10 Compra em 12/05/2024 · IPCA + 6,21% Manter até o vencimento",
-        "Tesouro IPCA+ 2035 R$ 14.812,40 Compra em 18/11/2024 · IPCA + 6,45% Vender e amortizar rende R$ 120,00 a mais",
+        "Tesouro IPCA+ 2035 R$ 14.812,40 Compra em 18/11/2024 · IPCA + 6,45% Vender e amortizar vale mais a pena: R$ 120,00 a mais",
       ]),
     );
     expect(within(list).getByText("R$ 120,00")).toHaveClass("text-positive");
@@ -74,14 +74,14 @@ describe("Compras", () => {
     renderAt("/investimentos");
 
     expect(
-      await screen.findByText("3 compras renderiam mais vendidas para amortizar."),
+      await screen.findByText("3 compras valeriam mais a pena vendidas para amortizar."),
     ).toBeVisible();
 
     fireEvent.click(screen.getByRole("link", { name: "Ver venda antecipada" }));
 
     expect(
       await screen.findByRole("list", {
-        name: "Compras, das que mais rendem vendidas às que menos rendem",
+        name: "Compras, das que mais valem a pena vender às que menos valem",
       }),
     ).toBeInTheDocument();
   });
@@ -94,7 +94,9 @@ describe("Compras", () => {
     });
     renderAt("/investimentos");
 
-    expect(await screen.findByText("1 compra renderia mais vendida para amortizar.")).toBeVisible();
+    expect(
+      await screen.findByText("1 compra valeria mais a pena vendida para amortizar."),
+    ).toBeVisible();
   });
 
   it("says nothing of selling when no purchase would earn more sold", async () => {
@@ -199,7 +201,7 @@ describe("Compras", () => {
     const list = await comprasList();
     await waitFor(() =>
       expect(rowsOf(list)).toEqual([
-        "Tesouro Prefixado 2029 Sem preço de venda Compra em 10/01/2025 · 11,85% Vender e amortizar rende R$ 55,00 a mais",
+        "Tesouro Prefixado 2029 Sem preço de venda Compra em 10/01/2025 · 11,85% Vender e amortizar vale mais a pena: R$ 55,00 a mais",
         "Tesouro IPCA+ 2035 R$ 18.204,10 Compra em 12/05/2024 · IPCA + 6,21% Manter até o vencimento",
       ]),
     );

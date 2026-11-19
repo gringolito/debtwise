@@ -86,7 +86,10 @@ describe("a recorded lot", () => {
   });
 
   it.each([
-    ["-310.25", "Amortizar reduzindo o prazo renderia R$ 310,25* a mais até 01/01/2029."],
+    [
+      "-310.25",
+      "Amortizar reduzindo o prazo valeria mais a pena: você ficaria com R$ 310,25* a mais até 01/01/2029.",
+    ],
     ["0.00", "Investir e amortizar reduzindo o prazo dão o mesmo resultado até 01/01/2029."],
   ])("says how an advantage of %s compares with prepaying", async (advantage, line) => {
     renderFeedback({ kind: "recorded", lot: bought }, () => ({ ...lotComparison, advantage }));

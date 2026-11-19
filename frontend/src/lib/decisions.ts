@@ -135,10 +135,10 @@ export function breakEvenNote({
   no_break_even: noBreakEven,
 }: Verdict): string | undefined {
   if (noBreakEven === "below_range") {
-    return `Investir rende mais mesmo a ${bondRate(type, "0")} ao ano.`;
+    return `Investir vale mais a pena mesmo a ${bondRate(type, "0")} ao ano.`;
   }
   if (noBreakEven === "above_range") {
-    return `Amortizar rende mais mesmo a ${bondRate(type, "1")} ao ano.`;
+    return `Amortizar vale mais a pena mesmo a ${bondRate(type, "1")} ao ano.`;
   }
   if (breakEven === undefined) return undefined;
   const side = compareDecimals(rate, breakEven);
