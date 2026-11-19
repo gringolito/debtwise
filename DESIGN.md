@@ -101,7 +101,7 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
 - Secondary text is `#636366` on white and `#A1A1A2` on graphite, which keeps AA on the canvas's
   bluest corner and on a segmented control's grey track. Calm comes from restraint, not from faint
   text. `#AEAEB2` (tertiary) marks what is placeholder, disabled or set back: placeholders, a unit
-  beside an empty field, disabled states, a checklist step still to do and the 404 figure. Text the
+  beside an empty field, disabled states and a checklist step still to do. Text the
   owner has to read is secondary grey or darker.
 - **Primary buttons are graphite** with white text, 12px radius, 44px tall. One primary button per
   screen.
@@ -247,9 +247,6 @@ panel stacks instead. These eight sizes are the whole scale.
 - A screen that fails to load shows a white error panel in place of its content: a cloud-off icon
   in a grey circle, a Headline saying what could not load, "Verifique sua conexão. Seus dados
   estão salvos." in Callout, and a graphite "Tentar novamente" that retries the failed request.
-- Unknown addresses open a full-screen page without the sidebar: the wordmark top left, "404" as a
-  hero figure in tertiary grey, "Esta página não existe", "O endereço pode ter mudado." and a
-  graphite "Voltar ao início".
 - Market data freshness is shown next to what it affects: a Footnote directly under the figure that
   reads it, in caution orange with a clock icon, naming each source that is not fresh with the date
   of its last update, then an "Atualizar" text action where a refresh is offered.
