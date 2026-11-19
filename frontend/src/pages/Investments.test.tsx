@@ -59,7 +59,7 @@ describe("Compras", () => {
     await waitFor(() =>
       expect(rowsOf(list)).toEqual([
         "Tesouro IPCA+ 2035 R$ 18.204,10 Compra em 12/05/2024 · IPCA + 6,21% Manter até o vencimento",
-        "Tesouro IPCA+ 2035 R$ 14.812,40 Compra em 18/11/2024 · IPCA + 6,45% Vender e amortizar vale mais a pena: R$ 120,00 a mais",
+        "Tesouro IPCA+ 2035 R$ 14.812,40 Compra em 18/11/2024 · IPCA + 6,45% Vender e amortizar vale mais a pena: você termina devendo R$ 120,00 a menos",
       ]),
     );
     expect(within(list).getByText("R$ 120,00")).toHaveClass("text-positive");
@@ -201,7 +201,7 @@ describe("Compras", () => {
     const list = await comprasList();
     await waitFor(() =>
       expect(rowsOf(list)).toEqual([
-        "Tesouro Prefixado 2029 Sem preço de venda Compra em 10/01/2025 · 11,85% Vender e amortizar vale mais a pena: R$ 55,00 a mais",
+        "Tesouro Prefixado 2029 Sem preço de venda Compra em 10/01/2025 · 11,85% Vender e amortizar vale mais a pena: você termina devendo R$ 55,00 a menos",
         "Tesouro IPCA+ 2035 R$ 18.204,10 Compra em 12/05/2024 · IPCA + 6,21% Manter até o vencimento",
       ]),
     );

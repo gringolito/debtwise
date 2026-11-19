@@ -59,8 +59,8 @@ describe("a recorded lot", () => {
       ["Valor investido", "R$ 14.043,00"],
       ["Líquido no vencimento", "R$ 18.986,45"],
     ]);
-    expect(within(dialog).getByText(/^Você fica com/)).toHaveTextContent(
-      "Você fica com R$ 2.180,40* a mais do que se amortizasse reduzindo o prazo, até 01/01/2029.",
+    expect(within(dialog).getByText(/^Na projeção/)).toHaveTextContent(
+      "Na projeção, você termina devendo R$ 2.180,40* a menos em 01/01/2029 do que se amortizasse reduzindo o prazo.",
     );
     expect(within(dialog).getByText("* Baseado na projeção atual.")).toBeVisible();
     expect(
@@ -88,7 +88,7 @@ describe("a recorded lot", () => {
   it.each([
     [
       "-310.25",
-      "Amortizar reduzindo o prazo valeria mais a pena: você ficaria com R$ 310,25* a mais até 01/01/2029.",
+      "Amortizar reduzindo o prazo valeria mais a pena. Na projeção, você terminaria devendo R$ 310,25* a menos em 01/01/2029.",
     ],
     ["0.00", "Investir e amortizar reduzindo o prazo dão o mesmo resultado até 01/01/2029."],
   ])("says how an advantage of %s compares with prepaying", async (advantage, line) => {
@@ -96,6 +96,20 @@ describe("a recorded lot", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Compra registrada!" });
     expect(within(dialog).getByText(/amortiza/i)).toHaveTextContent(line);
+  });
+
+  it("says prepaying would leave money over once it pays the mortgage off by the horizon", async () => {
+    renderFeedback({ kind: "recorded", lot: bought }, () => ({
+      ...lotComparison,
+      advantage: "-310.25",
+      invest_net_worth: "1189.75",
+      prepay_net_worth: "1500.00",
+    }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Compra registrada!" });
+    expect(within(dialog).getByText(/amortiza/i)).toHaveTextContent(
+      "Amortizar reduzindo o prazo valeria mais a pena. Na projeção, você terminaria com R$ 310,25* a mais em 01/01/2029.",
+    );
   });
 
   it("shows no gain for a lot that pays back no more than it cost", async () => {
@@ -151,8 +165,8 @@ describe("a recorded lot", () => {
       ["Valor investido", "R$ 14.043,00"],
       ["Líquido no vencimento*", "R$ 18.986,45"],
     ]);
-    expect(within(dialog).getByText(/^Você fica com/)).toHaveTextContent(
-      "Você fica com R$ 2.180,40 a mais",
+    expect(within(dialog).getByText(/^Na projeção/)).toHaveTextContent(
+      "Na projeção, você termina devendo R$ 2.180,40 a menos",
     );
     expect(within(dialog).getByText("* Baseado na projeção atual.")).toBeVisible();
   });

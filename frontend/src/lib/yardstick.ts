@@ -4,15 +4,17 @@ import { formatDuration, formatMoney, formatShare } from "@/lib/format";
 
 /**
  * verdictHeadline says which option ends with more by the verdict's horizon, or that both give
- * practically the same when its advantage is a near tie.
+ * practically the same when its advantage is a near tie. best is the decision's verdict of the
+ * highest advantage: when it favours prepaying, prepaying beats every bond and names none.
  */
-export function verdictHeadline(verdict: ComparedVerdict): string {
+export function verdictHeadline(verdict: ComparedVerdict, best: ComparedVerdict = verdict): string {
   const bond = verdictTitle(verdict);
   const side = favoured(verdict.advantage);
   if (side === "even") return `Investir em ${bond} ou amortizar dá no mesmo`;
   if (verdict.near_tie) return `Investir em ${bond} ou amortizar dá praticamente no mesmo`;
-  return side === "invest"
-    ? `Investir em ${bond} vale mais a pena`
+  if (side === "invest") return `Investir em ${bond} vale mais a pena`;
+  return favoured(best.advantage) === "prepay"
+    ? "Amortizar vale mais a pena"
     : `Amortizar vale mais a pena que investir em ${bond}`;
 }
 
@@ -21,15 +23,30 @@ export function advantageAmount(verdict: ComparedVerdict): string {
   return formatMoney(verdict.advantage.replace("-", ""));
 }
 
+const owes = (netWorth: string) => netWorth.startsWith("-") && !isZero(netWorth);
+
 /**
  * standing is where a scenario leaves the owner on the horizon: whether they owe or have, and the
  * amount without its sign, so no negative money is read. Net worth is only checked for its sign.
  */
 export function standing({ net_worth: netWorth }: Scenario): { owes: boolean; amount: string } {
-  return {
-    owes: netWorth.startsWith("-") && !isZero(netWorth),
-    amount: formatMoney(netWorth.replace("-", "")),
-  };
+  return { owes: owes(netWorth), amount: formatMoney(netWorth.replace("-", "")) };
+}
+
+/**
+ * ahead is the words around the amount the option that ends with more is ahead by, from that
+ * option's net worth on the horizon: "devendo R$ 814,22 a menos" while it still owes, "com R$
+ * 814,22 a mais" once nothing is owed.
+ */
+export function ahead(leaderNetWorth: string): { lead: string; trail: string } {
+  return owes(leaderNetWorth)
+    ? { lead: "devendo", trail: "a menos" }
+    : { lead: "com", trail: "a mais" };
+}
+
+/** leader is the scenario of the option the verdict's advantage favours. */
+export function leader(verdict: ComparedVerdict): Scenario {
+  return favoured(verdict.advantage) === "prepay" ? verdict.prepay : verdict.invest;
 }
 
 /**

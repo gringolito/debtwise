@@ -21,6 +21,7 @@ import {
   marketDataOf,
   saleGain,
 } from "@/lib/investments";
+import { ahead } from "@/lib/yardstick";
 import { EffectControl } from "@/pages/investments/EffectControl";
 import { RowsSkeleton } from "@/pages/investments/InvestmentsSkeleton";
 import { SaleGainAmount } from "@/pages/investments/SaleGainAmount";
@@ -28,28 +29,39 @@ import { StaleNote } from "@/pages/marketdata/StaleNote";
 
 const route = getRouteApi("/shell/investimentos/venda-antecipada");
 
-/** Outcome says in words which option earns more over holding to maturity, and by how much. */
+/** Outcome says in words which option is worth more over holding to maturity, and by how much. */
 function Outcome({ check }: { check: EarlySaleCheck }) {
   if (check.unavailable) {
     return <span className="text-callout">{earlySaleUnavailableLabels[check.unavailable]}</span>;
   }
   if (!check.verdict || check.advantage === undefined) return null;
   const gain = saleGain(check.advantage);
+  const until = formatDate(check.lot.maturity);
+  if (gain.kind === "even") {
+    return (
+      <>
+        <span className="text-callout font-medium text-foreground">
+          Vender ou manter dá no mesmo
+        </span>
+        <span className="text-callout">até {until}</span>
+      </>
+    );
+  }
+  const leading = gain.kind === "gain" ? check.sell : check.hold;
+  if (!leading) return null;
+  const { lead, trail } = ahead(leading.net_worth);
   return (
     <>
       <span className="text-callout font-medium text-foreground">
-        {gain.kind === "even" ? (
-          "Vender ou manter dá no mesmo"
-        ) : (
-          <>
-            {gain.kind === "gain" ? "Vender" : "Manter"} vale mais a pena:{" "}
-            <span className="whitespace-nowrap">
-              <SaleGainAmount gain={gain} /> a mais
-            </span>
-          </>
-        )}
+        {gain.kind === "gain" ? "Vender" : "Manter"} vale mais a pena
       </span>
-      <span className="text-callout">até {formatDate(check.lot.maturity)}</span>
+      <span className="text-callout">
+        Você termina {lead}{" "}
+        <span className="whitespace-nowrap">
+          <SaleGainAmount gain={gain} /> {trail}
+        </span>{" "}
+        em {until}
+      </span>
     </>
   );
 }

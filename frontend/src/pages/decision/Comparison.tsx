@@ -87,7 +87,12 @@ export function Comparison({ decision, onUseAmount }: ComparisonProps) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <VerdictPanel verdict={selected} amount={decision.amount} date={decision.date} />
+        <VerdictPanel
+          verdict={selected}
+          best={compared[0]}
+          amount={decision.amount}
+          date={decision.date}
+        />
         <StaleNote marketData={selected.market_data} />
       </div>
       <Details verdict={selected} />

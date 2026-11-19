@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ComparedVerdict } from "@/lib/decisions";
-import { advantageAmount, advantageShare, horizon, verdictHeadline } from "@/lib/yardstick";
+import { advantageAmount, advantageShare, ahead, horizon, verdictHeadline } from "@/lib/yardstick";
 
 const scenario = { net_worth: "0", cash: "0", outstanding_balance: "0", cash_flows: [] };
 
@@ -27,12 +27,7 @@ function verdict(advantage: string, nearTie: boolean): ComparedVerdict {
 describe("verdictHeadline", () => {
   it.each([
     ["investing ahead", "814.22", false, "Investir em Tesouro Prefixado 2032 vale mais a pena"],
-    [
-      "prepaying ahead",
-      "-814.22",
-      false,
-      "Amortizar vale mais a pena que investir em Tesouro Prefixado 2032",
-    ],
+    ["prepaying ahead of every bond", "-814.22", false, "Amortizar vale mais a pena"],
     [
       "investing a near tie ahead",
       "39.64",
@@ -48,6 +43,22 @@ describe("verdictHeadline", () => {
     ["neither ahead", "0.00", true, "Investir em Tesouro Prefixado 2032 ou amortizar dá no mesmo"],
   ])("names %s", (_, advantage, nearTie, headline) => {
     expect(verdictHeadline(verdict(advantage, nearTie))).toBe(headline);
+  });
+
+  it("names the bond prepaying beats when another bond beats prepaying", () => {
+    expect(verdictHeadline(verdict("-814.22", false), verdict("120.00", false))).toBe(
+      "Amortizar vale mais a pena que investir em Tesouro Prefixado 2032",
+    );
+  });
+});
+
+describe("ahead", () => {
+  it.each([
+    ["still owes", "-401006.51", { lead: "devendo", trail: "a menos" }],
+    ["owes nothing", "0.00", { lead: "com", trail: "a mais" }],
+    ["has money left", "4833.21", { lead: "com", trail: "a mais" }],
+  ])("words the lead when the leading option %s", (_, netWorth, words) => {
+    expect(ahead(netWorth)).toEqual(words);
   });
 });
 

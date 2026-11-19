@@ -20,6 +20,8 @@ type lotComparison struct {
 	Effect         string          `json:"effect"`
 	Unavailable    string          `json:"unavailable"`
 	Advantage      string          `json:"advantage"`
+	InvestNetWorth string          `json:"invest_net_worth"`
+	PrepayNetWorth string          `json:"prepay_net_worth"`
 	ProjectedBy    []projectedBy   `json:"projected_by"`
 }
 
@@ -53,6 +55,8 @@ func TestALotComparesWithPrepayingOnItsPurchaseDate(t *testing.T) {
 		Horizon:        "2027-01-01",
 		Effect:         "shorten_term",
 		Advantage:      "771.29",
+		InvestNetWorth: "-8228.71",
+		PrepayNetWorth: "-9000.00",
 		ProjectedBy:    []projectedBy{},
 	}, got)
 

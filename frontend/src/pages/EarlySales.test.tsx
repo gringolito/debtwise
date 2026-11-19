@@ -39,8 +39,8 @@ describe("Venda antecipada", () => {
 
     const list = await checksList();
     expect(rows(list)).toEqual([
-      "Tesouro IPCA+ 2035 Compra em 18/11/2024 Vender vale mais a pena: R$ 120,00 a mais até 15/05/2035",
-      "Tesouro IPCA+ 2035 Compra em 12/05/2024 Manter vale mais a pena: R$ 2.140,00 a mais até 15/05/2035",
+      "Tesouro IPCA+ 2035 Compra em 18/11/2024 Vender vale mais a pena Você termina devendo R$ 120,00 a menos em 15/05/2035",
+      "Tesouro IPCA+ 2035 Compra em 12/05/2024 Manter vale mais a pena Você termina devendo R$ 2.140,00 a menos em 15/05/2035",
       "Tesouro Prefixado com Juros Semestrais 2029 Compra em 10/01/2025 Vender ou manter dá no mesmo até 01/01/2029",
       "Tesouro IPCA+ 2045 Compra em 01/06/2026 Aguardando o IPCA",
     ]);
@@ -65,14 +65,14 @@ describe("Venda antecipada", () => {
     renderAt("/investimentos/venda-antecipada");
 
     expect(rows(await checksList())).toEqual([
-      "Tesouro IPCA+ 2035 Compra em 12/05/2024 Manter vale mais a pena: R$ 2.140,00 a mais até 15/05/2035",
+      "Tesouro IPCA+ 2035 Compra em 12/05/2024 Manter vale mais a pena Você termina devendo R$ 2.140,00 a menos em 15/05/2035",
     ]);
 
     fireEvent.click(screen.getByRole("radio", { name: "Reduzir prestação" }));
 
     await waitFor(async () =>
       expect(rows(await checksList())).toEqual([
-        "Tesouro IPCA+ 2035 Compra em 12/05/2024 Vender vale mais a pena: R$ 310,55 a mais até 15/05/2035",
+        "Tesouro IPCA+ 2035 Compra em 12/05/2024 Vender vale mais a pena Você termina devendo R$ 310,55 a menos em 15/05/2035",
       ]),
     );
     expect(

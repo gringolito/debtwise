@@ -247,16 +247,17 @@ then:
 - The answer card, the screen's one graphite card, for R$ 10.000,00 prepaid today to shorten the
   term: a glowing soft-accent dot before "Na projeção atual, para R$ 10.000,00 hoje" in Footnote
   grey, in sentence case, then the verdict as a Title 2, the same headline as Comparar's ("Investir
-  em Tesouro Prefixado 2032 vale mais a pena", "Amortizar vale mais a pena que investir em Tesouro
-  Prefixado 2029", or "… dá praticamente no mesmo" for a near tie), and a Callout line that states
-  its yardstick, the difference in semibold white: "R$ 814,22 a mais até 01/01/2032, 8,1% do valor
-  em 5 anos e 1 mês." A near tie reads "R$ 39,64 de diferença até …", and no difference at all
-  "Nenhuma diferença até 01/01/2032.". A white "Ver comparação" opens Comparar with the amount and
-  compares at once; a plain "Mudar valor" opens it with the amount to change. On its right, only
-  when one option clearly wins, a 160px glass illustration of it, a rising bar chart for investing
-  or a house with a downward arrow for prepaying; a near tie shows none, and neither does a phone.
-  With no verdict to state, the card reads "Amortizar ou investir? Veja a comparação." with
-  "Comparar agora". The stale-data note sits under the card.
+  em Tesouro Prefixado 2032 vale mais a pena", "Amortizar vale mais a pena" with no bond, since
+  prepaying only heads it when it beats every bond, or "… dá praticamente no mesmo" for a near tie),
+  and a Callout line that states its yardstick, the difference in semibold white: "Você termina
+  devendo R$ 814,22 a menos em 01/01/2032, 8,1% do valor em 5 anos e 1 mês.", or "com R$ … a mais"
+  when the option ahead owes nothing by then. A near tie reads "R$ 39,64 de diferença até …", and no
+  difference at all "Nenhuma diferença até 01/01/2032.". A white "Ver comparação" opens Comparar
+  with the amount and compares at once; a plain "Mudar valor" opens it with the amount to change. On
+  its right, only when one option clearly wins, a 160px glass illustration of it, a rising bar chart
+  for investing or a house with a downward arrow for prepaying; a near tie shows none, and neither
+  does a phone. With no verdict to state, the card reads "Amortizar ou investir? Veja a comparação."
+  with "Comparar agora". The stale-data note sits under the card.
 - Two white summary panels side by side, stacked on a phone, each titled in Footnote uppercase
   grey, with its figure in Large Title semibold under a Callout label and a hairline drill-in row at
   the bottom:
@@ -389,8 +390,8 @@ control switches Compras and Venda antecipada. With no lot, the page shows only 
   leading. Each lot is a row with the bond's name in Headline and its net Market Value, or why it
   has none, on the first line; "Compra em" its date with its rate in Callout grey under it; then, at
   Callout size behind a glyph, what its early sale check favours: a rising arrow in green and
-  "Vender e amortizar vale mais a pena: R$ 1.314,60 a mais" with the amount green, or a calendar
-  clock in grey and "Manter até o vencimento".
+  "Vender e amortizar vale mais a pena: você termina devendo R$ 1.314,60 a menos" with the amount
+  green, or a calendar clock in grey and "Manter até o vencimento".
 - A lot's detail: an accent "‹ Investimentos" back link, the bond's name as the Large Title with
   "Editar" and a red "Excluir", one line on the purchase, then the net Market, Accrual and Maturity
   Values side by side in one white panel. Under it, a white panel on the early sale with its own
@@ -401,9 +402,10 @@ control switches Compras and Venda antecipada. With no lot, the page shows only 
   date of the values and any projection they read, centered in Footnote.
 - Venda antecipada: one sentence on what is compared beside the effect's segmented control, then
   every lot in one inset grouped list, the lots most worth selling first. Each row says in words
-  which option is worth more and until when: "Vender vale mais a pena: R$ 5.277,53 a mais" with the
-  amount in green, or "Manter vale mais a pena: R$ 57,54 a mais" in the text colour, since holding
-  is no loss, over "até 15/05/2045" in grey. On a phone the outcome moves under the bond's name.
+  which option is worth more and by how much: "Vender vale mais a pena" over "Você termina devendo
+  R$ 5.277,53 a menos em 15/05/2045" with the amount in green, or "Manter vale mais a pena" with the
+  amount in the text colour, since holding is no loss. On a phone the outcome moves under the bond's
+  name.
 - Adicionar compra and Editar compra are sheets: the bond picked from those Tesouro Direto quotes
   ("Outro título" types any other), the purchase date, rate, unit price and quantity typed in
   place, a Footnote on where to find them, and a tinted "Valor investido" row with what the
@@ -445,18 +447,20 @@ from "Ver comparação", compares it at once.
 
 - The verdict is a white panel for the bond of the highest advantage that shows where the money is
   on its maturity in each option. Its Title 2 headline names the option that ends with more,
-  "Investir em Tesouro Prefixado 2032 vale mais a pena" or "Amortizar vale mais a pena que investir
-  em Tesouro Prefixado 2029", or, when the difference is a near tie, under 1% of the amount,
-  "Investir em … ou amortizar dá praticamente no mesmo"; under it, "Onde está o dinheiro em
-  01/01/2032, em cada opção." in Callout grey. Two columns follow, "Se amortizar" over "R$ 10.000,00
-  hoje" and "Se investir" over the bond, side by side and stacked on a phone. Each opens with what
-  the owner ends with, "No fim, você deve" (or "você tem") in Callout grey over the amount in Large
-  Title semibold, and under a hairline the two parts that produce it in Footnote grey: "Saldo
-  devedor" and "Dinheiro do título, líquido" ("Nenhum" when prepaying). The column that ends ahead,
-  unless it is a near tie, has the accent-mark border and the tint. Under a last hairline the
-  difference closes the panel in Title 2, in the text colour, "Investir termina com R$ 814,22 a
-  mais", over its yardstick in Callout grey, "8,1% dos R$ 10.000,00 em 5 anos e 1 mês.", which adds
-  "Na prática, um empate." for a near tie. No amount carries a sign.
+  "Investir em Tesouro Prefixado 2032 vale mais a pena" or "Amortizar vale mais a pena" (naming the
+  bond, "… que investir em Tesouro IPCA+ 2032", only on a bond the owner picks while another beats
+  prepaying), or, when the difference is a near tie, under 1% of the amount, "Investir em … ou
+  amortizar dá praticamente no mesmo"; under it, "Onde está o dinheiro em 01/01/2032, em cada
+  opção." in Callout grey. Two columns follow, "Se amortizar" over "R$ 10.000,00 hoje" and "Se
+  investir" over the bond, side by side and stacked on a phone. Each opens with what the owner ends
+  with, "No fim, você deve" (or "você tem") in Callout grey over the amount in Large Title semibold,
+  and under a hairline the two parts that produce it in Footnote grey: "Saldo devedor" and "Dinheiro
+  do título, líquido" ("Nenhum" when prepaying). The column that ends ahead, unless it is a near
+  tie, has the accent-mark border and the tint. Under a last hairline the difference closes the
+  panel in Title 2, in the text colour, "Investir termina devendo R$ 814,22 a menos" ("termina com
+  R$ … a mais" when the option ahead owes nothing), over its yardstick in Callout grey, "8,1% dos R$
+  10.000,00 em 5 anos e 1 mês.", which adds "Na prática, um empate." for a near tie. No amount
+  carries a sign.
 - Detalhes: an inset grouped list with today's rate, the bond's price, the quantity bought and the
   cost prepaying avoids, the rate at which both options tie in Footnote under it ("Empata com
   amortizar se a taxa cair para 13,99%."), then "Ver cenários", which opens both scenarios' figures
@@ -551,10 +555,11 @@ mais". Use the domain words: financiamento, prestação, amortização extraordi
 projeção, decisão. Avoid dívida, simulação, previsão. Results are conditional ("Na projeção
 atual…"). Server state and refresh mechanics appear only on Ajustes and in the stale-data notes.
 
-Money in prose never carries a sign: say which option ends with more and by how much ("Investir
-termina com R$ 814,22 a mais", "Manter termina com R$ 57,54 a mais", "R$ 120,10 a menos"), and
-what is owed as "Você deve R$ …", never as a negative amount. A difference under 1% of the amount
-is named as what it is, practically the same, rather than as a win.
+Money in prose never carries a sign: say which option is worth more and how much less the owner ends
+up owing with it ("Investir termina devendo R$ 814,22 a menos", or "com R$ … a mais" once nothing is
+owed, "R$ 120,10 a menos"), and what is owed as "Você deve R$ …", never as a negative amount. A
+difference under 1% of the amount is named as what it is, practically the same, rather than as a
+win.
 
 ## Sample data for mockups
 

@@ -13,6 +13,7 @@ import { compareDecimals } from "@/lib/decimals";
 import { favoured } from "@/lib/decisions";
 import { formatDate, formatMoney } from "@/lib/format";
 import { useLotComparison } from "@/lib/lotQueries";
+import { ahead } from "@/lib/yardstick";
 
 /** What the lot sheet saved: a new lot, or an edit of one. */
 export type LotChange =
@@ -44,33 +45,34 @@ function ComparisonNote({ comparison }: { comparison: LotComparison }) {
   const { advantage, horizon } = comparison;
   if (advantage === undefined) return null;
   const until = formatDate(horizon);
+  const side = favoured(advantage);
+  if (side === "even") {
+    return (
+      <CelebrationNote>
+        Investir e amortizar reduzindo o prazo dão o mesmo resultado até {until}.
+      </CelebrationNote>
+    );
+  }
+  const leading = side === "invest" ? comparison.invest_net_worth : comparison.prepay_net_worth;
+  if (leading === undefined) return null;
+  const { lead, trail } = ahead(leading);
   const amount = (
     <>
       {formatMoney(advantage.replace("-", ""))}
       <Mark shown={advantageProjected(comparison)} />
     </>
   );
-  switch (favoured(advantage)) {
-    case "invest":
-      return (
-        <CelebrationNote>
-          Você fica com {amount} a mais do que se amortizasse reduzindo o prazo, até {until}.
-        </CelebrationNote>
-      );
-    case "prepay":
-      return (
-        <CelebrationNote>
-          Amortizar reduzindo o prazo valeria mais a pena: você ficaria com {amount} a mais até{" "}
-          {until}.
-        </CelebrationNote>
-      );
-    case "even":
-      return (
-        <CelebrationNote>
-          Investir e amortizar reduzindo o prazo dão o mesmo resultado até {until}.
-        </CelebrationNote>
-      );
-  }
+  return side === "invest" ? (
+    <CelebrationNote>
+      Na projeção, você termina {lead} {amount} {trail} em {until} do que se amortizasse reduzindo o
+      prazo.
+    </CelebrationNote>
+  ) : (
+    <CelebrationNote>
+      Amortizar reduzindo o prazo valeria mais a pena. Na projeção, você terminaria {lead} {amount}{" "}
+      {trail} em {until}.
+    </CelebrationNote>
+  );
 }
 
 function Recorded({ comparison, onClose }: { comparison?: LotComparison; onClose: () => void }) {

@@ -136,7 +136,7 @@ describe("a lot's detail", () => {
         (_, element) =>
           element?.tagName === "P" &&
           text(element) ===
-            "Manter até o vencimento termina com R$ 2.140,00 a mais do que vender hoje e amortizar.",
+            "Mantendo o título até o vencimento, você termina devendo R$ 2.140,00 a menos do que vendendo hoje e amortizando.",
       ),
     ).toBeInTheDocument();
     expect(within(panel).getByText("R$ 2.140,00")).not.toHaveClass("text-positive");
