@@ -494,8 +494,8 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 }
 
 // topUp returns, with the slack prepaid, what a scenario prepays after each of its installments:
-// what the installment leaves of the status quo's, which it also notes in freed by number. It is
-// nil with the slack ignored.
+// the slack, which it also records in freed under the installment's number. It is nil with the
+// slack ignored.
 func (c comparer) topUp(statusQuo mortgage.Planned, freed map[int]decimal.Decimal) func(mortgage.Installment) decimal.Decimal {
 	if !c.decision.PrepaySlack {
 		return nil

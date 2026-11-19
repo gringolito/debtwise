@@ -58,8 +58,8 @@ func (c breakEvenCase) decide(t *testing.T, rate decimal.Decimal) comparison.Ver
 	return verdicts[0]
 }
 
-// ipcaBreakEvenCase prepays the slack, which this mortgage's SAC installments leave every month
-// after the 10,000.00 is prepaid: ignored, investing wins even at 0%.
+// ipcaBreakEvenCase prepays the slack: ignored, the slack this mortgage's SAC installments leave
+// after the 10,000.00 is prepaid makes investing win even at 0%, so no rate breaks even.
 func ipcaBreakEvenCase(t *testing.T, name string, bondType bonds.Type) breakEvenCase {
 	t.Helper()
 

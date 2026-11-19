@@ -1,14 +1,11 @@
 # The installment's slack is ignored
 
-A scenario's slack in a month is the difference between the status quo's installment and its own,
-and after its mortgage is paid off, the status quo's whole installment. ADR-0011 prepaid it on every
-due date and held what nothing was owed for, so that every scenario paid the same out of pocket.
-That is the comparison only when the owner asks for it: a decision on Comparar has a switch that
-prepays the slack every month, off unless turned on. Otherwise the slack goes to the owner's other
-spending and drops out of the comparison: no scenario prepays or holds it, positive or negative,
-before or after its mortgage is paid off, and a month in which a scenario owes nothing has no cash
-flow. Every other prepay-or-invest comparison, Início's answer, a lot's comparison and an early sale
-check, always ignores it.
+A prepay-or-invest comparison leaves the installment's slack to the owner's other spending: no
+scenario prepays or holds it, positive or negative, before or after its mortgage is paid off. A
+scenario's slack in a month is the difference between the status quo's installment and its own, and
+after its mortgage is paid off, the status quo's whole installment. Only a decision on Comparar can
+prepay the slack every month, as ADR-0011 did, through a switch that is off unless turned on.
+Início's answer, a lot's comparison and an early sale check always ignore it.
 
 Everything else in ADR-0011 holds either way. The prepaid amount, a coupon or a sale's proceeds are
 still prepaid on their dates with the effect the owner chose, and what nothing is owed for is held
