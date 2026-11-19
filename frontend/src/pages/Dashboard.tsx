@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Page, PageHeader, PageTitle } from "@/components/layout/Page";
+import { PrototypeSwitcher, usePrototypeVariant } from "@/components/patterns/PrototypeSwitcher";
 import { ErrorPanel } from "@/components/patterns/ErrorPanel";
 import type { DecisionInput } from "@/lib/api";
 import { recentActivity, today } from "@/lib/dashboard";
@@ -12,7 +13,7 @@ import {
   usePrepayments,
   useStatements,
 } from "@/lib/mortgageQueries";
-import { AnswerCard } from "@/pages/dashboard/AnswerCard";
+import { ANSWER_VARIANTS, AnswerHero } from "@/pages/dashboard/AnswerHero.prototype";
 import { DashboardSkeleton } from "@/pages/dashboard/DashboardSkeleton";
 import { InvestmentsPanel } from "@/pages/dashboard/InvestmentsPanel";
 import { MortgagePanel } from "@/pages/dashboard/MortgagePanel";
@@ -24,7 +25,7 @@ const ANSWERED: DecisionInput = { amount: "10000.00", effect: "shorten_term" };
 
 const RECENT_ACTIVITY = 3;
 
-function Content() {
+function Content({ variant }: { variant: string }) {
   const mortgage = useMortgage();
   const schedule = useMortgageSchedule();
   const statements = useStatements();
@@ -59,7 +60,7 @@ function Content() {
   return (
     <>
       <div className="flex flex-col gap-6">
-        <AnswerCard decision={decision.data} />
+        <AnswerHero variant={variant} decision={decision.data} />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {mortgage.data && (
             <MortgagePanel mortgage={mortgage.data} schedule={schedule.data} today={date} />
@@ -100,13 +101,15 @@ function Content() {
 /** Dashboard is Início: the answer to "amortizar ou investir?" and where the owner stands. */
 export function Dashboard() {
   const [now] = useState(() => new Date());
+  const variant = usePrototypeVariant(ANSWER_VARIANTS);
   return (
     <Page>
       <PageHeader className="flex-col items-start gap-1">
         <PageTitle>Início</PageTitle>
         <p className="text-callout text-muted-foreground">{formatWeekday(now)}</p>
       </PageHeader>
-      <Content />
+      <Content variant={variant} />
+      <PrototypeSwitcher variants={ANSWER_VARIANTS} current={variant} />
     </Page>
   );
 }

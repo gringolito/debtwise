@@ -35,6 +35,17 @@ trap 'kill 0' EXIT
 wait
 '''
 
+[tasks."prototype:hero"]
+description = "PROTOTYPE: Início's answer without the graphite card; open /?variant=atual|manchete|numero|centro"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+trap 'kill 0' EXIT
+(cd backend && PORT=8090 DB_PATH="${PROTOTYPE_DB:-prototype-wipe-me.db}" go run ./cmd/server) &
+(cd frontend && API_URL=http://localhost:8090 pnpm run dev --port 5180 --open '/?variant=manchete') &
+wait
+'''
+
 # ---------------------------------------------------------------------------
 # Full stack in Docker (build from source; drop a .env and run)
 # ---------------------------------------------------------------------------
