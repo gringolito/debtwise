@@ -19,11 +19,13 @@ const illustrations = {
 function Yardstick({ verdict }: { verdict: ComparedVerdict }) {
   const until = formatDate(verdict.maturity);
   if (favoured(verdict.advantage) === "even") return <>Nenhuma diferença até {until}.</>;
+  const amount = (
+    <span className="font-semibold text-primary-foreground">{advantageAmount(verdict)}</span>
+  );
   return (
     <>
-      <span className="font-semibold text-primary-foreground">{advantageAmount(verdict)}</span>
-      {verdict.near_tie ? " de diferença" : " a mais"} até {until}, {advantageShare(verdict)} do
-      valor em {horizon(verdict)}.
+      {amount} {verdict.near_tie ? "de diferença" : "de diferença a favor"} até {until},{" "}
+      {advantageShare(verdict)} do valor em {horizon(verdict)}.
     </>
   );
 }

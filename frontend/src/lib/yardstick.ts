@@ -4,14 +4,18 @@ import { formatDuration, formatMoney, formatShare } from "@/lib/format";
 
 /**
  * verdictHeadline says which option ends with more by the verdict's horizon, or that both give
- * practically the same when its advantage is a near tie.
+ * practically the same when its advantage is a near tie. best is the decision's verdict of the
+ * highest advantage: when it favours prepaying, prepaying beats every bond and names none.
  */
-export function verdictHeadline(verdict: ComparedVerdict): string {
+export function verdictHeadline(verdict: ComparedVerdict, best: ComparedVerdict = verdict): string {
   const bond = verdictTitle(verdict);
   const side = favoured(verdict.advantage);
   if (side === "even") return `Investir em ${bond} ou amortizar dá no mesmo`;
   if (verdict.near_tie) return `Investir em ${bond} ou amortizar dá praticamente no mesmo`;
-  return side === "invest" ? `Investir em ${bond} rende mais` : `Amortizar rende mais que ${bond}`;
+  if (side === "invest") return `Investir em ${bond} vale mais a pena`;
+  return favoured(best.advantage) === "prepay"
+    ? "Amortizar vale mais a pena"
+    : `Amortizar vale mais a pena que investir em ${bond}`;
 }
 
 /** advantageAmount is the advantage without its sign: "R$ 814,22". */

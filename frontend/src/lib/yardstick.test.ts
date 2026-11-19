@@ -26,8 +26,8 @@ function verdict(advantage: string, nearTie: boolean): ComparedVerdict {
 
 describe("verdictHeadline", () => {
   it.each([
-    ["investing ahead", "814.22", false, "Investir em Tesouro Prefixado 2032 rende mais"],
-    ["prepaying ahead", "-814.22", false, "Amortizar rende mais que Tesouro Prefixado 2032"],
+    ["investing ahead", "814.22", false, "Investir em Tesouro Prefixado 2032 vale mais a pena"],
+    ["prepaying ahead of every bond", "-814.22", false, "Amortizar vale mais a pena"],
     [
       "investing a near tie ahead",
       "39.64",
@@ -43,6 +43,12 @@ describe("verdictHeadline", () => {
     ["neither ahead", "0.00", true, "Investir em Tesouro Prefixado 2032 ou amortizar dá no mesmo"],
   ])("names %s", (_, advantage, nearTie, headline) => {
     expect(verdictHeadline(verdict(advantage, nearTie))).toBe(headline);
+  });
+
+  it("names the bond prepaying beats when another bond beats prepaying", () => {
+    expect(verdictHeadline(verdict("-814.22", false), verdict("120.00", false))).toBe(
+      "Amortizar vale mais a pena que investir em Tesouro Prefixado 2032",
+    );
   });
 });
 

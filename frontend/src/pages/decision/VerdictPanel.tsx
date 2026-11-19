@@ -62,6 +62,8 @@ function Outcome({ title, subtitle, scenario, leading }: OutcomeProps) {
 
 interface VerdictPanelProps {
   verdict: ComparedVerdict;
+  /** The decision's verdict of the highest advantage, which the headline weighs prepaying by. */
+  best: ComparedVerdict;
   /** What the decision compares, in reais. */
   amount: string;
   /** The date the decision is for, ISO: the amount reads "hoje" on today's. */
@@ -73,7 +75,7 @@ interface VerdictPanelProps {
  * owner prepays and if they invest in the bond, side by side, and by how much the better one ends
  * above the other. A near tie or an exact tie marks neither.
  */
-export function VerdictPanel({ verdict, amount, date }: VerdictPanelProps) {
+export function VerdictPanel({ verdict, best, amount, date }: VerdictPanelProps) {
   const titleId = useId();
   const side = favoured(verdict.advantage);
   const marked = verdict.near_tie ? "even" : side;
@@ -82,7 +84,7 @@ export function VerdictPanel({ verdict, amount, date }: VerdictPanelProps) {
     <section aria-labelledby={titleId} className="flex flex-col gap-6 rounded-lg glass p-5 sm:p-8">
       <div className="flex flex-col gap-1">
         <h2 id={titleId} className="text-title-2">
-          {verdictHeadline(verdict)}
+          {verdictHeadline(verdict, best)}
         </h2>
         <p className="text-callout text-muted-foreground">
           {`Onde está o dinheiro em ${formatDate(verdict.maturity)}, em cada opção.`}
@@ -108,7 +110,7 @@ export function VerdictPanel({ verdict, amount, date }: VerdictPanelProps) {
         ) : (
           <>
             <p className="text-title-2">
-              {`${side === "invest" ? "Investir" : "Amortizar"} termina com ${advantageAmount(verdict)} a mais`}
+              {`Diferença a favor de ${side === "invest" ? "investir" : "amortizar"}: ${advantageAmount(verdict)}`}
             </p>
             <p className="text-callout text-muted-foreground">
               {`${advantageShare(verdict)} dos ${formatMoney(amount)} em ${horizon(verdict)}.${verdict.near_tie ? " Na prática, um empate." : ""}`}

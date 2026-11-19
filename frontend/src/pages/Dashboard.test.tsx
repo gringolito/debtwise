@@ -140,7 +140,7 @@ function stubInicio(routes: Routes = {}) {
 }
 
 const region = (name: string | RegExp) => screen.findByRole("region", { name });
-const answerCard = () => region(/rende mais|no mesmo|Amortizar ou investir\?/);
+const answerCard = () => region(/vale mais a pena|no mesmo|Amortizar ou investir\?/);
 
 /** paragraph finds the paragraph that reads content, across the elements it is split into. */
 const paragraph = (container: HTMLElement, content: string) =>
@@ -218,11 +218,16 @@ describe("the answer card", () => {
 
     const card = await answerCard();
     expect(
-      within(card).getByRole("heading", { name: "Investir em Tesouro Prefixado 2029 rende mais" }),
+      within(card).getByRole("heading", {
+        name: "Investir em Tesouro Prefixado 2029 vale mais a pena",
+      }),
     ).toBeInTheDocument();
     expect(within(card).getByText("Na projeção atual, para R$ 10.000,00 hoje")).toBeInTheDocument();
     expect(
-      paragraph(card, "R$ 1.234,56 a mais até 01/01/2029, 12,3% do valor em 4 anos e 9 meses."),
+      paragraph(
+        card,
+        "R$ 1.234,56 de diferença a favor até 01/01/2029, 12,3% do valor em 4 anos e 9 meses.",
+      ),
     ).toBeInTheDocument();
     expect(
       requests.filter((r) => r.method === "POST").map((r) => [new URL(r.url).pathname, r.body]),
@@ -256,23 +261,24 @@ describe("the answer card", () => {
     const card = await answerCard();
     expect(
       within(card).getByRole("heading", {
-        name: "Investir em Tesouro Prefixado com Juros Semestrais 2035 rende mais",
+        name: "Investir em Tesouro Prefixado com Juros Semestrais 2035 vale mais a pena",
       }),
     ).toBeInTheDocument();
   });
 
-  it("states prepaying when every advantage favours it, against the bond it beats by least", async () => {
+  it("states prepaying when every advantage favours it, naming no bond", async () => {
     stubInicio({ "POST /api/decisions": decisionOf([{ ...ltn, advantage: "-900.00" }, ntnf]) });
     renderAt("/");
 
     const card = await answerCard();
     expect(
-      within(card).getByRole("heading", {
-        name: "Amortizar rende mais que Tesouro Prefixado com Juros Semestrais 2035",
-      }),
+      within(card).getByRole("heading", { name: "Amortizar vale mais a pena" }),
     ).toBeInTheDocument();
     expect(
-      paragraph(card, "R$ 250,30 a mais até 01/01/2035, 2,5% do valor em 10 anos e 9 meses."),
+      paragraph(
+        card,
+        "R$ 250,30 de diferença a favor até 01/01/2035, 2,5% do valor em 10 anos e 9 meses.",
+      ),
     ).toBeInTheDocument();
     expect(card.querySelector("img")).toBeInTheDocument();
   });

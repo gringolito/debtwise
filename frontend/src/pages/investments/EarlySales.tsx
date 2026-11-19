@@ -28,25 +28,35 @@ import { StaleNote } from "@/pages/marketdata/StaleNote";
 
 const route = getRouteApi("/shell/investimentos/venda-antecipada");
 
-/** Outcome says in words which option earns more over holding to maturity, and by how much. */
+/** Outcome says in words which option is worth more over holding to maturity, and by how much. */
 function Outcome({ check }: { check: EarlySaleCheck }) {
   if (check.unavailable) {
     return <span className="text-callout">{earlySaleUnavailableLabels[check.unavailable]}</span>;
   }
   if (!check.verdict || check.advantage === undefined) return null;
   const gain = saleGain(check.advantage);
+  const until = formatDate(check.lot.maturity);
+  if (gain.kind === "even") {
+    return (
+      <>
+        <span className="text-callout font-medium text-foreground">
+          Vender ou manter dá no mesmo
+        </span>
+        <span className="text-callout">até {until}</span>
+      </>
+    );
+  }
   return (
     <>
       <span className="text-callout font-medium text-foreground">
-        {gain.kind === "even" ? (
-          "Vender e manter rendem o mesmo"
-        ) : (
-          <>
-            {gain.kind === "gain" ? "Vender" : "Manter"} rende <SaleGainAmount gain={gain} /> a mais
-          </>
-        )}
+        {gain.kind === "gain" ? "Vender" : "Manter"} vale mais a pena
       </span>
-      <span className="text-callout">até {formatDate(check.lot.maturity)}</span>
+      <span className="text-callout">
+        <span className="whitespace-nowrap">
+          <SaleGainAmount gain={gain} /> de diferença a favor
+        </span>{" "}
+        até {until}
+      </span>
     </>
   );
 }
@@ -96,14 +106,14 @@ function Checks({ search }: { search: EffectSearch }) {
   const marketData = marketDataOf(checks.data.checks);
   return (
     <div className="flex flex-col gap-2">
-      <GroupedList aria-label="Compras, das que mais rendem vendidas às que menos rendem">
+      <GroupedList aria-label="Compras, das que mais valem a pena vender às que menos valem">
         {checks.data.checks.map((check) => (
           <CheckRow key={check.lot.id} check={check} search={search} />
         ))}
       </GroupedList>
       <p className="px-1 text-footnote text-muted-foreground">
-        Cada compra mostra a opção que rende mais até o vencimento. O DebtWise compara; a decisão é
-        sua.
+        Cada compra mostra a opção que vale mais a pena até o vencimento. O DebtWise compara; a
+        decisão é sua.
       </p>
       {marketData && <StaleNote marketData={marketData} />}
     </div>

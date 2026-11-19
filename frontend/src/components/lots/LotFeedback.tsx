@@ -44,32 +44,31 @@ function ComparisonNote({ comparison }: { comparison: LotComparison }) {
   const { advantage, horizon } = comparison;
   if (advantage === undefined) return null;
   const until = formatDate(horizon);
+  const side = favoured(advantage);
+  if (side === "even") {
+    return (
+      <CelebrationNote>
+        Investir e amortizar reduzindo o prazo dão o mesmo resultado até {until}.
+      </CelebrationNote>
+    );
+  }
   const amount = (
     <>
       {formatMoney(advantage.replace("-", ""))}
       <Mark shown={advantageProjected(comparison)} />
     </>
   );
-  switch (favoured(advantage)) {
-    case "invest":
-      return (
-        <CelebrationNote>
-          Você fica com {amount} a mais do que se amortizasse reduzindo o prazo, até {until}.
-        </CelebrationNote>
-      );
-    case "prepay":
-      return (
-        <CelebrationNote>
-          Amortizar reduzindo o prazo renderia {amount} a mais até {until}.
-        </CelebrationNote>
-      );
-    case "even":
-      return (
-        <CelebrationNote>
-          Investir e amortizar reduzindo o prazo dão o mesmo resultado até {until}.
-        </CelebrationNote>
-      );
-  }
+  return side === "invest" ? (
+    <CelebrationNote>
+      Diferença projetada a favor desta compra, em vez de amortizar reduzindo o prazo: {amount} até{" "}
+      {until}.
+    </CelebrationNote>
+  ) : (
+    <CelebrationNote>
+      Amortizar reduzindo o prazo valeria mais a pena. Diferença projetada a favor de amortizar:{" "}
+      {amount} até {until}.
+    </CelebrationNote>
+  );
 }
 
 function Recorded({ comparison, onClose }: { comparison?: LotComparison; onClose: () => void }) {
@@ -85,8 +84,8 @@ function Recorded({ comparison, onClose }: { comparison?: LotComparison; onClose
       {title}
       {maturity && gain && compareDecimals(gain, "0") > 0 && (
         <CelebrationFigure
-          lead="Você vai ganhar"
-          unit={`até ${formatDate(comparison.horizon)}, já descontados impostos e custódia`}
+          lead="Rendimento líquido"
+          unit={`até ${formatDate(comparison.horizon)}, se mantido até o vencimento, já descontados impostos e custódia`}
         >
           {formatMoney(gain)}
           {marked && <CelebrationMark>*</CelebrationMark>}

@@ -247,16 +247,17 @@ then:
 - The answer card, the screen's one graphite card, for R$ 10.000,00 prepaid today to shorten the
   term: a glowing soft-accent dot before "Na projeção atual, para R$ 10.000,00 hoje" in Footnote
   grey, in sentence case, then the verdict as a Title 2, the same headline as Comparar's ("Investir
-  em Tesouro Prefixado 2032 rende mais", "Amortizar rende mais que Tesouro Prefixado 2029", or "…
-  dá praticamente no mesmo" for a near tie), and a Callout line that states its yardstick, the
-  difference in semibold white: "R$ 814,22 a mais até 01/01/2032, 8,1% do valor em 5 anos e 1
-  mês." A near tie reads "R$ 39,64 de diferença até …", and no difference at all "Nenhuma diferença
-  até 01/01/2032.". A white "Ver comparação" opens Comparar with the amount and compares at once; a
-  plain "Mudar valor" opens it with the amount to change. On its right, only when one option
-  clearly wins, a 160px glass illustration of it, a rising bar chart for investing or a house with
-  a downward arrow for prepaying; a near tie shows none, and neither does a phone. With no verdict
-  to state, the card reads "Amortizar ou investir? Veja a comparação." with "Comparar agora". The
-  stale-data note sits under the card.
+  em Tesouro Prefixado 2032 vale mais a pena", "Amortizar vale mais a pena" with no bond, since
+  prepaying only heads it when it beats every bond, or "… dá praticamente no mesmo" for a near tie),
+  and a Callout line that states its yardstick, the difference in semibold white: "R$ 814,22 de
+  diferença a favor até 01/01/2032, 8,1% do valor em 5 anos e 1 mês." A near tie reads "R$ 39,64 de
+  diferença até …", and no difference at all "Nenhuma diferença até 01/01/2032.". A white "Ver
+  comparação" opens Comparar with the amount and compares at once; a plain "Mudar valor" opens it
+  with the amount to change. On its right, only when one option clearly wins, a 160px glass
+  illustration of it, a rising bar chart for investing or a house with a downward arrow for
+  prepaying; a near tie shows none, and neither does a phone. With no verdict to state, the card
+  reads "Amortizar ou investir? Veja a comparação." with "Comparar agora". The stale-data note sits
+  under the card.
 - Two white summary panels side by side, stacked on a phone, each titled in Footnote uppercase
   grey, with its figure in Large Title semibold under a Callout label and a hairline drill-in row at
   the bottom:
@@ -383,42 +384,44 @@ control switches Compras and Venda antecipada. With no lot, the page shows only 
 
 - Compras: a white panel titled "Valor de mercado" with the net total as a hero figure, "Líquido, se
   vender tudo hoje" in Callout under it and, when any lot would do better sold, one quiet Callout
-  line in secondary grey, "2 compras renderiam mais vendidas para amortizar.", with an accent "Ver
-  venda antecipada"; then, under a hairline, the gross total, then IR, IOF and Custódia each with
-  what it takes off it. Then every lot in one inset grouped list, the bonds maturing first leading.
-  Each lot is a row with the bond's name in Headline and its net Market Value, or why it has none,
-  on the first line; "Compra em" its date with its rate in Callout grey under it; then, at Callout
-  size behind a glyph, what its early sale check favours: a rising arrow in green and "Vender e
-  amortizar rende R$ 1.314,60 a mais" with the amount green, or a calendar clock in grey and "Manter
-  até o vencimento".
+  line in secondary grey, "2 compras valeriam mais a pena vendidas para amortizar.", with an accent
+  "Ver venda antecipada"; then, under a hairline, the gross total, then IR, IOF and Custódia each
+  with what it takes off it. Then every lot in one inset grouped list, the bonds maturing first
+  leading. Each lot is a row with the bond's name in Headline and its net Market Value, or why it
+  has none, on the first line; "Compra em" its date with its rate in Callout grey under it; then, at
+  Callout size behind a glyph, what its early sale check favours: a rising arrow in green and
+  "Vender e amortizar vale mais a pena: R$ 1.314,60 de diferença a favor" with the amount green, or
+  a calendar clock in grey and "Manter até o vencimento".
 - A lot's detail: an accent "‹ Investimentos" back link, the bond's name as the Large Title with
   "Editar" and a red "Excluir", one line on the purchase, then the net Market, Accrual and Maturity
   Values side by side in one white panel. Under it, a white panel on the early sale with its own
   Reduzir prazo / Reduzir prestação segmented control: a Title 2 verdict, one sentence on how much
-  more the better option renders, the amount green only when selling wins, and what the comparison
+  more the better option is worth, the amount green only when selling wins, and what the comparison
   assumes in Footnote. Then the Descontos table (gross, income tax, custody fee, IOF and net of each
   value) and the Cupons table for coupon bonds, each scrolling inside its panel on a phone, and the
   date of the values and any projection they read, centered in Footnote.
 - Venda antecipada: one sentence on what is compared beside the effect's segmented control, then
   every lot in one inset grouped list, the lots most worth selling first. Each row says in words
-  which option renders more and until when: "Vender rende R$ 5.277,53 a mais" with the amount in
-  green, or "Manter rende R$ 57,54 a mais" in the text colour, since holding is no loss, over "até
-  15/05/2045" in grey. On a phone the outcome moves under the bond's name.
+  which option is worth more and by how much: "Vender vale mais a pena" over "R$ 5.277,53 de
+  diferença a favor até 15/05/2045" with the amount in green, or "Manter vale mais a pena" with the
+  amount in the text colour, since holding is no loss. On a phone the outcome moves under the bond's
+  name.
 - Adicionar compra and Editar compra are sheets: the bond picked from those Tesouro Direto quotes
   ("Outro título" types any other), the purchase date, rate, unit price and quantity typed in
   place, a Footnote on where to find them, and a tinted "Valor investido" row with what the
   server computes for them, before saving.
-- Adding a lot replaces its sheet with a celebration, "Compra registrada!": "Você vai ganhar" over
-  the gain at maturity, net of taxes and custody, as the hero figure; "Valor investido" and
-  "Líquido no vencimento" as rows; and one line on how the lot compares with prepaying the same
-  amount on its purchase date to shorten the term, by the bond's maturity. A lot whose values wait
-  on the IPCA shows only the amount invested, and one that pays back no more than it cost shows no
-  gain. Saving an edit informs of the net at maturity and the advantage over prepaying, before →
-  after. Deleting a lot shows no notice, since its confirmation already names what goes. Only
-  figures that read a projected index carry the asterisk: a Prefixado's gain is fixed, its
-  comparison with a TR mortgage is not. In a row the asterisk follows the row's name, so the
-  figures keep their right edge. No figure carries a sign: the notice's row reads "Vantagem sobre
-  amortizar" while investing wins, "Desvantagem sobre amortizar" while prepaying does, and
+- Adding a lot replaces its sheet with a celebration, "Compra registrada!": "Rendimento líquido"
+  over the gain at maturity, net of taxes and custody, as the hero figure, worded as what the bond
+  yields if held to maturity rather than as a gain, since prepaying can still be worth more; "Valor
+  investido" and "Líquido no vencimento" as rows; and one line on how the lot compares with
+  prepaying the same amount on its purchase date to shorten the term, by the bond's maturity. A lot
+  whose values wait on the IPCA shows only the amount invested, and one that pays back no more than
+  it cost shows no gain. Saving an edit informs of the net at maturity and the advantage over
+  prepaying, before → after. Deleting a lot shows no notice, since its confirmation already names
+  what goes. Only figures that read a projected index carry the asterisk: a Prefixado's gain is
+  fixed, its comparison with a TR mortgage is not. In a row the asterisk follows the row's name, so
+  the figures keep their right edge. No figure carries a sign: the notice's row reads "Vantagem
+  sobre amortizar" while investing wins, "Desvantagem sobre amortizar" while prepaying does, and
   "Comparado a amortizar" with "R$ X a mais" or "R$ X a menos" when the edit turned it around.
 - Importar planilha: the file's name and row count with "Trocar arquivo", then every row in a
   table, each value editable in place; on a phone each row is a card, its bond picker on top and
@@ -445,18 +448,19 @@ from "Ver comparação", compares it at once.
 
 - The verdict is a white panel for the bond of the highest advantage that shows where the money is
   on its maturity in each option. Its Title 2 headline names the option that ends with more,
-  "Investir em Tesouro Prefixado 2032 rende mais" or "Amortizar rende mais que Tesouro Prefixado
-  2029", or, when the difference is a near tie, under 1% of the amount, "Investir em … ou amortizar
-  dá praticamente no mesmo"; under it, "Onde está o dinheiro em 01/01/2032, em cada opção." in
-  Callout grey. Two columns follow, "Se amortizar" over "R$ 10.000,00 hoje" and "Se investir" over
-  the bond, side by side and stacked on a phone. Each opens with what the owner ends with, "No fim,
-  você deve" (or "você tem") in Callout grey over the amount in Large Title semibold, and under a
-  hairline the two parts that produce it in Footnote grey: "Saldo devedor" and "Dinheiro do
-  título, líquido" ("Nenhum" when prepaying). The column that ends ahead, unless it is a near tie,
-  has the accent-mark border and the tint. Under a last hairline the difference closes the panel
-  in Title 2, in the text colour, "Investir termina com R$ 814,22 a mais", over its yardstick in
-  Callout grey, "8,1% dos R$ 10.000,00 em 5 anos e 1 mês.", which adds "Na prática, um empate." for
-  a near tie. No amount carries a sign.
+  "Investir em Tesouro Prefixado 2032 vale mais a pena" or "Amortizar vale mais a pena" (naming the
+  bond, "… que investir em Tesouro IPCA+ 2032", only on a bond the owner picks while another beats
+  prepaying), or, when the difference is a near tie, under 1% of the amount, "Investir em … ou
+  amortizar dá praticamente no mesmo"; under it, "Onde está o dinheiro em 01/01/2032, em cada
+  opção." in Callout grey. Two columns follow, "Se amortizar" over "R$ 10.000,00 hoje" and "Se
+  investir" over the bond, side by side and stacked on a phone. Each opens with what the owner ends
+  with, "No fim, você deve" (or "você tem") in Callout grey over the amount in Large Title semibold,
+  and under a hairline the two parts that produce it in Footnote grey: "Saldo devedor" and "Dinheiro
+  do título, líquido" ("Nenhum" when prepaying). The column that ends ahead, unless it is a near
+  tie, has the accent-mark border and the tint. Under a last hairline the difference closes the
+  panel in Title 2, in the text colour, "Diferença a favor de investir: R$ 814,22", over its
+  yardstick in Callout grey, "8,1% dos R$ 10.000,00 em 5 anos e 1 mês.", which adds "Na prática, um
+  empate." for a near tie. No amount carries a sign.
 - Detalhes: an inset grouped list with today's rate, the bond's price, the quantity bought and the
   cost prepaying avoids, the rate at which both options tie in Footnote under it ("Empata com
   amortizar se a taxa cair para 13,99%."), then "Ver cenários", which opens both scenarios' figures
@@ -551,10 +555,12 @@ mais". Use the domain words: financiamento, prestação, amortização extraordi
 projeção, decisão. Avoid dívida, simulação, previsão. Results are conditional ("Na projeção
 atual…"). Server state and refresh mechanics appear only on Ajustes and in the stale-data notes.
 
-Money in prose never carries a sign: say which option ends with more and by how much ("Investir
-termina com R$ 814,22 a mais", "Manter rende R$ 57,54 a mais", "R$ 120,10 a menos"), and what is
-owed as "Você deve R$ …", never as a negative amount. A difference under 1% of the amount is named
-as what it is, practically the same, rather than as a win.
+Money in prose never carries a sign: say which option is worth more and the projected difference in
+its favour ("Diferença a favor de investir: R$ 814,22", "R$ 814,22 de diferença a favor", "R$ 120,10
+a menos"), and what is owed as "Você deve R$ …", never as a negative amount. That difference is in
+net worth, the cash held and the bond's net value less what is owed, so prose never words it as
+debt owed or cash held. A difference under 1% of the amount is named as what it is, practically
+the same, rather than as a win.
 
 ## Sample data for mockups
 

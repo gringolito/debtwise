@@ -18,7 +18,9 @@ afterEach(() => {
 });
 
 const checksList = () =>
-  screen.findByRole("list", { name: "Compras, das que mais rendem vendidas às que menos rendem" });
+  screen.findByRole("list", {
+    name: "Compras, das que mais valem a pena vender às que menos valem",
+  });
 const rows = (list: HTMLElement) => within(list).getAllByRole("link").map(words);
 const lots = [ipca2035, ipca2035Again, prefixado2029, waitingOnIpca];
 
@@ -37,9 +39,9 @@ describe("Venda antecipada", () => {
 
     const list = await checksList();
     expect(rows(list)).toEqual([
-      "Tesouro IPCA+ 2035 Compra em 18/11/2024 Vender rende R$ 120,00 a mais até 15/05/2035",
-      "Tesouro IPCA+ 2035 Compra em 12/05/2024 Manter rende R$ 2.140,00 a mais até 15/05/2035",
-      "Tesouro Prefixado com Juros Semestrais 2029 Compra em 10/01/2025 Vender e manter rendem o mesmo até 01/01/2029",
+      "Tesouro IPCA+ 2035 Compra em 18/11/2024 Vender vale mais a pena R$ 120,00 de diferença a favor até 15/05/2035",
+      "Tesouro IPCA+ 2035 Compra em 12/05/2024 Manter vale mais a pena R$ 2.140,00 de diferença a favor até 15/05/2035",
+      "Tesouro Prefixado com Juros Semestrais 2029 Compra em 10/01/2025 Vender ou manter dá no mesmo até 01/01/2029",
       "Tesouro IPCA+ 2045 Compra em 01/06/2026 Aguardando o IPCA",
     ]);
     expect(within(list).getByText("R$ 120,00")).toHaveClass("text-positive");
@@ -47,7 +49,7 @@ describe("Venda antecipada", () => {
     expect(within(list).getByText("R$ 2.140,00").closest(".text-destructive")).toBeNull();
     expect(
       screen.getByText(
-        "Cada compra mostra a opção que rende mais até o vencimento. O DebtWise compara; a decisão é sua.",
+        "Cada compra mostra a opção que vale mais a pena até o vencimento. O DebtWise compara; a decisão é sua.",
       ),
     ).toBeVisible();
   });
@@ -63,14 +65,14 @@ describe("Venda antecipada", () => {
     renderAt("/investimentos/venda-antecipada");
 
     expect(rows(await checksList())).toEqual([
-      "Tesouro IPCA+ 2035 Compra em 12/05/2024 Manter rende R$ 2.140,00 a mais até 15/05/2035",
+      "Tesouro IPCA+ 2035 Compra em 12/05/2024 Manter vale mais a pena R$ 2.140,00 de diferença a favor até 15/05/2035",
     ]);
 
     fireEvent.click(screen.getByRole("radio", { name: "Reduzir prestação" }));
 
     await waitFor(async () =>
       expect(rows(await checksList())).toEqual([
-        "Tesouro IPCA+ 2035 Compra em 12/05/2024 Vender rende R$ 310,55 a mais até 15/05/2035",
+        "Tesouro IPCA+ 2035 Compra em 12/05/2024 Vender vale mais a pena R$ 310,55 de diferença a favor até 15/05/2035",
       ]),
     );
     expect(
@@ -82,7 +84,9 @@ describe("Venda antecipada", () => {
     fireEvent.click(screen.getByRole("link", { name: /Compra em 12\/05\/2024/ }));
 
     const panel = await screen.findByRole("region", { name: "Venda antecipada" });
-    expect(await within(panel).findByRole("heading", { name: "Vender rende mais" })).toBeVisible();
+    expect(
+      await within(panel).findByRole("heading", { name: "Vender vale mais a pena" }),
+    ).toBeVisible();
   });
 
   it("shows an error panel that compares again", async () => {

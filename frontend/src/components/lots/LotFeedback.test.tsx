@@ -42,7 +42,7 @@ const facts = (dialog: HTMLElement) =>
     .map((term) => [text(term), text(term.nextElementSibling as HTMLElement)]);
 
 const figure = (dialog: HTMLElement) =>
-  text(within(dialog).getByText("Você vai ganhar").parentElement as HTMLElement);
+  text(within(dialog).getByText("Rendimento líquido").parentElement as HTMLElement);
 
 describe("a recorded lot", () => {
   it("celebrates the gain, the figures behind it and the advantage over prepaying", async () => {
@@ -53,14 +53,14 @@ describe("a recorded lot", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Compra registrada!" });
     expect(figure(dialog)).toBe(
-      "Você vai ganhar R$ 4.943,45 até 01/01/2029, já descontados impostos e custódia",
+      "Rendimento líquido R$ 4.943,45 até 01/01/2029, se mantido até o vencimento, já descontados impostos e custódia",
     );
     expect(facts(dialog)).toEqual([
       ["Valor investido", "R$ 14.043,00"],
       ["Líquido no vencimento", "R$ 18.986,45"],
     ]);
-    expect(within(dialog).getByText(/^Você fica com/)).toHaveTextContent(
-      "Você fica com R$ 2.180,40* a mais do que se amortizasse reduzindo o prazo, até 01/01/2029.",
+    expect(within(dialog).getByText(/^Diferença projetada/)).toHaveTextContent(
+      "Diferença projetada a favor desta compra, em vez de amortizar reduzindo o prazo: R$ 2.180,40* até 01/01/2029.",
     );
     expect(within(dialog).getByText("* Baseado na projeção atual.")).toBeVisible();
     expect(
@@ -86,7 +86,10 @@ describe("a recorded lot", () => {
   });
 
   it.each([
-    ["-310.25", "Amortizar reduzindo o prazo renderia R$ 310,25* a mais até 01/01/2029."],
+    [
+      "-310.25",
+      "Amortizar reduzindo o prazo valeria mais a pena. Diferença projetada a favor de amortizar: R$ 310,25* até 01/01/2029.",
+    ],
     ["0.00", "Investir e amortizar reduzindo o prazo dão o mesmo resultado até 01/01/2029."],
   ])("says how an advantage of %s compares with prepaying", async (advantage, line) => {
     renderFeedback({ kind: "recorded", lot: bought }, () => ({ ...lotComparison, advantage }));
@@ -103,7 +106,7 @@ describe("a recorded lot", () => {
     }));
 
     const dialog = await screen.findByRole("dialog", { name: "Compra registrada!" });
-    expect(within(dialog).queryByText("Você vai ganhar")).toBeNull();
+    expect(within(dialog).queryByText("Rendimento líquido")).toBeNull();
     expect(facts(dialog)).toEqual([
       ["Valor investido", "R$ 14.043,00"],
       ["Líquido no vencimento", "R$ 13.990,00"],
@@ -142,14 +145,14 @@ describe("a recorded lot", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Compra registrada!" });
     expect(figure(dialog)).toBe(
-      "Você vai ganhar R$ 4.943,45* até 01/01/2029, já descontados impostos e custódia",
+      "Rendimento líquido R$ 4.943,45* até 01/01/2029, se mantido até o vencimento, já descontados impostos e custódia",
     );
     expect(facts(dialog)).toEqual([
       ["Valor investido", "R$ 14.043,00"],
       ["Líquido no vencimento*", "R$ 18.986,45"],
     ]);
-    expect(within(dialog).getByText(/^Você fica com/)).toHaveTextContent(
-      "Você fica com R$ 2.180,40 a mais",
+    expect(within(dialog).getByText(/^Diferença projetada/)).toHaveTextContent(
+      "Diferença projetada a favor desta compra, em vez de amortizar reduzindo o prazo: R$ 2.180,40",
     );
     expect(within(dialog).getByText("* Baseado na projeção atual.")).toBeVisible();
   });
@@ -175,7 +178,7 @@ describe("a recorded lot", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Compra registrada!" });
     expect(facts(dialog)).toEqual([["Valor investido", "R$ 3.200,00"]]);
-    expect(within(dialog).queryByText("Você vai ganhar")).toBeNull();
+    expect(within(dialog).queryByText("Rendimento líquido")).toBeNull();
     expect(within(dialog).queryByText(/amortiza/)).toBeNull();
     expect(within(dialog).queryByText(/\*/)).toBeNull();
   });
@@ -189,7 +192,7 @@ describe("a recorded lot", () => {
     }));
 
     const dialog = await screen.findByRole("dialog", { name: "Compra registrada!" });
-    expect(figure(dialog)).toMatch(/^Você vai ganhar R\$ 4\.943,45/);
+    expect(figure(dialog)).toMatch(/^Rendimento líquido R\$ 4\.943,45/);
     expect(within(dialog).queryByText(/amortiza/)).toBeNull();
     expect(within(dialog).queryByRole("alert")).toBeNull();
   });
