@@ -37,7 +37,7 @@ describe("Investimentos", () => {
 
     const total = await screen.findByRole("region", { name: "Valor de mercado" });
     expect(words(total)).toBe(
-      "Valor de mercado R$ 33.016,50 Líquido, se vender tudo hoje Bruto R$ 34.800,12 Descontos R$ 1.783,62 R$ 1.700,00 de IR, R$ 70,50 de IOF e R$ 13,12 de custódia 1 compra sem valor de mercado ficou fora do total.",
+      "Valor de mercado R$ 33.016,50 Líquido, se vender tudo hoje Bruto R$ 34.800,12 Descontos do bruto R$ 1.700,00 de IR, R$ 70,50 de IOF e R$ 13,12 de custódia 1 compra sem valor de mercado ficou fora do total.",
     );
 
     expect(screen.queryByRole("heading", { name: /^Tesouro/ })).toBeNull();
@@ -48,16 +48,17 @@ describe("Investimentos", () => {
     ]);
   });
 
-  it("names only the deductions that took something off the gross", async () => {
-    stubInvestments({
-      lots: [ipca2035],
-      marketValue: { ...marketValue, iof: "0.00", net: "33087.00" },
-    });
+  it.each([
+    [{ iof: "0.00" }, "R$ 1.700,00 de IR e R$ 13,12 de custódia"],
+    [{ iof: "0.00", income_tax: "0.00", custody_fee: "0.00" }, "Nenhum"],
+  ])("names only the deductions that took something off the gross, %j", async (zeroed, taken) => {
+    stubInvestments({ lots: [ipca2035], marketValue: { ...marketValue, ...zeroed } });
     renderAt("/investimentos");
 
     const total = await screen.findByRole("region", { name: "Valor de mercado" });
-    expect(within(total).getByText("R$ 1.700,00 de IR e R$ 13,12 de custódia")).toBeInTheDocument();
-    expect(within(total).getByText("R$ 1.713,12")).toBeInTheDocument();
+    expect(within(total).getByText("Descontos do bruto").nextElementSibling).toHaveTextContent(
+      taken,
+    );
   });
 
   it("says under each lot whether selling it early beats holding it, with a gain in green", async () => {

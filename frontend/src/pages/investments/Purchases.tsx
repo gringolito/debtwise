@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import type { EarlySaleCheck, LotList, LotValued } from "@/lib/api";
 import { bondLabel, bondRate } from "@/lib/bondKinds";
 import { today } from "@/lib/dashboard";
-import { subtractDecimals } from "@/lib/decimals";
 import { isZero } from "@/lib/decisions";
 import { useEarlySaleChecks } from "@/lib/earlySaleQueries";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -44,8 +43,8 @@ function SaleSummary({ checks }: { checks: EarlySaleCheck[] }) {
 const deductionList = new Intl.ListFormat("pt-BR", { type: "conjunction" });
 
 /**
- * GrossToNet shows how the net total comes from the gross: the gross, then what the taxes and the
- * custody fee take off it, each named in words so no amount needs a minus sign.
+ * GrossToNet shows the gross beside what the taxes and the custody fee take off it, each named in
+ * words so no amount needs a minus sign.
  */
 function GrossToNet({ amount }: { amount: NonNullable<LotList["market_value"]> }) {
   const taken = [
@@ -62,15 +61,10 @@ function GrossToNet({ amount }: { amount: NonNullable<LotList["market_value"]> }
         <dd className="text-callout tabular-nums">{formatMoney(amount.gross)}</dd>{" "}
       </div>
       <div className="flex flex-col gap-0.5">
-        <dt className="text-footnote text-muted-foreground">Descontos</dt>{" "}
+        <dt className="text-footnote text-muted-foreground">Descontos do bruto</dt>{" "}
         <dd className="text-callout tabular-nums">
-          {formatMoney(subtractDecimals(amount.gross, amount.net))}
+          {taken.length > 0 ? deductionList.format(taken) : "Nenhum"}
         </dd>{" "}
-        {taken.length > 0 && (
-          <dd className="text-footnote text-muted-foreground tabular-nums">
-            {deductionList.format(taken)}
-          </dd>
-        )}
       </div>
     </dl>
   );
