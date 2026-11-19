@@ -158,7 +158,7 @@ run = [{ task = "test:backend" }, { task = "test:frontend" }]
 [tasks."test:backend"]
 description = "Run Go tests with coverage and race detection"
 dir = "backend"
-run = "go test -race ./... -coverprofile=cover.out -covermode=atomic -coverpkg=./..."
+run = "go test -race -fullpath ./... -coverprofile=cover.out -covermode=atomic -coverpkg=./..."
 
 [tasks."test:frontend"]
 description = "Run frontend tests"

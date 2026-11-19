@@ -54,6 +54,15 @@ jobs:
       - run: pnpm install --frozen-lockfile
         working-directory: frontend
       - run: mise run test:frontend
+      - name: Test report
+        if: ${{ !cancelled() }}
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        with:
+          name: Frontend tests
+          path: frontend/reports/junit.xml
+          reporter: jest-junit
+          list-tests: failed
+          fail-on-error: 'false'
       - name: Coverage grid map
         uses: gringolito/js-covergrid@98e0f57c27bd7a13c3bb96f74918a56e7d31fbc5 # v0.0.1
         with:
