@@ -84,8 +84,8 @@ function Recorded({ comparison, onClose }: { comparison?: LotComparison; onClose
       {title}
       {maturity && gain && compareDecimals(gain, "0") > 0 && (
         <CelebrationFigure
-          lead="Você vai ganhar"
-          unit={`até ${formatDate(comparison.horizon)}, já descontados impostos e custódia`}
+          lead="Rendimento líquido"
+          unit={`até ${formatDate(comparison.horizon)}, se mantido até o vencimento, já descontados impostos e custódia`}
         >
           {formatMoney(gain)}
           {marked && <CelebrationMark>*</CelebrationMark>}

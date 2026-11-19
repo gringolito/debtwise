@@ -42,7 +42,7 @@ const facts = (dialog: HTMLElement) =>
     .map((term) => [text(term), text(term.nextElementSibling as HTMLElement)]);
 
 const figure = (dialog: HTMLElement) =>
-  text(within(dialog).getByText("Você vai ganhar").parentElement as HTMLElement);
+  text(within(dialog).getByText("Rendimento líquido").parentElement as HTMLElement);
 
 describe("a recorded lot", () => {
   it("celebrates the gain, the figures behind it and the advantage over prepaying", async () => {
@@ -53,7 +53,7 @@ describe("a recorded lot", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Compra registrada!" });
     expect(figure(dialog)).toBe(
-      "Você vai ganhar R$ 4.943,45 até 01/01/2029, já descontados impostos e custódia",
+      "Rendimento líquido R$ 4.943,45 até 01/01/2029, se mantido até o vencimento, já descontados impostos e custódia",
     );
     expect(facts(dialog)).toEqual([
       ["Valor investido", "R$ 14.043,00"],
@@ -106,7 +106,7 @@ describe("a recorded lot", () => {
     }));
 
     const dialog = await screen.findByRole("dialog", { name: "Compra registrada!" });
-    expect(within(dialog).queryByText("Você vai ganhar")).toBeNull();
+    expect(within(dialog).queryByText("Rendimento líquido")).toBeNull();
     expect(facts(dialog)).toEqual([
       ["Valor investido", "R$ 14.043,00"],
       ["Líquido no vencimento", "R$ 13.990,00"],
@@ -145,7 +145,7 @@ describe("a recorded lot", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Compra registrada!" });
     expect(figure(dialog)).toBe(
-      "Você vai ganhar R$ 4.943,45* até 01/01/2029, já descontados impostos e custódia",
+      "Rendimento líquido R$ 4.943,45* até 01/01/2029, se mantido até o vencimento, já descontados impostos e custódia",
     );
     expect(facts(dialog)).toEqual([
       ["Valor investido", "R$ 14.043,00"],
@@ -178,7 +178,7 @@ describe("a recorded lot", () => {
 
     const dialog = await screen.findByRole("dialog", { name: "Compra registrada!" });
     expect(facts(dialog)).toEqual([["Valor investido", "R$ 3.200,00"]]);
-    expect(within(dialog).queryByText("Você vai ganhar")).toBeNull();
+    expect(within(dialog).queryByText("Rendimento líquido")).toBeNull();
     expect(within(dialog).queryByText(/amortiza/)).toBeNull();
     expect(within(dialog).queryByText(/\*/)).toBeNull();
   });
@@ -192,7 +192,7 @@ describe("a recorded lot", () => {
     }));
 
     const dialog = await screen.findByRole("dialog", { name: "Compra registrada!" });
-    expect(figure(dialog)).toMatch(/^Você vai ganhar R\$ 4\.943,45/);
+    expect(figure(dialog)).toMatch(/^Rendimento líquido R\$ 4\.943,45/);
     expect(within(dialog).queryByText(/amortiza/)).toBeNull();
     expect(within(dialog).queryByRole("alert")).toBeNull();
   });
