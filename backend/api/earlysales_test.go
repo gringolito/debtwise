@@ -315,42 +315,56 @@ func TestAnIPCAPlusLotIsCheckedAgainstAMortgageWithoutIPCA(t *testing.T) {
 	}}, got)
 }
 
-// A mortgage charging 40% a year doesn't make selling the lot win: an early sale check ignores the
-// installment's slack, so the interest that prepaying the sale would save is not counted. The 10.00
-// LTN maturing on 2029-01-01, bought on 2025-01-02, are held 1,460 days to maturity, 10,000.00
-// gross: the custody fee is 0.20% a year of it, 80.00, and income tax is 15% of the 3,500.00 gain
-// left after it, 513.00, which leaves 9,407.00 net. Either scenario owes nothing on the horizon, the
-// mortgage's last installment being on 2028-01-10, and the sale, which doesn't pay it off, holds
-// nothing: it is worth 0.00 and holding is better by the whole 9,407.00. The check of a single lot
+// A mortgage charging 40% a year over 360 months (expensiveLongMortgage) makes selling the lot win
+// when the sale shortens the term, even with the installment's slack ignored. On 2026-10-28, after 9
+// installments, 299,996.45 is owed. The 10.00 LTN maturing on 2029-01-01, bought on 2025-01-02, sell
+// at 769.49: 664 days after the purchase the 7,694.90 gross pays a 28.00 custody fee and 17.5% of the
+// 1,166.90 gain left after it, 204.21: 7,462.69 net. Held 1,460 days to maturity the 10,000.00 gross
+// pays an 80.00 custody fee and 15% of the 3,420.00 gain left, 513.00: 9,407.00 net, with 299,979.32
+// owed after the 26 installments to 2028-12-10. Selling shortens the term to the 132 months left (141
+// in all) that 292,533.76 needs at most the 8,531.20 paid before (131 months need 8,535.30, 132 need
+// 8,529.15), and leaves 284,586.12 owed after the same installments, 15,393.20 less than holding:
+// holding is worth 9,407.00 - 15,393.20 = -5,986.20 more than selling, so selling is better.
+// Lowering the installment keeps the 360 months, leaves 292,516.96 owed, and holding is better by
+// 1,944.64 because what it saves each month is the slack nothing prepays. The check of a single lot
 // answers the same as its entry in the list.
-func TestAnEarlySaleCheckOfOneLotDoesNotCountTheInterestSellingWouldSaveOnAMortgageChargingMore(t *testing.T) {
+func TestAnEarlySaleCheckOfOneLotFavoursSellingWhenTheMortgageCostsMoreAndTheTermIsShortened(t *testing.T) {
 	t.Parallel()
 
 	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
-	do(t, s.handler, http.MethodPut, "/mortgage",
-		strings.Replace(fmt.Sprintf(interestFreeMortgage, "none"), `"rate": "0"`, `"rate": "0.40"`, 1), http.StatusOK)
+	do(t, s.handler, http.MethodPut, "/mortgage", expensiveLongMortgage(), http.StatusOK)
 
 	ltn := addLot(t, s.handler, lotBody("ltn", "2029-01-01", "2025-01-02", "0.11", "650.00", "10.00"))
+	maturity := &decisionAmount{Gross: "10000.00", IOF: "0.00", IncomeTax: "513.00", CustodyFee: "80.00", Net: "9407.00", ProjectedBy: []projectedBy{}}
 
-	var got earlySale
-	require.NoError(t, json.Unmarshal([]byte(do(t, s.handler, http.MethodGet,
-		fmt.Sprintf("/early-sale-checks/%d?effect=lower_installment", ltn.ID), "", http.StatusOK)), &got))
+	tests := []struct {
+		effect, verdict, advantage, sellBalance string
+	}{
+		{"shorten_term", "sell", "-5986.20", "284586.12"},
+		{"lower_installment", "hold", "1944.64", "292516.96"},
+	}
 
-	assert.Equal(t, "2026-10-28", got.Date)
-	assert.Equal(t, "lower_installment", got.Effect)
-	assert.Equal(t, ltn, got.Check.Lot)
-	assert.Equal(t, "hold", got.Check.Verdict)
-	assert.Equal(t, "9407.00", got.Check.Advantage)
-	assert.Equal(t, "9407.00", got.Check.Hold.NetWorth)
-	assert.Equal(t, "0.00", got.Check.Hold.OutstandingBalance)
-	assert.Equal(t, &decisionAmount{Gross: "10000.00", IOF: "0.00", IncomeTax: "513.00", CustodyFee: "80.00", Net: "9407.00", ProjectedBy: []projectedBy{}}, got.Check.Hold.Bond)
-	assert.Equal(t, "0.00", got.Check.Sell.NetWorth)
-	assert.Equal(t, "0.00", got.Check.Sell.Cash)
-	assert.Equal(t, "0.00", got.Check.Sell.OutstandingBalance)
+	for _, tt := range tests {
+		var got earlySale
+		require.NoError(t, json.Unmarshal([]byte(do(t, s.handler, http.MethodGet,
+			fmt.Sprintf("/early-sale-checks/%d?effect=%s", ltn.ID, tt.effect), "", http.StatusOK)), &got))
 
-	var list earlySaleCheckList
-	require.NoError(t, json.Unmarshal([]byte(do(t, s.handler, http.MethodGet, "/early-sale-checks?effect=lower_installment", "", http.StatusOK)), &list))
-	assert.Equal(t, []earlySaleCheck{got.Check}, list.Checks)
+		assert.Equal(t, "2026-10-28", got.Date)
+		assert.Equal(t, tt.effect, got.Effect)
+		assert.Equal(t, ltn, got.Check.Lot)
+		assert.Equal(t, tt.verdict, got.Check.Verdict)
+		assert.Equal(t, tt.advantage, got.Check.Advantage)
+		assert.Equal(t, "-290572.32", got.Check.Hold.NetWorth)
+		assert.Equal(t, "299979.32", got.Check.Hold.OutstandingBalance)
+		assert.Equal(t, maturity, got.Check.Hold.Bond)
+		assert.Equal(t, "-"+tt.sellBalance, got.Check.Sell.NetWorth)
+		assert.Equal(t, "0.00", got.Check.Sell.Cash)
+		assert.Equal(t, tt.sellBalance, got.Check.Sell.OutstandingBalance)
+
+		var list earlySaleCheckList
+		require.NoError(t, json.Unmarshal([]byte(do(t, s.handler, http.MethodGet, "/early-sale-checks?effect="+tt.effect, "", http.StatusOK)), &list))
+		assert.Equal(t, []earlySaleCheck{got.Check}, list.Checks)
+	}
 }
 
 func TestAnEarlySaleCheckFailsWithoutAMortgageOrALotOrWithAnInvalidEffect(t *testing.T) {
