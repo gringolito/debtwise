@@ -74,21 +74,23 @@ whitespace. Hairline separators for structure inside panels.
   or dialog, and selectable cards, stay plain white.
 - The canvas is a diagonal gradient, fixed to the viewport, from a faint Orvalho-tinted grey
   (`#EEF4F1`, top left) through a neutral `#EFF1F4` to a blue-tinted grey (`#E3E9F3`, bottom
-  right), under a faint soft-accent wash top left. It and the graphite card are the only gradients.
+  right), under a faint soft-accent wash top left. It and graphite glass are the only gradients.
 - The sidebar is glass too: white at 75% with a 28px blur and a hairline at 6% black on its right.
 - The phone's tab bar and its Ajustes button float as glass capsules: white at 72% with a 24px
   blur, a white rim at 90% and a soft lift shadow, so the page reads under them.
 - Sheets and popovers keep the whisper-soft sheet shadow (`0 8px 24px rgba(0,0,0,0.08)`).
 - No floating pills, badge dots, stock illustrations or emoji, except the phone's tab bar, which is
-  Liquid Glass's own navigation, and Início's answer card as described there.
+  Liquid Glass's own navigation, and Início's answer icon as described there.
 
-Graphite is the signature: primary buttons and at most one card per screen are near-black, like a
-premium card. The graphite card is glass as well: a diagonal gradient from `#222224` to `#151517`
-at 92–96%, a white rim at 18%, a deep shadow and a 1px rim light along its top edge that fades in
-from white to the soft accent. A graphite surface carries only white and grey text, such as the
-Início hero that states the current suggestion. Any card that shows a colored result (a green gain,
-a red loss, a caution note) is a white panel instead, such as the verdict on Comparar. Graphite never
-fills the sidebar, summary panels or page backgrounds.
+Graphite is the signature: primary buttons are near-black, like a premium card, and so are the
+tiles that carry the app's few icons and illustrations, the welcome's tile and Início's answer icon.
+Graphite glass, on the answer icon, is a diagonal gradient from `#222224` to `#151517` at 92–96%, a
+white rim at 18%, a deep shadow and a 1px rim light along its top edge that fades in from white to
+the soft accent. No card is graphite: a near-black block on a light page reads as an advertisement,
+so the main information of a screen, such as Início's answer, sits on the canvas itself. Any card
+that shows a colored result (a green gain, a red loss, a caution note) is a white panel, such as
+the verdict on Comparar. Graphite never fills cards, the sidebar, summary panels or page
+backgrounds.
 
 ## Color: Orvalho
 
@@ -101,9 +103,8 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
   text. `#AEAEB2` (tertiary) marks what is placeholder, disabled or set back: placeholders, a unit
   beside an empty field, disabled states, a checklist step still to do and the 404 figure. Text the
   owner has to read is secondary grey or darker.
-- **Primary buttons are graphite** with white text, 12px radius, 44px tall. On a graphite card the
-  button inverts to white with graphite text, lifted by a soft shadow and a white inner highlight.
-  One primary button per screen.
+- **Primary buttons are graphite** with white text, 12px radius, 44px tall. One primary button per
+  screen.
 - Accent roles:
   - `#26705F` (strong) only for text-weight uses: links, the selected navigation label and icon,
     text buttons, and the focus ring.
@@ -116,8 +117,7 @@ The accent is **Orvalho**, a sea-green (verde-água) like sea glass: fresh, reas
 - Controls that have to be found before they are used, an empty radio ring and a switch's off
   track, are `#8E8E93`, at 3:1.
 - Focus: every focusable element shows a 2px solid ring in the strong accent, 2px off its edge, on
-  keyboard focus only; inside the graphite card the ring is white. A row of an inset grouped list
-  draws it inside its edge.
+  keyboard focus only. A row of an inset grouped list draws it inside its edge.
 - Charts: the mortgage ("Amortizar") series is graphite, the investment ("Investir") series is
   `#3E8E7C` at 2.5px, projections are dashed `#8E8E93`. A dotted strong-accent line marks today;
   its label sits above the plot on the side of the line with more room, clear of the value axis.
@@ -185,9 +185,9 @@ line, and its panel stacks instead. These eight sizes are the whole scale.
   Títulos), switches them with a segmented control at the top of the page. Large selectable
   cards with a small schematic chart for conceptual choices like SAC vs Price; a selected card has
   the accent-mark border, the tint background and a check in an accent-mark disc.
-- Buttons: graphite primary; white on a graphite card; plain text buttons in secondary grey
-  ("Cancelar", "Voltar", "Mudar valor"); links and text actions in the strong accent, except a
-  destructive one beside them, such as "Excluir" next to "Editar", which is red text.
+- Buttons: graphite primary; plain text buttons in secondary grey ("Cancelar", "Voltar", "Mudar
+  valor"); links and text actions in the strong accent, except a destructive one beside them, such
+  as "Excluir" next to "Editar", which is red text.
 - Tables of figures sit on the same white panel as an inset grouped list: Footnote uppercase
   column headers in secondary grey, 52px rows with hairlines, labels left and figures right. When a
   table is wider than its panel, as on a phone, it scrolls sideways inside the panel with its first
@@ -230,8 +230,8 @@ line, and its panel stacks instead. These eight sizes are the whole scale.
   hero figure in tertiary grey, "Esta página não existe", "O endereço pode ter mudado." and a
   graphite "Voltar ao início".
 - Market data freshness is shown next to what it affects: on Início and Comparar, a Footnote
-  directly under the answer or verdict card, in caution orange with a clock icon, naming each
-  source the answer reads that is not fresh with the date of its last update, then an
+  directly under Início's answer or Comparar's verdict panel, in caution orange with a clock icon,
+  naming each source the answer reads that is not fresh with the date of its last update, then an
   "Atualizar" text action.
 - Checklists, such as Início's "Próximos passos", are inset grouped lists: a step still to do is an
   empty tertiary circle and a chevron; a done step has an accent check, its label struck through in
@@ -243,20 +243,23 @@ line, and its panel stacks instead. These eight sizes are the whole scale.
 The Large Title "Início" over the weekday and date in Callout grey ("Domingo, 8 de novembro"),
 then:
 
-- The answer card, the screen's one graphite card, for R$ 10.000,00 prepaid today to shorten the
-  term: a glowing soft-accent dot before "Na projeção atual, para R$ 10.000,00 hoje" in Footnote
-  grey, in sentence case, then the verdict as a Title 2, the same headline as Comparar's ("Investir
-  em Tesouro Prefixado 2032 vale mais a pena", "Amortizar vale mais a pena" with no bond, since
-  prepaying only heads it when it beats every bond, or "… dá praticamente no mesmo" for a near tie),
-  and a Callout line that states its yardstick, the difference in semibold white: "R$ 814,22 de
-  diferença a favor até 01/01/2032, 8,1% do valor em 5 anos e 1 mês." A near tie reads "R$ 39,64 de
-  diferença até …", and no difference at all "Nenhuma diferença até 01/01/2032.". A white "Ver
-  comparação" opens Comparar with the amount and compares at once; a plain "Mudar valor" opens it
-  with the amount to change. On its right, only when one option clearly wins, a 160px glass
-  illustration of it, a rising bar chart for investing or a house with a downward arrow for
-  prepaying; a near tie shows none, and neither does a phone. With no verdict to state, the card
-  reads "Amortizar ou investir? Veja a comparação." with "Comparar agora". The stale-data note sits
-  under the card.
+- The answer, the screen's main information, centered on the canvas with no card around it, for
+  R$ 10.000,00 prepaid today to shorten the term. On top, only when one option clearly wins, its
+  illustration on a 96px graphite glass icon, a squircle with a top-left sheen, a soft-accent glow
+  on its floor and a specular rim, the way Liquid Glass draws an app icon: a rising bar chart for
+  investing or a house with a downward arrow for prepaying; a near tie shows none. Then a glowing
+  accent dot before "Na projeção atual, para R$ 10.000,00 hoje" in Footnote grey, in sentence
+  case, the verdict as a Large Title at semibold weight, balanced over its lines, with the same
+  headline as Comparar's ("Investir em Tesouro Prefixado 2032 vale mais a pena", "Amortizar vale
+  mais a pena" with no bond, since prepaying only heads it when it beats every bond, or "… dá
+  praticamente no mesmo" for a near tie), and a Body line in secondary grey that states its
+  yardstick, the difference in semibold text colour: "R$ 814,22 de diferença a favor até
+  01/01/2032, 8,1% do valor em 5 anos e 1 mês." A near tie reads "R$ 39,64 de diferença até …", and
+  no difference at all "Nenhuma diferença até 01/01/2032.". The graphite "Ver comparação" opens
+  Comparar with the amount and compares at once; a plain "Mudar valor" beside it opens it with the
+  amount to change. With no verdict to state, the answer reads "Amortizar ou investir? Veja a
+  comparação." with "Comparar agora". The stale-data note sits under the answer, and a hairline
+  closes it off from the panels.
 - Two white summary panels side by side, stacked on a phone, each titled in Footnote uppercase
   grey, with its figure in Large Title semibold under a Callout label and a hairline drill-in row at
   the bottom:
