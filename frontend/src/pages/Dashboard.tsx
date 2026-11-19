@@ -12,7 +12,7 @@ import {
   usePrepayments,
   useStatements,
 } from "@/lib/mortgageQueries";
-import { AnswerCard } from "@/pages/dashboard/AnswerCard";
+import { Answer } from "@/pages/dashboard/Answer";
 import { DashboardSkeleton } from "@/pages/dashboard/DashboardSkeleton";
 import { InvestmentsPanel } from "@/pages/dashboard/InvestmentsPanel";
 import { MortgagePanel } from "@/pages/dashboard/MortgagePanel";
@@ -59,7 +59,7 @@ function Content() {
   return (
     <>
       <div className="flex flex-col gap-6">
-        <AnswerCard decision={decision.data} />
+        <Answer decision={decision.data} />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {mortgage.data && (
             <MortgagePanel mortgage={mortgage.data} schedule={schedule.data} today={date} />

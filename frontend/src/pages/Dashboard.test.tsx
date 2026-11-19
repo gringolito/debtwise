@@ -140,7 +140,7 @@ function stubInicio(routes: Routes = {}) {
 }
 
 const region = (name: string | RegExp) => screen.findByRole("region", { name });
-const answerCard = () => region(/vale mais a pena|no mesmo|Amortizar ou investir\?/);
+const answer = () => region(/vale mais a pena|no mesmo|Amortizar ou investir\?/);
 
 /** paragraph finds the paragraph that reads content, across the elements it is split into. */
 const paragraph = (container: HTMLElement, content: string) =>
@@ -176,7 +176,7 @@ describe("Início", () => {
     const requests = stubInicio();
     renderAt("/");
 
-    await answerCard();
+    await answer();
     expect(screen.getByRole("heading", { level: 1, name: "Início" })).toBeInTheDocument();
     expect(screen.getByText("Quarta-feira, 20 de março")).toBeInTheDocument();
     expect(screen.queryByRole("form")).not.toBeInTheDocument();
@@ -211,12 +211,12 @@ describe("Início", () => {
   });
 });
 
-describe("the answer card", () => {
+describe("the answer", () => {
   it("states the verdict of the highest advantage for R$ 10.000,00 prepaid today to shorten the term", async () => {
     const requests = stubInicio({ "POST /api/decisions": decisionOf([ntnf, unavailable, ltn]) });
     renderAt("/");
 
-    const card = await answerCard();
+    const card = await answer();
     expect(
       within(card).getByRole("heading", {
         name: "Investir em Tesouro Prefixado 2029 vale mais a pena",
@@ -238,7 +238,7 @@ describe("the answer card", () => {
     stubInicio({ "POST /api/decisions": decisionOf([ltn]) });
     renderAt("/");
 
-    const card = await answerCard();
+    const card = await answer();
     expect(within(card).getByRole("link", { name: "Ver comparação" })).toHaveAttribute(
       "href",
       "/comparar?valor=10000&comparar=true",
@@ -258,7 +258,7 @@ describe("the answer card", () => {
     });
     renderAt("/");
 
-    const card = await answerCard();
+    const card = await answer();
     expect(
       within(card).getByRole("heading", {
         name: "Investir em Tesouro Prefixado com Juros Semestrais 2035 vale mais a pena",
@@ -270,7 +270,7 @@ describe("the answer card", () => {
     stubInicio({ "POST /api/decisions": decisionOf([{ ...ltn, advantage: "-900.00" }, ntnf]) });
     renderAt("/");
 
-    const card = await answerCard();
+    const card = await answer();
     expect(
       within(card).getByRole("heading", { name: "Amortizar vale mais a pena" }),
     ).toBeInTheDocument();
@@ -290,7 +290,7 @@ describe("the answer card", () => {
     stubInicio({ "POST /api/decisions": decisionOf(verdicts) });
     renderAt("/");
 
-    const card = await answerCard();
+    const card = await answer();
     expect(
       within(card).getByRole("heading", { name: "Amortizar ou investir? Veja a comparação." }),
     ).toBeInTheDocument();
@@ -311,7 +311,7 @@ describe("the answer card", () => {
       });
       renderAt("/");
 
-      const card = await answerCard();
+      const card = await answer();
       expect(
         within(card).getByRole("heading", {
           name: "Investir em Tesouro Prefixado 2029 ou amortizar dá no mesmo",
@@ -336,7 +336,7 @@ describe("the answer card", () => {
     });
     renderAt("/");
 
-    const card = await answerCard();
+    const card = await answer();
     expect(
       within(card).getByRole("heading", {
         name: "Investir em Tesouro Prefixado 2029 ou amortizar dá praticamente no mesmo",
@@ -352,7 +352,7 @@ describe("the answer card", () => {
     stubInicio({ "POST /api/decisions": decisionOf([ltn]) });
     renderAt("/");
 
-    const card = await answerCard();
+    const card = await answer();
     expect(card.querySelector("img")).toBeInTheDocument();
     expect(within(card).queryByText("Melhor opção")).not.toBeInTheDocument();
   });
@@ -372,11 +372,11 @@ describe("the stale-data note", () => {
   };
   const note = (card: HTMLElement) => card.parentElement?.querySelector(":scope > p");
 
-  it("names each source the answer reads that is not fresh, directly under the card", async () => {
+  it("names each source the answer reads that is not fresh, directly under the answer", async () => {
     stubInicio({ "POST /api/decisions": decisionOf([staleVerdict]) });
     renderAt("/");
 
-    const card = await answerCard();
+    const card = await answer();
     expect(card.nextElementSibling).toBe(note(card));
     expect(text(card.nextElementSibling as Element)).toBe(
       "Preços dos títulos de 15/03. Expectativas do Focus indisponível. IPCA de 01/03. Atualizar",
@@ -387,7 +387,7 @@ describe("the stale-data note", () => {
     stubInicio({ "POST /api/decisions": decisionOf([ltn]) });
     renderAt("/");
 
-    const card = await answerCard();
+    const card = await answer();
     expect(card.nextElementSibling).toBeNull();
   });
 
@@ -413,7 +413,7 @@ describe("the stale-data note", () => {
     });
     renderAt("/");
 
-    const card = await answerCard();
+    const card = await answer();
     fireEvent.click(
       within(card.parentElement as HTMLElement).getByRole("button", { name: "Atualizar" }),
     );
@@ -633,7 +633,7 @@ describe("the next steps", () => {
     });
     renderAt("/");
 
-    await answerCard();
+    await answer();
     expect(screen.queryByRole("region", { name: "Próximos passos" })).not.toBeInTheDocument();
   });
 });
@@ -665,7 +665,7 @@ describe("the recent activity", () => {
     stubInicio();
     renderAt("/");
 
-    await answerCard();
+    await answer();
     expect(screen.queryByRole("region", { name: "Atividade recente" })).not.toBeInTheDocument();
   });
 });
