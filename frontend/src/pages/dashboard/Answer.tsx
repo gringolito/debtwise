@@ -50,7 +50,7 @@ function Yardstick({ verdict }: { verdict: ComparedVerdict }) {
 export function Answer({ decision }: { decision: Decision }) {
   const titleId = useId();
   const best = bestVerdict(decision.verdicts);
-  const valor = Number(decision.amount);
+  const valor = decision.amount;
   const side = best && favoured(best.advantage);
   const winner = side && side !== "even" && !best.near_tie ? side : undefined;
   const tooSmall = best

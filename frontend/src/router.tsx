@@ -89,19 +89,25 @@ const importLotsRoute = createRoute({
 /**
  * What a link to Comparar can prefill: `valor`, the amount in reais, `efeito`, the effect as a
  * lot's address says it, and `comparar`, whether to run the comparison on arrival. Anything else in
- * the address is dropped.
+ * the address is dropped. An amount written as decimal text, as Início links it, keeps every
+ * centavo; a number is still read for older links.
  */
 export interface DecisionSearch extends EffectSearch {
-  valor?: number;
+  valor?: number | string;
   comparar?: boolean;
+}
+
+const DECIMAL_AMOUNT = /^(0|[1-9][0-9]{0,14})(\.[0-9]{1,2})?$/;
+
+function validAmount(valor: unknown): number | string | undefined {
+  if (typeof valor === "number") return Number.isFinite(valor) && valor > 0 ? valor : undefined;
+  if (typeof valor === "string" && DECIMAL_AMOUNT.test(valor) && Number(valor) > 0) return valor;
+  return undefined;
 }
 
 function validateDecisionSearch(search: Record<string, unknown>): DecisionSearch {
   return {
-    valor:
-      typeof search.valor === "number" && Number.isFinite(search.valor) && search.valor > 0
-        ? search.valor
-        : undefined,
+    valor: validAmount(search.valor),
     ...validateEffectSearch(search),
     comparar: search.comparar === true ? true : undefined,
   };

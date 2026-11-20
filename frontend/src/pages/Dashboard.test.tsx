@@ -265,11 +265,11 @@ describe("the answer", () => {
     const card = await answer();
     expect(within(card).getByRole("link", { name: "Ver comparação" })).toHaveAttribute(
       "href",
-      "/comparar?valor=10000&comparar=true",
+      "/comparar?valor=%2210000.00%22&comparar=true",
     );
     expect(within(card).getByRole("link", { name: "Mudar valor" })).toHaveAttribute(
       "href",
-      "/comparar?valor=10000",
+      "/comparar?valor=%2210000.00%22",
     );
   });
 
@@ -290,11 +290,11 @@ describe("the answer", () => {
     ).toEqual([["/api/decisions", { amount: "5000.00", effect: "lower_installment" }]]);
     expect(within(card).getByRole("link", { name: "Ver comparação" })).toHaveAttribute(
       "href",
-      "/comparar?valor=5000&efeito=reduzir-prestacao&comparar=true",
+      "/comparar?valor=%225000.00%22&efeito=reduzir-prestacao&comparar=true",
     );
     expect(within(card).getByRole("link", { name: "Mudar valor" })).toHaveAttribute(
       "href",
-      "/comparar?valor=5000&efeito=reduzir-prestacao",
+      "/comparar?valor=%225000.00%22&efeito=reduzir-prestacao",
     );
   });
 
@@ -365,7 +365,7 @@ describe("the answer", () => {
     ).toBeInTheDocument();
     expect(within(card).getByRole("link", { name: "Comparar agora" })).toHaveAttribute(
       "href",
-      "/comparar?valor=10000&comparar=true",
+      "/comparar?valor=%2210000.00%22&comparar=true",
     );
     expect(within(card).queryByRole("link", { name: "Mudar valor" })).not.toBeInTheDocument();
   });
