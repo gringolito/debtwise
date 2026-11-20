@@ -26,7 +26,7 @@ func TestSavedDashboardQuestionIsReadBack(t *testing.T) {
 		body string
 	}{
 		{name: "an amount to lower the installment", body: `{"amount": "5000.50", "effect": "lower_installment"}`},
-		{name: "an amount too small to buy any bond", body: `{"amount": "0.01", "effect": "shorten_term"}`},
+		{name: "the least amount allowed", body: `{"amount": "50.00", "effect": "shorten_term"}`},
 	}
 
 	for _, tt := range tests {
@@ -53,7 +53,12 @@ func TestInvalidDashboardQuestionIsRejectedAndNotSaved(t *testing.T) {
 		{
 			name: "an amount of zero",
 			body: `{"amount": "0.00", "effect": "lower_installment"}`,
-			want: []ruleDetail{{"body.amount", "not_positive"}},
+			want: []ruleDetail{{"body.amount", "below_minimum"}},
+		},
+		{
+			name: "an amount a centavo under the least allowed",
+			body: `{"amount": "49.99", "effect": "lower_installment"}`,
+			want: []ruleDetail{{"body.amount", "below_minimum"}},
 		},
 		{
 			name: "a negative amount",

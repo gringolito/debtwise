@@ -225,6 +225,7 @@ const ruleMessages: Partial<Record<Rule, string>> = {
   not_positive: "Informe um valor maior que zero.",
   before_today: "A data não pode ser antes de hoje.",
   before_contract: "A data não pode ser antes do contrato.",
+  below_minimum: "Informe um valor a partir de R$ 50,00.",
 };
 
 const fieldMessages: Record<string, string> = {

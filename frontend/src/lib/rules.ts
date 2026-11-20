@@ -11,6 +11,7 @@ export const ruleMessages: Record<Rule, string> = {
   after_today: "Não pode ser depois de hoje.",
   not_after_purchase: "Precisa ser depois da data da compra.",
   not_maturity_day: "Não é uma data em que o Tesouro Direto vence este título.",
+  below_minimum: "Precisa ser de pelo menos R$ 50,00.",
 };
 
 const maturityDays: Record<BondType, string> = {

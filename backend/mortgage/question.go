@@ -20,10 +20,14 @@ type Question struct {
 // defaultQuestion is the question Início asks until the owner saves one.
 var defaultQuestion = Question{Amount: decimal.MustParse("10000.00"), Effect: ShortenTerm}
 
+// questionMinimum is the least amount Início's question accepts. It is DebtWise's own floor:
+// Tesouro Direto sells from 1% of a bond, which a comparison checks bond by bond.
+var questionMinimum = decimal.MustParse("50.00")
+
 // Validate returns every rule the question breaks. The schema checks the effect.
 func (q Question) Validate() []Violation {
-	if q.Amount.Cmp(decimal.Decimal{}) <= 0 {
-		return []Violation{{"amount", RuleNotPositive}}
+	if q.Amount.Cmp(questionMinimum) < 0 {
+		return []Violation{{"amount", RuleBelowMinimum}}
 	}
 
 	return nil

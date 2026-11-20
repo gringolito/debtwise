@@ -368,7 +368,7 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "description": "The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be greater than zero.",
+            "description": "The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be at least 50.00.",
             "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
             "type": "string"
           },
@@ -593,6 +593,7 @@
               "before_today",
               "no_row_from_first_installment",
               "repeated_date",
+              "below_minimum",
               "not_after_purchase",
               "not_maturity_day",
               "after_today"

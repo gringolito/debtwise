@@ -301,19 +301,19 @@ describe("the answer", () => {
   it("says why nothing compares when the saved amount is too small to buy any bond", async () => {
     stubInicio({
       "GET /api/dashboard/question": () =>
-        Response.json({ amount: "0.01", effect: "shorten_term" }),
-      "POST /api/decisions": decisionOf([{ ...unavailable, minimum_amount: "7.71" }]),
+        Response.json({ amount: "50.00", effect: "shorten_term" }),
+      "POST /api/decisions": decisionOf([{ ...unavailable, minimum_amount: "190.42" }]),
     });
     renderAt("/");
 
     const card = await region("Valor pequeno demais para comparar");
     expect(
-      within(card).getByText("Na projeção atual, para R$ 0,01 hoje, reduzindo o prazo"),
+      within(card).getByText("Na projeção atual, para R$ 50,00 hoje, reduzindo o prazo"),
     ).toBeInTheDocument();
     expect(
       paragraph(
         card,
-        "O Tesouro Direto vende a partir de um centésimo do título, e o valor não compra isso de nenhum deles. Tente um valor a partir de R$ 7,71.",
+        "O Tesouro Direto vende a partir de um centésimo do título, e o valor não compra isso de nenhum deles. Tente um valor a partir de R$ 190,42.",
       ),
     ).toBeInTheDocument();
   });

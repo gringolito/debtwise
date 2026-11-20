@@ -314,8 +314,12 @@ describe("Início's question", () => {
       undefined,
       "Informe um valor em reais, com até 2 casas decimais.",
     ],
-    ["an amount of zero", "not_positive" as const, "Informe um valor maior que zero."],
-  ])("keeps the question on %s, saying what Comparar says", async (_, code, message) => {
+    [
+      "an amount under R$ 50,00",
+      "below_minimum" as const,
+      "Informe um valor a partir de R$ 50,00.",
+    ],
+  ])("keeps the question on %s, saying what to type", async (_, code, message) => {
     stubAjustes({
       "PUT /api/dashboard/question": () =>
         problem(422, "Unprocessable Entity", "validation failed", [

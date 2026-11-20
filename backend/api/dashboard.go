@@ -13,7 +13,7 @@ import (
 const dashboardQuestionPath = "/dashboard/question"
 
 type dashboardQuestionInput struct {
-	Amount string `json:"amount" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be greater than zero."`
+	Amount string `json:"amount" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be at least 50.00."`
 	Effect string `json:"effect" enum:"shorten_term,lower_installment" doc:"What prepaying the amount changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments."`
 }
 

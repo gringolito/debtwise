@@ -224,7 +224,7 @@ export type DashboardQuestion = {
 
 export type DashboardQuestionInput = {
     /**
-     * The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be greater than zero.
+     * The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be at least 50.00.
      */
     amount: string;
     /**
@@ -352,7 +352,7 @@ export type ErrorDetail = {
     /**
      * The rule of the mortgage or of a lot the value breaks, present when it breaks one rather than the schema. message says what the rule asks in English.
      */
-    code?: 'not_positive' | 'before_contract' | 'before_today' | 'no_row_from_first_installment' | 'repeated_date' | 'not_after_purchase' | 'not_maturity_day' | 'after_today';
+    code?: 'not_positive' | 'before_contract' | 'before_today' | 'no_row_from_first_installment' | 'repeated_date' | 'below_minimum' | 'not_after_purchase' | 'not_maturity_day' | 'after_today';
     /**
      * Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
      */
