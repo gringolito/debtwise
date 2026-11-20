@@ -49,7 +49,7 @@ func (r Rule) Reason() string {
 	case RuleRepeatedDate:
 		return "repeats the date of another row"
 	case RuleBelowMinimum:
-		return "must be at least 50.00"
+		return "must be at least " + defaultComparisonMinimum.String()
 	default:
 		return ""
 	}

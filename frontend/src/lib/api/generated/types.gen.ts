@@ -266,7 +266,7 @@ export type DefaultComparison = {
 
 export type DefaultComparisonInput = {
     /**
-     * The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be at least 50.00.
+     * The amount the dashboard compares prepaying today with investing, in reais, as a decimal string.
      */
     amount: string;
     /**

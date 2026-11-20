@@ -13,7 +13,7 @@ import (
 const defaultComparisonPath = "/dashboard/default-comparison"
 
 type defaultComparisonInput struct {
-	Amount string `json:"amount" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be at least 50.00."`
+	Amount string `json:"amount" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"The amount the dashboard compares prepaying today with investing, in reais, as a decimal string."`
 	Effect string `json:"effect" enum:"shorten_term,lower_installment" doc:"What prepaying the amount changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments."`
 }
 
@@ -28,7 +28,7 @@ func registerDashboard(humaAPI huma.API, mortgages Mortgages) {
 		Method:      http.MethodGet,
 		Path:        defaultComparisonPath,
 		Summary:     "Read the dashboard's default comparison",
-		Description: "Returns the amount and the effect the dashboard compares prepaying with investing by default: the ones last saved, or 10000.00 to shorten the term until any are.",
+		Description: "Returns the amount and the effect the dashboard compares prepaying with investing by default.",
 		Tags:        []string{decisionsTag},
 	}, func(ctx context.Context, _ *struct{}) (*struct{ Body defaultComparison }, error) {
 		c, err := mortgages.DefaultComparison(ctx)
@@ -44,7 +44,7 @@ func registerDashboard(humaAPI huma.API, mortgages Mortgages) {
 		Method:      http.MethodPut,
 		Path:        defaultComparisonPath,
 		Summary:     "Change the dashboard's default comparison",
-		Description: "Sets the amount and the effect the dashboard compares prepaying with investing by default, for every client.",
+		Description: "Sets the amount and the effect the dashboard compares prepaying with investing by default.",
 		Tags:        []string{decisionsTag},
 	}, func(ctx context.Context, in *struct{ Body defaultComparisonInput }) (*struct{ Body defaultComparison }, error) {
 		var p parser

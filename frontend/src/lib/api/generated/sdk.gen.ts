@@ -28,14 +28,14 @@ export const listBonds = <ThrowOnError extends boolean = false>(options?: Option
 /**
  * Read the dashboard's default comparison
  *
- * Returns the amount and the effect the dashboard compares prepaying with investing by default: the ones last saved, or 10000.00 to shorten the term until any are.
+ * Returns the amount and the effect the dashboard compares prepaying with investing by default.
  */
 export const defaultComparison = <ThrowOnError extends boolean = false>(options?: Options<DefaultComparisonData, ThrowOnError>) => (options?.client ?? client).get<DefaultComparisonResponses, DefaultComparisonErrors, ThrowOnError>({ url: '/dashboard/default-comparison', ...options });
 
 /**
  * Change the dashboard's default comparison
  *
- * Sets the amount and the effect the dashboard compares prepaying with investing by default, for every client.
+ * Sets the amount and the effect the dashboard compares prepaying with investing by default.
  */
 export const saveDefaultComparison = <ThrowOnError extends boolean = false>(options: Options<SaveDefaultComparisonData, ThrowOnError>) => (options.client ?? client).put<SaveDefaultComparisonResponses, SaveDefaultComparisonErrors, ThrowOnError>({
     url: '/dashboard/default-comparison',

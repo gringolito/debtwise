@@ -441,7 +441,7 @@
         "additionalProperties": false,
         "properties": {
           "amount": {
-            "description": "The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be at least 50.00.",
+            "description": "The amount the dashboard compares prepaying today with investing, in reais, as a decimal string.",
             "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
             "type": "string"
           },
@@ -2396,7 +2396,7 @@
     },
     "/dashboard/default-comparison": {
       "get": {
-        "description": "Returns the amount and the effect the dashboard compares prepaying with investing by default: the ones last saved, or 10000.00 to shorten the term until any are.",
+        "description": "Returns the amount and the effect the dashboard compares prepaying with investing by default.",
         "operationId": "default-comparison",
         "responses": {
           "200": {
@@ -2426,7 +2426,7 @@
         ]
       },
       "put": {
-        "description": "Sets the amount and the effect the dashboard compares prepaying with investing by default, for every client.",
+        "description": "Sets the amount and the effect the dashboard compares prepaying with investing by default.",
         "operationId": "save-default-comparison",
         "requestBody": {
           "content": {
