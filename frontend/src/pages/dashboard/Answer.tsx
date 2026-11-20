@@ -5,12 +5,16 @@ import prepayIllustration from "@/assets/answer-prepay.webp";
 import { Button } from "@/components/ui/button";
 import type { Decision } from "@/lib/api";
 import { bestVerdict } from "@/lib/dashboard";
-import { type ComparedVerdict, favoured, noComparisons } from "@/lib/decisions";
+import {
+  type ComparedVerdict,
+  favoured,
+  noComparisonExplanation,
+  noComparisons,
+} from "@/lib/decisions";
 import { formatDate, formatMoney } from "@/lib/format";
 import { effectSearch } from "@/lib/investments";
 import type { PrepaymentEffect } from "@/lib/mortgageEvents";
 import { advantageAmount, advantageShare, horizon, verdictHeadline } from "@/lib/yardstick";
-import { noComparisonExplanation } from "@/pages/decision/NoComparisonPanel";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
 
 const illustrations = {

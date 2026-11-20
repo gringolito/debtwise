@@ -32,11 +32,17 @@ export function useDashboardQuestion() {
   return useQuery({ queryKey: dashboardQuestionKey, queryFn: fetchDashboardQuestion });
 }
 
-/** useSaveDashboardQuestion changes the amount and effect Início compares. */
+/**
+ * useSaveDashboardQuestion changes the amount and effect Início compares. A read still in flight
+ * is cancelled first, so it can't put back the question it read.
+ */
 export function useSaveDashboardQuestion() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: saveDashboardQuestion,
-    onSuccess: (saved) => queryClient.setQueryData<DashboardQuestion>(dashboardQuestionKey, saved),
+    onSuccess: async (saved) => {
+      await queryClient.cancelQueries({ queryKey: dashboardQuestionKey });
+      queryClient.setQueryData<DashboardQuestion>(dashboardQuestionKey, saved);
+    },
   });
 }

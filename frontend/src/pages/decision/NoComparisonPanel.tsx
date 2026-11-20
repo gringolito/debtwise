@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
-import { type NoComparison, unavailableReasons } from "@/lib/decisions";
+import { type NoComparison, noComparisonExplanation } from "@/lib/decisions";
 import { formatMoney } from "@/lib/format";
 
 /** NoComparisonFix is what the owner can do about why a bond is not compared, as a text action. */
@@ -34,24 +34,6 @@ export function NoComparisonFix({
           <Link to="/mercado/titulos">Ver títulos à venda</Link>
         </Button>
       );
-  }
-}
-
-/** noComparisonExplanation says why a decision compares no bond, as a title and a sentence. */
-export function noComparisonExplanation(why: NoComparison): { title: string; text: string } {
-  switch (why.reason) {
-    case "amount_too_small":
-      return {
-        title: "Valor pequeno demais para comparar",
-        text: `${unavailableReasons.amount_too_small} Tente um valor a partir de ${formatMoney(why.minimumAmount)}.`,
-      };
-    case "missing_ipca":
-      return { title: "Aguardando o IPCA", text: unavailableReasons.missing_ipca };
-    case "no_bond":
-      return {
-        title: "Nenhum título para comparar",
-        text: "Nenhum título à venda acompanha o indexador do seu financiamento e vence depois da data escolhida.",
-      };
   }
 }
 

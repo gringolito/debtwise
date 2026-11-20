@@ -201,6 +201,24 @@ export function noComparisons({ verdicts }: Decision): NoComparison[] {
   return reasons;
 }
 
+/** noComparisonExplanation says why a decision compares no bond, as a title and a sentence. */
+export function noComparisonExplanation(why: NoComparison): { title: string; text: string } {
+  switch (why.reason) {
+    case "amount_too_small":
+      return {
+        title: "Valor pequeno demais para comparar",
+        text: `${unavailableReasons.amount_too_small} Tente um valor a partir de ${formatMoney(why.minimumAmount)}.`,
+      };
+    case "missing_ipca":
+      return { title: "Aguardando o IPCA", text: unavailableReasons.missing_ipca };
+    case "no_bond":
+      return {
+        title: "Nenhum título para comparar",
+        text: "Nenhum título à venda acompanha o indexador do seu financiamento e vence depois da data escolhida.",
+      };
+  }
+}
+
 // The API's own reasons are English sentences for API consumers; the owner reads these, by the
 // rule a value breaks or, for a value the schema rejected, by its field.
 const ruleMessages: Partial<Record<Rule, string>> = {

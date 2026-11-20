@@ -330,6 +330,7 @@ describe("Início's question", () => {
 
     expect(await sheet.findByText(message)).toBeInTheDocument();
     fireEvent.click(sheet.getByRole("radio", { name: "Reduzir prestação" }));
+    expect(sheet.getByRole("radio", { name: "Reduzir prestação" })).toBeChecked();
     expect(sheet.getByText(message)).toBeInTheDocument();
     fireEvent.click(sheet.getByRole("button", { name: "Cancelar" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
