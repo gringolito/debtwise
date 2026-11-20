@@ -91,18 +91,18 @@ func (q *Queries) DeleteMortgages(ctx context.Context) (int64, error) {
 	return result.RowsAffected()
 }
 
-const findDashboardQuestion = `-- name: FindDashboardQuestion :one
-SELECT amount, effect FROM dashboard_question
+const findDefaultComparison = `-- name: FindDefaultComparison :one
+SELECT amount, effect FROM default_comparison
 `
 
-type FindDashboardQuestionRow struct {
+type FindDefaultComparisonRow struct {
 	Amount string
 	Effect string
 }
 
-func (q *Queries) FindDashboardQuestion(ctx context.Context) (FindDashboardQuestionRow, error) {
-	row := q.db.QueryRowContext(ctx, findDashboardQuestion)
-	var i FindDashboardQuestionRow
+func (q *Queries) FindDefaultComparison(ctx context.Context) (FindDefaultComparisonRow, error) {
+	row := q.db.QueryRowContext(ctx, findDefaultComparison)
+	var i FindDefaultComparisonRow
 	err := row.Scan(&i.Amount, &i.Effect)
 	return i, err
 }
@@ -575,17 +575,17 @@ func (q *Queries) UpdateMortgageStatement(ctx context.Context, arg UpdateMortgag
 	return result.RowsAffected()
 }
 
-const upsertDashboardQuestion = `-- name: UpsertDashboardQuestion :exec
-INSERT INTO dashboard_question (id, amount, effect) VALUES (1, ?, ?)
+const upsertDefaultComparison = `-- name: UpsertDefaultComparison :exec
+INSERT INTO default_comparison (id, amount, effect) VALUES (1, ?, ?)
 ON CONFLICT (id) DO UPDATE SET amount = excluded.amount, effect = excluded.effect
 `
 
-type UpsertDashboardQuestionParams struct {
+type UpsertDefaultComparisonParams struct {
 	Amount string
 	Effect string
 }
 
-func (q *Queries) UpsertDashboardQuestion(ctx context.Context, arg UpsertDashboardQuestionParams) error {
-	_, err := q.db.ExecContext(ctx, upsertDashboardQuestion, arg.Amount, arg.Effect)
+func (q *Queries) UpsertDefaultComparison(ctx context.Context, arg UpsertDefaultComparisonParams) error {
+	_, err := q.db.ExecContext(ctx, upsertDefaultComparison, arg.Amount, arg.Effect)
 	return err
 }

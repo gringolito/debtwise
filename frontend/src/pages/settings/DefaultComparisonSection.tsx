@@ -24,25 +24,25 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { DashboardQuestion } from "@/lib/api";
-import { useDashboardQuestion, useSaveDashboardQuestion } from "@/lib/decisionQueries";
+import type { DefaultComparison } from "@/lib/api";
+import { useDefaultComparison, useSaveDefaultComparison } from "@/lib/decisionQueries";
 import { decisionErrors } from "@/lib/decisions";
 import { formatMoney, inputToMoney, moneyToInput } from "@/lib/format";
 import { effectLabels } from "@/lib/mortgageEvents";
 
-const TITLE = "Pergunta do Início";
+const TITLE = "Comparação padrão";
 
-/** QuestionSheet changes the amount and effect Início compares, saving them on "Salvar". */
-function QuestionSheet({
-  question,
+/** DefaultComparisonSheet changes the amount and effect Início compares, saving them on "Salvar". */
+function DefaultComparisonSheet({
+  comparison,
   onClose,
 }: {
-  question: DashboardQuestion;
+  comparison: DefaultComparison;
   onClose: () => void;
 }) {
-  const [amount, setAmount] = useState(() => moneyToInput(question.amount));
-  const [effect, setEffect] = useState(question.effect);
-  const save = useSaveDashboardQuestion();
+  const [amount, setAmount] = useState(() => moneyToInput(comparison.amount));
+  const [effect, setEffect] = useState(comparison.effect);
+  const save = useSaveDefaultComparison();
   const errors = decisionErrors(save.error);
 
   function submit(event: FormEvent) {
@@ -64,7 +64,7 @@ function QuestionSheet({
         <form noValidate aria-label={TITLE} className="flex flex-col gap-6" onSubmit={submit}>
           {save.isError && errors.size === 0 && (
             <Alert variant="destructive">
-              <AlertDescription>Não foi possível salvar a pergunta do Início.</AlertDescription>
+              <AlertDescription>Não foi possível salvar a comparação padrão.</AlertDescription>
             </Alert>
           )}
           <GroupedList>
@@ -95,31 +95,31 @@ function QuestionSheet({
 }
 
 /**
- * QuestionSection is Ajustes' "Início": the amount and effect Início's answer compares, opening a
- * sheet that changes them.
+ * DefaultComparisonSection is Ajustes' "Início": the amount and effect Início's answer compares,
+ * opening a sheet that changes them.
  */
-export function QuestionSection() {
+export function DefaultComparisonSection() {
   const headerId = useId();
-  const question = useDashboardQuestion();
+  const comparison = useDefaultComparison();
   const [editing, setEditing] = useState(false);
 
   let content: React.ReactNode;
-  if (question.isError) {
+  if (comparison.isError) {
     content = (
       <ErrorPanel
         className="min-h-0 p-8"
-        title="Não foi possível carregar a pergunta do Início"
-        onRetry={() => void question.refetch()}
+        title="Não foi possível carregar a comparação padrão"
+        onRetry={() => void comparison.refetch()}
       />
     );
-  } else if (!question.data) {
+  } else if (!comparison.data) {
     content = (
-      <Loading label="Carregando a pergunta do Início">
+      <Loading label="Carregando a comparação padrão">
         <Skeleton className="h-13" />
       </Loading>
     );
   } else {
-    const { amount, effect } = question.data;
+    const { amount, effect } = comparison.data;
     content = (
       <>
         <GroupedList aria-labelledby={headerId}>
@@ -146,8 +146,8 @@ export function QuestionSection() {
     <GroupedListSection aria-labelledby={headerId}>
       <GroupedListHeader id={headerId}>Início</GroupedListHeader>
       {content}
-      {editing && question.data && (
-        <QuestionSheet question={question.data} onClose={() => setEditing(false)} />
+      {editing && comparison.data && (
+        <DefaultComparisonSheet comparison={comparison.data} onClose={() => setEditing(false)} />
       )}
     </GroupedListSection>
   );

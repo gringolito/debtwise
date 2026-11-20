@@ -29,7 +29,7 @@ type CustodyFeeRate struct {
 	Rate          string
 }
 
-type DashboardQuestion struct {
+type DefaultComparison struct {
 	ID     int64
 	Amount string
 	Effect string

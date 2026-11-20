@@ -342,51 +342,6 @@
         ],
         "type": "object"
       },
-      "DashboardQuestion": {
-        "additionalProperties": false,
-        "properties": {
-          "amount": {
-            "description": "The amount the dashboard compares prepaying today with investing, in reais, as a decimal string.",
-            "type": "string"
-          },
-          "effect": {
-            "description": "What prepaying the amount changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
-            "enum": [
-              "shorten_term",
-              "lower_installment"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "amount",
-          "effect"
-        ],
-        "type": "object"
-      },
-      "DashboardQuestionInput": {
-        "additionalProperties": false,
-        "properties": {
-          "amount": {
-            "description": "The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be at least 50.00.",
-            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
-            "type": "string"
-          },
-          "effect": {
-            "description": "What prepaying the amount changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
-            "enum": [
-              "shorten_term",
-              "lower_installment"
-            ],
-            "type": "string"
-          }
-        },
-        "required": [
-          "amount",
-          "effect"
-        ],
-        "type": "object"
-      },
       "Decision": {
         "additionalProperties": false,
         "properties": {
@@ -452,6 +407,51 @@
           "prepay_slack": {
             "description": "Whether the comparison assumes the owner prepays the installment's slack every month. False when absent.",
             "type": "boolean"
+          }
+        },
+        "required": [
+          "amount",
+          "effect"
+        ],
+        "type": "object"
+      },
+      "DefaultComparison": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "The amount the dashboard compares prepaying today with investing, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What prepaying the amount changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "effect"
+        ],
+        "type": "object"
+      },
+      "DefaultComparisonInput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be at least 50.00.",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What prepaying the amount changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -2394,16 +2394,16 @@
         ]
       }
     },
-    "/dashboard/question": {
+    "/dashboard/default-comparison": {
       "get": {
-        "description": "Returns the amount and the effect of the decision the dashboard answers: the ones last saved, or 10000.00 to shorten the term until any are.",
-        "operationId": "dashboard-question",
+        "description": "Returns the amount and the effect the dashboard compares prepaying with investing by default: the ones last saved, or 10000.00 to shorten the term until any are.",
+        "operationId": "default-comparison",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardQuestion"
+                  "$ref": "#/components/schemas/DefaultComparison"
                 }
               }
             },
@@ -2420,19 +2420,19 @@
             "description": "Error"
           }
         },
-        "summary": "Read the dashboard's question",
+        "summary": "Read the dashboard's default comparison",
         "tags": [
           "Decisions"
         ]
       },
       "put": {
-        "description": "Sets the amount and the effect of the decision the dashboard answers, for every client.",
-        "operationId": "save-dashboard-question",
+        "description": "Sets the amount and the effect the dashboard compares prepaying with investing by default, for every client.",
+        "operationId": "save-default-comparison",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/DashboardQuestionInput"
+                "$ref": "#/components/schemas/DefaultComparisonInput"
               }
             }
           },
@@ -2443,7 +2443,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DashboardQuestion"
+                  "$ref": "#/components/schemas/DefaultComparison"
                 }
               }
             },
@@ -2460,7 +2460,7 @@
             "description": "Error"
           }
         },
-        "summary": "Change the dashboard's question",
+        "summary": "Change the dashboard's default comparison",
         "tags": [
           "Decisions"
         ]

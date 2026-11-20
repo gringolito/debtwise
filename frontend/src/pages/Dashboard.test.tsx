@@ -128,7 +128,7 @@ const prepayment: Prepayment = {
 function stubInicio(routes: Routes = {}) {
   return stubRoutes({
     "GET /api/mortgage": () => Response.json(registeredMortgage),
-    "GET /api/dashboard/question": () =>
+    "GET /api/dashboard/default-comparison": () =>
       Response.json({ amount: "10000.00", effect: "shorten_term" }),
     "GET /api/mortgage/schedule": () => Response.json(schedule),
     "GET /api/mortgage/statements": () => Response.json({ statements: [] }),
@@ -213,10 +213,10 @@ describe("Início", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("retries the question Início asks when it fails to load", async () => {
+  it("retries the default comparison when it fails to load", async () => {
     let failing = true;
     stubInicio({
-      "GET /api/dashboard/question": () =>
+      "GET /api/dashboard/default-comparison": () =>
         failing
           ? problem(500, "Internal Server Error", "boom")
           : Response.json({ amount: "10000.00", effect: "shorten_term" }),
@@ -275,7 +275,7 @@ describe("the answer", () => {
 
   it("compares the amount and effect saved in Ajustes, and links to Comparar with them", async () => {
     const requests = stubInicio({
-      "GET /api/dashboard/question": () =>
+      "GET /api/dashboard/default-comparison": () =>
         Response.json({ amount: "5000.00", effect: "lower_installment" }),
       "POST /api/decisions": decisionOf([ltn]),
     });
@@ -300,7 +300,7 @@ describe("the answer", () => {
 
   it("says why nothing compares when the saved amount is too small to buy any bond", async () => {
     stubInicio({
-      "GET /api/dashboard/question": () =>
+      "GET /api/dashboard/default-comparison": () =>
         Response.json({ amount: "50.00", effect: "shorten_term" }),
       "POST /api/decisions": decisionOf([{ ...unavailable, minimum_amount: "190.42" }]),
     });

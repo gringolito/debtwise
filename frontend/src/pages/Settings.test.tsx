@@ -38,7 +38,7 @@ function stubAjustes(routes: Routes = {}) {
     routes: {
       "GET /api/market-data/status": () => Response.json(FRESH_STATUS),
       "GET /api/indexes/projection-methods": () => Response.json(METHODS),
-      "GET /api/dashboard/question": () =>
+      "GET /api/dashboard/default-comparison": () =>
         Response.json({ amount: "10000.00", effect: "shorten_term" }),
       ...routes,
     },
@@ -269,20 +269,20 @@ describe("the projections", () => {
   });
 });
 
-describe("Início's question", () => {
-  const questionRow = async () =>
-    within(await section("Início")).findByRole("button", { name: /^Pergunta do Início/ });
+describe("the default comparison", () => {
+  const comparisonRow = async () =>
+    within(await section("Início")).findByRole("button", { name: /^Comparação padrão/ });
 
   async function openSheet() {
-    fireEvent.click(await questionRow());
-    return within(await screen.findByRole("dialog", { name: "Pergunta do Início" }));
+    fireEvent.click(await comparisonRow());
+    return within(await screen.findByRole("dialog", { name: "Comparação padrão" }));
   }
 
   it("shows the amount and effect Início compares, and what changing them does", async () => {
     stubAjustes();
     renderAt("/ajustes");
 
-    expect(text(await questionRow())).toBe("Pergunta do InícioR$ 10.000,00 · Reduzir prazo");
+    expect(text(await comparisonRow())).toBe("Comparação padrãoR$ 10.000,00 · Reduzir prazo");
     expect(
       within(await section("Início")).getByText("Muda o valor e o efeito que o Início compara."),
     ).toBeInTheDocument();
@@ -290,7 +290,7 @@ describe("Início's question", () => {
 
   it("saves the amount and effect picked in the sheet and shows them on the row", async () => {
     const requests = stubAjustes({
-      "PUT /api/dashboard/question": (req) => Response.json(req.body),
+      "PUT /api/dashboard/default-comparison": (req) => Response.json(req.body),
     });
     renderAt("/ajustes");
 
@@ -302,7 +302,7 @@ describe("Início's question", () => {
     fireEvent.click(sheet.getByRole("button", { name: "Salvar" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(text(await questionRow())).toBe("Pergunta do InícioR$ 5.000,50 · Reduzir prestação");
+    expect(text(await comparisonRow())).toBe("Comparação padrãoR$ 5.000,50 · Reduzir prestação");
     expect(requests.filter((r) => r.method === "PUT").map((r) => r.body)).toEqual([
       { amount: "5000.5", effect: "lower_installment" },
     ]);
@@ -319,9 +319,9 @@ describe("Início's question", () => {
       "below_minimum" as const,
       "Informe um valor a partir de R$ 50,00.",
     ],
-  ])("keeps the question on %s, saying what to type", async (_, code, message) => {
+  ])("keeps the comparison on %s, saying what to type", async (_, code, message) => {
     stubAjustes({
-      "PUT /api/dashboard/question": () =>
+      "PUT /api/dashboard/default-comparison": () =>
         problem(422, "Unprocessable Entity", "validation failed", [
           { location: "body.amount", message: "is invalid", code },
         ]),
@@ -338,12 +338,12 @@ describe("Início's question", () => {
     expect(sheet.getByText(message)).toBeInTheDocument();
     fireEvent.click(sheet.getByRole("button", { name: "Cancelar" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(text(await questionRow())).toBe("Pergunta do InícioR$ 10.000,00 · Reduzir prazo");
+    expect(text(await comparisonRow())).toBe("Comparação padrãoR$ 10.000,00 · Reduzir prazo");
   });
 
-  it("says so when the question cannot be saved", async () => {
+  it("says so when the comparison cannot be saved", async () => {
     stubAjustes({
-      "PUT /api/dashboard/question": () =>
+      "PUT /api/dashboard/default-comparison": () =>
         problem(500, "Internal Server Error", "unexpected failure"),
     });
     renderAt("/ajustes");
@@ -352,7 +352,7 @@ describe("Início's question", () => {
     fireEvent.click(sheet.getByRole("button", { name: "Salvar" }));
 
     expect(await sheet.findByRole("alert")).toHaveTextContent(
-      "Não foi possível salvar a pergunta do Início.",
+      "Não foi possível salvar a comparação padrão.",
     );
   });
 });

@@ -2,11 +2,11 @@
 -- owner changes them. The amount is a decimal string, so it round-trips exactly.
 
 -- +goose Up
-CREATE TABLE dashboard_question (
+CREATE TABLE default_comparison (
     id     INTEGER PRIMARY KEY CHECK (id = 1),
     amount TEXT NOT NULL,
     effect TEXT NOT NULL CHECK (effect IN ('shorten_term', 'lower_installment'))
 ) STRICT;
 
 -- +goose Down
-DROP TABLE dashboard_question;
+DROP TABLE default_comparison;

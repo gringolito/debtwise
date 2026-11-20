@@ -7,7 +7,7 @@ import {
   addStatement,
   compareLot,
   checkEarlySales,
-  dashboardQuestion,
+  defaultComparison,
   decide as requestDecision,
   deleteLot,
   deleteMortgage,
@@ -33,7 +33,7 @@ import {
   readMortgageSchedule,
   refreshMarketData,
   saveMortgage,
-  saveDashboardQuestion as putDashboardQuestion,
+  saveDefaultComparison as putDefaultComparison,
   saveProjectionMethod as putProjectionMethod,
 } from "./generated/sdk.gen";
 import type {
@@ -45,8 +45,8 @@ import type {
   CashFlowInstallment,
   ContractRate,
   CorrectionIndex,
-  DashboardQuestion,
-  DashboardQuestionInput,
+  DefaultComparison,
+  DefaultComparisonInput,
   Decision,
   DecisionInput,
   EarlySaleCheck,
@@ -103,8 +103,8 @@ export type {
   CashFlowInstallment,
   ContractRate,
   CorrectionIndex,
-  DashboardQuestion,
-  DashboardQuestionInput,
+  DefaultComparison,
+  DefaultComparisonInput,
   Decision,
   DecisionInput,
   EarlySaleCheck,
@@ -390,18 +390,18 @@ export async function decide(body: DecisionInput): Promise<Decision> {
   return data;
 }
 
-/** dashboardQuestionKey is the query key of the amount and effect Início compares. */
-export const dashboardQuestionKey = ["dashboard-question"] as const;
+/** defaultComparisonKey is the query key of the amount and effect Início compares. */
+export const defaultComparisonKey = ["default-comparison"] as const;
 
-export async function fetchDashboardQuestion(): Promise<DashboardQuestion> {
-  const { data } = await dashboardQuestion({ throwOnError: true });
+export async function fetchDefaultComparison(): Promise<DefaultComparison> {
+  const { data } = await defaultComparison({ throwOnError: true });
   return data;
 }
 
-export async function saveDashboardQuestion(
-  body: DashboardQuestionInput,
-): Promise<DashboardQuestion> {
-  const { data, error, response } = await putDashboardQuestion({ body });
+export async function saveDefaultComparison(
+  body: DefaultComparisonInput,
+): Promise<DefaultComparison> {
+  const { data, error, response } = await putDefaultComparison({ body });
   if (!data) throw failure(error, response);
   return data;
 }

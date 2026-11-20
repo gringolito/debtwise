@@ -1,11 +1,11 @@
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  type DashboardQuestion,
   type DecisionInput,
-  dashboardQuestionKey,
+  type DefaultComparison,
   decide,
-  fetchDashboardQuestion,
-  saveDashboardQuestion,
+  defaultComparisonKey,
+  fetchDefaultComparison,
+  saveDefaultComparison,
 } from "@/lib/api";
 
 /** decisionsKey prefixes the query key of every decision read as a query, to invalidate them all. */
@@ -27,22 +27,22 @@ export function useDecision(input: DecisionInput | undefined) {
   });
 }
 
-/** useDashboardQuestion reads the amount and effect Início compares. */
-export function useDashboardQuestion() {
-  return useQuery({ queryKey: dashboardQuestionKey, queryFn: fetchDashboardQuestion });
+/** useDefaultComparison reads the amount and effect Início compares. */
+export function useDefaultComparison() {
+  return useQuery({ queryKey: defaultComparisonKey, queryFn: fetchDefaultComparison });
 }
 
 /**
- * useSaveDashboardQuestion changes the amount and effect Início compares. A read still in flight
- * is cancelled first, so it can't put back the question it read.
+ * useSaveDefaultComparison changes the amount and effect Início compares. A read still in flight
+ * is cancelled first, so it can't put back the comparison it read.
  */
-export function useSaveDashboardQuestion() {
+export function useSaveDefaultComparison() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: saveDashboardQuestion,
+    mutationFn: saveDefaultComparison,
     onSuccess: async (saved) => {
-      await queryClient.cancelQueries({ queryKey: dashboardQuestionKey });
-      queryClient.setQueryData<DashboardQuestion>(dashboardQuestionKey, saved);
+      await queryClient.cancelQueries({ queryKey: defaultComparisonKey });
+      queryClient.setQueryData<DefaultComparison>(defaultComparisonKey, saved);
     },
   });
 }

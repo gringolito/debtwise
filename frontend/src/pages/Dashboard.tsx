@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Page, PageHeader, PageTitle } from "@/components/layout/Page";
 import { ErrorPanel } from "@/components/patterns/ErrorPanel";
 import { recentActivity, today } from "@/lib/dashboard";
-import { useDashboardQuestion, useDecision } from "@/lib/decisionQueries";
+import { useDecision, useDefaultComparison } from "@/lib/decisionQueries";
 import { formatWeekday } from "@/lib/format";
 import { useLots } from "@/lib/lotQueries";
 import {
@@ -26,9 +26,9 @@ function Content() {
   const statements = useStatements();
   const prepayments = usePrepayments();
   const lots = useLots();
-  const question = useDashboardQuestion();
-  const decision = useDecision(question.data);
-  const queries = [mortgage, schedule, statements, prepayments, lots, question, decision];
+  const comparison = useDefaultComparison();
+  const decision = useDecision(comparison.data);
+  const queries = [mortgage, schedule, statements, prepayments, lots, comparison, decision];
 
   const failed = queries.filter((query) => query.isError);
   if (failed.length > 0) {

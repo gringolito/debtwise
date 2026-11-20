@@ -17,7 +17,7 @@ type Violation struct {
 // Rule is a rule of the mortgage that a value can break, named by a code a client can match.
 type Rule string
 
-// The rules of the mortgage, its prepayments, its statements and Início's question.
+// The rules of the mortgage, its prepayments, its statements and the default comparison.
 const (
 	RuleNotPositive               Rule = "not_positive"
 	RuleBeforeContract            Rule = "before_contract"

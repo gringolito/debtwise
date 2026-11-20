@@ -9,16 +9,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const questionPath = "/dashboard/question"
+const defaultComparisonPath = "/dashboard/default-comparison"
 
-func TestDashboardQuestionIsTenThousandToShortenTheTermUntilSaved(t *testing.T) {
+func TestDefaultComparisonIsTenThousandToShortenTheTermUntilSaved(t *testing.T) {
 	t.Parallel()
 
 	assert.JSONEq(t, `{"amount": "10000.00", "effect": "shorten_term"}`,
-		do(t, newAPI(t), http.MethodGet, questionPath, "", http.StatusOK))
+		do(t, newAPI(t), http.MethodGet, defaultComparisonPath, "", http.StatusOK))
 }
 
-func TestSavedDashboardQuestionIsReadBack(t *testing.T) {
+func TestSavedDefaultComparisonIsReadBack(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -34,15 +34,15 @@ func TestSavedDashboardQuestionIsReadBack(t *testing.T) {
 			t.Parallel()
 
 			handler := newAPI(t)
-			do(t, handler, http.MethodPut, questionPath, `{"amount": "20000.00", "effect": "shorten_term"}`, http.StatusOK)
+			do(t, handler, http.MethodPut, defaultComparisonPath, `{"amount": "20000.00", "effect": "shorten_term"}`, http.StatusOK)
 
-			assert.JSONEq(t, tt.body, do(t, handler, http.MethodPut, questionPath, tt.body, http.StatusOK))
-			assert.JSONEq(t, tt.body, do(t, handler, http.MethodGet, questionPath, "", http.StatusOK))
+			assert.JSONEq(t, tt.body, do(t, handler, http.MethodPut, defaultComparisonPath, tt.body, http.StatusOK))
+			assert.JSONEq(t, tt.body, do(t, handler, http.MethodGet, defaultComparisonPath, "", http.StatusOK))
 		})
 	}
 }
 
-func TestInvalidDashboardQuestionIsRejectedAndNotSaved(t *testing.T) {
+func TestInvalidDefaultComparisonIsRejectedAndNotSaved(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -88,9 +88,9 @@ func TestInvalidDashboardQuestionIsRejectedAndNotSaved(t *testing.T) {
 
 			handler := newAPI(t)
 			saved := `{"amount": "20000.00", "effect": "shorten_term"}`
-			do(t, handler, http.MethodPut, questionPath, saved, http.StatusOK)
+			do(t, handler, http.MethodPut, defaultComparisonPath, saved, http.StatusOK)
 
-			rec := serve(t, handler, http.MethodPut, questionPath, tt.body)
+			rec := serve(t, handler, http.MethodPut, defaultComparisonPath, tt.body)
 			require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
 
 			var problem struct {
@@ -99,7 +99,7 @@ func TestInvalidDashboardQuestionIsRejectedAndNotSaved(t *testing.T) {
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &problem))
 			assert.Equal(t, tt.want, problem.Errors)
 
-			assert.JSONEq(t, saved, do(t, handler, http.MethodGet, questionPath, "", http.StatusOK), "the saved question")
+			assert.JSONEq(t, saved, do(t, handler, http.MethodGet, defaultComparisonPath, "", http.StatusOK), "the saved comparison")
 		})
 	}
 }
