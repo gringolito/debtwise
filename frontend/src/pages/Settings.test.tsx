@@ -38,6 +38,8 @@ function stubAjustes(routes: Routes = {}) {
     routes: {
       "GET /api/market-data/status": () => Response.json(FRESH_STATUS),
       "GET /api/indexes/projection-methods": () => Response.json(METHODS),
+      "GET /api/dashboard/question": () =>
+        Response.json({ amount: "10000.00", effect: "shorten_term" }),
       ...routes,
     },
   });
@@ -264,6 +266,87 @@ describe("the projections", () => {
       "Não foi possível salvar o método de projeção.",
     );
     expect(sheet.getByRole("radio", { name: "Média dos últimos 12 meses" })).toBeChecked();
+  });
+});
+
+describe("Início's question", () => {
+  const questionRow = async () =>
+    within(await section("Início")).findByRole("button", { name: /^Pergunta do Início/ });
+
+  async function openSheet() {
+    fireEvent.click(await questionRow());
+    return within(await screen.findByRole("dialog", { name: "Pergunta do Início" }));
+  }
+
+  it("shows the amount and effect Início compares, and what changing them does", async () => {
+    stubAjustes();
+    renderAt("/ajustes");
+
+    expect(text(await questionRow())).toBe("Pergunta do InícioR$ 10.000,00 · Reduzir prazo");
+    expect(
+      within(await section("Início")).getByText("Muda o valor e o efeito que o Início compara."),
+    ).toBeInTheDocument();
+  });
+
+  it("saves the amount and effect picked in the sheet and shows them on the row", async () => {
+    const requests = stubAjustes({
+      "PUT /api/dashboard/question": (req) => Response.json(req.body),
+    });
+    renderAt("/ajustes");
+
+    const sheet = await openSheet();
+    expect(sheet.getByLabelText("Valor")).toHaveValue("10.000,00");
+    expect(sheet.getByRole("radio", { name: "Reduzir prazo" })).toBeChecked();
+    fireEvent.change(sheet.getByLabelText("Valor"), { target: { value: "5.000,5" } });
+    fireEvent.click(sheet.getByRole("radio", { name: "Reduzir prestação" }));
+    fireEvent.click(sheet.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(text(await questionRow())).toBe("Pergunta do InícioR$ 5.000,50 · Reduzir prestação");
+    expect(requests.filter((r) => r.method === "PUT").map((r) => r.body)).toEqual([
+      { amount: "5000.5", effect: "lower_installment" },
+    ]);
+  });
+
+  it.each([
+    [
+      "an amount that is no reais",
+      undefined,
+      "Informe um valor em reais, com até 2 casas decimais.",
+    ],
+    ["an amount of zero", "not_positive" as const, "Informe um valor maior que zero."],
+  ])("keeps the question on %s, saying what Comparar says", async (_, code, message) => {
+    stubAjustes({
+      "PUT /api/dashboard/question": () =>
+        problem(422, "Unprocessable Entity", "validation failed", [
+          { location: "body.amount", message: "is invalid", code },
+        ]),
+    });
+    renderAt("/ajustes");
+
+    const sheet = await openSheet();
+    fireEvent.change(sheet.getByLabelText("Valor"), { target: { value: "0" } });
+    fireEvent.click(sheet.getByRole("button", { name: "Salvar" }));
+
+    expect(await sheet.findByText(message)).toBeInTheDocument();
+    fireEvent.click(sheet.getByRole("button", { name: "Cancelar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(text(await questionRow())).toBe("Pergunta do InícioR$ 10.000,00 · Reduzir prazo");
+  });
+
+  it("says so when the question cannot be saved", async () => {
+    stubAjustes({
+      "PUT /api/dashboard/question": () =>
+        problem(500, "Internal Server Error", "unexpected failure"),
+    });
+    renderAt("/ajustes");
+
+    const sheet = await openSheet();
+    fireEvent.click(sheet.getByRole("button", { name: "Salvar" }));
+
+    expect(await sheet.findByRole("alert")).toHaveTextContent(
+      "Não foi possível salvar a pergunta do Início.",
+    );
   });
 });
 

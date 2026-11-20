@@ -7,6 +7,7 @@ import {
   addStatement,
   compareLot,
   checkEarlySales,
+  dashboardQuestion,
   decide as requestDecision,
   deleteLot,
   deleteMortgage,
@@ -32,6 +33,7 @@ import {
   readMortgageSchedule,
   refreshMarketData,
   saveMortgage,
+  saveDashboardQuestion as putDashboardQuestion,
   saveProjectionMethod as putProjectionMethod,
 } from "./generated/sdk.gen";
 import type {
@@ -43,6 +45,8 @@ import type {
   CashFlowInstallment,
   ContractRate,
   CorrectionIndex,
+  DashboardQuestion,
+  DashboardQuestionInput,
   Decision,
   DecisionInput,
   EarlySaleCheck,
@@ -99,6 +103,8 @@ export type {
   CashFlowInstallment,
   ContractRate,
   CorrectionIndex,
+  DashboardQuestion,
+  DashboardQuestionInput,
   Decision,
   DecisionInput,
   EarlySaleCheck,
@@ -380,6 +386,22 @@ export async function removeLot(id: number): Promise<void> {
 
 export async function decide(body: DecisionInput): Promise<Decision> {
   const { data, error, response } = await requestDecision({ body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+/** dashboardQuestionKey is the query key of the amount and effect Início compares. */
+export const dashboardQuestionKey = ["dashboard-question"] as const;
+
+export async function fetchDashboardQuestion(): Promise<DashboardQuestion> {
+  const { data } = await dashboardQuestion({ throwOnError: true });
+  return data;
+}
+
+export async function saveDashboardQuestion(
+  body: DashboardQuestionInput,
+): Promise<DashboardQuestion> {
+  const { data, error, response } = await putDashboardQuestion({ body });
   if (!data) throw failure(error, response);
   return data;
 }

@@ -2,7 +2,7 @@
 
 import type { Client, Options as Options2, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddLotData, AddLotErrors, AddLotResponses, AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, CheckEarlySaleData, CheckEarlySaleErrors, CheckEarlySaleResponses, CheckEarlySalesData, CheckEarlySalesErrors, CheckEarlySalesResponses, CompareLotData, CompareLotErrors, CompareLotResponses, DecideData, DecideErrors, DecideResponses, DeleteLotData, DeleteLotErrors, DeleteLotResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditLotData, EditLotErrors, EditLotResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, ImportLotsData, ImportLotsErrors, ImportLotsResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListLotsData, ListLotsErrors, ListLotsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, PreviewLotData, PreviewLotErrors, PreviewLotResponses, PreviewMortgageScheduleData, PreviewMortgageScheduleErrors, PreviewMortgageScheduleResponses, PreviewPrepaymentData, PreviewPrepaymentErrors, PreviewPrepaymentResponses, PreviewStatementData, PreviewStatementErrors, PreviewStatementResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
+import type { AddLotData, AddLotErrors, AddLotResponses, AddPrepaymentData, AddPrepaymentErrors, AddPrepaymentResponses, AddStatementData, AddStatementErrors, AddStatementResponses, CheckEarlySaleData, CheckEarlySaleErrors, CheckEarlySaleResponses, CheckEarlySalesData, CheckEarlySalesErrors, CheckEarlySalesResponses, CompareLotData, CompareLotErrors, CompareLotResponses, DashboardQuestionData, DashboardQuestionErrors, DashboardQuestionResponses, DecideData, DecideErrors, DecideResponses, DeleteLotData, DeleteLotErrors, DeleteLotResponses, DeleteMortgageData, DeleteMortgageErrors, DeleteMortgageResponses, DeletePrepaymentData, DeletePrepaymentErrors, DeletePrepaymentResponses, DeleteStatementData, DeleteStatementErrors, DeleteStatementResponses, EditLotData, EditLotErrors, EditLotResponses, EditPrepaymentData, EditPrepaymentErrors, EditPrepaymentResponses, EditStatementData, EditStatementErrors, EditStatementResponses, HealthData, HealthErrors, HealthResponses, ImportLotsData, ImportLotsErrors, ImportLotsResponses, IndexHistoryData, IndexHistoryErrors, IndexHistoryResponses, IndexProjectionData, IndexProjectionErrors, IndexProjectionResponses, ListBondsData, ListBondsErrors, ListBondsResponses, ListLotsData, ListLotsErrors, ListLotsResponses, ListPrepaymentsData, ListPrepaymentsErrors, ListPrepaymentsResponses, ListStatementsData, ListStatementsErrors, ListStatementsResponses, MarketDataStatusData, MarketDataStatusErrors, MarketDataStatusResponses, PreviewLotData, PreviewLotErrors, PreviewLotResponses, PreviewMortgageScheduleData, PreviewMortgageScheduleErrors, PreviewMortgageScheduleResponses, PreviewPrepaymentData, PreviewPrepaymentErrors, PreviewPrepaymentResponses, PreviewStatementData, PreviewStatementErrors, PreviewStatementResponses, ProjectionMethodsData, ProjectionMethodsErrors, ProjectionMethodsResponses, ReadMortgageData, ReadMortgageErrors, ReadMortgageResponses, ReadMortgageScheduleData, ReadMortgageScheduleErrors, ReadMortgageScheduleResponses, RefreshMarketDataData, RefreshMarketDataErrors, RefreshMarketDataResponses, SaveDashboardQuestionData, SaveDashboardQuestionErrors, SaveDashboardQuestionResponses, SaveMortgageData, SaveMortgageErrors, SaveMortgageResponses, SaveProjectionMethodData, SaveProjectionMethodErrors, SaveProjectionMethodResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean> = Options2<TData, ThrowOnError> & {
     /**
@@ -24,6 +24,27 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  * Lists the Tesouro Direto bonds DebtWise compares with their buy and sell rates and prices, as of the latest refresh of the market data.
  */
 export const listBonds = <ThrowOnError extends boolean = false>(options?: Options<ListBondsData, ThrowOnError>) => (options?.client ?? client).get<ListBondsResponses, ListBondsErrors, ThrowOnError>({ url: '/bonds', ...options });
+
+/**
+ * Read the dashboard's question
+ *
+ * Returns the amount and the effect of the decision the dashboard answers: the ones last saved, or 10000.00 to shorten the term until any are.
+ */
+export const dashboardQuestion = <ThrowOnError extends boolean = false>(options?: Options<DashboardQuestionData, ThrowOnError>) => (options?.client ?? client).get<DashboardQuestionResponses, DashboardQuestionErrors, ThrowOnError>({ url: '/dashboard/question', ...options });
+
+/**
+ * Change the dashboard's question
+ *
+ * Sets the amount and the effect of the decision the dashboard answers, for every client.
+ */
+export const saveDashboardQuestion = <ThrowOnError extends boolean = false>(options: Options<SaveDashboardQuestionData, ThrowOnError>) => (options.client ?? client).put<SaveDashboardQuestionResponses, SaveDashboardQuestionErrors, ThrowOnError>({
+    url: '/dashboard/question',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Compare prepaying an amount with buying a bond

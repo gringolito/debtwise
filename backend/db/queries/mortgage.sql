@@ -81,3 +81,10 @@ UPDATE mortgage_statements SET date = ?, outstanding_balance = ? WHERE id = ? AN
 
 -- name: DeleteMortgageStatement :execrows
 DELETE FROM mortgage_statements WHERE id = ? AND mortgage_id = ?;
+
+-- name: FindDashboardQuestion :one
+SELECT amount, effect FROM dashboard_question;
+
+-- name: UpsertDashboardQuestion :exec
+INSERT INTO dashboard_question (id, amount, effect) VALUES (1, ?, ?)
+ON CONFLICT (id) DO UPDATE SET amount = excluded.amount, effect = excluded.effect;

@@ -26,6 +26,8 @@ type Mortgages interface {
 	AddStatement(ctx context.Context, s mortgage.Statement) (mortgage.Statement, error)
 	UpdateStatement(ctx context.Context, s mortgage.Statement) error
 	DeleteStatement(ctx context.Context, id int64) error
+	Question(ctx context.Context) (mortgage.Question, error)
+	SaveQuestion(ctx context.Context, q mortgage.Question) error
 }
 
 type mortgageTerms struct {

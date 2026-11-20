@@ -342,6 +342,51 @@
         ],
         "type": "object"
       },
+      "DashboardQuestion": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "The amount the dashboard compares prepaying today with investing, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What prepaying the amount changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "effect"
+        ],
+        "type": "object"
+      },
+      "DashboardQuestionInput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be greater than zero.",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What prepaying the amount changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "effect"
+        ],
+        "type": "object"
+      },
       "Decision": {
         "additionalProperties": false,
         "properties": {
@@ -2345,6 +2390,78 @@
         "summary": "List the bonds with their prices",
         "tags": [
           "Bonds"
+        ]
+      }
+    },
+    "/dashboard/question": {
+      "get": {
+        "description": "Returns the amount and the effect of the decision the dashboard answers: the ones last saved, or 10000.00 to shorten the term until any are.",
+        "operationId": "dashboard-question",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardQuestion"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Read the dashboard's question",
+        "tags": [
+          "Decisions"
+        ]
+      },
+      "put": {
+        "description": "Sets the amount and the effect of the decision the dashboard answers, for every client.",
+        "operationId": "save-dashboard-question",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DashboardQuestionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardQuestion"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Change the dashboard's question",
+        "tags": [
+          "Decisions"
         ]
       }
     },

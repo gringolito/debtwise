@@ -1,13 +1,9 @@
 import { type FormEvent, useState } from "react";
 import { DeleteEventDialog } from "@/components/mortgage/DeleteEventDialog";
 import type { PrepaymentChange } from "@/components/mortgage/PrepaymentFeedback";
-import { SheetNote } from "@/components/mortgage/SheetFields";
+import { EffectField, SheetNote } from "@/components/mortgage/SheetFields";
 import { InputRow } from "@/components/patterns/FieldRows";
-import {
-  GroupedList,
-  GroupedListHeader,
-  GroupedListSection,
-} from "@/components/patterns/GroupedList";
+import { GroupedList } from "@/components/patterns/GroupedList";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,15 +14,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { PrepaymentOutcome, PrepaymentPreview } from "@/lib/api";
 import { today } from "@/lib/dashboard";
 import { formatDate, formatMoney, formatMonthYear } from "@/lib/format";
 import {
   blankPrepayment,
-  effectDescriptions,
-  effectLabels,
-  effectOptions,
   type PrepaymentEffect,
   type PrepaymentValues,
   prepaymentErrors,
@@ -171,38 +163,7 @@ export function PrepaymentSheet({ prepayment, onClose, onSaved }: PrepaymentShee
               message={errors.get("amount")}
             />
           </GroupedList>
-          <GroupedListSection>
-            <GroupedListHeader id="prepayment-effect">Efeito</GroupedListHeader>
-            <RadioGroup
-              aria-labelledby="prepayment-effect"
-              value={values.effect}
-              onValueChange={(effect) => change({ ...values, effect: effect as PrepaymentEffect })}
-            >
-              {effectOptions.map(({ value }) => (
-                <label
-                  key={value}
-                  className="flex cursor-pointer items-center gap-4 rounded-lg border bg-card px-4 py-3 transition-colors has-data-checked:border-accent-mark has-data-checked:bg-accent-tint"
-                >
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span id={`effect-${value}-name`} className="text-headline">
-                      {effectLabels[value]}
-                    </span>
-                    <span
-                      id={`effect-${value}-description`}
-                      className="text-callout text-muted-foreground"
-                    >
-                      {effectDescriptions[value]}
-                    </span>
-                  </span>
-                  <RadioGroupItem
-                    value={value}
-                    aria-labelledby={`effect-${value}-name`}
-                    aria-describedby={`effect-${value}-description`}
-                  />
-                </label>
-              ))}
-            </RadioGroup>
-          </GroupedListSection>
+          <EffectField value={values.effect} onChange={(effect) => change({ ...values, effect })} />
           {answer && (
             <div aria-busy={stale} className="transition-opacity aria-busy:opacity-50">
               <PreviewNote preview={answer.preview} effect={answer.input.effect} />

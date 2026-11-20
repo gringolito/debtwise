@@ -19,6 +19,7 @@ import { useMortgage, useStatements } from "@/lib/mortgageQueries";
 import { DeleteMortgage } from "@/pages/settings/DeleteMortgage";
 import { MarketDataSection } from "@/pages/settings/MarketDataSection";
 import { ProjectionsSection } from "@/pages/settings/ProjectionsSection";
+import { QuestionSection } from "@/pages/settings/QuestionSection";
 
 const SOURCE_CODE_URL = "https://github.com/gringolito/debtwise";
 
@@ -96,6 +97,7 @@ export function Settings() {
       <MortgageSection mortgage={data} />
       <MarketDataSection />
       <ProjectionsSection />
+      <QuestionSection />
       <AboutSection />
       <DeleteMortgage />
     </Page>

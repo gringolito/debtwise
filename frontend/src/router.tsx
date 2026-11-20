@@ -8,7 +8,7 @@ import {
   type RouterHistory,
   redirect,
 } from "@tanstack/react-router";
-import { validateEffectSearch } from "@/lib/investments";
+import { type EffectSearch, validateEffectSearch } from "@/lib/investments";
 import { isIndexName } from "@/lib/marketIndexes";
 import { Contract } from "@/pages/Contract";
 import { Dashboard } from "@/pages/Dashboard";
@@ -87,10 +87,11 @@ const importLotsRoute = createRoute({
 });
 
 /**
- * What a link to Comparar can prefill: `valor`, the amount in reais, and `comparar`, whether to run
- * the comparison on arrival. Anything else in the address is dropped.
+ * What a link to Comparar can prefill: `valor`, the amount in reais, `efeito`, the effect as a
+ * lot's address says it, and `comparar`, whether to run the comparison on arrival. Anything else in
+ * the address is dropped.
  */
-export interface DecisionSearch {
+export interface DecisionSearch extends EffectSearch {
   valor?: number;
   comparar?: boolean;
 }
@@ -101,6 +102,7 @@ function validateDecisionSearch(search: Record<string, unknown>): DecisionSearch
       typeof search.valor === "number" && Number.isFinite(search.valor) && search.valor > 0
         ? search.valor
         : undefined,
+    ...validateEffectSearch(search),
     comparar: search.comparar === true ? true : undefined,
   };
 }

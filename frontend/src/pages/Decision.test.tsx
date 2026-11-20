@@ -255,6 +255,19 @@ describe("arriving with an amount in the address", () => {
     ).toEqual([["/api/decisions", { amount: "10000", effect: "shorten_term" }]]);
   });
 
+  it("compares the amount with the effect in the address", async () => {
+    const requests = stubDecisions(() =>
+      Response.json(decisionOf([ltnVerdict], { effect: "lower_installment" })),
+    );
+    renderAt("/comparar?valor=5000&efeito=reduzir-prestacao&comparar=true");
+
+    await verdictPanel();
+    expect(screen.getByLabelText("Efeito")).toHaveDisplayValue("reduzir a prestação");
+    expect(
+      requests.filter((r) => r.method === "POST").map((r) => [new URL(r.url).pathname, r.body]),
+    ).toEqual([["/api/decisions", { amount: "5000", effect: "lower_installment" }]]);
+  });
+
   it("only fills in the amount otherwise", async () => {
     const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
     renderAt("/comparar?valor=1234.5");

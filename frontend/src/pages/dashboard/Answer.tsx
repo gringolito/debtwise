@@ -7,12 +7,19 @@ import type { Decision } from "@/lib/api";
 import { bestVerdict } from "@/lib/dashboard";
 import { type ComparedVerdict, favoured } from "@/lib/decisions";
 import { formatDate, formatMoney } from "@/lib/format";
+import { effectSearch } from "@/lib/investments";
+import type { PrepaymentEffect } from "@/lib/mortgageEvents";
 import { advantageAmount, advantageShare, horizon, verdictHeadline } from "@/lib/yardstick";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
 
 const illustrations = {
   invest: investIllustration,
   prepay: prepayIllustration,
+};
+
+const effectClauses: Record<PrepaymentEffect, string> = {
+  shorten_term: "reduzindo o prazo",
+  lower_installment: "reduzindo a prestação",
 };
 
 /** The yardstick line: how much the difference is worth against the amount, over the horizon. */
@@ -54,7 +61,8 @@ export function Answer({ decision }: { decision: Decision }) {
             aria-hidden="true"
             className="size-1.5 shrink-0 rounded-full bg-accent shadow-glow"
           />
-          Na projeção atual, para {formatMoney(decision.amount)} hoje
+          Na projeção atual, para {formatMoney(decision.amount)} hoje,{" "}
+          {effectClauses[decision.effect]}
         </p>
         <h2 id={titleId} className="max-w-160 text-large-title font-semibold text-balance">
           {best ? verdictHeadline(best) : "Amortizar ou investir? Veja a comparação."}
@@ -68,13 +76,16 @@ export function Answer({ decision }: { decision: Decision }) {
         </p>
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
           <Button asChild>
-            <Link to="/comparar" search={{ valor, comparar: true }}>
+            <Link
+              to="/comparar"
+              search={{ valor, ...effectSearch(decision.effect), comparar: true }}
+            >
               {best ? "Ver comparação" : "Comparar agora"}
             </Link>
           </Button>
           {best && (
             <Button variant="plain" asChild>
-              <Link to="/comparar" search={{ valor }}>
+              <Link to="/comparar" search={{ valor, ...effectSearch(decision.effect) }}>
                 Mudar valor
               </Link>
             </Button>

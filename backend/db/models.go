@@ -29,6 +29,12 @@ type CustodyFeeRate struct {
 	Rate          string
 }
 
+type DashboardQuestion struct {
+	ID     int64
+	Amount string
+	Effect string
+}
+
 type FocusIpcaAnnual struct {
 	Year      int64
 	Median    string

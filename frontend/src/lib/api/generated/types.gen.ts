@@ -211,6 +211,28 @@ export type CorrectionIndex = {
     value?: string;
 };
 
+export type DashboardQuestion = {
+    /**
+     * The amount the dashboard compares prepaying today with investing, in reais, as a decimal string.
+     */
+    amount: string;
+    /**
+     * What prepaying the amount changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.
+     */
+    effect: 'shorten_term' | 'lower_installment';
+};
+
+export type DashboardQuestionInput = {
+    /**
+     * The amount the dashboard compares prepaying today with investing, in reais, as a decimal string. It must be greater than zero.
+     */
+    amount: string;
+    /**
+     * What prepaying the amount changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.
+     */
+    effect: 'shorten_term' | 'lower_installment';
+};
+
 export type Decision = {
     /**
      * The amount prepaid or invested, in reais, as a decimal string.
@@ -1359,6 +1381,56 @@ export type ListBondsResponses = {
 };
 
 export type ListBondsResponse = ListBondsResponses[keyof ListBondsResponses];
+
+export type DashboardQuestionData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/dashboard/question';
+};
+
+export type DashboardQuestionErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type DashboardQuestionError = DashboardQuestionErrors[keyof DashboardQuestionErrors];
+
+export type DashboardQuestionResponses = {
+    /**
+     * OK
+     */
+    200: DashboardQuestion;
+};
+
+export type DashboardQuestionResponse = DashboardQuestionResponses[keyof DashboardQuestionResponses];
+
+export type SaveDashboardQuestionData = {
+    body: DashboardQuestionInput;
+    path?: never;
+    query?: never;
+    url: '/dashboard/question';
+};
+
+export type SaveDashboardQuestionErrors = {
+    /**
+     * Error
+     */
+    default: ErrorModel;
+};
+
+export type SaveDashboardQuestionError = SaveDashboardQuestionErrors[keyof SaveDashboardQuestionErrors];
+
+export type SaveDashboardQuestionResponses = {
+    /**
+     * OK
+     */
+    200: DashboardQuestion;
+};
+
+export type SaveDashboardQuestionResponse = SaveDashboardQuestionResponses[keyof SaveDashboardQuestionResponses];
 
 export type DecideData = {
     body: DecisionInput;

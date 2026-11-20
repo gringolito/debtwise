@@ -91,6 +91,22 @@ func (q *Queries) DeleteMortgages(ctx context.Context) (int64, error) {
 	return result.RowsAffected()
 }
 
+const findDashboardQuestion = `-- name: FindDashboardQuestion :one
+SELECT amount, effect FROM dashboard_question
+`
+
+type FindDashboardQuestionRow struct {
+	Amount string
+	Effect string
+}
+
+func (q *Queries) FindDashboardQuestion(ctx context.Context) (FindDashboardQuestionRow, error) {
+	row := q.db.QueryRowContext(ctx, findDashboardQuestion)
+	var i FindDashboardQuestionRow
+	err := row.Scan(&i.Amount, &i.Effect)
+	return i, err
+}
+
 const findMortgage = `-- name: FindMortgage :one
 SELECT id, contract_date, original_amount, term_months, first_installment_date, amortization_system, appraisal_value, indexer FROM mortgages ORDER BY id LIMIT 1
 `
@@ -557,4 +573,19 @@ func (q *Queries) UpdateMortgageStatement(ctx context.Context, arg UpdateMortgag
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const upsertDashboardQuestion = `-- name: UpsertDashboardQuestion :exec
+INSERT INTO dashboard_question (id, amount, effect) VALUES (1, ?, ?)
+ON CONFLICT (id) DO UPDATE SET amount = excluded.amount, effect = excluded.effect
+`
+
+type UpsertDashboardQuestionParams struct {
+	Amount string
+	Effect string
+}
+
+func (q *Queries) UpsertDashboardQuestion(ctx context.Context, arg UpsertDashboardQuestionParams) error {
+	_, err := q.db.ExecContext(ctx, upsertDashboardQuestion, arg.Amount, arg.Effect)
+	return err
 }
