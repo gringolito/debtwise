@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Page, PageHeader, PageTitle } from "@/components/layout/Page";
 import { ErrorPanel } from "@/components/patterns/ErrorPanel";
-import type { DecisionInput } from "@/lib/api";
 import { recentActivity, today } from "@/lib/dashboard";
-import { useDecision } from "@/lib/decisionQueries";
+import { useDecision, useDefaultComparison } from "@/lib/decisionQueries";
 import { formatWeekday } from "@/lib/format";
 import { useLots } from "@/lib/lotQueries";
 import {
@@ -19,9 +18,6 @@ import { MortgagePanel } from "@/pages/dashboard/MortgagePanel";
 import { NextSteps } from "@/pages/dashboard/NextSteps";
 import { RecentActivity } from "@/pages/dashboard/RecentActivity";
 
-/** The amount Início answers "amortizar ou investir?" for, prepaid to shorten the term today. */
-const ANSWERED: DecisionInput = { amount: "10000.00", effect: "shorten_term" };
-
 const RECENT_ACTIVITY = 3;
 
 function Content() {
@@ -30,8 +26,9 @@ function Content() {
   const statements = useStatements();
   const prepayments = usePrepayments();
   const lots = useLots();
-  const decision = useDecision(ANSWERED);
-  const queries = [mortgage, schedule, statements, prepayments, lots, decision];
+  const comparison = useDefaultComparison();
+  const decision = useDecision(comparison.data);
+  const queries = [mortgage, schedule, statements, prepayments, lots, comparison, decision];
 
   const failed = queries.filter((query) => query.isError);
   if (failed.length > 0) {

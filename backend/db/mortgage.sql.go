@@ -91,6 +91,22 @@ func (q *Queries) DeleteMortgages(ctx context.Context) (int64, error) {
 	return result.RowsAffected()
 }
 
+const findDefaultComparison = `-- name: FindDefaultComparison :one
+SELECT amount, effect FROM default_comparison
+`
+
+type FindDefaultComparisonRow struct {
+	Amount string
+	Effect string
+}
+
+func (q *Queries) FindDefaultComparison(ctx context.Context) (FindDefaultComparisonRow, error) {
+	row := q.db.QueryRowContext(ctx, findDefaultComparison)
+	var i FindDefaultComparisonRow
+	err := row.Scan(&i.Amount, &i.Effect)
+	return i, err
+}
+
 const findMortgage = `-- name: FindMortgage :one
 SELECT id, contract_date, original_amount, term_months, first_installment_date, amortization_system, appraisal_value, indexer FROM mortgages ORDER BY id LIMIT 1
 `
@@ -557,4 +573,19 @@ func (q *Queries) UpdateMortgageStatement(ctx context.Context, arg UpdateMortgag
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const upsertDefaultComparison = `-- name: UpsertDefaultComparison :exec
+INSERT INTO default_comparison (id, amount, effect) VALUES (1, ?, ?)
+ON CONFLICT (id) DO UPDATE SET amount = excluded.amount, effect = excluded.effect
+`
+
+type UpsertDefaultComparisonParams struct {
+	Amount string
+	Effect string
+}
+
+func (q *Queries) UpsertDefaultComparison(ctx context.Context, arg UpsertDefaultComparisonParams) error {
+	_, err := q.db.ExecContext(ctx, upsertDefaultComparison, arg.Amount, arg.Effect)
+	return err
 }

@@ -415,6 +415,51 @@
         ],
         "type": "object"
       },
+      "DefaultComparison": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "The amount the dashboard compares prepaying today with investing, in reais, as a decimal string.",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What prepaying the amount changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "effect"
+        ],
+        "type": "object"
+      },
+      "DefaultComparisonInput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "description": "The amount the dashboard compares prepaying today with investing, in reais, as a decimal string.",
+            "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
+            "type": "string"
+          },
+          "effect": {
+            "description": "What prepaying the amount changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments.",
+            "enum": [
+              "shorten_term",
+              "lower_installment"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "effect"
+        ],
+        "type": "object"
+      },
       "EarlySale": {
         "additionalProperties": false,
         "properties": {
@@ -548,6 +593,7 @@
               "before_today",
               "no_row_from_first_installment",
               "repeated_date",
+              "below_minimum",
               "not_after_purchase",
               "not_maturity_day",
               "after_today"
@@ -2345,6 +2391,78 @@
         "summary": "List the bonds with their prices",
         "tags": [
           "Bonds"
+        ]
+      }
+    },
+    "/dashboard/default-comparison": {
+      "get": {
+        "description": "Returns the amount and the effect the dashboard compares prepaying with investing by default.",
+        "operationId": "default-comparison",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultComparison"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Read the dashboard's default comparison",
+        "tags": [
+          "Decisions"
+        ]
+      },
+      "put": {
+        "description": "Sets the amount and the effect the dashboard compares prepaying with investing by default.",
+        "operationId": "save-default-comparison",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefaultComparisonInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultComparison"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorModel"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "summary": "Change the dashboard's default comparison",
+        "tags": [
+          "Decisions"
         ]
       }
     },

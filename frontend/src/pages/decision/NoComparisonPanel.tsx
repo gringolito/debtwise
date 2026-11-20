@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
-import { type NoComparison, unavailableReasons } from "@/lib/decisions";
+import { type NoComparison, noComparisonExplanation } from "@/lib/decisions";
 import { formatMoney } from "@/lib/format";
 
 /** NoComparisonFix is what the owner can do about why a bond is not compared, as a text action. */
@@ -37,23 +37,6 @@ export function NoComparisonFix({
   }
 }
 
-function explanation(why: NoComparison): { title: string; text: string } {
-  switch (why.reason) {
-    case "amount_too_small":
-      return {
-        title: "Valor pequeno demais para comparar",
-        text: `${unavailableReasons.amount_too_small} Tente um valor a partir de ${formatMoney(why.minimumAmount)}.`,
-      };
-    case "missing_ipca":
-      return { title: "Aguardando o IPCA", text: unavailableReasons.missing_ipca };
-    case "no_bond":
-      return {
-        title: "Nenhum título para comparar",
-        text: "Nenhum título à venda acompanha o indexador do seu financiamento e vence depois da data escolhida.",
-      };
-  }
-}
-
 interface NoComparisonPanelProps {
   why: NoComparison;
   /** Puts the amount in the sentence and compares it. */
@@ -63,7 +46,7 @@ interface NoComparisonPanelProps {
 /** NoComparisonPanel says why a decision compares no bond and what the owner can try instead. */
 export function NoComparisonPanel({ why, onUseAmount }: NoComparisonPanelProps) {
   const titleId = useId();
-  const { title, text } = explanation(why);
+  const { title, text } = noComparisonExplanation(why);
   return (
     <section
       aria-labelledby={titleId}

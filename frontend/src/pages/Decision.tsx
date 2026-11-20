@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { blankDecision, decisionErrors, decisionInput } from "@/lib/decisions";
 import { useDecide } from "@/lib/decisionQueries";
 import { moneyToInput } from "@/lib/format";
+import { effectOf } from "@/lib/investments";
 import { Comparison } from "@/pages/decision/Comparison";
 import { DecisionSentence } from "@/pages/decision/DecisionSentence";
 
@@ -32,10 +33,12 @@ function ComparisonSkeleton() {
 
 /** Decision is Comparar: amortizar ou investir, compared for the amount, date and effect asked. */
 export function Decision() {
-  const { valor, comparar } = route.useSearch();
+  const search = route.useSearch();
+  const { valor, comparar } = search;
   const [values, setValues] = useState(() => ({
     ...blankDecision,
     amount: valor === undefined ? "" : moneyToInput(String(valor)),
+    effect: effectOf(search),
   }));
   const decide = useDecide();
   const errors = decisionErrors(decide.error);

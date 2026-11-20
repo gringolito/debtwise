@@ -81,3 +81,10 @@ UPDATE mortgage_statements SET date = ?, outstanding_balance = ? WHERE id = ? AN
 
 -- name: DeleteMortgageStatement :execrows
 DELETE FROM mortgage_statements WHERE id = ? AND mortgage_id = ?;
+
+-- name: FindDefaultComparison :one
+SELECT amount, effect FROM default_comparison;
+
+-- name: UpsertDefaultComparison :exec
+INSERT INTO default_comparison (id, amount, effect) VALUES (1, ?, ?)
+ON CONFLICT (id) DO UPDATE SET amount = excluded.amount, effect = excluded.effect;

@@ -7,6 +7,7 @@ import {
   addStatement,
   compareLot,
   checkEarlySales,
+  defaultComparison,
   decide as requestDecision,
   deleteLot,
   deleteMortgage,
@@ -32,6 +33,7 @@ import {
   readMortgageSchedule,
   refreshMarketData,
   saveMortgage,
+  saveDefaultComparison as putDefaultComparison,
   saveProjectionMethod as putProjectionMethod,
 } from "./generated/sdk.gen";
 import type {
@@ -43,6 +45,8 @@ import type {
   CashFlowInstallment,
   ContractRate,
   CorrectionIndex,
+  DefaultComparison,
+  DefaultComparisonInput,
   Decision,
   DecisionInput,
   EarlySaleCheck,
@@ -99,6 +103,8 @@ export type {
   CashFlowInstallment,
   ContractRate,
   CorrectionIndex,
+  DefaultComparison,
+  DefaultComparisonInput,
   Decision,
   DecisionInput,
   EarlySaleCheck,
@@ -380,6 +386,22 @@ export async function removeLot(id: number): Promise<void> {
 
 export async function decide(body: DecisionInput): Promise<Decision> {
   const { data, error, response } = await requestDecision({ body });
+  if (!data) throw failure(error, response);
+  return data;
+}
+
+/** defaultComparisonKey is the query key of the amount and effect Início compares. */
+export const defaultComparisonKey = ["default-comparison"] as const;
+
+export async function fetchDefaultComparison(): Promise<DefaultComparison> {
+  const { data } = await defaultComparison({ throwOnError: true });
+  return data;
+}
+
+export async function saveDefaultComparison(
+  body: DefaultComparisonInput,
+): Promise<DefaultComparison> {
+  const { data, error, response } = await putDefaultComparison({ body });
   if (!data) throw failure(error, response);
   return data;
 }

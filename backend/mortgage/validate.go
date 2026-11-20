@@ -17,19 +17,21 @@ type Violation struct {
 // Rule is a rule of the mortgage that a value can break, named by a code a client can match.
 type Rule string
 
-// The rules of the mortgage, its prepayments and its statements.
+// The rules of the mortgage, its prepayments, its statements and the default comparison.
 const (
 	RuleNotPositive               Rule = "not_positive"
 	RuleBeforeContract            Rule = "before_contract"
 	RuleBeforeToday               Rule = "before_today"
 	RuleNoRowFromFirstInstallment Rule = "no_row_from_first_installment"
 	RuleRepeatedDate              Rule = "repeated_date"
+	RuleBelowMinimum              Rule = "below_minimum"
 )
 
 // Rules returns every rule, in the order the API documents them.
 func Rules() []Rule {
 	return []Rule{
 		RuleNotPositive, RuleBeforeContract, RuleBeforeToday, RuleNoRowFromFirstInstallment, RuleRepeatedDate,
+		RuleBelowMinimum,
 	}
 }
 
@@ -46,6 +48,8 @@ func (r Rule) Reason() string {
 		return "needs a row effective on or before the first installment date"
 	case RuleRepeatedDate:
 		return "repeats the date of another row"
+	case RuleBelowMinimum:
+		return "must be at least " + defaultComparisonMinimum.String()
 	default:
 		return ""
 	}

@@ -16,7 +16,7 @@ import type {
 import { text } from "@/test/dom";
 import { registeredMortgage, schedule } from "@/test/mortgageFixtures";
 import { renderAt } from "@/test/renderAt";
-import { problem, stubRoutes } from "@/test/stubServer";
+import { problem, type RecordedRequest, stubRoutes } from "@/test/stubServer";
 
 type Routes = Parameters<typeof stubRoutes>[0];
 
@@ -83,8 +83,9 @@ const unavailable: Verdict = {
   market_data: freshMarketData,
 };
 
-const decisionOf = (verdicts: Verdict[]) => () =>
-  Response.json({ amount: "10000.00", date: "2024-03-20", effect: "shorten_term", verdicts });
+// Answers the decision for the amount and effect asked, so the answer shows what Início asked.
+const decisionOf = (verdicts: Verdict[]) => (req: RecordedRequest) =>
+  Response.json({ ...(req.body as object), date: "2024-03-20", verdicts });
 
 const MARKET: LotAmount = {
   gross: "900.00",
@@ -127,6 +128,8 @@ const prepayment: Prepayment = {
 function stubInicio(routes: Routes = {}) {
   return stubRoutes({
     "GET /api/mortgage": () => Response.json(registeredMortgage),
+    "GET /api/dashboard/default-comparison": () =>
+      Response.json({ amount: "10000.00", effect: "shorten_term" }),
     "GET /api/mortgage/schedule": () => Response.json(schedule),
     "GET /api/mortgage/statements": () => Response.json({ statements: [] }),
     "GET /api/mortgage/prepayments": () => Response.json({ prepayments: [] }),
@@ -209,6 +212,25 @@ describe("Início", () => {
     expect(await region("Atividade recente")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
+
+  it("retries the default comparison when it fails to load", async () => {
+    let failing = true;
+    stubInicio({
+      "GET /api/dashboard/default-comparison": () =>
+        failing
+          ? problem(500, "Internal Server Error", "boom")
+          : Response.json({ amount: "10000.00", effect: "shorten_term" }),
+    });
+    renderAt("/");
+
+    const panel = await screen.findByRole("alert");
+    expect(panel).toHaveTextContent("Não foi possível carregar o início");
+    failing = false;
+    fireEvent.click(within(panel).getByRole("button", { name: "Tentar novamente" }));
+
+    expect(await answer()).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });
 
 describe("the answer", () => {
@@ -222,7 +244,9 @@ describe("the answer", () => {
         name: "Investir em Tesouro Prefixado 2029 vale mais a pena",
       }),
     ).toBeInTheDocument();
-    expect(within(card).getByText("Na projeção atual, para R$ 10.000,00 hoje")).toBeInTheDocument();
+    expect(
+      within(card).getByText("Na projeção atual, para R$ 10.000,00 hoje, reduzindo o prazo"),
+    ).toBeInTheDocument();
     expect(
       paragraph(
         card,
@@ -241,12 +265,57 @@ describe("the answer", () => {
     const card = await answer();
     expect(within(card).getByRole("link", { name: "Ver comparação" })).toHaveAttribute(
       "href",
-      "/comparar?valor=10000&comparar=true",
+      "/comparar?valor=%2210000.00%22&comparar=true",
     );
     expect(within(card).getByRole("link", { name: "Mudar valor" })).toHaveAttribute(
       "href",
-      "/comparar?valor=10000",
+      "/comparar?valor=%2210000.00%22",
     );
+  });
+
+  it("compares the amount and effect saved in Ajustes, and links to Comparar with them", async () => {
+    const requests = stubInicio({
+      "GET /api/dashboard/default-comparison": () =>
+        Response.json({ amount: "5000.00", effect: "lower_installment" }),
+      "POST /api/decisions": decisionOf([ltn]),
+    });
+    renderAt("/");
+
+    const card = await answer();
+    expect(
+      within(card).getByText("Na projeção atual, para R$ 5.000,00 hoje, reduzindo a prestação"),
+    ).toBeInTheDocument();
+    expect(
+      requests.filter((r) => r.method === "POST").map((r) => [new URL(r.url).pathname, r.body]),
+    ).toEqual([["/api/decisions", { amount: "5000.00", effect: "lower_installment" }]]);
+    expect(within(card).getByRole("link", { name: "Ver comparação" })).toHaveAttribute(
+      "href",
+      "/comparar?valor=%225000.00%22&efeito=reduzir-prestacao&comparar=true",
+    );
+    expect(within(card).getByRole("link", { name: "Mudar valor" })).toHaveAttribute(
+      "href",
+      "/comparar?valor=%225000.00%22&efeito=reduzir-prestacao",
+    );
+  });
+
+  it("says why nothing compares when the saved amount is too small to buy any bond", async () => {
+    stubInicio({
+      "GET /api/dashboard/default-comparison": () =>
+        Response.json({ amount: "50.00", effect: "shorten_term" }),
+      "POST /api/decisions": decisionOf([{ ...unavailable, minimum_amount: "190.42" }]),
+    });
+    renderAt("/");
+
+    const card = await region("Valor pequeno demais para comparar");
+    expect(
+      within(card).getByText("Na projeção atual, para R$ 50,00 hoje, reduzindo o prazo"),
+    ).toBeInTheDocument();
+    expect(
+      paragraph(
+        card,
+        "O Tesouro Direto vende a partir de um centésimo do título, e o valor não compra isso de nenhum deles. Tente um valor a partir de R$ 190,42.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("tells apart advantages a cent apart however large", async () => {
@@ -296,7 +365,7 @@ describe("the answer", () => {
     ).toBeInTheDocument();
     expect(within(card).getByRole("link", { name: "Comparar agora" })).toHaveAttribute(
       "href",
-      "/comparar?valor=10000&comparar=true",
+      "/comparar?valor=%2210000.00%22&comparar=true",
     );
     expect(within(card).queryByRole("link", { name: "Mudar valor" })).not.toBeInTheDocument();
   });
@@ -402,7 +471,7 @@ describe("the stale-data note", () => {
         refreshed = true;
         return Response.json({ ...FRESH_STATUS, refreshing: true });
       },
-      "POST /api/decisions": () => decisionOf([refreshed ? ltn : staleVerdict])(),
+      "POST /api/decisions": (req) => decisionOf([refreshed ? ltn : staleVerdict])(req),
       "GET /api/lots": () =>
         Response.json({
           lots: [quotedLot],

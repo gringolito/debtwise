@@ -96,6 +96,9 @@ type cashFlowInstallment struct {
 	Amount       string            `json:"amount" doc:"Total the installment charges, in reais, as a decimal string."`
 }
 
+// decisionsTag groups the operations on decisions.
+const decisionsTag = "Decisions"
+
 func registerDecisions(humaAPI huma.API, services Services, now func() time.Time) {
 	register(humaAPI, huma.Operation{
 		OperationID: "decide",
@@ -103,7 +106,7 @@ func registerDecisions(humaAPI huma.API, services Services, now func() time.Time
 		Path:        "/decisions",
 		Summary:     "Compare prepaying an amount with buying a bond",
 		Description: "Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. It is computed on request and not stored.",
-		Tags:        []string{"Decisions"},
+		Tags:        []string{decisionsTag},
 	}, func(ctx context.Context, in *struct{ Body decisionInput }) (*struct{ Body decision }, error) {
 		today := dateOf(now())
 

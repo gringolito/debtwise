@@ -255,6 +255,30 @@ describe("arriving with an amount in the address", () => {
     ).toEqual([["/api/decisions", { amount: "10000", effect: "shorten_term" }]]);
   });
 
+  it("compares the amount with the effect in the address", async () => {
+    const requests = stubDecisions(() =>
+      Response.json(decisionOf([ltnVerdict], { effect: "lower_installment" })),
+    );
+    renderAt("/comparar?valor=5000&efeito=reduzir-prestacao&comparar=true");
+
+    await verdictPanel();
+    expect(screen.getByLabelText("Efeito")).toHaveDisplayValue("reduzir a prestação");
+    expect(
+      requests.filter((r) => r.method === "POST").map((r) => [new URL(r.url).pathname, r.body]),
+    ).toEqual([["/api/decisions", { amount: "5000", effect: "lower_installment" }]]);
+  });
+
+  it("compares an amount written as decimal text to the centavo", async () => {
+    const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
+    renderAt('/comparar?valor="999999999999999.99"&comparar=true');
+
+    await verdictPanel();
+    expect(screen.getByLabelText("Valor")).toHaveValue("999.999.999.999.999,99");
+    expect(
+      requests.filter((r) => r.method === "POST").map((r) => [new URL(r.url).pathname, r.body]),
+    ).toEqual([["/api/decisions", { amount: "999999999999999.99", effect: "shorten_term" }]]);
+  });
+
   it("only fills in the amount otherwise", async () => {
     const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
     renderAt("/comparar?valor=1234.5");
@@ -264,17 +288,19 @@ describe("arriving with an amount in the address", () => {
     expect(requests).toEqual([]);
   });
 
-  it.each(["?valor=abc&comparar=true", "?valor=-5&comparar=true"])(
-    "ignores an amount that is no positive number in %s",
-    async (search) => {
-      const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
-      renderAt(`/comparar${search}`);
+  it.each([
+    "?valor=abc&comparar=true",
+    "?valor=-5&comparar=true",
+    '?valor="0.00"&comparar=true',
+    '?valor="5000.001"&comparar=true',
+  ])("ignores an amount that is no positive number in %s", async (search) => {
+    const requests = stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
+    renderAt(`/comparar${search}`);
 
-      await sentence();
-      expect(screen.getByLabelText("Valor")).toHaveValue("");
-      expect(requests).toEqual([]);
-    },
-  );
+    await sentence();
+    expect(screen.getByLabelText("Valor")).toHaveValue("");
+    expect(requests).toEqual([]);
+  });
 });
 
 describe("the question as a sentence", () => {
