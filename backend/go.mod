@@ -4,7 +4,7 @@ go 1.27.4
 
 require (
 	github.com/cockroachdb/apd/v3 v3.2.3
-	github.com/danielgtaylor/huma/v2 v2.40.0
+	github.com/danielgtaylor/huma/v2 v2.41.0
 	github.com/pressly/goose/v3 v3.30.1
 	github.com/stretchr/testify v1.12.1
 	modernc.org/sqlite v1.62.0
