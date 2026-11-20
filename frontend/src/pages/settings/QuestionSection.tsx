@@ -82,13 +82,7 @@ function QuestionSheet({
               message={errors.get("amount")}
             />
           </GroupedList>
-          <EffectField
-            value={effect}
-            onChange={(picked) => {
-              save.reset();
-              setEffect(picked);
-            }}
-          />
+          <EffectField value={effect} onChange={setEffect} />
           <DialogFooter>
             <Button type="submit" disabled={save.isPending}>
               Salvar

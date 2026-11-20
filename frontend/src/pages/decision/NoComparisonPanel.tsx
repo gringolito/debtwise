@@ -37,7 +37,8 @@ export function NoComparisonFix({
   }
 }
 
-function explanation(why: NoComparison): { title: string; text: string } {
+/** noComparisonExplanation says why a decision compares no bond, as a title and a sentence. */
+export function noComparisonExplanation(why: NoComparison): { title: string; text: string } {
   switch (why.reason) {
     case "amount_too_small":
       return {
@@ -63,7 +64,7 @@ interface NoComparisonPanelProps {
 /** NoComparisonPanel says why a decision compares no bond and what the owner can try instead. */
 export function NoComparisonPanel({ why, onUseAmount }: NoComparisonPanelProps) {
   const titleId = useId();
-  const { title, text } = explanation(why);
+  const { title, text } = noComparisonExplanation(why);
   return (
     <section
       aria-labelledby={titleId}

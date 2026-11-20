@@ -329,6 +329,8 @@ describe("Início's question", () => {
     fireEvent.click(sheet.getByRole("button", { name: "Salvar" }));
 
     expect(await sheet.findByText(message)).toBeInTheDocument();
+    fireEvent.click(sheet.getByRole("radio", { name: "Reduzir prestação" }));
+    expect(sheet.getByText(message)).toBeInTheDocument();
     fireEvent.click(sheet.getByRole("button", { name: "Cancelar" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(text(await questionRow())).toBe("Pergunta do InícioR$ 10.000,00 · Reduzir prazo");

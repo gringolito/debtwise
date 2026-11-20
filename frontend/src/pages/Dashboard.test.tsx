@@ -212,6 +212,25 @@ describe("Início", () => {
     expect(await region("Atividade recente")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
+
+  it("retries the question Início asks when it fails to load", async () => {
+    let failing = true;
+    stubInicio({
+      "GET /api/dashboard/question": () =>
+        failing
+          ? problem(500, "Internal Server Error", "boom")
+          : Response.json({ amount: "10000.00", effect: "shorten_term" }),
+    });
+    renderAt("/");
+
+    const panel = await screen.findByRole("alert");
+    expect(panel).toHaveTextContent("Não foi possível carregar o início");
+    failing = false;
+    fireEvent.click(within(panel).getByRole("button", { name: "Tentar novamente" }));
+
+    expect(await answer()).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });
 
 describe("the answer", () => {
@@ -287,12 +306,15 @@ describe("the answer", () => {
     });
     renderAt("/");
 
-    const card = await answer();
+    const card = await region("Valor pequeno demais para comparar");
     expect(
       within(card).getByText("Na projeção atual, para R$ 0,01 hoje, reduzindo o prazo"),
     ).toBeInTheDocument();
     expect(
-      within(card).getByRole("heading", { name: "Amortizar ou investir? Veja a comparação." }),
+      paragraph(
+        card,
+        "O Tesouro Direto vende a partir de um centésimo do título, e o valor não compra isso de nenhum deles. Tente um valor a partir de R$ 7,71.",
+      ),
     ).toBeInTheDocument();
   });
 
