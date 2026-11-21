@@ -139,6 +139,7 @@ const columns: Column[] = [
   money("Prestação", (flow) => flow.installment?.amount),
   money("Investido", (flow) => flow.invested),
   money("Amortização extraordinária", (flow) => flow.prepaid),
+  money("Guardado", (flow) => flow.held),
   {
     label: "Pagamento do título",
     filled: (flow) => bondPayment(flow) !== undefined,

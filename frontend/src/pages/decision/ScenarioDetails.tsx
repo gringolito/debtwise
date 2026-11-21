@@ -23,6 +23,10 @@ export function ScenarioDetails({ title, scenario }: { title: string; scenario: 
           <dt>Saldo devedor</dt>
           <dd className="tabular-nums">{formatMoney(scenario.outstanding_balance)}</dd>
         </div>
+        <div className="flex justify-between gap-4 text-muted-foreground">
+          <dt>Dinheiro guardado</dt>
+          <dd className="tabular-nums">{formatMoney(scenario.cash)}</dd>
+        </div>
       </dl>
       {scenario.bond && (
         <Table aria-label={`Valor no vencimento de ${title}`}>

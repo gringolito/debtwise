@@ -210,8 +210,8 @@ something is due)
 
 **Equal Outflow**:
 The rule that both compared scenarios cost the owner the same out of pocket every month, with any
-cash that frees up going to the mortgage. It spares a comparison from guessing what freed cash
-would earn elsewhere.
+cash that frees up held at zero return or, where the owner asks, going to the mortgage. It spares a
+comparison from guessing what freed cash would earn elsewhere.
 _Avoid_: Same budget (doesn't say where freed cash goes)
 
 **Slack** (folga):

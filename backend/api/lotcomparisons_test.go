@@ -82,17 +82,21 @@ func expensiveLongMortgage() string {
 }
 
 // A mortgage charging 40% a year over 360 months makes prepaying win a lot comparison when it shortens
-// the term, even with the installment's slack ignored. The lot's 6,500.00 invested on 2026-02-02,
-// before the first installment, is held 1,064 days to the horizon of 2029-01-01, 10,000.00 gross: the
-// 58.30 custody fee is 0.20% a year of it over 1,064 days, and income tax of 15% on the 3,500.00 gain
-// left after it is 516.26, which leaves 9,425.44 net. Holding the lot pays 35 installments to
-// 2028-12-10 and owes 299,979.32 (Price amortizes 20.68 in all, at 8,531.20 a month). Prepaying
-// 6,500.00 shortens the term to 137 months, 293,500.00 over which needs at most that 8,531.20 (over
-// 136 it needs 8,534.40), and its 35 installments leave 282,760.79 owed: 17,218.53 less than holding,
-// beyond the 6,500.00 itself because each installment amortizes more of a shorter term. Investing is
-// worth 9,425.44 - 17,218.53 = -7,793.09 more than prepaying. Lowering the installment keeps the
-// 360 months, so the same prepayment amortizes only 6,499.75 more, 293,479.57 owed, and what it saves
-// each month is the slack nothing prepays: investing is better by 2,925.69.
+// the term, even with the installment's slack held at no return. The lot's 6,500.00 invested on
+// 2026-02-02, before the first installment, is held 1,064 days to the horizon of 2029-01-01,
+// 10,000.00 gross: the 58.30 custody fee is 0.20% a year of it over 1,064 days, and income tax of
+// 15% on the 3,500.00 gain left after it is 516.26, which leaves 9,425.44 net. Holding the lot pays
+// 35 installments to 2028-12-10 and owes 299,979.32 (Price amortizes 20.68 in all, at 8,531.20 a
+// month). Prepaying 6,500.00 shortens the term to 137 months, 293,500.00 over which needs at most
+// 8,529.08 (over 136 it needs 8,534.40, more than the 8,531.20 paid before), and its 35 installments
+// leave 282,760.79 owed: 17,218.53 less than holding, beyond the 6,500.00 itself because each
+// installment amortizes more of a shorter term. Each installment leaves 8,531.20 - 8,529.08 = 2.12
+// below the status quo's, held: 35 x 2.12 = 74.20. Investing is worth 9,425.44 - 17,218.53 - 74.20 =
+// -7,867.29 more than prepaying. Lowering the installment keeps the 360 months, so the same
+// prepayment amortizes only 6,499.75 more, 293,479.57 owed, and the installment falls to 8,346.36,
+// 184.84 below the status quo's, held: 35 x 184.84 = 6,469.40. Investing is worth 9,425.44 -
+// 6,499.75 - 6,469.40 = -3,543.71 more than prepaying: the held slack earns nothing, but the 40%
+// the mortgage charges on what the prepayment amortizes is still worth more than the bond.
 func TestALotComparisonFavoursPrepayingWhenTheMortgageCostsMoreAndTheTermIsShortened(t *testing.T) {
 	t.Parallel()
 
@@ -115,8 +119,8 @@ func TestALotComparisonFavoursPrepayingWhenTheMortgageCostsMoreAndTheTermIsShort
 		assert.Equal(t, "2925.44", c.Gain)
 	}
 
-	assert.Equal(t, "-7793.09", shortened.Advantage)
-	assert.Equal(t, "2925.69", lowered.Advantage)
+	assert.Equal(t, "-7867.29", shortened.Advantage)
+	assert.Equal(t, "-3543.71", lowered.Advantage)
 }
 
 // A lot bought before the mortgage's contract date still has its Maturity Value and gain, but no
