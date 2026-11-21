@@ -11,7 +11,7 @@ import type {
   RegisteredMortgage,
 } from "@/lib/api";
 import { text } from "@/test/dom";
-import { ipcaMortgage, trMortgage } from "@/test/mortgageFixtures";
+import { ipcaMortgage, schedule, trMortgage } from "@/test/mortgageFixtures";
 import { renderAt } from "@/test/renderAt";
 import { problem, type RecordedRequest, stubRoutes } from "@/test/stubServer";
 
@@ -109,6 +109,8 @@ type Routes = Parameters<typeof stubRoutes>[0];
 
 interface Backend {
   mortgage: RegisteredMortgage;
+  // The due date of the schedule's last installment.
+  payoff: string;
   status: MarketDataStatus;
   histories: Record<string, IndexValue[]>;
   methods: ProjectionMethods;
@@ -120,6 +122,7 @@ interface Backend {
 function stubBackend(partial: Partial<Backend> = {}, routes: Routes = {}): RecordedRequest[] {
   const backend: Backend = {
     mortgage: trMortgage,
+    payoff: "2035-05-15",
     status: FRESH_STATUS,
     histories: HISTORIES,
     methods: METHODS,
@@ -129,6 +132,12 @@ function stubBackend(partial: Partial<Backend> = {}, routes: Routes = {}): Recor
   return stubRoutes({
     ...routes,
     "GET /api/mortgage": () => Response.json(backend.mortgage),
+    "GET /api/mortgage/schedule": () =>
+      Response.json({
+        installments: schedule.installments
+          .slice(-1)
+          .map((i) => ({ ...i, due_date: backend.payoff })),
+      }),
     "GET /api/market-data/status": () => Response.json(backend.status),
     "GET /api/indexes/projection-methods": () => Response.json(backend.methods),
     "GET /api/indexes/:index/history": (_req, { index }) =>
@@ -523,6 +532,45 @@ describe("Títulos", () => {
     expect(
       screen.getByRole("button", { name: "Tesouro Prefixado e outros · 2 títulos" }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps the bonds maturing after the payoff with the other bonds", async () => {
+    stubBackend({ payoff: "2030-12-31" });
+
+    renderAt("/mercado/titulos");
+
+    await screen.findByRole("table", { name: "Comparáveis com seu financiamento" });
+    expect(tableRows("Comparáveis com seu financiamento")).toEqual([
+      "Tesouro Prefixado 202901/01/202912,15%R$ 789,4013,00%R$ 1.234,56",
+    ]);
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual(["Comparáveis com seu financiamento", "Outros títulos"]);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Tesouro Prefixado com Juros Semestrais e outros · 3 títulos",
+      }),
+    );
+    expect(tableRows("Outros títulos")).toEqual([
+      "Tesouro Prefixado com Juros Semestrais 203101/01/2031Fora de oferta13,00%R$ 1.234,56",
+      "Tesouro IPCA+ 203515/05/2035IPCA + 6,84%R$ 2.311,77IPCA + 13,00%R$ 1.234,56",
+      "Tesouro IPCA+ com Juros Semestrais 203315/05/2033IPCA + 6,90%R$ 4.402,16IPCA + 13,00%R$ 1.234,56",
+    ]);
+  });
+
+  it("compares a bond maturing on the payoff", async () => {
+    stubBackend({ payoff: "2031-01-01" });
+
+    renderAt("/mercado/titulos");
+
+    await screen.findByRole("table", { name: "Comparáveis com seu financiamento" });
+    expect(
+      screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual([
+      "Comparáveis com seu financiamento",
+      "Comparáveis fora de oferta",
+      "Outros títulos",
+    ]);
   });
 
   it("names stale prices", async () => {

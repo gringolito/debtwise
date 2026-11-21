@@ -161,7 +161,7 @@ export function breakEvenNote({
 
 /**
  * Why a decision compares no bond at all: every verdict is unavailable for one reason, or no bond on
- * offer follows the mortgage's indexer and matures after today.
+ * offer follows the mortgage's indexer and matures after today and by the mortgage's payoff.
  */
 export type NoComparison =
   | { reason: "amount_too_small"; minimumAmount: string }
@@ -210,7 +210,7 @@ export function noComparisonExplanation(why: NoComparison): { title: string; tex
     case "no_bond":
       return {
         title: "Nenhum título para comparar",
-        text: "Nenhum título à venda acompanha o indexador do seu financiamento e vence depois de hoje.",
+        text: "Nenhum título à venda acompanha o indexador do seu financiamento e vence entre hoje e a quitação prevista.",
       };
   }
 }
