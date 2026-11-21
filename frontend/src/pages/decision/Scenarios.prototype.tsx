@@ -1,5 +1,6 @@
-// PROTOTYPE: where "Ver cenários" opens its tables. Five variants on /comparar and on a lot's
-// early sale, switchable via `?variant=atual|abas|lado|resumo|painel`. Stays on the prototype branch.
+// PROTOTYPE: where "Ver cenários" opens its tables. Six variants on /comparar and on a lot's early
+// sale, switchable via `?variant=atual|abas|lado|resumo|painel|cartao`. Stays on the prototype branch.
+import { ChevronRightIcon } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { useState } from "react";
 import {
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import type { Scenario } from "@/lib/api";
 import { formatMoney } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { standing } from "@/lib/yardstick";
 import { CashFlowTable } from "@/pages/decision/CashFlowTable";
 import { ScenarioDetails } from "@/pages/decision/ScenarioDetails";
@@ -41,6 +43,7 @@ export const SCENARIO_VARIANTS: PrototypeVariant[] = [
   { key: "lado", name: "Tela cheia lado a lado" },
   { key: "resumo", name: "Resumo na página, modal por cenário" },
   { key: "painel", name: "Painel lateral" },
+  { key: "cartao", name: "O cartão do resultado abre o cenário" },
 ];
 
 export interface NamedScenario {
@@ -246,11 +249,61 @@ function SidePanel({ scenarios }: { scenarios: NamedScenario[] }) {
   );
 }
 
-export function ScenariosPrototype({ scenarios }: { scenarios: NamedScenario[] }) {
+interface OutcomeCardProps {
+  className: string;
+  title: string;
+  scenario: Scenario;
+  children: React.ReactNode;
+}
+
+/** The verdict's outcome card itself opens its scenario; the page has no "Ver cenários" button. */
+export function OutcomeCard({ className, title, scenario, children }: OutcomeCardProps) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Ver cenário de ${title}`}
+          className={cn(
+            className,
+            "group/outcome cursor-pointer text-left transition outline-none hover:-translate-y-px hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring",
+          )}
+        >
+          {children}
+          <span className="flex items-center gap-1 text-footnote font-medium text-accent">
+            Ver fluxo de caixa
+            <ChevronRightIcon
+              aria-hidden="true"
+              className="size-4 transition-transform group-hover/outcome:translate-x-0.5"
+            />
+          </span>
+        </button>
+      </DialogTrigger>
+      <DialogContent variant="wide">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <CloseButton />
+        </DialogHeader>
+        <DialogDescription className="sr-only">O fluxo de caixa de {title}.</DialogDescription>
+        <ScenarioDetails title={title} scenario={scenario} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface ScenariosPrototypeProps {
+  scenarios: NamedScenario[];
+  /** Whether the page has outcome cards that open the scenarios in the "cartao" variant. */
+  cards?: boolean;
+}
+
+export function ScenariosPrototype({ scenarios, cards = false }: ScenariosPrototypeProps) {
   const variant = usePrototypeVariant(SCENARIO_VARIANTS);
   return (
     <>
-      {variant === "atual" && <Current scenarios={scenarios} />}
+      {(variant === "atual" || (variant === "cartao" && !cards)) && (
+        <Current scenarios={scenarios} />
+      )}
       {variant === "abas" && <Tabs scenarios={scenarios} />}
       {variant === "lado" && <SideBySide scenarios={scenarios} />}
       {variant === "resumo" && <Summary scenarios={scenarios} />}

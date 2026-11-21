@@ -49,6 +49,7 @@ function Details({ verdict }: { verdict: ComparedVerdict }) {
       </GroupedList>
       {note && <p className="px-4 text-footnote text-muted-foreground">{note}</p>}
       <ScenariosPrototype
+        cards
         scenarios={[
           { title: "Investir", scenario: verdict.invest },
           { title: "Amortizar", scenario: verdict.prepay },

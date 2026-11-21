@@ -11,6 +11,8 @@ import {
 } from "@/lib/decisions";
 import { formatDate, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { OutcomeCard, SCENARIO_VARIANTS } from "@/pages/decision/Scenarios.prototype";
+import { usePrototypeVariant } from "@/components/patterns/PrototypeSwitcher";
 import {
   advantageAmount,
   advantageComparison,
@@ -31,15 +33,14 @@ interface OutcomeProps {
 /** Outcome is one option read at the horizon: what the owner owes or has, and the two parts of it. */
 function Outcome({ title, subtitle, scenario, leading }: OutcomeProps) {
   const id = useId();
+  const variant = usePrototypeVariant(SCENARIO_VARIANTS);
   const { owes, amount } = standing(scenario);
-  return (
-    <section
-      aria-labelledby={id}
-      className={cn(
-        "flex flex-col gap-4 rounded-lg border p-5",
-        leading ? "border-accent-mark bg-accent-tint/50" : "bg-card",
-      )}
-    >
+  const className = cn(
+    "flex flex-col gap-4 rounded-lg border p-5",
+    leading ? "border-accent-mark bg-accent-tint/50" : "bg-card",
+  );
+  const body = (
+    <>
       <div>
         <h3 id={id} className="text-headline">
           {title}
@@ -64,6 +65,22 @@ function Outcome({ title, subtitle, scenario, leading }: OutcomeProps) {
           </dd>
         </div>
       </dl>
+    </>
+  );
+  if (variant === "cartao") {
+    return (
+      <OutcomeCard
+        className={className}
+        title={title === "Se amortizar" ? "Amortizar" : "Investir"}
+        scenario={scenario}
+      >
+        {body}
+      </OutcomeCard>
+    );
+  }
+  return (
+    <section aria-labelledby={id} className={className}>
+      {body}
     </section>
   );
 }
