@@ -148,8 +148,8 @@ func readDecision(ctx context.Context, mortgages Mortgages, body decisionInput, 
 		return comparison.Decision{}, mortgage.Terms{}, mortgageFailure(err)
 	}
 
-	if today.Before(terms.ContractDate) {
-		return comparison.Decision{}, mortgage.Terms{}, huma.Error409Conflict("the mortgage's contract starts after today")
+	if err := terms.StartedBy(today); err != nil {
+		return comparison.Decision{}, mortgage.Terms{}, mortgageFailure(err)
 	}
 
 	var p parser

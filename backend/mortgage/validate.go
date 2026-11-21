@@ -1,11 +1,15 @@
 package mortgage
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/gringolito/debtwise/backend/decimal"
 )
+
+// ErrNotStarted is returned for a day before the contract date, when there is nothing to prepay yet.
+var ErrNotStarted = errors.New("mortgage: the contract has not started")
 
 // Violation is a rule that terms break. Field names the term it concerns in the snake_case the API
 // uses, such as "fees" or "fees[1].effective_from".
@@ -72,6 +76,15 @@ func (t Terms) Validate() []Violation {
 	violations = append(violations, validateRows("fees", t.Fees, t.FirstInstallmentDate)...)
 
 	return violations
+}
+
+// StartedBy returns ErrNotStarted when the contract starts after day.
+func (t Terms) StartedBy(day time.Time) error {
+	if day.Before(t.ContractDate) {
+		return fmt.Errorf("%w by %s", ErrNotStarted, day.Format(time.DateOnly))
+	}
+
+	return nil
 }
 
 // validateRows checks that a row is in effect from the first installment on, and that no two rows
