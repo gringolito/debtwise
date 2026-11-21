@@ -18,11 +18,12 @@ import (
 // 9.22 custody fee: 4,404.89 net, prepaid that day. That shortens the term to the 8 months that
 // 7,595.11 needs at most 1,000.00 a month, and SAC spreads it evenly over them: 949.39 each, which
 // is 7,595.11 over 8 rounded to the centavo, until the last 949.38 is paid on 2025-09-10. The
-// installment's slack is ignored, so the 50.61 each leaves below 1,000.00 is not prepaid, and
-// nothing is held once the mortgage is paid off, the installments the status quo still pays after
-// 2025-09-10 no longer appearing: the sale is worth 0.00 on the horizon. Held to maturity, 1,095
-// days after the purchase, the 1,000.00 gain pays 15% after the 30.00 custody fee: 4,824.50 net, the
-// whole of the difference, holding being better by 4,824.50.
+// installment's slack is not prepaid, so the 50.61 each leaves below 1,000.00, 50.62 the last, is
+// held at zero return, and so is the whole 1,000.00 of the 4 installments the status quo still pays
+// after 2025-09-10, from 2025-10-10 to 2026-01-10: the sale is worth 12,000.00 - 7,595.11 =
+// 4,404.89 on the horizon, as much as the sale paid off the mortgage. Held to
+// maturity, 1,095 days after the purchase, the 1,000.00 gain pays 15% after the 30.00 custody fee:
+// 4,824.50 net, holding being better by 4,824.50 - 4,404.89 = 419.61.
 func TestAnEarlySaleCheckComparesSellingTodayWithHoldingToMaturity(t *testing.T) {
 	t.Parallel()
 
@@ -48,19 +49,23 @@ func TestAnEarlySaleCheckComparesSellingTodayWithHoldingToMaturity(t *testing.T)
 	assert.Equal(t, sale, amountOf(&c.MarketValue))
 	assert.Equal(t, []flow{
 		{"2025-01-10", "", "0.00", "4404.89", "0.00", "", "7595.11"},
-		{"2025-02-10", "949.39", "0.00", "0.00", "0.00", "", "6645.72"},
-		{"2025-03-10", "949.39", "0.00", "0.00", "0.00", "", "5696.33"},
-		{"2025-04-10", "949.39", "0.00", "0.00", "0.00", "", "4746.94"},
-		{"2025-05-10", "949.39", "0.00", "0.00", "0.00", "", "3797.55"},
-		{"2025-06-10", "949.39", "0.00", "0.00", "0.00", "", "2848.16"},
-		{"2025-07-10", "949.39", "0.00", "0.00", "0.00", "", "1898.77"},
-		{"2025-08-10", "949.39", "0.00", "0.00", "0.00", "", "949.38"},
-		{"2025-09-10", "949.38", "0.00", "0.00", "0.00", "", "0.00"},
+		{"2025-02-10", "949.39", "0.00", "0.00", "50.61", "", "6645.72"},
+		{"2025-03-10", "949.39", "0.00", "0.00", "50.61", "", "5696.33"},
+		{"2025-04-10", "949.39", "0.00", "0.00", "50.61", "", "4746.94"},
+		{"2025-05-10", "949.39", "0.00", "0.00", "50.61", "", "3797.55"},
+		{"2025-06-10", "949.39", "0.00", "0.00", "50.61", "", "2848.16"},
+		{"2025-07-10", "949.39", "0.00", "0.00", "50.61", "", "1898.77"},
+		{"2025-08-10", "949.39", "0.00", "0.00", "50.61", "", "949.38"},
+		{"2025-09-10", "949.38", "0.00", "0.00", "50.62", "", "0.00"},
+		{"2025-10-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2025-11-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2025-12-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2026-01-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
 		{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
 	}, flows(c.Sell))
 	assert.Equal(t, sale, amountOf(c.Sell.CashFlows[0].Sold))
 	assert.Nil(t, c.Sell.Bond)
-	assert.Equal(t, "0.00", c.Sell.NetWorth.String())
+	assert.Equal(t, "4404.89", c.Sell.NetWorth.String())
 
 	assert.Equal(t, []flow{
 		{"2025-01-10", "", "0.00", "0.00", "0.00", "", "12000.00"},
@@ -82,7 +87,7 @@ func TestAnEarlySaleCheckComparesSellingTodayWithHoldingToMaturity(t *testing.T)
 	assert.Equal(t, amountView{Gross: "5000.00", IOF: "0.00", IncomeTax: "145.50", CustodyFee: "30.00", Net: "4824.50"}, amountOf(c.Hold.Bond))
 	assert.Equal(t, "4824.50", c.Hold.NetWorth.String())
 
-	assert.Equal(t, "4824.50", c.Advantage.String())
+	assert.Equal(t, "419.61", c.Advantage.String())
 	assert.False(t, c.Sells())
 	assert.Empty(t, c.ProjectedBy)
 	assert.Empty(t, c.Indexes)
@@ -93,9 +98,10 @@ func TestAnEarlySaleCheckComparesSellingTodayWithHoldingToMaturity(t *testing.T)
 // over the months left rounded half up to the centavo: 7,595.11 over 12 is 632.9258, 632.93; the
 // 6,962.18 left over 11, 632.9254, 632.93; 6,329.25 over 10, 632.925, 632.93; and so on, 632.92 where
 // the quotient falls below the half centavo, down to the 632.92 that is left for the last. Each is
-// lower than the status quo's 1,000.00, and that slack is neither prepaid nor held: the balance falls
-// by the installment alone, to nothing on 2026-01-10, and nothing is held. The sale is worth 0.00 and
-// holding, 4,824.50 net, is better by all of it.
+// lower than the status quo's 1,000.00, and that slack is not prepaid but held: 367.07, or 367.08
+// beside the 632.92, which comes to 12,000.00 - 7,595.11 = 4,404.89 on the horizon, with the balance
+// falling by the installment alone, to nothing on 2026-01-10. The sale is worth that and holding,
+// 4,824.50 net, is better by 4,824.50 - 4,404.89 = 419.61.
 func TestAnEarlySaleCheckPrepaysTheSaleWithTheEffectTheOwnerChose(t *testing.T) {
 	t.Parallel()
 
@@ -112,22 +118,22 @@ func TestAnEarlySaleCheckPrepaysTheSaleWithTheEffectTheOwnerChose(t *testing.T) 
 
 	assert.Equal(t, []flow{
 		{"2025-01-10", "", "0.00", "4404.89", "0.00", "", "7595.11"},
-		{"2025-02-10", "632.93", "0.00", "0.00", "0.00", "", "6962.18"},
-		{"2025-03-10", "632.93", "0.00", "0.00", "0.00", "", "6329.25"},
-		{"2025-04-10", "632.93", "0.00", "0.00", "0.00", "", "5696.32"},
-		{"2025-05-10", "632.92", "0.00", "0.00", "0.00", "", "5063.40"},
-		{"2025-06-10", "632.93", "0.00", "0.00", "0.00", "", "4430.47"},
-		{"2025-07-10", "632.92", "0.00", "0.00", "0.00", "", "3797.55"},
-		{"2025-08-10", "632.93", "0.00", "0.00", "0.00", "", "3164.62"},
-		{"2025-09-10", "632.92", "0.00", "0.00", "0.00", "", "2531.70"},
-		{"2025-10-10", "632.93", "0.00", "0.00", "0.00", "", "1898.77"},
-		{"2025-11-10", "632.92", "0.00", "0.00", "0.00", "", "1265.85"},
-		{"2025-12-10", "632.93", "0.00", "0.00", "0.00", "", "632.92"},
-		{"2026-01-10", "632.92", "0.00", "0.00", "0.00", "", "0.00"},
+		{"2025-02-10", "632.93", "0.00", "0.00", "367.07", "", "6962.18"},
+		{"2025-03-10", "632.93", "0.00", "0.00", "367.07", "", "6329.25"},
+		{"2025-04-10", "632.93", "0.00", "0.00", "367.07", "", "5696.32"},
+		{"2025-05-10", "632.92", "0.00", "0.00", "367.08", "", "5063.40"},
+		{"2025-06-10", "632.93", "0.00", "0.00", "367.07", "", "4430.47"},
+		{"2025-07-10", "632.92", "0.00", "0.00", "367.08", "", "3797.55"},
+		{"2025-08-10", "632.93", "0.00", "0.00", "367.07", "", "3164.62"},
+		{"2025-09-10", "632.92", "0.00", "0.00", "367.08", "", "2531.70"},
+		{"2025-10-10", "632.93", "0.00", "0.00", "367.07", "", "1898.77"},
+		{"2025-11-10", "632.92", "0.00", "0.00", "367.08", "", "1265.85"},
+		{"2025-12-10", "632.93", "0.00", "0.00", "367.07", "", "632.92"},
+		{"2026-01-10", "632.92", "0.00", "0.00", "367.08", "", "0.00"},
 		{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
 	}, flows(checks[0].Sell))
-	assert.Equal(t, "0.00", checks[0].Sell.NetWorth.String())
-	assert.Equal(t, "4824.50", checks[0].Advantage.String())
+	assert.Equal(t, "4404.89", checks[0].Sell.NetWorth.String())
+	assert.Equal(t, "419.61", checks[0].Advantage.String())
 }
 
 // A sale prepays the mortgage today, 2025-02-15, so its next installment, on 2025-03-10, is updated
@@ -174,8 +180,10 @@ func TestAnEarlySaleCheckNamesTheProjectionsTheSaleRead(t *testing.T) {
 // after it and the custody fee. Bought a day earlier, 30 days before, it pays none. Held to maturity
 // either lot pays 15% of income tax. Either sale, 4,037.09 or 4,038.23, leaves 7,962.91 or 7,961.77
 // of the 12,000.00 owed, which shortens the term to the 8 months it needs at most 1,000.00 a month;
-// with the slack ignored nothing is held after it is paid off, so selling is worth 0.00 and holding
-// is better by its whole Maturity Value, net.
+// what each installment leaves below 1,000.00 is held, and the whole of the status quo's installments
+// after it is paid off, so interest-free, selling is worth 12,000.00 less what is still owed,
+// the sale's net, and holding is better by its Maturity Value, net, beyond that: 4,832.53 -
+// 4,037.09 = 795.44 or 4,832.51 - 4,038.23 = 794.28.
 func TestAnEarlySaleWithinThirtyDaysOfThePurchasePaysIOF(t *testing.T) {
 	t.Parallel()
 
@@ -189,14 +197,14 @@ func TestAnEarlySaleWithinThirtyDaysOfThePurchasePaysIOF(t *testing.T) {
 			purchased: "2024-12-12",
 			sale:      amountView{Gross: "4050.00", IOF: "1.50", IncomeTax: "10.77", CustodyFee: "0.64", Net: "4037.09"},
 			maturity:  amountView{Gross: "5000.00", IOF: "0.00", IncomeTax: "146.92", CustodyFee: "20.55", Net: "4832.53"},
-			advantage: "4832.53",
+			advantage: "795.44",
 		},
 		{
 			name:      "held 30 days",
 			purchased: "2024-12-11",
 			sale:      amountView{Gross: "4050.00", IOF: "0.00", IncomeTax: "11.10", CustodyFee: "0.67", Net: "4038.23"},
 			maturity:  amountView{Gross: "5000.00", IOF: "0.00", IncomeTax: "146.91", CustodyFee: "20.58", Net: "4832.51"},
-			advantage: "4832.51",
+			advantage: "794.28",
 		},
 	}
 
@@ -219,7 +227,7 @@ func TestAnEarlySaleWithinThirtyDaysOfThePurchasePaysIOF(t *testing.T) {
 
 			assert.Equal(t, tt.sale, amountOf(&checks[0].MarketValue))
 			assert.Equal(t, tt.maturity, amountOf(checks[0].Hold.Bond))
-			assert.Equal(t, "0.00", checks[0].Sell.NetWorth.String())
+			assert.Equal(t, tt.sale.Net, checks[0].Sell.NetWorth.String())
 			assert.Equal(t, tt.advantage, checks[0].Advantage.String())
 		})
 	}
@@ -228,17 +236,19 @@ func TestAnEarlySaleWithinThirtyDaysOfThePurchasePaysIOF(t *testing.T) {
 // The owner holds the 5.14 NTN-F maturing on 2027-01-01 bought on 2025-01-10 at 12% a year for
 // 970.884128 each, whose coupons are worked out in the NTN-F decision test above. The coupon of
 // 2025-07-01 is paid by a check on that day or after it, so only those of 2026-01-01 and 2026-07-01
-// are part of holding, each prepaid on its date even with the installment's slack ignored: the first
-// takes 196.42 off the 1,000.00 still owed, leaving the 803.58 of the last installment, and the
-// 196.42 it frees of it is not prepaid nor held; the second finds nothing owed and is held, 202.60.
-// Holding is worth the 5,326.17 Maturity Value and that coupon, 5,528.77. Sold at 1,000.00 each, the
+// are part of holding, each prepaid on its date even with the installment's slack not prepaid: the
+// first takes 196.42 off the 1,000.00 still owed, leaving the 803.58 of the last installment, and
+// the 196.42 it frees of it is held; the second finds nothing owed and is held too, 202.60. Holding
+// is worth the 5,326.17 Maturity Value and those two, 5,725.19. Sold at 1,000.00 each, the
 // gain over the 4,990.34 the lot cost, which the first coupon's yield left whole, pays income tax
 // after the custody fee accrued since that coupon. On 2025-07-10, 181 days after the purchase, that
 // is 20% after 9 days' fee: 5,109.87 net, which leaves 890.13 of the 6,000.00 owed, paid off by the
-// installment of the next month, with nothing held after it. On 2025-07-01, 172 days after it,
-// 22.5% and no fee: 5,106.33 net, which leaves 1,893.67 of the 7,000.00 owed, spread over the 2
-// months it needs, 946.84 and 946.83. Either sale is worth 0.00 on the horizon, so holding is better
-// by its whole 5,528.77.
+// installment of the next month, which holds the 109.87 it leaves of the 1,000.00 and then the whole
+// 1,000.00 of the 5 after it: 5,109.87, as much as the sale paid off the mortgage. On 2025-07-01, 172
+// days after it, 22.5% and no fee: 5,106.33 net, which leaves 1,893.67 of the 7,000.00 owed, spread
+// over the 2 months it needs, 946.84 and 946.83, holding 53.16 and 53.17 of the 1,000.00, and then
+// the 5 installments after it: 5,106.33 again. Holding is better by its 5,725.19 beyond that:
+// 615.32 or 618.86.
 func TestAnEarlySaleCheckHoldsTheCouponsTheLotStillPays(t *testing.T) {
 	t.Parallel()
 
@@ -252,7 +262,7 @@ func TestAnEarlySaleCheckHoldsTheCouponsTheLotStillPays(t *testing.T) {
 		sell                                   []flow
 	}{
 		{
-			today: "2025-07-10", holdWorth: "5528.77", sellWorth: "0.00", advantage: "5528.77",
+			today: "2025-07-10", holdWorth: "5725.19", sellWorth: "5109.87", advantage: "615.32",
 			sale: amountView{"5140.00", "0.00", "29.88", "0.25", "5109.87"},
 			hold: []couponFlow{
 				{flow{"2025-07-10", "", "0.00", "0.00", "0.00", "", "6000.00"}, none},
@@ -262,18 +272,23 @@ func TestAnEarlySaleCheckHoldsTheCouponsTheLotStillPays(t *testing.T) {
 				{flow{"2025-11-10", "1000.00", "0.00", "0.00", "0.00", "", "2000.00"}, none},
 				{flow{"2025-12-10", "1000.00", "0.00", "0.00", "0.00", "", "1000.00"}, none},
 				{flow{"2026-01-01", "", "0.00", "196.42", "0.00", "", "803.58"}, firstCoupon},
-				{flow{"2026-01-10", "803.58", "0.00", "0.00", "0.00", "", "0.00"}, none},
+				{flow{"2026-01-10", "803.58", "0.00", "0.00", "196.42", "", "0.00"}, none},
 				{flow{"2026-07-01", "", "0.00", "0.00", "202.60", "", "0.00"}, secondCoupon},
 				{flow{"2027-01-01", "", "0.00", "0.00", "0.00", "5326.17", "0.00"}, none},
 			},
 			sell: []flow{
 				{"2025-07-10", "", "0.00", "5109.87", "0.00", "", "890.13"},
-				{"2025-08-10", "890.13", "0.00", "0.00", "0.00", "", "0.00"},
+				{"2025-08-10", "890.13", "0.00", "0.00", "109.87", "", "0.00"},
+				{"2025-09-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2025-10-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2025-11-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2025-12-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2026-01-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
 				{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
 			},
 		},
 		{
-			today: "2025-07-01", holdWorth: "5528.77", sellWorth: "0.00", advantage: "5528.77",
+			today: "2025-07-01", holdWorth: "5725.19", sellWorth: "5106.33", advantage: "618.86",
 			sale: amountView{"5140.00", "0.00", "33.67", "0.00", "5106.33"},
 			hold: []couponFlow{
 				{flow{"2025-07-01", "", "0.00", "0.00", "0.00", "", "7000.00"}, none},
@@ -284,14 +299,19 @@ func TestAnEarlySaleCheckHoldsTheCouponsTheLotStillPays(t *testing.T) {
 				{flow{"2025-11-10", "1000.00", "0.00", "0.00", "0.00", "", "2000.00"}, none},
 				{flow{"2025-12-10", "1000.00", "0.00", "0.00", "0.00", "", "1000.00"}, none},
 				{flow{"2026-01-01", "", "0.00", "196.42", "0.00", "", "803.58"}, firstCoupon},
-				{flow{"2026-01-10", "803.58", "0.00", "0.00", "0.00", "", "0.00"}, none},
+				{flow{"2026-01-10", "803.58", "0.00", "0.00", "196.42", "", "0.00"}, none},
 				{flow{"2026-07-01", "", "0.00", "0.00", "202.60", "", "0.00"}, secondCoupon},
 				{flow{"2027-01-01", "", "0.00", "0.00", "0.00", "5326.17", "0.00"}, none},
 			},
 			sell: []flow{
 				{"2025-07-01", "", "0.00", "5106.33", "0.00", "", "1893.67"},
-				{"2025-07-10", "946.84", "0.00", "0.00", "0.00", "", "946.83"},
-				{"2025-08-10", "946.83", "0.00", "0.00", "0.00", "", "0.00"},
+				{"2025-07-10", "946.84", "0.00", "0.00", "53.16", "", "946.83"},
+				{"2025-08-10", "946.83", "0.00", "0.00", "53.17", "", "0.00"},
+				{"2025-09-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2025-10-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2025-11-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2025-12-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+				{"2026-01-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
 				{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
 			},
 		},
@@ -329,9 +349,9 @@ func TestAnEarlySaleCheckHoldsTheCouponsTheLotStillPays(t *testing.T) {
 // VNA grown by projected IPCA. Sold at 4,300.00 each, 30 days after the purchase, the 48.63 gain
 // pays 22.5% of income tax after the custody fee: 10,006.78 net, which pays off the 2,000.00 still
 // owed interest-free and holds the rest, 8,006.78. The 1,000.00 installments of 2025-12-10 and
-// 2026-01-10 that the status quo still pays are not held, so nothing but that 8,006.78 is worth
-// anything to the sale, while holding is worth the Maturity Value, 10,578.22, with nothing owed:
-// better by 10,578.22 - 8,006.78 = 2,571.44. Only the Maturity Value reads a projection, so the
+// 2026-01-10 that the status quo still pays are held whole, 2,000.00 more, so the sale is worth
+// 10,006.78, while holding is worth the Maturity Value, 10,578.22, with nothing owed: better by
+// 10,578.22 - 10,006.78 = 571.44. Only the Maturity Value reads a projection, so the
 // check names the IPCA's.
 func TestAnNTNBPrincipalEarlySaleCheckHoldsToAMaturityValueGrownByProjectedIPCA(t *testing.T) {
 	t.Parallel()
@@ -359,6 +379,8 @@ func TestAnNTNBPrincipalEarlySaleCheckHoldsToAMaturityValueGrownByProjectedIPCA(
 	assert.Equal(t, amountView{"10019.00", "0.00", "10.57", "1.65", "10006.78"}, amountOf(&c.MarketValue))
 	assert.Equal(t, []flow{
 		{"2025-12-03", "", "0.00", "2000.00", "8006.78", "", "0.00"},
+		{"2025-12-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2026-01-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
 		{"2026-08-15", "", "0.00", "0.00", "0.00", "", "0.00"},
 	}, flows(c.Sell))
 	assert.Equal(t, []flow{
@@ -368,8 +390,8 @@ func TestAnNTNBPrincipalEarlySaleCheckHoldsToAMaturityValueGrownByProjectedIPCA(
 		{"2026-08-15", "", "0.00", "0.00", "0.00", "10578.22", "0.00"},
 	}, flows(c.Hold))
 	assert.Equal(t, amountView{"10746.96", "0.00", "151.96", "16.78", "10578.22"}, amountOf(c.Hold.Bond))
-	assert.Equal(t, "8006.78", c.Sell.NetWorth.String())
-	assert.Equal(t, "2571.44", c.Advantage.String())
+	assert.Equal(t, "10006.78", c.Sell.NetWorth.String())
+	assert.Equal(t, "571.44", c.Advantage.String())
 
 	trailing := []indexes.ProjectionMethod{{Index: indexes.IPCA, Method: indexes.Trailing12}}
 	assert.Equal(t, trailing, c.Hold.Bond.ProjectedBy)
@@ -378,13 +400,16 @@ func TestAnNTNBPrincipalEarlySaleCheckHoldsToAMaturityValueGrownByProjectedIPCA(
 }
 
 // Against a mortgage at 10.06% a year plus TR, two lots of 69 LTN are checked on 2025-07-01. With the
-// installment's slack ignored, prepaying only keeps what the balance would have been corrected by
-// the TR, about 1.8% a year, and not the interest it saves, so selling wins only a bond that yields
-// less than that. The one maturing on 2030-01-01 sells at 950.00 each, about 1.1% a year until
-// maturity: selling nets 59,172.97, 65,550.00 less 196.11 of custody fee and 17.5% of income tax on
-// the gain after it, and prepaying it leaves the mortgage 63,958.28 lower on the horizon, more than
-// the 62,451.02 or so that holding to maturity nets. The one maturing on 2031-01-01 sells at 340.00,
-// about 20% a year, so holding does. Checks are ranked by advantage, lowest first, and those
+// installment's slack not prepaid, prepaying keeps what the balance it takes off would have been
+// corrected by the TR, about 1.8% a year, and the interest it saves, as installments that the
+// shortened term charges less and that are held without return, so selling wins only a bond that
+// yields less than that. The one maturing on 2030-01-01 sells at 950.00 each, about 1.1% a year
+// until maturity: selling nets 59,172.97, 65,550.00 less 196.11 of custody fee and 17.5% of income
+// tax on the gain after it, and prepaying it leaves the mortgage 63,958.28 lower on the horizon and
+// holds 26,825.27 of the lower installments, 90,783.55 together, more than the 62,451.02 or so that
+// holding to maturity nets. The one maturing on 2031-01-01 sells at 340.00, about 20% a year, and
+// nets 23,389.81: 25,671.10 lower and 13,109.59 held, 38,780.69, against the 62,333.72 or so holding
+// nets, so holding wins. Checks are ranked by advantage, lowest first, and those
 // without one follow in the order given: a lot whose bond Tesouro Direto doesn't quote, and one
 // whose bond has matured.
 func TestEarlySaleChecksAreRankedByAdvantage(t *testing.T) {

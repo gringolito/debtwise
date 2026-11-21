@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0019
+---
+
 # The installment's slack is ignored
 
 A prepay-or-invest comparison leaves the installment's slack to the owner's other spending: no

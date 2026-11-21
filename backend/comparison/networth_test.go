@@ -148,10 +148,12 @@ func TestTheLastFlowsNetWorthIsTheScenariosNetWorth(t *testing.T) {
 
 // Selling the lot on 2025-01-10 prepays its 4,404.89 net Market Value, which leaves 7,595.11 owed
 // and no bond. Shortening the term spreads it over the fewest months whose installment fits in the
-// 1,000.00 one, 8 of 949.39 or 949.38, and the net worth climbs by each until the mortgage ends on
-// 2025-09-10; with the slack ignored nothing is held after. Holding the lot keeps the 12,000.00 owed
-// and the bond, worth its Accrual that day until the horizon; the last flows' net worths are the
-// scenarios'.
+// 1,000.00 one, 8 of 949.39 or 949.38, and with the slack not prepaid, what each leaves of the
+// 1,000.00 is held, so the net worth climbs by 1,000.00 each month, the balance falling by the
+// installment and the cash held growing by the rest: from -7,595.11 to 404.89 on 2025-09-10 when
+// the mortgage ends, and by the whole 1,000.00 held after that, 4,404.89 on 2026-01-10 and on the
+// horizon. Holding the lot keeps the 12,000.00 owed and the bond, worth its Accrual that day until
+// the horizon; the last flows' net worths are the scenarios'.
 func TestAnEarlySaleCheckHasANetWorthOnEachDateOfBothScenarios(t *testing.T) {
 	t.Parallel()
 
@@ -174,8 +176,8 @@ func TestAnEarlySaleCheckHasANetWorthOnEachDateOfBothScenarios(t *testing.T) {
 
 	sell := netWorths(c.Sell)
 	assert.Equal(t, []string{
-		"-7595.11", "-6645.72", "-5696.33", "-4746.94", "-3797.55", "-2848.16", "-1898.77", "-949.38",
-		"0.00", "0.00",
+		"-7595.11", "-6595.11", "-5595.11", "-4595.11", "-3595.11", "-2595.11", "-1595.11", "-595.11",
+		"404.89", "1404.89", "2404.89", "3404.89", "4404.89", "4404.89",
 	}, sell)
 	assert.Equal(t, c.Sell.NetWorth.String(), sell[len(sell)-1])
 

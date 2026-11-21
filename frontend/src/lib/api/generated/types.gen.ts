@@ -70,7 +70,7 @@ export type CashFlow = {
      */
     date: string;
     /**
-     * The cash set aside that day because nothing is owed to prepay with it, in reais, as a decimal string. With prepay_slack, negative when the scenario's installment is above the status quo's.
+     * The cash set aside that day, in reais, as a decimal string: what the scenario's installment leaves of the status quo's, its slack, unless prepay_slack prepays it, and what nothing is owed to prepay with. Negative when the scenario's installment is above the status quo's.
      */
     held: string;
     /**

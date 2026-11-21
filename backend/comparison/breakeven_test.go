@@ -58,8 +58,8 @@ func (c breakEvenCase) decide(t *testing.T, rate decimal.Decimal) comparison.Ver
 	return verdicts[0]
 }
 
-// ipcaBreakEvenCase prepays the slack: ignored, the slack this mortgage's SAC installments leave
-// after the 10,000.00 is prepaid makes investing win even at 0%, so no rate breaks even.
+// ipcaBreakEvenCase buys bondType at 7.5% with 10,000.00 against the IPCA mortgage, with the slack
+// its SAC installments leave after the prepayment held, not prepaid.
 func ipcaBreakEvenCase(t *testing.T, name string, bondType bonds.Type) breakEvenCase {
 	t.Helper()
 
@@ -72,11 +72,10 @@ func ipcaBreakEvenCase(t *testing.T, name string, bondType bonds.Type) breakEven
 			Numbers: bonds.IPCANumbers{date(t, "2000-06-01"): dec(t, "1614.62"), date(t, "2025-09-01"): dec(t, "7300.00")},
 			Outlook: outlook,
 		},
-		bond:        bonds.Bond{Type: bondType, Maturity: date(t, "2026-08-15")},
-		rate:        "0.075",
-		amount:      "10000.00",
-		decision:    "2025-11-03",
-		prepaySlack: true,
+		bond:     bonds.Bond{Type: bondType, Maturity: date(t, "2026-08-15")},
+		rate:     "0.075",
+		amount:   "10000.00",
+		decision: "2025-11-03",
 	}
 }
 
@@ -93,7 +92,7 @@ func TestABreakEvenRateFedBackGivesAnAdvantageOfZero(t *testing.T) {
 
 	tests := []breakEvenCase{
 		{
-			name: "LTN against a TR mortgage, slack ignored", m: trMortgage(t),
+			name: "LTN against a TR mortgage, slack not prepaid", m: trMortgage(t),
 			bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2031-01-01")},
 			rate: "0.1504", amount: "30000.00", decision: "2025-01-08",
 		},
@@ -103,9 +102,9 @@ func TestABreakEvenRateFedBackGivesAnAdvantageOfZero(t *testing.T) {
 			rate: "0.1504", amount: "30000.00", decision: "2025-01-08", prepaySlack: true,
 		},
 		{
-			name: "NTN-F against a TR mortgage, slack ignored", m: trMortgage(t),
+			name: "NTN-F against a TR mortgage, slack not prepaid", m: trMortgage(t),
 			bond: bonds.Bond{Type: bonds.NTNF, Maturity: date(t, "2031-01-01")},
-			rate: "0.1388", amount: "10000.00", decision: "2025-01-08",
+			rate: "0.1388", amount: "16000.00", decision: "2025-01-08",
 		},
 		{
 			name: "NTN-F against a TR mortgage, slack prepaid", m: trMortgage(t),

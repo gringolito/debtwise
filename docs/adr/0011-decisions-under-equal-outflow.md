@@ -1,5 +1,5 @@
 ---
-status: top-up rule superseded by ADR-0018
+status: top-up rule superseded by ADR-0019
 ---
 
 # Decisions under equal outflow
@@ -22,8 +22,9 @@ quo's installment of that month is: its own installment, and the difference prep
 date. What nothing is owed for any more, a prepayment larger than the balance, a coupon or a month
 after the mortgage is paid off, is held as cash at zero return until the horizon.
 A month in which a scenario's installment is above the status quo's holds the difference as negative
-cash, so both scenarios still pay the same out of pocket. ADR-0018 keeps this rule only for a
-decision that asks to prepay the installment's slack; every other comparison ignores the slack.
+cash, so both scenarios still pay the same out of pocket. ADR-0019 keeps this rule only for a
+decision that asks to prepay the installment's slack; every other comparison holds the slack as
+cash at zero return.
 
 The bond is bought at the buy rate of its quote, at the unit price Tesouro's methodology gives that
 rate for settlement on the decision's date: the VNA projected to that date for an NTN-B Principal.

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -274,27 +275,48 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 }
 
 // Without prepay_slack, the 5,000.00 prepaid on the interest-free mortgage above, here with a 0.1%
-// MIP on the balance, leaves 10,000.00, and each scenario pays only its own installments.
-// Shortening the term pays it off at 1,000.00 a month by 2027-08-10, charging 10.00 down to 1.00 of
-// MIP, 55.00. Lowering the installment spreads it over the 15 months left, each amortizing what is
-// owed over the months left, to the centavo: its MIP of 10.00, 9.33, 8.67, 8.00, 7.33, 6.67, 6.00,
-// 5.33, 4.67, 4.00, 3.33, 2.67, 2.00, 1.33 and 0.67 adds up to 80.00. The status quo's 15
-// installments charge 15.00 down to 1.00, 120.00, so prepaying avoids 65.00 or 40.00. Nothing is
-// held, so prepaying ends with nothing, while investing still ends with the bond, 6,229.89 ahead.
-// Only the lowered installment says what it gives: 40.00 of insurance avoided, and installments
-// that charge 15,120.00 − 10,080.00 = 5,040.00 less.
-func TestADecisionIgnoresTheSlackUnlessAskedToPrepayIt(t *testing.T) {
+// MIP on the balance, leaves 10,000.00, and each scenario still pays the status quo's installment
+// every month: what the prepay scenario's own installment leaves below it is held, at no return.
+// The status quo's 15 installments charge 15.00 down to 1.00 of MIP, 120.00, 15,120.00 in all.
+// Shortening the term pays the mortgage off at 1,000.00 a month by 2027-08-10, charging 10.00 down to
+// 1.00 of MIP, 55.00: 10,055.00 paid, so 5.00 is held in each of the 10 installments, and the
+// status quo's whole 1,005.00, 1,004.00, 1,003.00, 1,002.00 and 1,001.00 in the 5 after it, 5,065.00
+// held, which is 15,120.00 − 10,055.00. Lowering the installment spreads it over the 15 months
+// left, each amortizing what is owed over the months left, to the centavo: its MIP of 10.00, 9.33,
+// 8.67, 8.00, 7.33, 6.67, 6.00, 5.33, 4.67, 4.00, 3.33, 2.67, 2.00, 1.33 and 0.67 adds up to 80.00,
+// 10,080.00 paid, so 15,120.00 − 10,080.00 = 5,040.00 is held. With nothing owed on the horizon,
+// prepaying ends with what it held, 5,065.00 or 5,040.00, and avoids that less the 5,000.00 prepaid,
+// 65.00 or 40.00. Investing ends with the bond and the 5.15 left of the purchase, 6,229.89, ahead by
+// 1,164.89 when shortened (6,229.89 − 5,065.00), or 1,189.89 lowered (6,229.89 − 5,040.00). Only the
+// lowered installment says what it gives: 40.00 of insurance avoided, and installments that charge
+// the 5,040.00 less. Lowered, each month holds the status quo's installment less its own, 338.33,
+// 338.00, 337.66, 337.33, 337.00, 336.66, 336.34, 336.00, 335.67, 335.33, 335.01, 334.66, 334.34,
+// 334.00 and 333.67, to the centavo, and nothing on the horizon.
+func TestADecisionKeepsTheSlackAsCashUnlessAskedToPrepayIt(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		effect  string
-		paidTo  string
-		avoided string
-		lowered *decisionLoweredInstallment
+		effect    string
+		paidTo    string
+		cash      string
+		held      []string
+		avoided   string
+		advantage string
+		lowered   *decisionLoweredInstallment
 	}{
-		{effect: "shorten_term", paidTo: "2027-08-10", avoided: "65.00"},
 		{
-			effect: "lower_installment", paidTo: "2028-01-10", avoided: "40.00",
+			effect: "shorten_term", paidTo: "2027-08-10", cash: "5065.00", avoided: "65.00", advantage: "1164.89",
+			held: []string{
+				"5.00", "5.00", "5.00", "5.00", "5.00", "5.00", "5.00", "5.00", "5.00", "5.00",
+				"1005.00", "1004.00", "1003.00", "1002.00", "1001.00", "0.00",
+			},
+		},
+		{
+			effect: "lower_installment", paidTo: "2028-01-10", cash: "5040.00", avoided: "40.00", advantage: "1189.89",
+			held: []string{
+				"338.33", "338.00", "337.66", "337.33", "337.00", "336.66", "336.34", "336.00",
+				"335.67", "335.33", "335.01", "334.66", "334.34", "334.00", "333.67", "0.00",
+			},
 			lowered: &decisionLoweredInstallment{ChargesAvoided: "40.00", PaidLess: "5040.00"},
 		},
 	}
@@ -331,25 +353,39 @@ func TestADecisionIgnoresTheSlackUnlessAskedToPrepayIt(t *testing.T) {
 			require.Len(t, got.Verdicts, 2)
 
 			v := got.Verdicts[0]
-			assert.Equal(t, "6229.89", v.Advantage)
+			assert.Equal(t, tt.advantage, v.Advantage)
 
 			require.NotNil(t, v.Prepay)
-			assert.Equal(t, []string{"0.00", "0.00", "0.00"}, []string{v.Prepay.NetWorth, v.Prepay.Cash, v.Prepay.OutstandingBalance})
+			assert.Equal(t, []string{tt.cash, tt.cash, "0.00"}, []string{v.Prepay.NetWorth, v.Prepay.Cash, v.Prepay.OutstandingBalance})
 
 			flows := v.Prepay.CashFlows
 			require.GreaterOrEqual(t, len(flows), 2)
-			assert.Equal(t, tt.paidTo, flows[len(flows)-2].Date)
+			assert.Equal(t, "2028-01-10", flows[len(flows)-2].Date, "the status quo's last installment")
 			assert.Equal(t, "2029-01-01", flows[len(flows)-1].Date)
 
+			held := make([]string, 0, len(flows))
+			paidTo := ""
+
 			for _, f := range flows[1:] {
-				assert.Equal(t, []string{"0.00", "0.00"}, []string{f.Prepaid, f.Held}, f.Date)
+				assert.Equal(t, "0.00", f.Prepaid, f.Date)
+				held = append(held, f.Held)
+
+				if f.Installment != nil {
+					paidTo = f.Date
+				}
 			}
+
+			assert.Equal(t, tt.paidTo, paidTo, "the prepay scenario's last installment")
+			assert.Equal(t, tt.held, held, "held on each due date, none on the horizon")
 		})
 	}
 }
 
 // Quoted back as the LTN's buy rate, the Break-even Rate the API answers leaves investing and
-// prepaying within a centavo of each other on the horizon, whether the slack is prepaid or not.
+// prepaying within a centavo of each other on the horizon, whether the slack is prepaid or held. The
+// slack-held case lowers the installment of a 360-month mortgage at 5% a year (expensiveLongMortgage
+// at a rate the bond beats, so investing wins at the LTN's buy rate, as a Break-even Rate below it
+// needs): the held slack earns nothing while the bond compounds.
 func TestABreakEvenRateQuotedBackGivesAnAdvantageOfZero(t *testing.T) {
 	t.Parallel()
 
@@ -362,8 +398,8 @@ func TestABreakEvenRateQuotedBackGivesAnAdvantageOfZero(t *testing.T) {
 			decision: `{"amount": "5000.00", "effect": "shorten_term", "prepay_slack": true}`,
 		},
 		{
-			name:     "slack ignored",
-			mortgage: expensiveLongMortgage(),
+			name:     "slack held",
+			mortgage: strings.Replace(expensiveLongMortgage(), `"rate": "0.40"`, `"rate": "0.05"`, 1),
 			decision: `{"amount": "5000.00", "effect": "lower_installment"}`,
 		},
 	}

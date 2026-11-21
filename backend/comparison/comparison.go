@@ -1,7 +1,7 @@
 // Package comparison weighs prepaying the mortgage against buying a bond. It builds both scenarios,
-// prepaying the installment's slack only when a decision asks to, and values them on the horizon
-// (ADR-0011, ADR-0018). It is pure: the mortgage, the market, the index outlook and today all arrive
-// as arguments.
+// holding the installment's slack as cash, or prepaying it when a decision asks to, and values them
+// on the horizon (ADR-0011, ADR-0019). It is pure: the mortgage, the market, the index outlook and
+// today all arrive as arguments.
 package comparison
 
 import (
@@ -32,11 +32,10 @@ type Market struct {
 	IPCA   bonds.IPCA
 }
 
-// Decision asks what to do with Amount on Date: prepay it with Effect, or buy a bond with it. With
-// PrepaySlack, each scenario pays the status quo's installment every month after Date, prepaying
-// what its own installment leaves of it, its slack, on its due date: equal outflow (ADR-0011).
-// Without it, the slack goes to the owner's other spending and no scenario holds or prepays it
-// (ADR-0018).
+// Decision asks what to do with Amount on Date: prepay it with Effect, or buy a bond with it. Each
+// scenario pays the status quo's installment every month after Date: equal outflow (ADR-0011). What
+// its own installment leaves of it, its slack, is held as cash on its due date, or with
+// PrepaySlack, prepaid (ADR-0019).
 type Decision struct {
 	Amount      decimal.Decimal
 	Date        time.Time
@@ -71,7 +70,7 @@ type Verdict struct {
 	// AvoidedCost is what prepaying the amount saves by the horizon, beyond the amount itself.
 	AvoidedCost decimal.Decimal
 	// LoweredInstallment is what lowering the installment gives by the horizon. It is set only for
-	// a decision that lowers the installment with the slack ignored.
+	// a decision that lowers the installment without prepaying the slack.
 	LoweredInstallment *LoweredInstallment
 	// AdvantageShare is the Advantage without its sign as a fraction of the decision's amount,
 	// rounded half up to 4 places.
@@ -242,13 +241,9 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 	v.HorizonMonths = wholeMonths(c.decision.Date, c.bond.Maturity)
 	v.AvoidedCost = statusQuo.Balance.Sub(v.Prepay.OutstandingBalance).Add(v.Prepay.Cash).Sub(c.decision.Amount)
 
-	if !c.decision.PrepaySlack {
+	if !c.decision.PrepaySlack && c.decision.Effect == mortgage.LowerInstallment {
 		lowered := c.loweredInstallment(statusQuo, v.Prepay)
-		v.AvoidedCost = v.AvoidedCost.Add(lowered.PaidLess)
-
-		if c.decision.Effect == mortgage.LowerInstallment {
-			v.LoweredInstallment = &lowered
-		}
+		v.LoweredInstallment = &lowered
 	}
 
 	methods := [][]indexes.ProjectionMethod{
@@ -273,8 +268,7 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 }
 
 // loweredInstallment compares the installments of prepay due after the decision's date with the
-// status quo's. With the slack ignored, what they charge less is spent, so it is part of what
-// prepaying avoids though no balance shows it.
+// status quo's.
 func (c comparer) loweredInstallment(statusQuo mortgage.Planned, prepay Scenario) LoweredInstallment {
 	charges := func(i mortgage.Installment) decimal.Decimal {
 		return i.Interest.Add(i.MIP).Add(i.DFI).Add(i.Fee)
@@ -408,17 +402,23 @@ func (c comparer) plan(prepaid decimal.Decimal, prepayments []mortgage.Prepaymen
 
 // scenario follows the decision's amount prepaid, invested in the bond, or held as cash on the
 // decision's date, where sold is the Market Value of a lot sold for it. Each net coupon the bond
-// pays is prepaid on its date. With the slack prepaid, each month it pays what the status quo
-// would, prepaying what its own installment leaves of it, and holding what nothing is owed for.
-// The bond is redeemed on the horizon.
+// pays is prepaid on its date. Each month it pays what the status quo would, holding what its own
+// installment leaves of it, or with the slack prepaid, prepaying that, and holding what nothing is
+// owed for. The bond is redeemed on the horizon.
 func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash decimal.Decimal, sold *bonds.Amount, coupons []bonds.CouponPayment, redeemed *bonds.Amount) Scenario {
 	prepayments := make([]mortgage.Prepayment, 0, len(coupons))
 	for _, coupon := range coupons {
 		prepayments = append(prepayments, mortgage.Prepayment{Date: coupon.Date, Amount: coupon.Net})
 	}
 
-	freed := make(map[int]decimal.Decimal)
-	planned := c.plan(prepaid, prepayments, c.topUp(statusQuo, freed))
+	outflow := c.outflow(statusQuo)
+
+	var topUp func(mortgage.Installment) decimal.Decimal
+	if c.decision.PrepaySlack {
+		topUp = func(i mortgage.Installment) decimal.Decimal { return outflow[i.Number].Sub(i.Amount) }
+	}
+
+	planned := c.plan(prepaid, prepayments, topUp)
 
 	s := Scenario{Bond: redeemed, projectedBy: readBy(planned)}
 	byDate := make(map[time.Time]int)
@@ -461,21 +461,17 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 		f := on(i.DueDate)
 		f.Installment, f.Prepaid, f.OutstandingBalance = &i.Installment, f.Prepaid.Add(i.TopUp), i.BalanceOnDueDay
 
-		if slack, ok := freed[i.Number]; ok {
-			hold(f, slack.Sub(i.TopUp))
-		}
+		hold(f, outflow[i.Number].Sub(i.Amount).Sub(i.TopUp))
 	}
 
-	if c.decision.PrepaySlack {
-		for _, i := range statusQuo.Installments {
-			if !i.DueDate.After(c.decision.Date) || charged[i.Number] {
-				continue
-			}
-
-			f := on(i.DueDate)
-			f.OutstandingBalance = planned.Balance
-			hold(f, i.Amount)
+	for _, i := range statusQuo.Installments {
+		if !i.DueDate.After(c.decision.Date) || charged[i.Number] {
+			continue
 		}
+
+		f := on(i.DueDate)
+		f.OutstandingBalance = planned.Balance
+		hold(f, i.Amount)
 	}
 
 	horizon := on(c.bond.Maturity)
@@ -493,14 +489,9 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 	return s
 }
 
-// topUp returns, with the slack prepaid, what a scenario prepays after each of its installments:
-// the slack, which it also records in freed under the installment's number. It is nil with the
-// slack ignored.
-func (c comparer) topUp(statusQuo mortgage.Planned, freed map[int]decimal.Decimal) func(mortgage.Installment) decimal.Decimal {
-	if !c.decision.PrepaySlack {
-		return nil
-	}
-
+// outflow returns what the status quo pays in each installment due after the decision's date, by
+// number: what every scenario pays out of pocket that month.
+func (c comparer) outflow(statusQuo mortgage.Planned) map[int]decimal.Decimal {
 	outflow := make(map[int]decimal.Decimal)
 
 	for _, i := range statusQuo.Installments {
@@ -509,11 +500,7 @@ func (c comparer) topUp(statusQuo mortgage.Planned, freed map[int]decimal.Decima
 		}
 	}
 
-	return func(i mortgage.Installment) decimal.Decimal {
-		freed[i.Number] = outflow[i.Number].Sub(i.Amount)
-
-		return freed[i.Number]
-	}
+	return outflow
 }
 
 // readBy returns the projection methods of the index values planned read up to the horizon: those
