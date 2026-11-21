@@ -138,9 +138,7 @@ function SideBySide({ scenarios }: { scenarios: NamedScenario[] }) {
             >
               <div className="flex items-baseline justify-between gap-4">
                 <h3 className="text-headline">{title}</h3>
-                <span className="text-headline tabular-nums">
-                  {standingText(scenario)}
-                </span>
+                <span className="text-headline tabular-nums">{standingText(scenario)}</span>
               </div>
               <p className="text-footnote text-muted-foreground">
                 Saldo devedor no fim: {formatMoney(scenario.outstanding_balance)}
