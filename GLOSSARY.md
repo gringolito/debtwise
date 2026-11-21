@@ -202,6 +202,20 @@ A comparison, for a lot already held, of selling it now and prepaying with the p
 holding it to maturity and prepaying then. It is how the owner takes a gain when rates have fallen.
 _Avoid_: Early redemption and resgate antecipado (name the sale itself, not the comparison)
 
+**Verdict**:
+What a comparison concludes for one bond or lot: a decision gives one per bond it compares, an early
+sale check one for its lot. It names the option its advantage favours and by how much. It is what
+DebtWise reports, and the owner's choice is what he does about it.
+_Avoid_: Recommendation (DebtWise reports; the owner decides), result (also covers each scenario's
+figures), advice (suggests DebtWise tells the owner what to do)
+
+**Choice**:
+The option the owner took on a verdict, recorded from it with the prepayment, lot or sale he made.
+It can be the option the verdict didn't favour, which tells DebtWise he disagreed rather than
+ignored it.
+_Avoid_: Following (assumes he agreed), action (also covers records no verdict led to), decision
+(the comparison, not what the owner did)
+
 **Horizon**:
 The date a comparison measures both its scenarios on, set by the bond being compared. Measuring
 both on one date is what makes them comparable.
