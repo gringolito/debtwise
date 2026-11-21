@@ -17,14 +17,13 @@ import (
 
 type decisionInput struct {
 	Amount      string `json:"amount" pattern:"^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$" doc:"The amount to prepay or invest, in reais, as a decimal string."`
-	Date        string `json:"date,omitempty" format:"date" required:"false" doc:"The date the amount is prepaid or invested on. Today when absent; it must not be before today."`
 	Effect      string `json:"effect" enum:"shorten_term,lower_installment" doc:"What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it."`
 	PrepaySlack bool   `json:"prepay_slack,omitempty" required:"false" doc:"Whether the comparison assumes the owner prepays the installment's slack every month. False when absent."`
 }
 
 type decision struct {
 	Amount      string    `json:"amount" doc:"The amount prepaid or invested, in reais, as a decimal string."`
-	Date        string    `json:"date" format:"date" doc:"The date the amount is prepaid or invested on."`
+	Date        string    `json:"date" format:"date" doc:"The date the amount is prepaid or invested on: today."`
 	Effect      string    `json:"effect" enum:"shorten_term,lower_installment" doc:"What each prepayment changes."`
 	PrepaySlack bool      `json:"prepay_slack" doc:"Whether the comparison assumed the owner prepays the installment's slack every month."`
 	Verdicts    []verdict `json:"verdicts" nullable:"false" doc:"A verdict for every bond on offer that follows the mortgage's indexer and matures after the date, in the order of the bond catalogue."`
@@ -105,7 +104,7 @@ func registerDecisions(humaAPI huma.API, services Services, now func() time.Time
 		Method:      http.MethodPost,
 		Path:        "/decisions",
 		Summary:     "Compare prepaying an amount with buying a bond",
-		Description: "Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. It is computed on request and not stored.",
+		Description: "Compares prepaying the amount today with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. It is computed on request and not stored.",
 		Tags:        []string{decisionsTag},
 	}, func(ctx context.Context, in *struct{ Body decisionInput }) (*struct{ Body decision }, error) {
 		today := dateOf(now())
@@ -127,7 +126,7 @@ func registerDecisions(humaAPI huma.API, services Services, now func() time.Time
 
 		out := &struct{ Body decision }{Body: decision{
 			Amount:      d.Amount.String(),
-			Date:        d.Date.Format(time.DateOnly),
+			Date:        today.Format(time.DateOnly),
 			Effect:      string(d.Effect),
 			PrepaySlack: d.PrepaySlack,
 			Verdicts:    make([]verdict, 0, len(verdicts)),
@@ -141,33 +140,28 @@ func registerDecisions(humaAPI huma.API, services Services, now func() time.Time
 	})
 }
 
-// readDecision reads a decision from a body whose amount, date and effect the schema has already
-// checked, and checks it against the registered mortgage's terms on the day today.
+// readDecision reads a decision from a body whose amount and effect the schema has already checked,
+// and checks it against the registered mortgage's terms today.
 func readDecision(ctx context.Context, mortgages Mortgages, body decisionInput, today time.Time) (comparison.Decision, mortgage.Terms, error) {
 	terms, err := mortgages.Find(ctx)
 	if err != nil {
 		return comparison.Decision{}, mortgage.Terms{}, mortgageFailure(err)
 	}
 
+	if today.Before(terms.ContractDate) {
+		return comparison.Decision{}, mortgage.Terms{}, huma.Error409Conflict("the mortgage's contract starts after today")
+	}
+
 	var p parser
 
 	prepayment := mortgage.Prepayment{Date: today, Amount: p.decimal(body.Amount), Effect: mortgage.PrepaymentEffect(body.Effect)}
-	if body.Date != "" {
-		prepayment.Date = p.date(body.Date)
-	}
-
 	if p.err != nil {
 		return comparison.Decision{}, mortgage.Terms{}, fmt.Errorf("read decision: %w", p.err)
 	}
 
-	violations := prepayment.Validate(terms)
-	if prepayment.Date.Before(today) {
-		violations = append(violations, mortgage.Violation{Field: "date", Rule: mortgage.RuleBeforeToday})
-	}
+	d := comparison.Decision{Amount: prepayment.Amount, Effect: prepayment.Effect, PrepaySlack: body.PrepaySlack}
 
-	d := comparison.Decision{Amount: prepayment.Amount, Date: prepayment.Date, Effect: prepayment.Effect, PrepaySlack: body.PrepaySlack}
-
-	return d, terms, violationsFailure(violations)
+	return d, terms, violationsFailure(prepayment.Validate(terms))
 }
 
 // decide reads what the comparison needs and compares d against every bond on offer.

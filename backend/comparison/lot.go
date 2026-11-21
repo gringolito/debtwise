@@ -42,7 +42,8 @@ func CompareLot(m Mortgage, market Market, l bonds.Lot, effect mortgage.Prepayme
 	c := comparer{
 		mortgage: m,
 		market:   market,
-		decision: Decision{Amount: l.Cost(), Date: l.PurchaseDate, Effect: effect},
+		decision: Decision{Amount: l.Cost(), Effect: effect},
+		start:    l.PurchaseDate,
 		today:    today,
 		bond:     l.Bond,
 	}

@@ -35,16 +35,13 @@ export function loweredInstallmentNote({
 /** DecisionFormValues is what the owner typed for a decision, as text, the way the inputs show it. */
 export interface DecisionFormValues {
   amount: string;
-  date: string;
   effect: PrepaymentEffect;
   /** Whether every month's slack of the installment is prepaid; never saved, off on every visit. */
   prepaySlack: boolean;
 }
 
-/** blankDecision leaves the date empty: the API reads that as its own today. */
 export const blankDecision: DecisionFormValues = {
   amount: "",
-  date: "",
   effect: "shorten_term",
   prepaySlack: false,
 };
@@ -53,7 +50,6 @@ export const blankDecision: DecisionFormValues = {
 export function decisionInput(values: DecisionFormValues): DecisionInput {
   return {
     amount: inputToMoney(values.amount),
-    date: values.date === "" ? undefined : values.date,
     effect: values.effect,
     // Absent is what the API reads as off, which keeps Início's request the same.
     prepay_slack: values.prepaySlack || undefined,
@@ -165,7 +161,7 @@ export function breakEvenNote({
 
 /**
  * Why a decision compares no bond at all: every verdict is unavailable for one reason, or no bond on
- * offer follows the mortgage's indexer and matures after the date.
+ * offer follows the mortgage's indexer and matures after today.
  */
 export type NoComparison =
   | { reason: "amount_too_small"; minimumAmount: string }
@@ -214,7 +210,7 @@ export function noComparisonExplanation(why: NoComparison): { title: string; tex
     case "no_bond":
       return {
         title: "Nenhum título para comparar",
-        text: "Nenhum título à venda acompanha o indexador do seu financiamento e vence depois da data escolhida.",
+        text: "Nenhum título à venda acompanha o indexador do seu financiamento e vence depois de hoje.",
       };
   }
 }
@@ -223,21 +219,18 @@ export function noComparisonExplanation(why: NoComparison): { title: string; tex
 // rule a value breaks or, for a value the schema rejected, by its field.
 const ruleMessages: Partial<Record<Rule, string>> = {
   not_positive: "Informe um valor maior que zero.",
-  before_today: "A data não pode ser antes de hoje.",
-  before_contract: "A data não pode ser antes do contrato.",
   below_minimum: "Informe um valor a partir de R$ 50,00.",
 };
 
 const fieldMessages: Record<string, string> = {
   amount: "Informe um valor em reais, com até 2 casas decimais.",
-  date: "Informe uma data válida.",
   effect: "Escolha o que a amortização muda.",
 };
 
 /**
  * decisionErrors reads a rejected decision as what the owner sees under the sentence, by body field
- * such as "amount" or "date". Any other failure, one that names a field with a 5xx included, gives
- * an empty map.
+ * such as "amount". Any other failure, one that names a field with a 5xx included, gives an empty
+ * map.
  */
 export function decisionErrors(error: Error | null): Map<string, string> {
   const errors = new Map<string, string>();

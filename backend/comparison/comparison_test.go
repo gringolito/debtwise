@@ -155,7 +155,7 @@ func TestWithTheSlackPrepaidFreedCashIsHeldAtZeroReturnOnceTheMortgageIsPaidOff(
 			verdicts, err := comparison.Decide(
 				comparison.Mortgage{Terms: interestFreeTerms(t)},
 				comparison.Market{Quotes: []bonds.Quote{{Bond: ltn, Buy: &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")}}}},
-				comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: tt.effect, PrepaySlack: true},
+				comparison.Decision{Amount: dec(t, "5000.00"), Effect: tt.effect, PrepaySlack: true},
 				decided,
 			)
 			require.NoError(t, err)
@@ -228,7 +228,7 @@ func TestWithTheSlackIgnoredNoScenarioPrepaysOrHoldsIt(t *testing.T) {
 			verdicts, err := comparison.Decide(
 				comparison.Mortgage{Terms: interestFreeTerms(t)},
 				comparison.Market{Quotes: []bonds.Quote{{Bond: ltn, Buy: &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")}}}},
-				comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: tt.effect},
+				comparison.Decision{Amount: dec(t, "5000.00"), Effect: tt.effect},
 				decided,
 			)
 			require.NoError(t, err)
@@ -259,7 +259,7 @@ func TestWithTheSlackIgnoredAnInstallmentAboveTheStatusQuosHoldsNothing(t *testi
 			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
 			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
 		}}},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm},
+		comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.ShortenTerm},
 		decided,
 	)
 	require.NoError(t, err)
@@ -348,7 +348,7 @@ func TestLoweringTheInstallmentWithTheSlackIgnoredSaysWhatItGivesByTheHorizon(t 
 					Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, tt.maturity)},
 					Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
 				}}},
-				comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: tt.effect, PrepaySlack: tt.prepaySlack},
+				comparison.Decision{Amount: dec(t, "5000.00"), Effect: tt.effect, PrepaySlack: tt.prepaySlack},
 				decided,
 			)
 			require.NoError(t, err)
@@ -400,7 +400,7 @@ func TestWithTheSlackIgnoredTheAvoidedCostCountsTheInstallmentsNoLongerPaid(t *t
 					Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
 					Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
 				}}},
-				comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: tt.effect},
+				comparison.Decision{Amount: dec(t, "5000.00"), Effect: tt.effect},
 				decided,
 			)
 			require.NoError(t, err)
@@ -430,7 +430,7 @@ func TestADecisionPrepaysAfterTheStatementsOfItsDate(t *testing.T) {
 			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
 			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
 		}}},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm},
+		comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.ShortenTerm},
 		decided,
 	)
 	require.NoError(t, err)
@@ -456,7 +456,7 @@ func TestATopUpPrepaysAfterTheStatementsOfItsDueDate(t *testing.T) {
 			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
 			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
 		}}},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.LowerInstallment, PrepaySlack: true},
+		comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.LowerInstallment, PrepaySlack: true},
 		decided,
 	)
 	require.NoError(t, err)
@@ -520,7 +520,7 @@ func TestInvestingHoldsRemainderWithoutChangingMortgage(t *testing.T) {
 		t.Run(string(effect), func(t *testing.T) {
 			t.Parallel()
 			amount := dec(t, "30034.32")
-			verdicts, err := comparison.Decide(m, market, comparison.Decision{Amount: amount, Date: decided, Effect: effect}, decided)
+			verdicts, err := comparison.Decide(m, market, comparison.Decision{Amount: amount, Effect: effect}, decided)
 			require.NoError(t, err)
 			require.Len(t, verdicts, 1)
 			v := verdicts[0]
@@ -564,7 +564,7 @@ func TestAvoidedCostOfTheSpreadsheetsFirstLotIncludesTheCorrectionOfThePrepaidAm
 	verdicts, err := comparison.Decide(
 		trMortgage(t),
 		comparison.Market{Quotes: []bonds.Quote{{Bond: ltn, Buy: &bonds.Price{Rate: dec(t, "0.1504"), UnitPrice: dec(t, "435.28")}}}},
-		comparison.Decision{Amount: dec(t, "30034.32"), Date: decided, Effect: mortgage.ShortenTerm, PrepaySlack: true},
+		comparison.Decision{Amount: dec(t, "30034.32"), Effect: mortgage.ShortenTerm, PrepaySlack: true},
 		decided,
 	)
 	require.NoError(t, err)
@@ -604,7 +604,7 @@ func TestWithTheSlackPrepaidShorteningTheTermAndLoweringTheInstallmentGiveNearly
 			}}}
 
 			advantage := func(effect mortgage.PrepaymentEffect) decimal.Decimal {
-				verdicts, err := comparison.Decide(m, market, comparison.Decision{Amount: dec(t, "30034.32"), Date: decided, Effect: effect, PrepaySlack: true}, decided)
+				verdicts, err := comparison.Decide(m, market, comparison.Decision{Amount: dec(t, "30034.32"), Effect: effect, PrepaySlack: true}, decided)
 				require.NoError(t, err)
 				require.Len(t, verdicts, 1)
 
@@ -637,7 +637,7 @@ func TestWithTheSlackIgnoredShorteningTheTermIsWorthNoLessThanLoweringTheInstall
 			}}}
 
 			prepaid := func(effect mortgage.PrepaymentEffect) decimal.Decimal {
-				verdicts, err := comparison.Decide(m, market, comparison.Decision{Amount: dec(t, "30034.32"), Date: decided, Effect: effect}, decided)
+				verdicts, err := comparison.Decide(m, market, comparison.Decision{Amount: dec(t, "30034.32"), Effect: effect}, decided)
 				require.NoError(t, err)
 				require.Len(t, verdicts, 1)
 
@@ -693,7 +693,7 @@ func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 			decided := date(t, "2025-01-10")
 
 			verdicts, err := comparison.Decide(comparison.Mortgage{Terms: terms}, market,
-				comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm}, decided)
+				comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.ShortenTerm}, decided)
 			require.NoError(t, err)
 
 			got := make([]string, 0, len(verdicts))
@@ -851,7 +851,7 @@ func TestAnNTNBPrincipalVerdictFollowsTheIPCAPathInBothScenarios(t *testing.T) {
 			}
 
 			verdicts, err := comparison.Decide(m, market,
-				comparison.Decision{Amount: dec(t, "10000.00"), Date: decided, Effect: mortgage.ShortenTerm, PrepaySlack: true}, decided)
+				comparison.Decision{Amount: dec(t, "10000.00"), Effect: mortgage.ShortenTerm, PrepaySlack: true}, decided)
 			require.NoError(t, err)
 			require.Len(t, verdicts, 1)
 
@@ -897,13 +897,13 @@ func TestAnNTNBPrincipalVerdictFollowsTheIPCAPathInBothScenarios(t *testing.T) {
 }
 
 // An amount that buys less than a hundredth of the bond has no scenarios, but its price still names
-// the projected IPCA its VNA was grown by: settled on 2025-12-03, a month after today, the VNA
-// grows pro rata from 2025-11-15 by the projected IPCA of November.
+// the projected IPCA its VNA was grown by: settled today, 2025-12-03, the VNA grows pro rata from
+// 2025-11-15 by the projected IPCA of November.
 func TestAnAmountTooSmallForAHundredthOfTheBondHasNoScenarios(t *testing.T) {
 	t.Parallel()
 
 	m, outlook := ipcaMortgage(t, "0.20")
-	decided := date(t, "2025-12-03")
+	today := date(t, "2025-12-03")
 	market := comparison.Market{
 		Quotes: []bonds.Quote{{
 			Bond: bonds.Bond{Type: bonds.NTNBPrincipal, Maturity: date(t, "2026-08-15")},
@@ -917,7 +917,7 @@ func TestAnAmountTooSmallForAHundredthOfTheBondHasNoScenarios(t *testing.T) {
 	}
 
 	verdicts, err := comparison.Decide(m, market,
-		comparison.Decision{Amount: dec(t, "42.79"), Date: decided, Effect: mortgage.ShortenTerm}, date(t, "2025-11-03"))
+		comparison.Decision{Amount: dec(t, "42.79"), Effect: mortgage.ShortenTerm}, today)
 	require.NoError(t, err)
 	require.Len(t, verdicts, 1)
 
@@ -930,38 +930,12 @@ func TestAnAmountTooSmallForAHundredthOfTheBondHasNoScenarios(t *testing.T) {
 	assert.Empty(t, v.Invest.CashFlows)
 }
 
-// A decision dated after today starts from a balance corrected by the projected TR of the months
-// before it, though no installment falls due between it and the horizon, so the verdict names the
-// TR's method. Today is 2025-01-08; the installments of 2025-01-10 and 2025-02-10 are corrected by
-// the projected TR, and the LTN matures on 2025-03-01, before the next one.
-func TestAVerdictNamesTheProjectionsTheBalancesBeforeTheDecisionRead(t *testing.T) {
-	t.Parallel()
-
-	m := trMortgage(t)
-	m.Terms = interestFreeTerms(t)
-	m.Terms.Indexer = mortgage.TR
-
-	verdicts, err := comparison.Decide(m,
-		comparison.Market{Quotes: []bonds.Quote{{
-			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2025-03-01")},
-			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")},
-		}}},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, "2025-02-15"), Effect: mortgage.ShortenTerm},
-		date(t, "2025-01-08"),
-	)
-	require.NoError(t, err)
-	require.Len(t, verdicts, 1)
-
-	assert.Equal(t, []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}}, verdicts[0].ProjectedBy)
-}
-
 // A horizon between a TR anniversary and the next due date includes no correction for that
 // installment, so a verdict doesn't name the projection it reads. Signed on 2024-01-05 with
-// installments on the 10th, the mortgage has TR published from 2024-02-10 to 2025-02-10; the LTN
-// matures on 2025-03-07, after the 2025-03-05 anniversary and before the 2025-03-10 installment,
-// whose correction reads the trailing 12-month average. A prepayment dated after the 2025-02-10
-// installment first updates the balance by that projection pro rata die, so a verdict on it names
-// it.
+// installments on the 10th, the mortgage has TR published from 2024-02-10 to 2025-02-10. Decided
+// on 2025-02-10, an LTN maturing on 2025-03-07, after the 2025-03-05 anniversary, is valued before
+// the 2025-03-10 installment, whose correction reads the trailing 12-month average; one maturing on
+// 2025-03-11 is valued after it, so its verdict names it.
 func TestAVerdictLeavesOutTheProjectionOfACorrectionDueAfterTheHorizon(t *testing.T) {
 	t.Parallel()
 
@@ -986,12 +960,12 @@ func TestAVerdictLeavesOutTheProjectionOfACorrectionDueAfterTheHorizon(t *testin
 
 	tests := []struct {
 		name     string
-		decision string
+		maturity string
 		want     []indexes.ProjectionMethod
 	}{
-		{name: "decided on the due date", decision: "2025-02-10"},
+		{name: "horizon before the due date", maturity: "2025-03-07"},
 		{
-			name: "decided after the due date", decision: "2025-02-15",
+			name: "horizon after the due date", maturity: "2025-03-11",
 			want: []indexes.ProjectionMethod{{Index: indexes.TR, Method: indexes.Trailing12}},
 		},
 	}
@@ -1002,11 +976,11 @@ func TestAVerdictLeavesOutTheProjectionOfACorrectionDueAfterTheHorizon(t *testin
 
 			verdicts, err := comparison.Decide(m,
 				comparison.Market{Quotes: []bonds.Quote{{
-					Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2025-03-07")},
+					Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, tt.maturity)},
 					Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")},
 				}}},
-				comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, tt.decision), Effect: mortgage.ShortenTerm},
-				date(t, "2025-01-08"),
+				comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.ShortenTerm},
+				date(t, "2025-02-10"),
 			)
 			require.NoError(t, err)
 			require.Len(t, verdicts, 1)
@@ -1045,7 +1019,7 @@ func TestAVerdictNamesTheProjectionsTheAppraisalValueRead(t *testing.T) {
 			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2024-04-05")},
 			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")},
 		}}},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, "2024-03-01"), Effect: mortgage.ShortenTerm},
+		comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.ShortenTerm},
 		date(t, "2024-03-01"),
 	)
 	require.NoError(t, err)
@@ -1078,7 +1052,7 @@ func TestAVerdictNamesTheProjectionsAPoupancaLinkedRateRead(t *testing.T) {
 			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2025-03-01")},
 			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "990.00")},
 		}}},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: date(t, "2025-02-15"), Effect: mortgage.ShortenTerm},
+		comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.ShortenTerm},
 		date(t, "2025-01-08"),
 	)
 	require.NoError(t, err)
@@ -1132,7 +1106,7 @@ func TestAnNTNFVerdictPrepaysEachNetCouponOnItsDate(t *testing.T) {
 			}},
 			Taxes: lotTaxes(t),
 		},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm, PrepaySlack: true},
+		comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.ShortenTerm, PrepaySlack: true},
 		decided,
 	)
 	require.NoError(t, err)
@@ -1195,7 +1169,7 @@ func TestACouponDueWithAnInstallmentIsPrepaidAfterIt(t *testing.T) {
 			}},
 			Taxes: lotTaxes(t),
 		},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm},
+		comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.ShortenTerm},
 		decided,
 	)
 	require.NoError(t, err)
@@ -1251,7 +1225,7 @@ func TestACouponPrepaymentHasTheEffectTheOwnerChose(t *testing.T) {
 					}},
 					Taxes: lotTaxes(t),
 				},
-				comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: tt.effect},
+				comparison.Decision{Amount: dec(t, "5000.00"), Effect: tt.effect},
 				decided,
 			)
 			require.NoError(t, err)
@@ -1295,7 +1269,7 @@ func TestAnNTNBVerdictPrepaysItsProjectedCoupons(t *testing.T) {
 	}
 
 	verdicts, err := comparison.Decide(m, market,
-		comparison.Decision{Amount: dec(t, "10000.00"), Date: decided, Effect: mortgage.ShortenTerm, PrepaySlack: true}, decided)
+		comparison.Decision{Amount: dec(t, "10000.00"), Effect: mortgage.ShortenTerm, PrepaySlack: true}, decided)
 	require.NoError(t, err)
 	require.Len(t, verdicts, 1)
 

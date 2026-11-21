@@ -350,7 +350,7 @@
             "type": "string"
           },
           "date": {
-            "description": "The date the amount is prepaid or invested on.",
+            "description": "The date the amount is prepaid or invested on: today.",
             "format": "date",
             "type": "string"
           },
@@ -389,11 +389,6 @@
           "amount": {
             "description": "The amount to prepay or invest, in reais, as a decimal string.",
             "pattern": "^(0|[1-9][0-9]{0,14})(\\.[0-9]{1,2})?$",
-            "type": "string"
-          },
-          "date": {
-            "description": "The date the amount is prepaid or invested on. Today when absent; it must not be before today.",
-            "format": "date",
             "type": "string"
           },
           "effect": {
@@ -590,7 +585,6 @@
             "enum": [
               "not_positive",
               "before_contract",
-              "before_today",
               "no_row_from_first_installment",
               "repeated_date",
               "below_minimum",
@@ -2468,7 +2462,7 @@
     },
     "/decisions": {
       "post": {
-        "description": "Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. It is computed on request and not stored.",
+        "description": "Compares prepaying the amount today with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. It is computed on request and not stored.",
         "operationId": "decide",
         "requestBody": {
           "content": {

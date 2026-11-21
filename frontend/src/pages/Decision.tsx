@@ -31,7 +31,7 @@ function ComparisonSkeleton() {
   );
 }
 
-/** Decision is Comparar: amortizar ou investir, compared for the amount, date and effect asked. */
+/** Decision is Comparar: amortizar ou investir, compared for the amount and effect asked. */
 export function Decision() {
   const search = route.useSearch();
   const { valor, comparar } = search;

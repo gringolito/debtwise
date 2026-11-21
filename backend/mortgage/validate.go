@@ -21,7 +21,6 @@ type Rule string
 const (
 	RuleNotPositive               Rule = "not_positive"
 	RuleBeforeContract            Rule = "before_contract"
-	RuleBeforeToday               Rule = "before_today"
 	RuleNoRowFromFirstInstallment Rule = "no_row_from_first_installment"
 	RuleRepeatedDate              Rule = "repeated_date"
 	RuleBelowMinimum              Rule = "below_minimum"
@@ -30,7 +29,7 @@ const (
 // Rules returns every rule, in the order the API documents them.
 func Rules() []Rule {
 	return []Rule{
-		RuleNotPositive, RuleBeforeContract, RuleBeforeToday, RuleNoRowFromFirstInstallment, RuleRepeatedDate,
+		RuleNotPositive, RuleBeforeContract, RuleNoRowFromFirstInstallment, RuleRepeatedDate,
 		RuleBelowMinimum,
 	}
 }
@@ -42,8 +41,6 @@ func (r Rule) Reason() string {
 		return "must be greater than zero"
 	case RuleBeforeContract:
 		return "must not be before the contract date"
-	case RuleBeforeToday:
-		return "must not be before today"
 	case RuleNoRowFromFirstInstallment:
 		return "needs a row effective on or before the first installment date"
 	case RuleRepeatedDate:
