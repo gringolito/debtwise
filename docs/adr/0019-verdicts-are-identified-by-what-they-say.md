@@ -15,9 +15,10 @@ today, the question (a decision's amount, effect and whether it prepays the slac
 and effect), the bond or lot it compared, every figure it gives down to each scenario's cash flows,
 and the projection methods it names.
 
-The market data's freshness is left out, so a refresh that changes no value the verdict read doesn't
-make it a new one. Anything that changes what it reports does: a new quote or index value it reads,
-another projection method, or a change to the terms or the recorded events.
+Left out are the market data's freshness, so a refresh that changes no value the verdict read
+doesn't make it a new one, and whether the verdict is recorded, which is looked up by its ID.
+Anything that changes what the comparison reports does change the ID: a new quote or index value it
+reads, another projection method, or a change to the terms or the recorded events.
 
 ## Recording a choice
 
@@ -32,8 +33,10 @@ The server refuses a command with a 409 when:
 
 - **It is recorded already:** the ID is stored, so neither a double submit nor a repeat after a
   reload records anything twice.
-- **The verdict changed since it was shown:** computing it again gives another ID, or no verdict at
-  all, such as a check whose bond lost its sell quote. The screen then shows the current one.
+- **The verdict changed since it was shown:** computing it again gives another ID, a verdict
+  without scenarios, such as a check whose bond lost its sell quote, or no verdict at all, such as a
+  check of a lot sold meanwhile. The screen then shows the comparison as it is now: the new verdict,
+  why it has no scenarios, or nothing to record.
 
 Otherwise the verdict and every record it leads to are stored, each record carrying the verdict's
 ID. Computing the verdict again, the checks and the writes run in one write transaction, so no
@@ -46,18 +49,19 @@ it as recorded instead of offering it again.
 
 The owner can record either option of a verdict. A choice against it tells DebtWise that he saw it
 and disagreed, which a verdict nobody acted on doesn't. A screen that offers to record from a
-verdict offers both options, the favoured one first. Holding a lot records nothing, so an early sale
-check's only choice is a sale, offered whichever option the check favours.
+verdict offers both options, the favoured one first and prepaying first at an advantage of zero.
+Holding a lot records nothing, so an early sale check's only choice is a sale, offered whichever
+option the check favours.
 
 ## What a stored verdict keeps
 
-A stored verdict keeps its ID, its question, the bond or lot it compared, the figures the owner was
-offered to record (a decision's buy rate, unit price and quantity, a check's sell unit price and net
-proceeds), its advantage, the projection methods it named, the freshness of the market data it read
-when the choice was recorded, and when that was. Its scenarios are left out, since telling which
-verdicts the owner acted on doesn't need them. The records keep what he actually did: a figure he
-changed in the form differs from the verdict's, and the record still counts as recorded from it.
-Editing a record keeps its link. A record entered without a verdict never gets one.
+A stored verdict keeps its ID, its date, its question, the bond or lot it compared, the figures the
+owner was offered to record (a decision's buy rate, unit price and quantity, a check's sell unit
+price and net proceeds), its advantage, the projection methods it named, the freshness of the market
+data it read when the choice was recorded, and when that was. Its scenarios are left out, since
+telling which verdicts the owner acted on doesn't need them. The records keep what he actually did:
+a figure he changed in the form differs from the verdict's, and the record still counts as recorded
+from it. Editing a record keeps its link. A record entered without a verdict never gets one.
 
 A stored verdict lasts as long as a record it led to. Deleting the last of them deletes the verdict
 too, since the owner is saying he didn't do it, and the same verdict can then be recorded again.
