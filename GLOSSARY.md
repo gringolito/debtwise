@@ -204,8 +204,9 @@ _Avoid_: Early redemption and resgate antecipado (name the sale itself, not the 
 
 **Verdict**:
 What a comparison concludes for one bond or lot: a decision gives one per bond it compares, an early
-sale check one for its lot. It names the option its advantage favours and by how much. It is what
-DebtWise reports, and the owner's choice is what he does about it.
+sale check one for its lot. It names the option its advantage favours and by how much, or why the
+comparison couldn't be made. It is what DebtWise reports, and the owner's choice is what he does
+about it.
 _Avoid_: Recommendation (DebtWise reports; the owner decides), result (also covers each scenario's
 figures), advice (suggests DebtWise tells the owner what to do)
 
