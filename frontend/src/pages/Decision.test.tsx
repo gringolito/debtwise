@@ -60,9 +60,9 @@ const investFlows: CashFlow[] = [
     },
     invested: "0.00",
     prepaid: "0.00",
-    held: "-120.50",
+    held: "0.00",
     outstanding_balance: "189199.60",
-    net_worth: "-179250.10",
+    net_worth: "-179129.60",
   },
   {
     date: "2029-01-01",
@@ -115,15 +115,15 @@ const prepayFlows: CashFlow[] = [
     },
     invested: "0.00",
     prepaid: "0.00",
-    held: "0.00",
+    held: "97.63",
     outstanding_balance: "179493.30",
-    net_worth: "-179493.30",
+    net_worth: "-179395.67",
   },
   {
     date: "2029-01-01",
     invested: "0.00",
     prepaid: "0.00",
-    held: "10642.44",
+    held: "10544.81",
     outstanding_balance: "150000.00",
     net_worth: "-139357.56",
   },
@@ -532,6 +532,8 @@ describe("the verdict panel", () => {
       "R$ 150.000,00",
       "Dinheiro do título, líquido",
       "Nenhum",
+      "Dinheiro guardado",
+      "R$ 10.642,44",
     ]);
     expect(outcome(panel, "Se investir")).toEqual([
       "Se investir",
@@ -542,6 +544,8 @@ describe("the verdict panel", () => {
       "R$ 151.000,00",
       "Dinheiro do título, líquido",
       "R$ 12.877,00",
+      "Dinheiro guardado",
+      "R$ 0,00",
     ]);
     expect(
       within(panel).getByText("Diferença a favor de investir: R$ 1.234,56"),
@@ -832,6 +836,7 @@ const cashFlowPrepayHeader = [
   "Taxa adm.",
   "Prestação",
   "Amortização extraordinária",
+  "Guardado",
   "Saldo devedor",
 ];
 
@@ -927,6 +932,8 @@ describe("the details of the verdict on the panel", () => {
       "Você deve R$ 138.123,00",
       "Saldo devedor",
       "R$ 151.000,00",
+      "Dinheiro guardado",
+      "R$ 0,00",
     ]);
     expect(
       rowTexts(within(investing).getByRole("table", { name: "Fluxo de caixa de Investir" })),
@@ -980,13 +987,15 @@ describe("the details of the verdict on the panel", () => {
       "Você deve R$ 139.357,56",
       "Saldo devedor",
       "R$ 150.000,00",
+      "Dinheiro guardado",
+      "R$ 10.642,44",
     ]);
     expect(within(prepaying).queryByRole("table", { name: /^Valor no vencimento/ })).toBeNull();
     expect(
       rowTexts(within(prepaying).getByRole("table", { name: "Fluxo de caixa de Amortizar" })),
     ).toEqual([
       cashFlowPrepayHeader,
-      ["27/10/2026", ...dash(9), "R$ 10.000,00", "R$ 180.000,00"],
+      ["27/10/2026", ...dash(9), "R$ 10.000,00", "R$ 0,00", "R$ 180.000,00"],
       [
         "05/11/2026",
         "2",
@@ -999,9 +1008,10 @@ describe("the details of the verdict on the panel", () => {
         "R$ 25,00",
         "R$ 2.613,12",
         "R$ 0,00",
+        "R$ 97,63",
         "R$ 179.493,30",
       ],
-      ["01/01/2029", ...dash(9), "R$ 0,00", "R$ 150.000,00"],
+      ["01/01/2029", ...dash(9), "R$ 0,00", "R$ 10.544,81", "R$ 150.000,00"],
     ]);
     expect(screen.getByRole("region", { name: "Detalhes" }).textContent).not.toMatch(/[-−]\s?R\$/);
 
@@ -1121,6 +1131,7 @@ describe("the details of the verdict on the panel", () => {
       [
         "Data",
         "Amortização extraordinária",
+        "Guardado",
         "Pagamento do título",
         "Bruto",
         "IR",
@@ -1129,8 +1140,15 @@ describe("the details of the verdict on the panel", () => {
         "Projeção",
         "Saldo devedor",
       ],
-      ["15/11/2026", "R$ 229,43", ...couponCells, "—", "R$ 188.970,17"],
-      ["15/05/2027", "R$ 0,00", ...couponCells, "ProjetadoIPCA: Mediana do Focus (BCB)", "R$ 0,00"],
+      ["15/11/2026", "R$ 229,43", "R$ 0,00", ...couponCells, "—", "R$ 188.970,17"],
+      [
+        "15/05/2027",
+        "R$ 0,00",
+        "R$ 229,43",
+        ...couponCells,
+        "ProjetadoIPCA: Mediana do Focus (BCB)",
+        "R$ 0,00",
+      ],
     ]);
   });
 });

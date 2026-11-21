@@ -28,7 +28,7 @@ interface OutcomeProps {
   leading: boolean;
 }
 
-/** Outcome is one option read at the horizon: what the owner owes or has, and the two parts of it. */
+/** Outcome is one option read at the horizon: what the owner owes or has, and the parts of it. */
 function Outcome({ title, subtitle, scenario, leading }: OutcomeProps) {
   const id = useId();
   const { owes, amount } = standing(scenario);
@@ -62,6 +62,10 @@ function Outcome({ title, subtitle, scenario, leading }: OutcomeProps) {
           <dd className="tabular-nums">
             {scenario.bond ? formatMoney(scenario.bond.net) : "Nenhum"}
           </dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt>Dinheiro guardado</dt>
+          <dd className="tabular-nums">{formatMoney(scenario.cash)}</dd>
         </div>
       </dl>
     </section>
