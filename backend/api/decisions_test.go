@@ -44,14 +44,11 @@ const (
 )
 
 // decisionMortgage is interestFreeMortgage over the given months, still amortizing 1,000.00 a
-// month. A decision only compares the bonds that mature before the mortgage's payoff, the due date
-// of its last installment, 2026-02-10 plus the months less one.
+// month. Its last installment is due 2026-02-10 plus the months less one.
 func decisionMortgage(indexer string, months int) string {
 	return amortizingMortgage(indexer, months, 1000)
 }
 
-// amortizingMortgage is interestFreeMortgage over the given months, which borrows the amortization
-// for each.
 func amortizingMortgage(indexer string, months, amortization int) string {
 	return strings.NewReplacer(
 		`"original_amount": "24000.00"`, fmt.Sprintf(`"original_amount": "%d.00"`, months*amortization),
@@ -142,9 +139,8 @@ func installmentFlow(day string, number int, balance, netWorth string) decisionF
 	}
 }
 
-// installmentRun is the cash flows of count installments of 1,000.00 due monthly from first, numbered
-// from number, each paying 1,000.00 off the balance owed before the first. With owed, a flow's net
-// worth is the balance owed, as when nothing else is held.
+// installmentRun is count installments of 1,000.00 due monthly from first, numbered from number,
+// each paying 1,000.00 off balance. With owed, each net worth is minus the balance owed.
 func installmentRun(first time.Time, number, count, balance int, owed bool) []decisionFlow {
 	flows := make([]decisionFlow, 0, count)
 
@@ -188,13 +184,12 @@ func (s server) decide(t *testing.T, body string) decisionResult {
 	return got
 }
 
-// On 2026-10-28, 5,000.00 either prepays the interest-free mortgage or buys one of the bonds on
-// offer that follow a mortgage without an indexer: the LTN maturing on 2029-01-01, and next to it
-// the NTN-F maturing on 2037-01-01. The mortgage lasts 132 months, so its payoff, 2037-01-10, is
-// after both. At its buy rate of 12.76%, over the 543 business days ANBIMA's calendar counts to its
-// maturity, an LTN costs 772.001684, so 5,000.00 buys 6.47 of them for 4,994.85 and the 5.15 left is
-// held. Held 796 days, they pay 6,470.00, less 28.22 of custody fee at 0.20% a year and 217.04 of
-// income tax at 15% on the gain: 6,224.74. The figures are worked out in Python's decimal module.
+// On 2026-10-28, 5,000.00 either prepays the mortgage or buys one of the bonds on offer: the LTN
+// maturing on 2029-01-01, or the NTN-F maturing on 2037-01-01. The LTN costs 772.001684 at its
+// 12.76% buy rate, over the 543 business days ANBIMA's calendar counts to maturity, so 5,000.00
+// buys 6.47 of them for 4,994.85, leaving 5.15 held. Held 796 days, they pay 6,470.00, which nets
+// 6,224.74 after 28.22 of custody fee at 0.20% a year and 217.04 of income tax at 15% on the gain.
+// The figures are worked out in Python's decimal module.
 //
 // After the installment of 2026-10-10, 123,000.00 is owed. Prepaying leaves 118,000.00, and each
 // installment pays 1,000.00 off, so on the LTN's horizon, after the 26 installments of 2026-11-10 to
@@ -288,9 +283,9 @@ func TestADecisionComparesPrepayingWithBuyingEachBondOnOffer(t *testing.T) {
 	}, worths)
 }
 
-// Without prepay_slack, the 5,000.00 prepaid on the interest-free mortgage above, here with a 0.1%
-// MIP on the balance, leaves 118,000.00 of the 123,000.00 owed over the 123 months left, and each
-// scenario pays only its own installments. The MIP of an installment is 0.1% of the balance before
+// Without prepay_slack, each scenario pays only its own installments. The 5,000.00 prepaid on the
+// interest-free mortgage above, here with a 0.1% MIP on the balance, leaves 118,000.00 of the
+// 123,000.00 owed over the 123 months left. The MIP of an installment is 0.1% of the balance before
 // it, and a verdict counts the installments to its bond's horizon: 26 for the LTN, the last due on
 // 2028-12-10, and 122 for the NTN-F, the last on 2036-12-10.
 //
@@ -442,9 +437,8 @@ func TestABreakEvenRateQuotedBackGivesAnAdvantageOfZero(t *testing.T) {
 	}
 }
 
-// With the slack prepaid, a mortgage at 100% a year costs more by 2029 than the LTN maturing then
-// would pay at 100% a year, so no rate makes it come out even. The NTN-F is held eight years
-// longer, to 2037, so compounds enough for some rate to.
+// With the slack prepaid, no rate evens the LTN out: the mortgage at 100% a year costs more by 2029
+// than the LTN pays at 100%. The NTN-F runs eight years longer, to 2037, and has a break-even rate.
 func TestAVerdictWithoutABreakEvenRateSaysWhy(t *testing.T) {
 	t.Parallel()
 
@@ -468,15 +462,15 @@ func TestAVerdictWithoutABreakEvenRateSaysWhy(t *testing.T) {
 	assert.Empty(t, ntnf.NoBreakEven)
 }
 
-// The NTN-F on offer costs 880.904015 at 12.88% on 2026-10-28, so 5,000.00 buys 5.67 of them for
+// Each net coupon of the NTN-F is prepaid on its date until the mortgage is paid off, and held
+// after. The NTN-F costs 880.904015 at 12.88% on 2026-10-28, so 5,000.00 buys 5.67 of them for
 // 4,994.73. The mortgage, 132 installments of 250.00 with 30,750.00 owed after the one of
 // 2026-10-10, is paid off by the status quo on 2037-01-10, after the NTN-F matures. Each coupon of
 // 276.75 is taxed on its yield only: the first, on 2027-01-01, pays just 23.62 of income tax, as
-// most of it returns the interest the price paid the seller for. Its net is prepaid that day, and
-// with prepay_slack what the lower installments leave of the 250.00 is too, so that the 18 coupons
-// to 2035-07-01 leave 604.63 owed, which the installments of 2035-07-10, 2035-08-10 and 2035-09-10
-// pay off. Once the mortgage is paid off, every later installment and coupon is held. The figures
-// are worked out in Python's decimal module over ANBIMA's holiday list.
+// most of it returns the interest the price paid the seller for. With prepay_slack, what the lower
+// installments leave of the 250.00 is prepaid too, so the 18 coupons to 2035-07-01 leave 604.63
+// owed, which the installments of 2035-07-10, 2035-08-10 and 2035-09-10 pay off. The figures are
+// worked out in Python's decimal module over ANBIMA's holiday list.
 func TestAnNTNFVerdictListsEachCouponItPrepays(t *testing.T) {
 	t.Parallel()
 
@@ -566,10 +560,6 @@ func TestAnNTNFVerdictListsEachCouponItPrepays(t *testing.T) {
 		held("2036-07-01", "40.64", "5.85", "230.26"),
 	}, coupons)
 
-	// Whatever a flow holds or prepays, the balance falls by the installment's amount and what is
-	// prepaid. An installment, with what it prepays and holds, spends its 250.00, and a coupon
-	// prepays or holds its net, as does each installment due after the mortgage is paid off. What is
-	// held adds up to the cash.
 	balance := decimal.MustParse("30750.00")
 	kept := decimal.MustParse(flows[0].Held)
 	paidOff := ""
@@ -602,8 +592,7 @@ func TestAnNTNFVerdictListsEachCouponItPrepays(t *testing.T) {
 	assert.Equal(t, invest.Cash, kept.String())
 	assert.Equal(t, "2035-09-10", paidOff)
 
-	// Right after buying, the 5.27 held and the bond at its cost leave the owner 25,750.00 below
-	// the 30,750.00 owed; on the horizon, the scenario's net worth.
+	// The 5,000.00 spent on the bond leaves net worth 25,750.00 below the 30,750.00 owed.
 	require.Len(t, worths, 144)
 	assert.Equal(t, "-25750.00", worths[0])
 	assert.Equal(t, "10134.51", worths[len(worths)-1])
@@ -715,9 +704,7 @@ func TestAnAmountBelowAHundredthOfTheBondHasNoScenarios(t *testing.T) {
 	}, got)
 }
 
-// A decision compares only the bonds that mature before the mortgage's payoff, the due date of its
-// last installment: the LTN maturing on 2029-01-01 and the NTN-F maturing on 2037-01-01 against a
-// mortgage paid off on 2028-01-10, 2029-01-10 and 2037-01-10.
+// The payoffs for the three cases are 2028-01-10, 2029-01-10 and 2037-01-10.
 func TestADecisionOnlyComparesBondsMaturingBeforeThePayoff(t *testing.T) {
 	t.Parallel()
 

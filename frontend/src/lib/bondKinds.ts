@@ -35,9 +35,8 @@ export function bondRate(type: BondType, rate: string): string {
 }
 
 /**
- * comparesWith says whether a decision compares bond against prepaying the mortgage: it follows
- * the mortgage's indexer, IPCA+ bonds for an IPCA mortgage and prefixados otherwise (ADR-0007), and
- * matures before payoff, the due date of the schedule's last installment (ADR-0019).
+ * comparesWith says whether a decision compares a bond against prepaying the mortgage: it follows
+ * the mortgage's indexer (ADR-0007) and matures before the payoff (ADR-0019).
  */
 export function comparesWith(
   { type, maturity }: Pick<BondQuote, "type" | "maturity">,

@@ -156,7 +156,7 @@ var (
 
 // Decide returns a verdict for every bond on offer that follows the mortgage's indexer (ADR-0007)
 // and matures after today and before the mortgage's payoff as recorded (ADR-0019), in the order of
-// the quotes. today is also the day installments start being corrected by projected values after.
+// the quotes. Installments due after today are corrected by projected values.
 func Decide(m Mortgage, market Market, d Decision, today time.Time) ([]Verdict, error) {
 	var verdicts []Verdict
 

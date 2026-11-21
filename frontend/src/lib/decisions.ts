@@ -161,7 +161,7 @@ export function breakEvenNote({
 
 /**
  * Why a decision compares no bond at all: every verdict is unavailable for one reason, or no bond on
- * offer follows the mortgage's indexer and matures after today and before the mortgage's payoff.
+ * offer is comparable (ADR-0019).
  */
 export type NoComparison =
   | { reason: "amount_too_small"; minimumAmount: string }

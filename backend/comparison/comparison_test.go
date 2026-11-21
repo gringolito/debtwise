@@ -82,18 +82,17 @@ func interestFreeTerms(t *testing.T) mortgage.Terms {
 	return interestFreeTermsOver(t, 24)
 }
 
-// longInterestFreeTerms are interestFreeTerms over 36 months, so the mortgage is paid off on
-// 2027-01-10: a bond maturing on 2027-01-01 is compared (ADR-0019), though the last installment
-// falls due after its horizon. After the installment of 2025-01-10, 24,000.00 is owed over the 24
-// months left, and 1,000.00 is still owed on the horizon.
+// longInterestFreeTerms runs interestFreeTerms over 36 months, paid off on 2027-01-10. A bond
+// maturing on 2027-01-01 is still compared (ADR-0019), though the last installment falls due after
+// its horizon. After the installment of 2025-01-10, 24,000.00 is owed over the 24 months left, and
+// 1,000.00 is still owed on the horizon.
 func longInterestFreeTerms(t *testing.T) mortgage.Terms {
 	t.Helper()
 
 	return interestFreeTermsOver(t, 36)
 }
 
-// interestFreeTermsOver are interestFreeTerms over a given number of months, borrowing 1,000.00 for
-// each, so every installment still amortizes 1,000.00.
+// interestFreeTermsOver keeps 1,000.00 amortizing each month, whatever the term.
 func interestFreeTermsOver(t *testing.T, months int) mortgage.Terms {
 	t.Helper()
 
@@ -117,8 +116,8 @@ func interestFreeTermsOver(t *testing.T, months int) mortgage.Terms {
 // With the slack prepaid, prepaying 5,000.00 of the 24,000.00 owed on 2025-01-10 ends the mortgage
 // on 2026-08-10, while it would have run to 2027-01-10. Shortening the term keeps the 1,000.00
 // installment; lowering it spreads the 19,000.00 left over the 24 months left, and equal outflow
-// prepays the rest of each 1,000.00, so it ends on the same date. Either way, the 1,000.00 the owner
-// would still have paid each month from 2026-09-10 to 2026-12-10 has nowhere to go, so it is held at
+// prepays the rest of each 1,000.00, so it ends on the same date. Either way, from 2026-09-10 to
+// 2026-12-10 the owner would still pay 1,000.00 a month that has nowhere to go, so it is held at
 // zero return: 4,000.00 on the horizon, an LTN maturing on 2027-01-01 before the last installment
 // falls due, and nothing owed.
 func TestWithTheSlackPrepaidFreedCashIsHeldAtZeroReturnOnceTheMortgageIsPaidOff(t *testing.T) {
@@ -216,11 +215,10 @@ func TestWithTheSlackPrepaidFreedCashIsHeldAtZeroReturnOnceTheMortgageIsPaidOff(
 // With the slack ignored, prepaying 5,000.00 of the 24,000.00 owed on 2025-01-10 pays each
 // installment the schedule charges and nothing else. Shortening the term keeps the 1,000.00
 // installment and ends the mortgage on 2026-08-10, and nothing is paid or held from then on.
-// Lowering it spreads the 19,000.00 left over the 24 months left, each amortizing what is owed over
-// the months left, to the centavo, and what it frees of the status quo's 1,000.00 is neither prepaid
-// nor held. The last of the 24 falls due on 2027-01-10, after the 2027-01-01 horizon, so the lowered
-// scenario still owes its 791.66 there, and the shortened one nothing. Either way it ends with no
-// cash.
+// Lowering it spreads the 19,000.00 over the 24 months left, each installment amortizing what is
+// owed, to the centavo. What it frees of the status quo's 1,000.00 is neither prepaid nor held. The
+// last of the 24 falls due on 2027-01-10, after the 2027-01-01 horizon, so the lowered scenario
+// still owes its 791.66 there, and the shortened one nothing. Either way it ends with no cash.
 func TestWithTheSlackIgnoredNoScenarioPrepaysOrHoldsIt(t *testing.T) {
 	t.Parallel()
 
@@ -319,8 +317,8 @@ func TestWithTheSlackIgnoredNoScenarioPrepaysOrHoldsIt(t *testing.T) {
 
 // The slack can be negative, and ignored it is neither held nor prepaid either. Prepaying 5,000.00
 // of the 24,000.00 owed on 2025-01-10 shortens the term to end on 2026-08-10. The bank's statement
-// of 2025-04-10 then reports 21,000.00 owed after that day's installment, as it does for the status
-// quo, so the 16 months left charge 1,312.50 each against the status quo's 1,000.00.
+// of 2025-04-10 reports 21,000.00 owed after that day's installment, as the status quo's balance
+// does, so the 16 months left charge 1,312.50 each against its 1,000.00.
 func TestWithTheSlackIgnoredAnInstallmentAboveTheStatusQuosHoldsNothing(t *testing.T) {
 	t.Parallel()
 
@@ -370,17 +368,15 @@ func TestWithTheSlackIgnoredAnInstallmentAboveTheStatusQuosHoldsNothing(t *testi
 // by the horizon. With a 0.1% MIP on the balance and nothing else charged, the status quo's 23
 // installments from 2025-02-10 due by the 2027-01-01 horizon amortize 1,000.00 each of the
 // 24,000.00 owed and charge 24.00 down to 2.00 of MIP, 299.00 in all; the 24th falls due after it.
-// Prepaying 5,000.00 leaves 19,000.00, amortized 791.67 or 791.66 a month, whose MIP of 19.00, 18.21,
-// 17.42, 16.62, 15.83, 15.04, 14.25, 13.46, 12.67, 11.87, 11.08, 10.29, 9.50, 8.71, 7.92, 7.12,
-// 6.33, 5.54, 4.75, 3.96, 3.17, 2.37 and 1.58 over those 23 adds up to 236.69. The installments
-// avoid 62.31 of MIP and charge 23,299.00 − (18,208.34 + 236.69) = 4,853.97 less. A bond maturing
-// on 2025-07-01 counts only the 5 installments due by then: 24.00 down to 20.00 of MIP, 110.00,
-// against 19.00 + 18.21 + 17.42 + 16.62 + 15.83 = 87.08, so 22.92 is avoided, and the installments
-// charge 5,110.00 − (791.67 × 5 + 87.08) = 1,064.57 less. Charging 1% a month of interest from
-// 2025-02-01 too, those 5 installments charge 240.00 down to 200.00 of it on the status quo's
-// balance, 1,100.00, and 190.00 + 182.08 + 174.17 + 166.25 + 158.33 = 870.83 on the lowered one's:
-// they avoid 1,210.00 − 957.91 = 252.09 and charge 6,210.00 − 4,916.26 = 1,293.74 less. Shortening
-// the term, or prepaying the slack, lowers no installment the owner keeps.
+// Prepaying 5,000.00 leaves 19,000.00, amortized 791.67 or 791.66 a month, whose MIP, 0.1% of the
+// balance before each of those 23, adds up to 236.69. The installments avoid 62.31 of MIP and
+// charge 23,299.00 − (18,208.34 + 236.69) = 4,853.97 less. A bond maturing on 2025-07-01 counts
+// only the 5 installments due by then: 24.00 down to 20.00 of MIP, 110.00, against 87.08 for the
+// lowered ones, so 22.92 is avoided, and the installments charge 5,110.00 − (791.67 × 5 + 87.08) =
+// 1,064.57 less. Charging 1% a month of interest from 2025-02-01 too, those 5 installments charge
+// 240.00 down to 200.00 of it on the status quo's balance, 1,100.00, and 870.83 on the lowered
+// one's: they avoid 1,210.00 − 957.91 = 252.09 and charge 6,210.00 − 4,916.26 = 1,293.74 less.
+// Shortening the term, or prepaying the slack, lowers no installment the owner keeps.
 func TestLoweringTheInstallmentWithTheSlackIgnoredSaysWhatItGivesByTheHorizon(t *testing.T) {
 	t.Parallel()
 
@@ -462,8 +458,8 @@ func TestLoweringTheInstallmentWithTheSlackIgnoredSaysWhatItGivesByTheHorizon(t 
 // Prepaying 5,000.00 of the 24,000.00 owed to lower the installment charges 236.69 of it on the
 // 19,000.00 left, as above, so it avoids 62.31. Shortening the term pays the 19,000.00 off at
 // 1,000.00 a month by 2026-08-10, charging 19.00 down to 1.00, 190.00 in all, so it avoids 109.00.
-// The balances each leaves on the horizon differ from the status quo's only by what the installments
-// amortize less, which the installments paid less count too, so what is avoided is the charges alone.
+// The horizon balances differ by the amortization the installments skip, which the paid-less total
+// counts too, so the avoided cost is the charges alone.
 func TestWithTheSlackIgnoredTheAvoidedCostCountsTheInstallmentsNoLongerPaid(t *testing.T) {
 	t.Parallel()
 
@@ -500,12 +496,11 @@ func TestWithTheSlackIgnoredTheAvoidedCostCountsTheInstallmentsNoLongerPaid(t *t
 	}
 }
 
-// A statement the bank issued on the decision's date reports the balance without the decision's
+// The bank's statement dated the decision's date reports the balance without the decision's
 // prepayment, which never happened, so the prepayment applies after it: the 25,500.00 the bank
-// reports on 2025-01-10, less the 5,000.00, leaves 20,500.00. The mortgage runs 38 months, and the
-// 2,000.00 prepaid on 2024-06-10 shortens its term by 2, to end on 2027-01-10, after the bond's
-// maturity, so the bond is compared.
-// At no interest, prepaying avoids nothing.
+// reports on 2025-01-10, less the 5,000.00, leaves 20,500.00. The 38-month mortgage's recorded
+// 2,000.00 prepayment of 2024-06-10 shortens it to end on 2027-01-10, after the bond's maturity, so
+// the bond is compared.
 func TestADecisionPrepaysAfterTheStatementsOfItsDate(t *testing.T) {
 	t.Parallel()
 
@@ -533,8 +528,8 @@ func TestADecisionPrepaysAfterTheStatementsOfItsDate(t *testing.T) {
 }
 
 // With the slack prepaid, a top-up follows the recorded events of its due date too: the statement of
-// 2025-03-10 sets the balance to 15,000.00 after that day's 782.61 installment, and only then is the
-// 217.39 it leaves of the status quo's 1,000.00 prepaid, leaving 14,782.61.
+// 2025-03-10 sets the balance after that day's installment, and only then is what the installment
+// leaves of the status quo's 1,000.00 prepaid.
 func TestATopUpPrepaysAfterTheStatementsOfItsDueDate(t *testing.T) {
 	t.Parallel()
 
@@ -743,9 +738,8 @@ func TestWithTheSlackIgnoredShorteningTheTermIsWorthNoLessThanLoweringTheInstall
 
 // A decision offers the bonds that follow the mortgage's indexer (ADR-0007): an NTN-B Principal or
 // an NTN-B against an IPCA mortgage, an LTN or an NTN-F against any other. Only bonds on offer,
-// maturing after today and before the mortgage's payoff, are compared; the 140 installments of the
-// mortgage here run to 2035-09-10, after every maturity. Without IPCA index numbers, the VNA of an
-// IPCA+ bond is unknown, so its verdict says so.
+// maturing after today, are compared. The mortgage here outlasts every maturity, so only the indexer
+// filters. Without IPCA index numbers, the VNA of an IPCA+ bond is unknown, so its verdict says so.
 func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 	t.Parallel()
 
@@ -799,13 +793,10 @@ func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 }
 
 // A decision compares only the bonds that mature before the mortgage's payoff as recorded
-// (ADR-0019): the due date of the last installment once its recorded events are replayed. The
-// interest-free mortgage ends on 2026-01-10, so a bond maturing the day before is compared and one
-// maturing that day isn't: its Maturity Value would arrive with nothing left to prepay. A recorded
-// prepayment that shortens the term moves the payoff earlier: the 2,000.00 prepaid on 2024-06-10
+// (ADR-0019). The interest-free mortgage ends on 2026-01-10, so a bond maturing the day before is
+// compared and one maturing that day isn't. The 2,000.00 prepaid on 2024-06-10 to shorten the term
 // drops 2 of the 24 installments, so the mortgage ends on 2025-11-10 and the NTN-F maturing on
-// 2026-01-01, which the contract's term alone allows, isn't compared. One that lowers the
-// installment keeps the term and the payoff.
+// 2026-01-01 isn't compared. One that lowers the installment keeps the term and the payoff.
 func TestADecisionComparesOnlyTheBondsThatMatureBeforeTheMortgagesPayoff(t *testing.T) {
 	t.Parallel()
 
@@ -1253,18 +1244,17 @@ func couponFlows(s comparison.Scenario) []couponFlow {
 	return out
 }
 
-// 5,000.00 on 2025-01-10, with 24,000.00 still owed interest-free at 1,000.00 a month, buys 5.14
-// NTN-F maturing on 2027-01-01 at 12% a year, 970.884128 each. The expected figures come from a
-// separate implementation in Python's decimal module of Tesouro's NTN-F price over ANBIMA's holiday
-// list and the taxes. Each coupon of 48.80885 a bond, 250.88 for the lot, is taxed at the bracket
-// of the days since the purchase: 172 days pay 22.5%, 356 days 20% and 537 days 17.5%. Its custody
-// fee accrues from the purchase or the previous coupon. Each net coupon is prepaid on its date, and
-// with the slack prepaid, what the lower installments leave of the 1,000.00 is prepaid too. The
-// last of the 24 installments falls due on 2027-01-10, after the maturity, so 410.39 is still owed
-// on the horizon: the 1,000.00 the status quo owes then, less the 589.61 of coupons prepaid.
-// Investing ends 925.44 ahead, 18.51% of the amount, no near tie, over 23 whole months: the
-// maturity's 1st comes before the decision's 10th. Its worth, 9.66 + 5,326.17 − 410.39 = 4,925.44,
-// is 925.44 above the 4,000.00 prepaying holds.
+// Each net coupon of the 5.14 NTN-F that 5,000.00 buys on 2025-01-10, maturing on 2027-01-01 at
+// 12% a year for 970.884128 each, is prepaid on its date, and with the slack prepaid, what the lower
+// installments leave of the 1,000.00 is prepaid too. 24,000.00 is still owed interest-free at
+// 1,000.00 a month. The expected figures come from a separate implementation in Python's decimal
+// module of Tesouro's NTN-F price over ANBIMA's holiday list and the taxes. Each coupon of 48.80885
+// a bond, 250.88 for the lot, is taxed at the bracket of the days since the purchase: 172 days pay
+// 22.5%, 356 days 20% and 537 days 17.5%. Its custody fee accrues from the purchase or the previous
+// coupon. The last of the 24 installments falls due on 2027-01-10, after the maturity, so 410.39 is
+// still owed on the horizon: the 1,000.00 the status quo owes then, less the 589.61 of coupons
+// prepaid. Investing is worth 9.66 + 5,326.17 − 410.39 = 4,925.44, 925.44 above the 4,000.00
+// prepaying holds, over 23 whole months: the maturity's 1st comes before the decision's 10th.
 func TestAnNTNFVerdictPrepaysEachNetCouponOnItsDate(t *testing.T) {
 	t.Parallel()
 
@@ -1332,11 +1322,11 @@ func TestAnNTNFVerdictPrepaysEachNetCouponOnItsDate(t *testing.T) {
 
 // What nothing is owed for is held at zero return, a coupon included. A mortgage that borrows
 // 2,880.00 over 36 months amortizes 80.00 a month and owes 1,920.00 on 2025-01-10, and the NTN-F of
-// the test above, bought with 5,000.00, prepays it with its coupons of 190.59, 196.42 and 202.60 net.
-// The one of 2026-07-01 pays the last 172.99 owed and holds the 29.61 it leaves; with the slack
-// prepaid, the 80.00 of each status quo installment from 2026-07-10 to 2026-12-10 is held too, so
-// the scenario holds 9.66 + 29.61 + 6 × 80.00 = 519.27 on the horizon, before the last installment
-// falls due on 2027-01-10.
+// TestAnNTNFVerdictPrepaysEachNetCouponOnItsDate, bought with 5,000.00, prepays it with its coupons
+// of 190.59, 196.42 and 202.60 net. The one of 2026-07-01 pays the last 172.99 owed and holds the
+// 29.61 it leaves; with the slack prepaid, the 80.00 of each status quo installment from 2026-07-10
+// to 2026-12-10 is held too, so the scenario holds 9.66 + 29.61 + 6 × 80.00 = 519.27 on the
+// horizon, before the last installment falls due on 2027-01-10.
 func TestACouponDueOnceNothingIsOwedIsHeld(t *testing.T) {
 	t.Parallel()
 
