@@ -229,7 +229,7 @@ export type Decision = {
      */
     prepay_slack: boolean;
     /**
-     * A verdict for every bond on offer that follows the mortgage's indexer and matures after the date, in the order of the bond catalogue.
+     * A verdict for every bond on offer that follows the mortgage's indexer and matures after today and before the mortgage's payoff as recorded, in the order of the bond catalogue.
      */
     verdicts: Array<Verdict>;
 };

@@ -139,7 +139,7 @@ func TestWhereTheAdvantageJumpsOverZeroTheBreakEvenRateIsTheLowestThatMakesItPos
 			rate: "0.1504", amount: "10500.00", today: "2025-01-08", prepaySlack: true,
 		},
 		{
-			name: "the first hundredth", m: comparison.Mortgage{Terms: interestFreeTerms(t)},
+			name: "the first hundredth", m: comparison.Mortgage{Terms: longInterestFreeTerms(t)},
 			bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")}, rate: "0.1276", amount: "7.90", today: "2025-01-10",
 		},
 	}

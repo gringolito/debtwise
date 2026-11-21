@@ -74,16 +74,34 @@ func dec(t *testing.T, s string) decimal.Decimal {
 
 // interestFreeTerms borrow 24,000.00 over 24 months at no interest and with no indexer, insurance
 // or fee, due on the 10th from 2024-02-10: every installment amortizes 1,000.00, and after the
-// one of 2025-01-10, 12,000.00 is owed over the 12 months left.
+// one of 2025-01-10, 12,000.00 is owed over the 12 months left. The last installment falls due on
+// 2026-01-10, the mortgage's payoff.
 func interestFreeTerms(t *testing.T) mortgage.Terms {
+	t.Helper()
+
+	return interestFreeTermsOver(t, 24)
+}
+
+// longInterestFreeTerms runs interestFreeTerms over 36 months, paid off on 2027-01-10. A bond
+// maturing on 2027-01-01 is still compared (ADR-0019), though the last installment falls due after
+// its horizon. After the installment of 2025-01-10, 24,000.00 is owed over the 24 months left, and
+// 1,000.00 is still owed on the horizon.
+func longInterestFreeTerms(t *testing.T) mortgage.Terms {
+	t.Helper()
+
+	return interestFreeTermsOver(t, 36)
+}
+
+// interestFreeTermsOver keeps 1,000.00 amortizing each month, whatever the term.
+func interestFreeTermsOver(t *testing.T, months int) mortgage.Terms {
 	t.Helper()
 
 	from := date(t, "2024-01-10")
 
 	return mortgage.Terms{
 		ContractDate:         from,
-		OriginalAmount:       dec(t, "24000.00"),
-		TermMonths:           24,
+		OriginalAmount:       dec(t, fmt.Sprintf("%d.00", months*1000)),
+		TermMonths:           months,
 		FirstInstallmentDate: date(t, "2024-02-10"),
 		AmortizationSystem:   mortgage.SAC,
 		Indexer:              mortgage.NoIndexer,
@@ -95,21 +113,21 @@ func interestFreeTerms(t *testing.T) mortgage.Terms {
 	}
 }
 
-// With the slack prepaid, prepaying 5,000.00 of the 12,000.00 owed on 2025-01-10 ends the mortgage
-// on 2025-08-10, while it would have run to 2026-01-10. Shortening the term keeps the 1,000.00
-// installment; lowering it spreads the 7,000.00 left over the 12 months left, and equal outflow
-// prepays the rest of each 1,000.00, so it ends on the same date. Either way, the 1,000.00 the owner
-// would still have paid each month from 2025-09-10 to 2026-01-10 has nowhere to go, so it is held at
-// zero return: 5,000.00 on the horizon, an LTN maturing on 2027-01-01, and nothing owed.
+// With the slack prepaid, prepaying 5,000.00 of the 24,000.00 owed on 2025-01-10 ends the mortgage
+// on 2026-08-10, while it would have run to 2027-01-10. Shortening the term keeps the 1,000.00
+// installment; lowering it spreads the 19,000.00 left over the 24 months left, and equal outflow
+// prepays the rest of each 1,000.00, so it ends on the same date. Either way, from 2026-09-10 to
+// 2026-12-10 the owner would still pay 1,000.00 a month that has nowhere to go, so it is held at
+// zero return: 4,000.00 on the horizon, an LTN maturing on 2027-01-01 before the last installment
+// falls due, and nothing owed.
 func TestWithTheSlackPrepaidFreedCashIsHeldAtZeroReturnOnceTheMortgageIsPaidOff(t *testing.T) {
 	t.Parallel()
 
 	held := []flow{
-		{"2025-09-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
-		{"2025-10-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
-		{"2025-11-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
-		{"2025-12-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
-		{"2026-01-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2026-09-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2026-10-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2026-11-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
+		{"2026-12-10", "", "0.00", "0.00", "1000.00", "", "0.00"},
 		{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
 	}
 
@@ -120,27 +138,51 @@ func TestWithTheSlackPrepaidFreedCashIsHeldAtZeroReturnOnceTheMortgageIsPaidOff(
 		{
 			effect: mortgage.ShortenTerm,
 			paying: []flow{
-				{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "7000.00"},
-				{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "6000.00"},
-				{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "5000.00"},
-				{"2025-04-10", "1000.00", "0.00", "0.00", "0.00", "", "4000.00"},
-				{"2025-05-10", "1000.00", "0.00", "0.00", "0.00", "", "3000.00"},
-				{"2025-06-10", "1000.00", "0.00", "0.00", "0.00", "", "2000.00"},
-				{"2025-07-10", "1000.00", "0.00", "0.00", "0.00", "", "1000.00"},
-				{"2025-08-10", "1000.00", "0.00", "0.00", "0.00", "", "0.00"},
+				{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "19000.00"},
+				{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "18000.00"},
+				{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "17000.00"},
+				{"2025-04-10", "1000.00", "0.00", "0.00", "0.00", "", "16000.00"},
+				{"2025-05-10", "1000.00", "0.00", "0.00", "0.00", "", "15000.00"},
+				{"2025-06-10", "1000.00", "0.00", "0.00", "0.00", "", "14000.00"},
+				{"2025-07-10", "1000.00", "0.00", "0.00", "0.00", "", "13000.00"},
+				{"2025-08-10", "1000.00", "0.00", "0.00", "0.00", "", "12000.00"},
+				{"2025-09-10", "1000.00", "0.00", "0.00", "0.00", "", "11000.00"},
+				{"2025-10-10", "1000.00", "0.00", "0.00", "0.00", "", "10000.00"},
+				{"2025-11-10", "1000.00", "0.00", "0.00", "0.00", "", "9000.00"},
+				{"2025-12-10", "1000.00", "0.00", "0.00", "0.00", "", "8000.00"},
+				{"2026-01-10", "1000.00", "0.00", "0.00", "0.00", "", "7000.00"},
+				{"2026-02-10", "1000.00", "0.00", "0.00", "0.00", "", "6000.00"},
+				{"2026-03-10", "1000.00", "0.00", "0.00", "0.00", "", "5000.00"},
+				{"2026-04-10", "1000.00", "0.00", "0.00", "0.00", "", "4000.00"},
+				{"2026-05-10", "1000.00", "0.00", "0.00", "0.00", "", "3000.00"},
+				{"2026-06-10", "1000.00", "0.00", "0.00", "0.00", "", "2000.00"},
+				{"2026-07-10", "1000.00", "0.00", "0.00", "0.00", "", "1000.00"},
+				{"2026-08-10", "1000.00", "0.00", "0.00", "0.00", "", "0.00"},
 			},
 		},
 		{
 			effect: mortgage.LowerInstallment,
 			paying: []flow{
-				{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "7000.00"},
-				{"2025-02-10", "583.33", "0.00", "416.67", "0.00", "", "6000.00"},
-				{"2025-03-10", "545.45", "0.00", "454.55", "0.00", "", "5000.00"},
-				{"2025-04-10", "500.00", "0.00", "500.00", "0.00", "", "4000.00"},
-				{"2025-05-10", "444.44", "0.00", "555.56", "0.00", "", "3000.00"},
-				{"2025-06-10", "375.00", "0.00", "625.00", "0.00", "", "2000.00"},
-				{"2025-07-10", "285.71", "0.00", "714.29", "0.00", "", "1000.00"},
-				{"2025-08-10", "166.67", "0.00", "833.33", "0.00", "", "0.00"},
+				{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "19000.00"},
+				{"2025-02-10", "791.67", "0.00", "208.33", "0.00", "", "18000.00"},
+				{"2025-03-10", "782.61", "0.00", "217.39", "0.00", "", "17000.00"},
+				{"2025-04-10", "772.73", "0.00", "227.27", "0.00", "", "16000.00"},
+				{"2025-05-10", "761.90", "0.00", "238.10", "0.00", "", "15000.00"},
+				{"2025-06-10", "750.00", "0.00", "250.00", "0.00", "", "14000.00"},
+				{"2025-07-10", "736.84", "0.00", "263.16", "0.00", "", "13000.00"},
+				{"2025-08-10", "722.22", "0.00", "277.78", "0.00", "", "12000.00"},
+				{"2025-09-10", "705.88", "0.00", "294.12", "0.00", "", "11000.00"},
+				{"2025-10-10", "687.50", "0.00", "312.50", "0.00", "", "10000.00"},
+				{"2025-11-10", "666.67", "0.00", "333.33", "0.00", "", "9000.00"},
+				{"2025-12-10", "642.86", "0.00", "357.14", "0.00", "", "8000.00"},
+				{"2026-01-10", "615.38", "0.00", "384.62", "0.00", "", "7000.00"},
+				{"2026-02-10", "583.33", "0.00", "416.67", "0.00", "", "6000.00"},
+				{"2026-03-10", "545.45", "0.00", "454.55", "0.00", "", "5000.00"},
+				{"2026-04-10", "500.00", "0.00", "500.00", "0.00", "", "4000.00"},
+				{"2026-05-10", "444.44", "0.00", "555.56", "0.00", "", "3000.00"},
+				{"2026-06-10", "375.00", "0.00", "625.00", "0.00", "", "2000.00"},
+				{"2026-07-10", "285.71", "0.00", "714.29", "0.00", "", "1000.00"},
+				{"2026-08-10", "166.67", "0.00", "833.33", "0.00", "", "0.00"},
 			},
 		},
 	}
@@ -153,7 +195,7 @@ func TestWithTheSlackPrepaidFreedCashIsHeldAtZeroReturnOnceTheMortgageIsPaidOff(
 			decided := date(t, "2025-01-10")
 
 			verdicts, err := comparison.Decide(
-				comparison.Mortgage{Terms: interestFreeTerms(t)},
+				comparison.Mortgage{Terms: longInterestFreeTerms(t)},
 				comparison.Market{Quotes: []bonds.Quote{{Bond: ltn, Buy: &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")}}}},
 				comparison.Decision{Amount: dec(t, "5000.00"), Effect: tt.effect, PrepaySlack: true},
 				decided,
@@ -163,58 +205,88 @@ func TestWithTheSlackPrepaidFreedCashIsHeldAtZeroReturnOnceTheMortgageIsPaidOff(
 
 			prepay := verdicts[0].Prepay
 			assert.Equal(t, append(slices.Clone(tt.paying), held...), flows(prepay))
-			assert.Equal(t, "5000.00", prepay.Cash.String())
+			assert.Equal(t, "4000.00", prepay.Cash.String())
 			assert.Equal(t, "0.00", prepay.OutstandingBalance.String())
-			assert.Equal(t, "5000.00", prepay.NetWorth.String())
+			assert.Equal(t, "4000.00", prepay.NetWorth.String())
 		})
 	}
 }
 
-// With the slack ignored, prepaying 5,000.00 of the 12,000.00 owed on 2025-01-10 pays each
+// With the slack ignored, prepaying 5,000.00 of the 24,000.00 owed on 2025-01-10 pays each
 // installment the schedule charges and nothing else. Shortening the term keeps the 1,000.00
-// installment and ends the mortgage on 2025-08-10, and nothing is paid or held from then on.
-// Lowering it spreads the 7,000.00 left over the 12 months left, each amortizing what is owed over
-// the months left, to the centavo, and what it frees of the status quo's 1,000.00 is neither prepaid
-// nor held. Either way the scenario ends with no cash and nothing owed on the horizon.
+// installment and ends the mortgage on 2026-08-10, and nothing is paid or held from then on.
+// Lowering it spreads the 19,000.00 over the 24 months left, each installment amortizing what is
+// owed, to the centavo. What it frees of the status quo's 1,000.00 is neither prepaid nor held. The
+// last of the 24 falls due on 2027-01-10, after the 2027-01-01 horizon, so the lowered scenario
+// still owes its 791.66 there, and the shortened one nothing. Either way it ends with no cash.
 func TestWithTheSlackIgnoredNoScenarioPrepaysOrHoldsIt(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		effect mortgage.PrepaymentEffect
-		want   []flow
+		effect   mortgage.PrepaymentEffect
+		want     []flow
+		owed     string
+		netWorth string
 	}{
 		{
 			effect: mortgage.ShortenTerm,
 			want: []flow{
-				{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "7000.00"},
-				{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "6000.00"},
-				{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "5000.00"},
-				{"2025-04-10", "1000.00", "0.00", "0.00", "0.00", "", "4000.00"},
-				{"2025-05-10", "1000.00", "0.00", "0.00", "0.00", "", "3000.00"},
-				{"2025-06-10", "1000.00", "0.00", "0.00", "0.00", "", "2000.00"},
-				{"2025-07-10", "1000.00", "0.00", "0.00", "0.00", "", "1000.00"},
-				{"2025-08-10", "1000.00", "0.00", "0.00", "0.00", "", "0.00"},
+				{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "19000.00"},
+				{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "18000.00"},
+				{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "17000.00"},
+				{"2025-04-10", "1000.00", "0.00", "0.00", "0.00", "", "16000.00"},
+				{"2025-05-10", "1000.00", "0.00", "0.00", "0.00", "", "15000.00"},
+				{"2025-06-10", "1000.00", "0.00", "0.00", "0.00", "", "14000.00"},
+				{"2025-07-10", "1000.00", "0.00", "0.00", "0.00", "", "13000.00"},
+				{"2025-08-10", "1000.00", "0.00", "0.00", "0.00", "", "12000.00"},
+				{"2025-09-10", "1000.00", "0.00", "0.00", "0.00", "", "11000.00"},
+				{"2025-10-10", "1000.00", "0.00", "0.00", "0.00", "", "10000.00"},
+				{"2025-11-10", "1000.00", "0.00", "0.00", "0.00", "", "9000.00"},
+				{"2025-12-10", "1000.00", "0.00", "0.00", "0.00", "", "8000.00"},
+				{"2026-01-10", "1000.00", "0.00", "0.00", "0.00", "", "7000.00"},
+				{"2026-02-10", "1000.00", "0.00", "0.00", "0.00", "", "6000.00"},
+				{"2026-03-10", "1000.00", "0.00", "0.00", "0.00", "", "5000.00"},
+				{"2026-04-10", "1000.00", "0.00", "0.00", "0.00", "", "4000.00"},
+				{"2026-05-10", "1000.00", "0.00", "0.00", "0.00", "", "3000.00"},
+				{"2026-06-10", "1000.00", "0.00", "0.00", "0.00", "", "2000.00"},
+				{"2026-07-10", "1000.00", "0.00", "0.00", "0.00", "", "1000.00"},
+				{"2026-08-10", "1000.00", "0.00", "0.00", "0.00", "", "0.00"},
 				{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
 			},
+			owed:     "0.00",
+			netWorth: "0.00",
 		},
 		{
 			effect: mortgage.LowerInstallment,
 			want: []flow{
-				{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "7000.00"},
-				{"2025-02-10", "583.33", "0.00", "0.00", "0.00", "", "6416.67"},
-				{"2025-03-10", "583.33", "0.00", "0.00", "0.00", "", "5833.34"},
-				{"2025-04-10", "583.33", "0.00", "0.00", "0.00", "", "5250.01"},
-				{"2025-05-10", "583.33", "0.00", "0.00", "0.00", "", "4666.68"},
-				{"2025-06-10", "583.34", "0.00", "0.00", "0.00", "", "4083.34"},
-				{"2025-07-10", "583.33", "0.00", "0.00", "0.00", "", "3500.01"},
-				{"2025-08-10", "583.34", "0.00", "0.00", "0.00", "", "2916.67"},
-				{"2025-09-10", "583.33", "0.00", "0.00", "0.00", "", "2333.34"},
-				{"2025-10-10", "583.34", "0.00", "0.00", "0.00", "", "1750.00"},
-				{"2025-11-10", "583.33", "0.00", "0.00", "0.00", "", "1166.67"},
-				{"2025-12-10", "583.34", "0.00", "0.00", "0.00", "", "583.33"},
-				{"2026-01-10", "583.33", "0.00", "0.00", "0.00", "", "0.00"},
-				{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
+				{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "19000.00"},
+				{"2025-02-10", "791.67", "0.00", "0.00", "0.00", "", "18208.33"},
+				{"2025-03-10", "791.67", "0.00", "0.00", "0.00", "", "17416.66"},
+				{"2025-04-10", "791.67", "0.00", "0.00", "0.00", "", "16624.99"},
+				{"2025-05-10", "791.67", "0.00", "0.00", "0.00", "", "15833.32"},
+				{"2025-06-10", "791.67", "0.00", "0.00", "0.00", "", "15041.65"},
+				{"2025-07-10", "791.67", "0.00", "0.00", "0.00", "", "14249.98"},
+				{"2025-08-10", "791.67", "0.00", "0.00", "0.00", "", "13458.31"},
+				{"2025-09-10", "791.67", "0.00", "0.00", "0.00", "", "12666.64"},
+				{"2025-10-10", "791.67", "0.00", "0.00", "0.00", "", "11874.97"},
+				{"2025-11-10", "791.66", "0.00", "0.00", "0.00", "", "11083.31"},
+				{"2025-12-10", "791.67", "0.00", "0.00", "0.00", "", "10291.64"},
+				{"2026-01-10", "791.66", "0.00", "0.00", "0.00", "", "9499.98"},
+				{"2026-02-10", "791.67", "0.00", "0.00", "0.00", "", "8708.31"},
+				{"2026-03-10", "791.66", "0.00", "0.00", "0.00", "", "7916.65"},
+				{"2026-04-10", "791.67", "0.00", "0.00", "0.00", "", "7124.98"},
+				{"2026-05-10", "791.66", "0.00", "0.00", "0.00", "", "6333.32"},
+				{"2026-06-10", "791.67", "0.00", "0.00", "0.00", "", "5541.65"},
+				{"2026-07-10", "791.66", "0.00", "0.00", "0.00", "", "4749.99"},
+				{"2026-08-10", "791.67", "0.00", "0.00", "0.00", "", "3958.32"},
+				{"2026-09-10", "791.66", "0.00", "0.00", "0.00", "", "3166.66"},
+				{"2026-10-10", "791.67", "0.00", "0.00", "0.00", "", "2374.99"},
+				{"2026-11-10", "791.66", "0.00", "0.00", "0.00", "", "1583.33"},
+				{"2026-12-10", "791.67", "0.00", "0.00", "0.00", "", "791.66"},
+				{"2027-01-01", "", "0.00", "0.00", "0.00", "", "791.66"},
 			},
+			owed:     "791.66",
+			netWorth: "-791.66",
 		},
 	}
 
@@ -226,7 +298,7 @@ func TestWithTheSlackIgnoredNoScenarioPrepaysOrHoldsIt(t *testing.T) {
 			decided := date(t, "2025-01-10")
 
 			verdicts, err := comparison.Decide(
-				comparison.Mortgage{Terms: interestFreeTerms(t)},
+				comparison.Mortgage{Terms: longInterestFreeTerms(t)},
 				comparison.Market{Quotes: []bonds.Quote{{Bond: ltn, Buy: &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")}}}},
 				comparison.Decision{Amount: dec(t, "5000.00"), Effect: tt.effect},
 				decided,
@@ -237,24 +309,24 @@ func TestWithTheSlackIgnoredNoScenarioPrepaysOrHoldsIt(t *testing.T) {
 			prepay := verdicts[0].Prepay
 			assert.Equal(t, tt.want, flows(prepay))
 			assert.Equal(t, "0.00", prepay.Cash.String())
-			assert.Equal(t, "0.00", prepay.OutstandingBalance.String())
-			assert.Equal(t, "0.00", prepay.NetWorth.String())
+			assert.Equal(t, tt.owed, prepay.OutstandingBalance.String())
+			assert.Equal(t, tt.netWorth, prepay.NetWorth.String())
 		})
 	}
 }
 
 // The slack can be negative, and ignored it is neither held nor prepaid either. Prepaying 5,000.00
-// of the 12,000.00 owed on 2025-01-10 shortens the term to end on 2025-08-10. The bank's statement
-// of 2025-03-10 then reports 10,000.00 owed after that day's installment, as it does for the status
-// quo, so the 5 months left charge 2,000.00 each against the status quo's 1,000.00.
+// of the 24,000.00 owed on 2025-01-10 shortens the term to end on 2026-08-10. The bank's statement
+// of 2025-04-10 reports 21,000.00 owed after that day's installment, as the status quo's balance
+// does, so the 16 months left charge 1,312.50 each against its 1,000.00.
 func TestWithTheSlackIgnoredAnInstallmentAboveTheStatusQuosHoldsNothing(t *testing.T) {
 	t.Parallel()
 
 	decided := date(t, "2025-01-10")
-	events := mortgage.Events{Statements: []mortgage.Statement{{Date: date(t, "2025-03-10"), OutstandingBalance: dec(t, "10000.00")}}}
+	events := mortgage.Events{Statements: []mortgage.Statement{{Date: date(t, "2025-04-10"), OutstandingBalance: dec(t, "21000.00")}}}
 
 	verdicts, err := comparison.Decide(
-		comparison.Mortgage{Terms: interestFreeTerms(t), Events: events},
+		comparison.Mortgage{Terms: longInterestFreeTerms(t), Events: events},
 		comparison.Market{Quotes: []bonds.Quote{{
 			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
 			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
@@ -267,31 +339,43 @@ func TestWithTheSlackIgnoredAnInstallmentAboveTheStatusQuosHoldsNothing(t *testi
 
 	prepay := verdicts[0].Prepay
 	assert.Equal(t, []flow{
-		{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "7000.00"},
-		{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "6000.00"},
-		{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "10000.00"},
-		{"2025-04-10", "2000.00", "0.00", "0.00", "0.00", "", "8000.00"},
-		{"2025-05-10", "2000.00", "0.00", "0.00", "0.00", "", "6000.00"},
-		{"2025-06-10", "2000.00", "0.00", "0.00", "0.00", "", "4000.00"},
-		{"2025-07-10", "2000.00", "0.00", "0.00", "0.00", "", "2000.00"},
-		{"2025-08-10", "2000.00", "0.00", "0.00", "0.00", "", "0.00"},
+		{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "19000.00"},
+		{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "18000.00"},
+		{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "17000.00"},
+		{"2025-04-10", "1000.00", "0.00", "0.00", "0.00", "", "21000.00"},
+		{"2025-05-10", "1312.50", "0.00", "0.00", "0.00", "", "19687.50"},
+		{"2025-06-10", "1312.50", "0.00", "0.00", "0.00", "", "18375.00"},
+		{"2025-07-10", "1312.50", "0.00", "0.00", "0.00", "", "17062.50"},
+		{"2025-08-10", "1312.50", "0.00", "0.00", "0.00", "", "15750.00"},
+		{"2025-09-10", "1312.50", "0.00", "0.00", "0.00", "", "14437.50"},
+		{"2025-10-10", "1312.50", "0.00", "0.00", "0.00", "", "13125.00"},
+		{"2025-11-10", "1312.50", "0.00", "0.00", "0.00", "", "11812.50"},
+		{"2025-12-10", "1312.50", "0.00", "0.00", "0.00", "", "10500.00"},
+		{"2026-01-10", "1312.50", "0.00", "0.00", "0.00", "", "9187.50"},
+		{"2026-02-10", "1312.50", "0.00", "0.00", "0.00", "", "7875.00"},
+		{"2026-03-10", "1312.50", "0.00", "0.00", "0.00", "", "6562.50"},
+		{"2026-04-10", "1312.50", "0.00", "0.00", "0.00", "", "5250.00"},
+		{"2026-05-10", "1312.50", "0.00", "0.00", "0.00", "", "3937.50"},
+		{"2026-06-10", "1312.50", "0.00", "0.00", "0.00", "", "2625.00"},
+		{"2026-07-10", "1312.50", "0.00", "0.00", "0.00", "", "1312.50"},
+		{"2026-08-10", "1312.50", "0.00", "0.00", "0.00", "", "0.00"},
 		{"2027-01-01", "", "0.00", "0.00", "0.00", "", "0.00"},
 	}, flows(prepay))
 	assert.Equal(t, "0.00", prepay.Cash.String())
 }
 
 // Lowering the installment with the slack ignored gives the owner what its installments charge less
-// by the horizon. With a 0.1% MIP on the balance and nothing else charged, the status quo's 12
-// installments from 2025-02-10 amortize 1,000.00 each of the 12,000.00 owed and charge 12.00 down
-// to 1.00 of MIP, 78.00 in all. Prepaying 5,000.00 leaves 7,000.00, amortized 583.33 or 583.34 a
-// month, whose MIP of 7.00, 6.42, 5.83, 5.25, 4.67, 4.08, 3.50, 2.92, 2.33, 1.75, 1.17 and 0.58 adds
-// up to 45.50. The installments avoid 32.50 of MIP and charge 12,078.00 − 7,045.50 = 5,032.50 less.
-// A bond maturing on 2025-07-01 counts only the 5 installments due by then: 12.00 down to 8.00 of
-// MIP, 50.00, against 7.00 + 6.42 + 5.83 + 5.25 + 4.67 = 29.17, so 20.83 is avoided, and the
-// installments charge 5,050.00 − (583.33 × 4 + 583.34 + 29.17) = 2,104.17 less. Charging 1% a month
-// of interest from 2025-02-01 too, those 5 installments charge 120.00 down to 80.00 of it on the
-// status quo's balance, 500.00, and 70.00 + 64.17 + 58.33 + 52.50 + 46.67 = 291.67 on the lowered
-// one's: they avoid 550.00 − 320.84 = 229.16 and charge 5,550.00 − 3,237.50 = 2,312.50 less.
+// by the horizon. With a 0.1% MIP on the balance and nothing else charged, the status quo's 23
+// installments from 2025-02-10 due by the 2027-01-01 horizon amortize 1,000.00 each of the
+// 24,000.00 owed and charge 24.00 down to 2.00 of MIP, 299.00 in all; the 24th falls due after it.
+// Prepaying 5,000.00 leaves 19,000.00, amortized 791.67 or 791.66 a month, whose MIP, 0.1% of the
+// balance before each of those 23, adds up to 236.69. The installments avoid 62.31 of MIP and
+// charge 23,299.00 − (18,208.34 + 236.69) = 4,853.97 less. A bond maturing on 2025-07-01 counts
+// only the 5 installments due by then: 24.00 down to 20.00 of MIP, 110.00, against 87.08 for the
+// lowered ones, so 22.92 is avoided, and the installments charge 5,110.00 − (791.67 × 5 + 87.08) =
+// 1,064.57 less. Charging 1% a month of interest from 2025-02-01 too, those 5 installments charge
+// 240.00 down to 200.00 of it on the status quo's balance, 1,100.00, and 870.83 on the lowered
+// one's: they avoid 1,210.00 − 957.91 = 252.09 and charge 6,210.00 − 4,916.26 = 1,293.74 less.
 // Shortening the term, or prepaying the slack, lowers no installment the owner keeps.
 func TestLoweringTheInstallmentWithTheSlackIgnoredSaysWhatItGivesByTheHorizon(t *testing.T) {
 	t.Parallel()
@@ -308,20 +392,20 @@ func TestLoweringTheInstallmentWithTheSlackIgnoredSaysWhatItGivesByTheHorizon(t 
 			name:     "lowered installment",
 			maturity: "2027-01-01",
 			effect:   mortgage.LowerInstallment,
-			want:     &comparison.LoweredInstallment{ChargesAvoided: dec(t, "32.50"), PaidLess: dec(t, "5032.50")},
+			want:     &comparison.LoweredInstallment{ChargesAvoided: dec(t, "62.31"), PaidLess: dec(t, "4853.97")},
 		},
 		{
 			name:     "horizon before the mortgage ends",
 			maturity: "2025-07-01",
 			effect:   mortgage.LowerInstallment,
-			want:     &comparison.LoweredInstallment{ChargesAvoided: dec(t, "20.83"), PaidLess: dec(t, "2104.17")},
+			want:     &comparison.LoweredInstallment{ChargesAvoided: dec(t, "22.92"), PaidLess: dec(t, "1064.57")},
 		},
 		{
 			name:     "interest charged, horizon before the mortgage ends",
 			maturity: "2025-07-01",
 			interest: true,
 			effect:   mortgage.LowerInstallment,
-			want:     &comparison.LoweredInstallment{ChargesAvoided: dec(t, "229.16"), PaidLess: dec(t, "2312.50")},
+			want:     &comparison.LoweredInstallment{ChargesAvoided: dec(t, "252.09"), PaidLess: dec(t, "1293.74")},
 		},
 		{name: "shortened term", maturity: "2027-01-01", effect: mortgage.ShortenTerm},
 		{name: "slack prepaid", maturity: "2027-01-01", effect: mortgage.LowerInstallment, prepaySlack: true},
@@ -331,7 +415,7 @@ func TestLoweringTheInstallmentWithTheSlackIgnoredSaysWhatItGivesByTheHorizon(t 
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			terms := interestFreeTerms(t)
+			terms := longInterestFreeTerms(t)
 			terms.MIPRates[0].Rate = dec(t, "0.001")
 
 			if tt.interest {
@@ -370,11 +454,12 @@ func TestLoweringTheInstallmentWithTheSlackIgnoredSaysWhatItGivesByTheHorizon(t 
 
 // With the slack ignored, what prepaying saves comes back partly as installments the owner no
 // longer pays, and the avoided cost counts it. With a 0.1% MIP on the balance and nothing else
-// charged, the status quo's 12 installments from 2025-02-10 charge 78.00 of MIP. Prepaying 5,000.00
-// of the 12,000.00 owed to lower the installment charges 45.50 of it on the 7,000.00 left, as above,
-// so it avoids 32.50. Shortening the term pays the 7,000.00 off at 1,000.00 a month by 2025-08-10,
-// charging 7.00 down to 1.00, 28.00 in all, so it avoids 50.00. Both end owing nothing, as the status
-// quo does.
+// charged, the status quo's 23 installments from 2025-02-10 due by the horizon charge 299.00 of MIP.
+// Prepaying 5,000.00 of the 24,000.00 owed to lower the installment charges 236.69 of it on the
+// 19,000.00 left, as above, so it avoids 62.31. Shortening the term pays the 19,000.00 off at
+// 1,000.00 a month by 2026-08-10, charging 19.00 down to 1.00, 190.00 in all, so it avoids 109.00.
+// The horizon balances differ by the amortization the installments skip, which the paid-less total
+// counts too, so the avoided cost is the charges alone.
 func TestWithTheSlackIgnoredTheAvoidedCostCountsTheInstallmentsNoLongerPaid(t *testing.T) {
 	t.Parallel()
 
@@ -382,15 +467,15 @@ func TestWithTheSlackIgnoredTheAvoidedCostCountsTheInstallmentsNoLongerPaid(t *t
 		effect mortgage.PrepaymentEffect
 		want   string
 	}{
-		{effect: mortgage.LowerInstallment, want: "32.50"},
-		{effect: mortgage.ShortenTerm, want: "50.00"},
+		{effect: mortgage.LowerInstallment, want: "62.31"},
+		{effect: mortgage.ShortenTerm, want: "109.00"},
 	}
 
 	for _, tt := range tests {
 		t.Run(string(tt.effect), func(t *testing.T) {
 			t.Parallel()
 
-			terms := interestFreeTerms(t)
+			terms := longInterestFreeTerms(t)
 			terms.MIPRates[0].Rate = dec(t, "0.001")
 			decided := date(t, "2025-01-10")
 
@@ -411,21 +496,22 @@ func TestWithTheSlackIgnoredTheAvoidedCostCountsTheInstallmentsNoLongerPaid(t *t
 	}
 }
 
-// A statement the bank issued on the decision's date reports the balance without the decision's
-// prepayment, which never happened, so the prepayment applies after it: the 11,500.00 the bank
-// reports on 2025-01-10, less the 5,000.00, leaves 6,500.00. At no interest, prepaying avoids
-// nothing.
+// The bank's statement dated the decision's date reports the balance without the decision's
+// prepayment, which never happened, so the prepayment applies after it: the 25,500.00 the bank
+// reports on 2025-01-10, less the 5,000.00, leaves 20,500.00. The 38-month mortgage's recorded
+// 2,000.00 prepayment of 2024-06-10 shortens it to end on 2027-01-10, after the bond's maturity, so
+// the bond is compared.
 func TestADecisionPrepaysAfterTheStatementsOfItsDate(t *testing.T) {
 	t.Parallel()
 
 	decided := date(t, "2025-01-10")
 	events := mortgage.Events{
 		Prepayments: []mortgage.Prepayment{{Date: date(t, "2024-06-10"), Amount: dec(t, "2000.00"), Effect: mortgage.ShortenTerm}},
-		Statements:  []mortgage.Statement{{Date: decided, OutstandingBalance: dec(t, "11500.00")}},
+		Statements:  []mortgage.Statement{{Date: decided, OutstandingBalance: dec(t, "25500.00")}},
 	}
 
 	verdicts, err := comparison.Decide(
-		comparison.Mortgage{Terms: interestFreeTerms(t), Events: events},
+		comparison.Mortgage{Terms: interestFreeTermsOver(t, 38), Events: events},
 		comparison.Market{Quotes: []bonds.Quote{{
 			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
 			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
@@ -437,21 +523,21 @@ func TestADecisionPrepaysAfterTheStatementsOfItsDate(t *testing.T) {
 	require.Len(t, verdicts, 1)
 
 	v := verdicts[0]
-	assert.Equal(t, flow{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "6500.00"}, flows(v.Prepay)[0])
+	assert.Equal(t, flow{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "20500.00"}, flows(v.Prepay)[0])
 	assert.Equal(t, "0.00", v.AvoidedCost.String())
 }
 
 // With the slack prepaid, a top-up follows the recorded events of its due date too: the statement of
-// 2025-03-10 sets the balance to 5,000.00 after that day's 545.45 installment, and only then is the
-// 454.55 it leaves of the status quo's 1,000.00 prepaid, leaving 4,545.45.
+// 2025-03-10 sets the balance after that day's installment, and only then is what the installment
+// leaves of the status quo's 1,000.00 prepaid.
 func TestATopUpPrepaysAfterTheStatementsOfItsDueDate(t *testing.T) {
 	t.Parallel()
 
 	decided := date(t, "2025-01-10")
-	events := mortgage.Events{Statements: []mortgage.Statement{{Date: date(t, "2025-03-10"), OutstandingBalance: dec(t, "5000.00")}}}
+	events := mortgage.Events{Statements: []mortgage.Statement{{Date: date(t, "2025-03-10"), OutstandingBalance: dec(t, "15000.00")}}}
 
 	verdicts, err := comparison.Decide(
-		comparison.Mortgage{Terms: interestFreeTerms(t), Events: events},
+		comparison.Mortgage{Terms: longInterestFreeTerms(t), Events: events},
 		comparison.Market{Quotes: []bonds.Quote{{
 			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
 			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
@@ -463,9 +549,9 @@ func TestATopUpPrepaysAfterTheStatementsOfItsDueDate(t *testing.T) {
 	require.Len(t, verdicts, 1)
 
 	assert.Equal(t, []flow{
-		{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "7000.00"},
-		{"2025-02-10", "583.33", "0.00", "416.67", "0.00", "", "6000.00"},
-		{"2025-03-10", "545.45", "0.00", "454.55", "0.00", "", "4545.45"},
+		{"2025-01-10", "", "0.00", "5000.00", "0.00", "", "19000.00"},
+		{"2025-02-10", "791.67", "0.00", "208.33", "0.00", "", "18000.00"},
+		{"2025-03-10", "782.61", "0.00", "217.39", "0.00", "", "14782.61"},
 	}, flows(verdicts[0].Prepay)[:3])
 }
 
@@ -652,8 +738,8 @@ func TestWithTheSlackIgnoredShorteningTheTermIsWorthNoLessThanLoweringTheInstall
 
 // A decision offers the bonds that follow the mortgage's indexer (ADR-0007): an NTN-B Principal or
 // an NTN-B against an IPCA mortgage, an LTN or an NTN-F against any other. Only bonds on offer,
-// maturing after the decision's date, are compared. Without IPCA index numbers, the VNA of an IPCA+
-// bond is unknown, so its verdict says so.
+// maturing after today, are compared. The mortgage here outlasts every maturity, so only the indexer
+// filters. Without IPCA index numbers, the VNA of an IPCA+ bond is unknown, so its verdict says so.
 func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 	t.Parallel()
 
@@ -688,7 +774,7 @@ func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 		t.Run(string(tt.indexer), func(t *testing.T) {
 			t.Parallel()
 
-			terms := interestFreeTerms(t)
+			terms := interestFreeTermsOver(t, 140)
 			terms.Indexer = tt.indexer
 			decided := date(t, "2025-01-10")
 
@@ -699,6 +785,80 @@ func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 			got := make([]string, 0, len(verdicts))
 			for _, v := range verdicts {
 				got = append(got, strings.TrimSpace(fmt.Sprintf("%s %s %s", v.Bond.Type, v.Bond.Maturity.Format(time.DateOnly), v.Unavailable)))
+			}
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+// A decision compares only the bonds that mature before the mortgage's payoff as recorded
+// (ADR-0019). The interest-free mortgage ends on 2026-01-10, so a bond maturing the day before is
+// compared and one maturing that day isn't. The 2,000.00 prepaid on 2024-06-10 to shorten the term
+// drops 2 of the 24 installments, so the mortgage ends on 2025-11-10 and the NTN-F maturing on
+// 2026-01-01 isn't compared. One that lowers the installment keeps the term and the payoff.
+func TestADecisionComparesOnlyTheBondsThatMatureBeforeTheMortgagesPayoff(t *testing.T) {
+	t.Parallel()
+
+	buy := &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")}
+	quote := func(bondType bonds.Type, maturity string) bonds.Quote {
+		return bonds.Quote{Bond: bonds.Bond{Type: bondType, Maturity: date(t, maturity)}, Buy: buy}
+	}
+	market := comparison.Market{Quotes: []bonds.Quote{
+		quote(bonds.LTN, "2025-06-01"),
+		quote(bonds.LTN, "2025-11-09"),
+		quote(bonds.LTN, "2025-11-10"),
+		quote(bonds.LTN, "2025-11-11"),
+		quote(bonds.NTNF, "2026-01-01"),
+		quote(bonds.LTN, "2026-01-09"),
+		quote(bonds.LTN, "2026-01-10"),
+		quote(bonds.LTN, "2026-01-11"),
+		quote(bonds.NTNF, "2027-01-01"),
+	}}
+	prepaid := func(effect mortgage.PrepaymentEffect) mortgage.Events {
+		return mortgage.Events{Prepayments: []mortgage.Prepayment{{Date: date(t, "2024-06-10"), Amount: dec(t, "2000.00"), Effect: effect}}}
+	}
+
+	tests := []struct {
+		name   string
+		events mortgage.Events
+		want   []string
+	}{
+		{
+			name: "the contract's term",
+			want: []string{
+				"ltn 2025-06-01", "ltn 2025-11-09", "ltn 2025-11-10", "ltn 2025-11-11", "ntn_f 2026-01-01",
+				"ltn 2026-01-09",
+			},
+		},
+		{
+			name:   "a recorded prepayment that shortens the term",
+			events: prepaid(mortgage.ShortenTerm),
+			want:   []string{"ltn 2025-06-01", "ltn 2025-11-09"},
+		},
+		{
+			name:   "a recorded prepayment that lowers the installment",
+			events: prepaid(mortgage.LowerInstallment),
+			want: []string{
+				"ltn 2025-06-01", "ltn 2025-11-09", "ltn 2025-11-10", "ltn 2025-11-11", "ntn_f 2026-01-01",
+				"ltn 2026-01-09",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			decided := date(t, "2025-01-10")
+
+			verdicts, err := comparison.Decide(comparison.Mortgage{Terms: interestFreeTerms(t), Events: tt.events}, market,
+				comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.ShortenTerm}, decided)
+			require.NoError(t, err)
+
+			got := make([]string, 0, len(verdicts))
+			for _, v := range verdicts {
+				got = append(got, fmt.Sprintf("%s %s", v.Bond.Type, v.Bond.Maturity.Format(time.DateOnly)))
 			}
 
 			assert.Equal(t, tt.want, got)
@@ -1084,21 +1244,23 @@ func couponFlows(s comparison.Scenario) []couponFlow {
 	return out
 }
 
-// 5,000.00 on 2025-01-10, with 12,000.00 still owed interest-free at 1,000.00 a month, buys 5.14
-// NTN-F maturing on 2027-01-01 at 12% a year, 970.884128 each. The expected figures come from a
-// separate implementation in Python's decimal module of Tesouro's NTN-F price over ANBIMA's holiday
-// list and the taxes. Each coupon of 48.80885 a bond, 250.88 for the lot, is taxed at the bracket
-// of the days since the purchase: 172 days pay 22.5%, 356 days 20% and 537 days 17.5%. Its custody
-// fee accrues from the purchase or the previous coupon. Each net coupon is prepaid on its date, and
-// with the slack prepaid, what the lower installments leave of the 1,000.00 is prepaid too. Once
-// nothing is owed, the coupon of 2026-07-01 is held. Investing ends 925.44 ahead, 18.51% of the
-// amount, no near tie, over 23 whole months: the maturity's 1st comes before the decision's 10th.
+// Each net coupon of the 5.14 NTN-F that 5,000.00 buys on 2025-01-10, maturing on 2027-01-01 at
+// 12% a year for 970.884128 each, is prepaid on its date, and with the slack prepaid, what the lower
+// installments leave of the 1,000.00 is prepaid too. 24,000.00 is still owed interest-free at
+// 1,000.00 a month. The expected figures come from a separate implementation in Python's decimal
+// module of Tesouro's NTN-F price over ANBIMA's holiday list and the taxes. Each coupon of 48.80885
+// a bond, 250.88 for the lot, is taxed at the bracket of the days since the purchase: 172 days pay
+// 22.5%, 356 days 20% and 537 days 17.5%. Its custody fee accrues from the purchase or the previous
+// coupon. The last of the 24 installments falls due on 2027-01-10, after the maturity, so 410.39 is
+// still owed on the horizon: the 1,000.00 the status quo owes then, less the 589.61 of coupons
+// prepaid. Investing is worth 9.66 + 5,326.17 − 410.39 = 4,925.44, 925.44 above the 4,000.00
+// prepaying holds, over 23 whole months: the maturity's 1st comes before the decision's 10th.
 func TestAnNTNFVerdictPrepaysEachNetCouponOnItsDate(t *testing.T) {
 	t.Parallel()
 
 	decided := date(t, "2025-01-10")
 	verdicts, err := comparison.Decide(
-		comparison.Mortgage{Terms: interestFreeTerms(t)},
+		comparison.Mortgage{Terms: longInterestFreeTerms(t)},
 		comparison.Market{
 			Quotes: []bonds.Quote{{
 				Bond: bonds.Bond{Type: bonds.NTNF, Maturity: date(t, "2027-01-01")},
@@ -1118,27 +1280,39 @@ func TestAnNTNFVerdictPrepaysEachNetCouponOnItsDate(t *testing.T) {
 
 	none := amountView{}
 	assert.Equal(t, []couponFlow{
-		{flow{"2025-01-10", "", "4990.34", "0.00", "9.66", "", "12000.00"}, none},
-		{flow{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "11000.00"}, none},
-		{flow{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "10000.00"}, none},
-		{flow{"2025-04-10", "1000.00", "0.00", "0.00", "0.00", "", "9000.00"}, none},
-		{flow{"2025-05-10", "1000.00", "0.00", "0.00", "0.00", "", "8000.00"}, none},
-		{flow{"2025-06-10", "1000.00", "0.00", "0.00", "0.00", "", "7000.00"}, none},
-		{flow{"2025-07-01", "", "0.00", "190.59", "0.00", "", "6809.41"}, amountView{"250.88", "0.00", "55.33", "4.96", "190.59"}},
-		{flow{"2025-07-10", "972.77", "0.00", "27.23", "0.00", "", "5809.41"}, none},
-		{flow{"2025-08-10", "968.24", "0.00", "31.76", "0.00", "", "4809.41"}, none},
-		{flow{"2025-09-10", "961.88", "0.00", "38.12", "0.00", "", "3809.41"}, none},
-		{flow{"2025-10-10", "952.35", "0.00", "47.65", "0.00", "", "2809.41"}, none},
-		{flow{"2025-11-10", "936.47", "0.00", "63.53", "0.00", "", "1809.41"}, none},
-		{flow{"2025-12-10", "904.71", "0.00", "95.29", "0.00", "", "809.41"}, none},
-		{flow{"2026-01-01", "", "0.00", "196.42", "0.00", "", "612.99"}, amountView{"250.88", "0.00", "49.11", "5.35", "196.42"}},
-		{flow{"2026-01-10", "612.99", "0.00", "0.00", "387.01", "", "0.00"}, none},
-		{flow{"2026-07-01", "", "0.00", "0.00", "202.60", "", "0.00"}, amountView{"250.88", "0.00", "42.98", "5.30", "202.60"}},
-		{flow{"2027-01-01", "", "0.00", "0.00", "0.00", "5326.17", "0.00"}, none},
+		{flow{"2025-01-10", "", "4990.34", "0.00", "9.66", "", "24000.00"}, none},
+		{flow{"2025-02-10", "1000.00", "0.00", "0.00", "0.00", "", "23000.00"}, none},
+		{flow{"2025-03-10", "1000.00", "0.00", "0.00", "0.00", "", "22000.00"}, none},
+		{flow{"2025-04-10", "1000.00", "0.00", "0.00", "0.00", "", "21000.00"}, none},
+		{flow{"2025-05-10", "1000.00", "0.00", "0.00", "0.00", "", "20000.00"}, none},
+		{flow{"2025-06-10", "1000.00", "0.00", "0.00", "0.00", "", "19000.00"}, none},
+		{flow{"2025-07-01", "", "0.00", "190.59", "0.00", "", "18809.41"}, amountView{"250.88", "0.00", "55.33", "4.96", "190.59"}},
+		{flow{"2025-07-10", "989.97", "0.00", "10.03", "0.00", "", "17809.41"}, none},
+		{flow{"2025-08-10", "989.41", "0.00", "10.59", "0.00", "", "16809.41"}, none},
+		{flow{"2025-09-10", "988.79", "0.00", "11.21", "0.00", "", "15809.41"}, none},
+		{flow{"2025-10-10", "988.09", "0.00", "11.91", "0.00", "", "14809.41"}, none},
+		{flow{"2025-11-10", "987.29", "0.00", "12.71", "0.00", "", "13809.41"}, none},
+		{flow{"2025-12-10", "986.39", "0.00", "13.61", "0.00", "", "12809.41"}, none},
+		{flow{"2026-01-01", "", "0.00", "196.42", "0.00", "", "12612.99"}, amountView{"250.88", "0.00", "49.11", "5.35", "196.42"}},
+		{flow{"2026-01-10", "970.23", "0.00", "29.77", "0.00", "", "11612.99"}, none},
+		{flow{"2026-02-10", "967.75", "0.00", "32.25", "0.00", "", "10612.99"}, none},
+		{flow{"2026-03-10", "964.82", "0.00", "35.18", "0.00", "", "9612.99"}, none},
+		{flow{"2026-04-10", "961.30", "0.00", "38.70", "0.00", "", "8612.99"}, none},
+		{flow{"2026-05-10", "957.00", "0.00", "43.00", "0.00", "", "7612.99"}, none},
+		{flow{"2026-06-10", "951.62", "0.00", "48.38", "0.00", "", "6612.99"}, none},
+		{flow{"2026-07-01", "", "0.00", "202.60", "0.00", "", "6410.39"}, amountView{"250.88", "0.00", "42.98", "5.30", "202.60"}},
+		{flow{"2026-07-10", "915.77", "0.00", "84.23", "0.00", "", "5410.39"}, none},
+		{flow{"2026-08-10", "901.73", "0.00", "98.27", "0.00", "", "4410.39"}, none},
+		{flow{"2026-09-10", "882.08", "0.00", "117.92", "0.00", "", "3410.39"}, none},
+		{flow{"2026-10-10", "852.60", "0.00", "147.40", "0.00", "", "2410.39"}, none},
+		{flow{"2026-11-10", "803.46", "0.00", "196.54", "0.00", "", "1410.39"}, none},
+		{flow{"2026-12-10", "705.20", "0.00", "294.80", "0.00", "", "410.39"}, none},
+		{flow{"2027-01-01", "", "0.00", "0.00", "0.00", "5326.17", "410.39"}, none},
 	}, couponFlows(v.Invest))
 	assert.Equal(t, amountView{"5390.88", "0.00", "59.27", "5.44", "5326.17"}, amountOf(v.Invest.Bond))
-	assert.Equal(t, "599.27", v.Invest.Cash.String())
-	assert.Equal(t, "5925.44", v.Invest.NetWorth.String())
+	assert.Equal(t, "9.66", v.Invest.Cash.String())
+	assert.Equal(t, "410.39", v.Invest.OutstandingBalance.String())
+	assert.Equal(t, "4925.44", v.Invest.NetWorth.String())
 	assert.Equal(t, "925.44", v.Advantage.String())
 	assert.Equal(t, "0.1851", v.AdvantageShare.String())
 	assert.False(t, v.NearTie)
@@ -1146,17 +1320,67 @@ func TestAnNTNFVerdictPrepaysEachNetCouponOnItsDate(t *testing.T) {
 	assert.Empty(t, v.ProjectedBy)
 }
 
+// What nothing is owed for is held at zero return, a coupon included. A mortgage that borrows
+// 2,880.00 over 36 months amortizes 80.00 a month and owes 1,920.00 on 2025-01-10, and the NTN-F of
+// TestAnNTNFVerdictPrepaysEachNetCouponOnItsDate, bought with 5,000.00, prepays it with its coupons
+// of 190.59, 196.42 and 202.60 net. The one of 2026-07-01 pays the last 172.99 owed and holds the
+// 29.61 it leaves; with the slack prepaid, the 80.00 of each status quo installment from 2026-07-10
+// to 2026-12-10 is held too, so the scenario holds 9.66 + 29.61 + 6 × 80.00 = 519.27 on the
+// horizon, before the last installment falls due on 2027-01-10.
+func TestACouponDueOnceNothingIsOwedIsHeld(t *testing.T) {
+	t.Parallel()
+
+	terms := longInterestFreeTerms(t)
+	terms.OriginalAmount = dec(t, "2880.00")
+	decided := date(t, "2025-01-10")
+
+	verdicts, err := comparison.Decide(
+		comparison.Mortgage{Terms: terms},
+		comparison.Market{
+			Quotes: []bonds.Quote{{
+				Bond: bonds.Bond{Type: bonds.NTNF, Maturity: date(t, "2027-01-01")},
+				Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "970.00")},
+			}},
+			Taxes: lotTaxes(t),
+		},
+		comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.ShortenTerm, PrepaySlack: true},
+		decided,
+	)
+	require.NoError(t, err)
+	require.Len(t, verdicts, 1)
+
+	invest := verdicts[0].Invest
+	got := couponFlows(invest)
+	i := slices.IndexFunc(got, func(f couponFlow) bool { return f.Date == "2026-07-01" })
+	require.Positive(t, i)
+
+	none := amountView{}
+	assert.Equal(t, []couponFlow{
+		{flow{"2026-07-01", "", "0.00", "172.99", "29.61", "", "0.00"}, amountView{"250.88", "0.00", "42.98", "5.30", "202.60"}},
+		{flow{"2026-07-10", "", "0.00", "0.00", "80.00", "", "0.00"}, none},
+		{flow{"2026-08-10", "", "0.00", "0.00", "80.00", "", "0.00"}, none},
+		{flow{"2026-09-10", "", "0.00", "0.00", "80.00", "", "0.00"}, none},
+		{flow{"2026-10-10", "", "0.00", "0.00", "80.00", "", "0.00"}, none},
+		{flow{"2026-11-10", "", "0.00", "0.00", "80.00", "", "0.00"}, none},
+		{flow{"2026-12-10", "", "0.00", "0.00", "80.00", "", "0.00"}, none},
+		{flow{"2027-01-01", "", "0.00", "0.00", "0.00", "5326.17", "0.00"}, none},
+	}, got[i:])
+	assert.Equal(t, "519.27", invest.Cash.String())
+	assert.Equal(t, "0.00", invest.OutstandingBalance.String())
+}
+
 // A coupon due the same day as an installment is prepaid after it, and the day shows both on one
-// row. With the interest-free mortgage due on the 1st, 5,000.00 on 2025-01-02 buys 5.16 NTN-F
-// maturing on 2027-01-01 at 12% a year. On 2025-07-01, 180 days after the purchase and so still at
-// 22.5% of income tax, the 1,000.00 installment leaves 6,000.00 and the 191.15 net coupon is prepaid
-// from it. The figures come from the same separate implementation in Python. With the slack
-// ignored, the 5,808.85 left fits in 6 months of at most 1,000.00, so the next installment is
-// 968.14, and nothing more is prepaid.
+// row. With the interest-free mortgage due on the 1st over 37 months, so its last installment falls
+// due on 2027-02-01, after the bond's maturity, 5,000.00 on 2025-01-02 buys 5.16 NTN-F maturing on
+// 2027-01-01 at 12% a year, with 25,000.00 owed. On 2025-07-01, 180 days after the purchase and so
+// still at 22.5% of income tax, the 1,000.00 installment leaves 19,000.00 and the 191.15 net coupon
+// is prepaid from it. The coupon comes from the same separate implementation in Python. With the
+// slack ignored, the 18,808.85 left needs all 19 months left to stay at most 1,000.00 a month, so
+// the next installment is 18,808.85 / 19 = 989.94, and nothing more is prepaid.
 func TestACouponDueWithAnInstallmentIsPrepaidAfterIt(t *testing.T) {
 	t.Parallel()
 
-	terms := interestFreeTerms(t)
+	terms := interestFreeTermsOver(t, 37)
 	terms.FirstInstallmentDate = date(t, "2024-02-01")
 	decided := date(t, "2025-01-02")
 
@@ -1179,9 +1403,9 @@ func TestACouponDueWithAnInstallmentIsPrepaidAfterIt(t *testing.T) {
 	i := slices.IndexFunc(got, func(f couponFlow) bool { return f.Date == "2025-07-01" })
 	require.Positive(t, i)
 	assert.Equal(t, []couponFlow{
-		{flow{"2025-06-01", "1000.00", "0.00", "0.00", "0.00", "", "7000.00"}, amountView{}},
-		{flow{"2025-07-01", "1000.00", "0.00", "191.15", "0.00", "", "5808.85"}, amountView{"251.85", "0.00", "55.49", "5.21", "191.15"}},
-		{flow{"2025-08-01", "968.14", "0.00", "0.00", "0.00", "", "4840.71"}, amountView{}},
+		{flow{"2025-06-01", "1000.00", "0.00", "0.00", "0.00", "", "20000.00"}, amountView{}},
+		{flow{"2025-07-01", "1000.00", "0.00", "191.15", "0.00", "", "18808.85"}, amountView{"251.85", "0.00", "55.49", "5.21", "191.15"}},
+		{flow{"2025-08-01", "989.94", "0.00", "0.00", "0.00", "", "17818.91"}, amountView{}},
 	}, got[i-1:i+2])
 }
 

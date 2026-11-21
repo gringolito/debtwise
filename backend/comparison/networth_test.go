@@ -51,16 +51,16 @@ func accruedNetWorths(t *testing.T, s comparison.Scenario, lot bonds.Lot) []stri
 	return out
 }
 
-// With the slack prepaid, prepaying 5,000.00 of the 12,000.00 owed on 2025-01-10 leaves 7,000.00
+// With the slack prepaid, prepaying 5,000.00 of the 24,000.00 owed on 2025-01-10 leaves 19,000.00
 // owed, and the net worth climbs by the 1,000.00 each installment pays off until the mortgage ends
-// on 2025-08-10; from then on the 1,000.00 the owner would still have paid each month is held, up to
-// 5,000.00 on the horizon, which is the scenario's net worth.
+// on 2026-08-10; from then on the 1,000.00 the owner would still have paid each month is held, up to
+// 4,000.00 on the horizon, which is the scenario's net worth.
 func TestAPrepayScenarioHasANetWorthOnEachDate(t *testing.T) {
 	t.Parallel()
 
 	decided := date(t, "2025-01-10")
 	verdicts, err := comparison.Decide(
-		comparison.Mortgage{Terms: interestFreeTerms(t)},
+		comparison.Mortgage{Terms: longInterestFreeTerms(t)},
 		comparison.Market{Quotes: []bonds.Quote{{
 			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
 			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
@@ -72,15 +72,17 @@ func TestAPrepayScenarioHasANetWorthOnEachDate(t *testing.T) {
 	require.Len(t, verdicts, 1)
 
 	assert.Equal(t, []string{
-		"-7000.00", "-6000.00", "-5000.00", "-4000.00", "-3000.00", "-2000.00", "-1000.00", "0.00",
-		"1000.00", "2000.00", "3000.00", "4000.00", "5000.00", "5000.00",
+		"-19000.00", "-18000.00", "-17000.00", "-16000.00", "-15000.00", "-14000.00", "-13000.00",
+		"-12000.00", "-11000.00", "-10000.00", "-9000.00", "-8000.00", "-7000.00", "-6000.00", "-5000.00",
+		"-4000.00", "-3000.00", "-2000.00", "-1000.00", "0.00",
+		"1000.00", "2000.00", "3000.00", "4000.00", "4000.00",
 	}, netWorths(verdicts[0].Prepay))
-	assert.Equal(t, "5000.00", verdicts[0].Prepay.NetWorth.String())
+	assert.Equal(t, "4000.00", verdicts[0].Prepay.NetWorth.String())
 }
 
 // With the slack prepaid, 5,000.00 on 2025-01-10 buys 5.14 NTN-F maturing on 2027-01-01 at 12% a
 // year, 970.884128 each, for 4,990.34. Right after buying, the 9.66 held and the bond at its cost
-// leave the owner 7,000.00 below the 12,000.00 owed, as prepaying does. Until the horizon the bond
+// leave the owner 19,000.00 below the 24,000.00 owed, as prepaying does. Until the horizon the bond
 // is worth its Accrual that day, net of its taxes and fee, and on the horizon its Maturity Value;
 // the last flow's net worth is the scenario's.
 func TestAnInvestScenarioValuesTheBondAtItsAccrualUntilTheHorizon(t *testing.T) {
@@ -89,7 +91,7 @@ func TestAnInvestScenarioValuesTheBondAtItsAccrualUntilTheHorizon(t *testing.T) 
 	decided := date(t, "2025-01-10")
 	maturity := date(t, "2027-01-01")
 	verdicts, err := comparison.Decide(
-		comparison.Mortgage{Terms: interestFreeTerms(t)},
+		comparison.Mortgage{Terms: longInterestFreeTerms(t)},
 		comparison.Market{
 			Quotes: []bonds.Quote{{
 				Bond: bonds.Bond{Type: bonds.NTNF, Maturity: maturity},
@@ -106,9 +108,9 @@ func TestAnInvestScenarioValuesTheBondAtItsAccrualUntilTheHorizon(t *testing.T) 
 	v := verdicts[0]
 	got := netWorths(v.Invest)
 
-	require.Len(t, got, 17)
-	assert.Equal(t, "-7000.00", got[0])
-	assert.Equal(t, "5925.44", got[len(got)-1])
+	require.Len(t, got, 28)
+	assert.Equal(t, "-19000.00", got[0])
+	assert.Equal(t, "4925.44", got[len(got)-1])
 	assert.Equal(t, v.Invest.NetWorth.String(), got[len(got)-1])
 
 	lot := bonds.Lot{
@@ -124,7 +126,7 @@ func TestTheLastFlowsNetWorthIsTheScenariosNetWorth(t *testing.T) {
 
 	decided := date(t, "2025-01-10")
 	verdicts, err := comparison.Decide(
-		comparison.Mortgage{Terms: interestFreeTerms(t)},
+		comparison.Mortgage{Terms: longInterestFreeTerms(t)},
 		comparison.Market{
 			Quotes: []bonds.Quote{
 				{Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")}, Buy: &bonds.Price{Rate: dec(t, "0.12")}},
@@ -195,7 +197,7 @@ func TestAnAmountTooSmallNamesTheMinimumAmountThatBuysAHundredth(t *testing.T) {
 	decided := date(t, "2025-01-10")
 	decide := func(amount string) comparison.Verdict {
 		verdicts, err := comparison.Decide(
-			comparison.Mortgage{Terms: interestFreeTerms(t)},
+			comparison.Mortgage{Terms: longInterestFreeTerms(t)},
 			comparison.Market{
 				Quotes: []bonds.Quote{{
 					Bond: bonds.Bond{Type: bonds.NTNF, Maturity: date(t, "2027-01-01")},

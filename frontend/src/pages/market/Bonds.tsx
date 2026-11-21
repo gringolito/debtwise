@@ -25,7 +25,7 @@ import { bondKinds, bondLabel, bondRate, comparesWith } from "@/lib/bondKinds";
 import { staleSources } from "@/lib/dashboard";
 import { formatDate, formatInstantDate, formatMoney } from "@/lib/format";
 import { useBonds } from "@/lib/marketQueries";
-import { useMortgage } from "@/lib/mortgageQueries";
+import { useMortgage, useMortgageSchedule } from "@/lib/mortgageQueries";
 import { StaleSourcesNote } from "@/pages/marketdata/StaleSourcesNote";
 import { useMarketData } from "@/pages/marketdata/useMarketData";
 
@@ -137,9 +137,10 @@ export function Bonds() {
   const { status } = useMarketData();
   const bonds = useBonds();
   const mortgage = useMortgage().data;
+  const schedule = useMortgageSchedule();
   const id = useId();
 
-  const failed = [status, bonds].filter((query) => query.isError);
+  const failed = [status, bonds, schedule].filter((query) => query.isError);
   if (failed.length > 0) {
     return (
       <ErrorPanel
@@ -152,7 +153,7 @@ export function Bonds() {
   }
   // The shell opens only once the mortgage is loaded and registered.
   if (!mortgage) return null;
-  if (!status.data || !bonds.data) {
+  if (!status.data || !bonds.data || !schedule.data) {
     return (
       <Loading label="Carregando títulos">
         <Skeleton className="h-5 w-96" />
@@ -163,10 +164,11 @@ export function Bonds() {
 
   const refreshedAt = status.data.bonds.refreshed_at;
   const catalogue = bonds.data.bonds;
-  const comparable = catalogue.filter((b) => comparesWith(b.type, mortgage.indexer));
+  const payoff = schedule.data.installments.at(-1)?.due_date;
+  const comparable = catalogue.filter((b) => comparesWith(b, mortgage.indexer, payoff));
   const offered = comparable.filter((b) => b.buy);
   const notOffered = comparable.filter((b) => !b.buy);
-  const others = catalogue.filter((b) => !comparesWith(b.type, mortgage.indexer));
+  const others = catalogue.filter((b) => !comparable.includes(b));
 
   return (
     <div className="flex flex-col gap-6">
