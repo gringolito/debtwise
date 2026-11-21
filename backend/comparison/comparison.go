@@ -32,14 +32,13 @@ type Market struct {
 	IPCA   bonds.IPCA
 }
 
-// Decision asks what to do with Amount on Date: prepay it with Effect, or buy a bond with it. With
-// PrepaySlack, each scenario pays the status quo's installment every month after Date, prepaying
+// Decision asks what to do with Amount today: prepay it with Effect, or buy a bond with it. With
+// PrepaySlack, each scenario pays the status quo's installment every month after today, prepaying
 // what its own installment leaves of it, its slack, on its due date: equal outflow (ADR-0011).
 // Without it, the slack goes to the owner's other spending and no scenario holds or prepays it
 // (ADR-0018).
 type Decision struct {
 	Amount      decimal.Decimal
-	Date        time.Time
 	Effect      mortgage.PrepaymentEffect
 	PrepaySlack bool
 }
@@ -156,17 +155,17 @@ var (
 )
 
 // Decide returns a verdict for every bond on offer that follows the mortgage's indexer (ADR-0007)
-// and matures after the decision's date, in the order of the quotes. today is the day installments
-// start being corrected by projected values after.
+// and matures after today, in the order of the quotes. today is also the day installments start
+// being corrected by projected values after.
 func Decide(m Mortgage, market Market, d Decision, today time.Time) ([]Verdict, error) {
 	var verdicts []Verdict
 
 	for _, q := range market.Quotes {
-		if q.Buy == nil || !q.Bond.Maturity.After(d.Date) || !follows(q.Bond.Type, m.Terms.Indexer) {
+		if q.Buy == nil || !q.Bond.Maturity.After(today) || !follows(q.Bond.Type, m.Terms.Indexer) {
 			continue
 		}
 
-		c := comparer{mortgage: m, market: market, decision: d, today: today, bond: q.Bond}
+		c := comparer{mortgage: m, market: market, decision: d, start: today, today: today, bond: q.Bond}
 
 		v, err := c.verdict(q.Buy.Rate)
 		if err != nil {
@@ -194,14 +193,17 @@ type comparer struct {
 	mortgage Mortgage
 	market   Market
 	decision Decision
-	today    time.Time
-	bond     bonds.Bond
+	// start is when the compared scenarios begin: today for a decision or an early sale check, and
+	// the purchase date for a lot comparison.
+	start time.Time
+	today time.Time
+	bond  bonds.Bond
 }
 
 func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 	v := Verdict{Bond: c.bond, Rate: rate, Indexes: c.indexes()}
 
-	price, priceBy, err := c.bond.PriceOn(rate, c.decision.Date, c.market.IPCA)
+	price, priceBy, err := c.bond.PriceOn(rate, c.start, c.market.IPCA)
 	if err != nil {
 		return unavailable(v, err)
 	}
@@ -239,7 +241,7 @@ func (c comparer) verdict(rate decimal.Decimal) (Verdict, error) {
 
 	v.Advantage = v.Invest.NetWorth.Sub(v.Prepay.NetWorth)
 	v.AdvantageShare, v.NearTie = yardstick(v.Advantage, c.decision.Amount)
-	v.HorizonMonths = wholeMonths(c.decision.Date, c.bond.Maturity)
+	v.HorizonMonths = wholeMonths(c.start, c.bond.Maturity)
 	v.AvoidedCost = statusQuo.Balance.Sub(v.Prepay.OutstandingBalance).Add(v.Prepay.Cash).Sub(c.decision.Amount)
 
 	if !c.decision.PrepaySlack {
@@ -282,7 +284,7 @@ func (c comparer) loweredInstallment(statusQuo mortgage.Planned, prepay Scenario
 	out := LoweredInstallment{ChargesAvoided: zero, PaidLess: zero}
 
 	for _, i := range statusQuo.Installments {
-		if i.DueDate.After(c.decision.Date) {
+		if i.DueDate.After(c.start) {
 			out.ChargesAvoided = out.ChargesAvoided.Add(charges(i.Installment))
 			out.PaidLess = out.PaidLess.Add(i.Amount)
 		}
@@ -306,7 +308,7 @@ func (c comparer) quantity(price decimal.Decimal) decimal.Decimal {
 
 // lot is the bond bought with the decision's amount on its date at rate for price each.
 func (c comparer) lot(rate, price, quantity decimal.Decimal) bonds.Lot {
-	return bonds.Lot{Bond: c.bond, PurchaseDate: c.decision.Date, Rate: rate, UnitPrice: price, Quantity: quantity}
+	return bonds.Lot{Bond: c.bond, PurchaseDate: c.start, Rate: rate, UnitPrice: price, Quantity: quantity}
 }
 
 // invest follows the decision's amount spent on quantity bonds bought at rate for price each, and
@@ -314,7 +316,7 @@ func (c comparer) lot(rate, price, quantity decimal.Decimal) bonds.Lot {
 func (c comparer) invest(statusQuo mortgage.Planned, rate, price, quantity decimal.Decimal) (Scenario, bonds.Valuation, error) {
 	lot := c.lot(rate, price, quantity)
 
-	valuation, err := lot.Value(c.decision.Date, c.market.Taxes, c.market.IPCA, nil)
+	valuation, err := lot.Value(c.start, c.market.Taxes, c.market.IPCA, nil)
 	if err != nil {
 		return Scenario{}, bonds.Valuation{}, err
 	}
@@ -397,7 +399,7 @@ func (c comparer) plan(prepaid decimal.Decimal, prepayments []mortgage.Prepaymen
 	m := c.mortgage
 
 	return m.Terms.Plan(m.Outlook, m.Events, c.today, mortgage.Plan{
-		Start:       c.decision.Date,
+		Start:       c.start,
 		Amount:      prepaid,
 		Effect:      c.decision.Effect,
 		Prepayments: prepayments,
@@ -437,7 +439,7 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 		s.Cash = s.Cash.Add(held)
 	}
 
-	start := on(c.decision.Date)
+	start := on(c.start)
 	start.Invested, start.Sold, start.Prepaid, start.OutstandingBalance = invested, sold, planned.Initial, planned.AtStart
 	hold(start, cash.Add(prepaid.Sub(planned.Initial)))
 
@@ -453,7 +455,7 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 	charged := make(map[int]bool)
 
 	for _, i := range planned.Installments {
-		if !i.DueDate.After(c.decision.Date) {
+		if !i.DueDate.After(c.start) {
 			continue
 		}
 
@@ -468,7 +470,7 @@ func (c comparer) scenario(statusQuo mortgage.Planned, prepaid, invested, cash d
 
 	if c.decision.PrepaySlack {
 		for _, i := range statusQuo.Installments {
-			if !i.DueDate.After(c.decision.Date) || charged[i.Number] {
+			if !i.DueDate.After(c.start) || charged[i.Number] {
 				continue
 			}
 
@@ -504,7 +506,7 @@ func (c comparer) topUp(statusQuo mortgage.Planned, freed map[int]decimal.Decima
 	outflow := make(map[int]decimal.Decimal)
 
 	for _, i := range statusQuo.Installments {
-		if i.DueDate.After(c.decision.Date) {
+		if i.DueDate.After(c.start) {
 			outflow[i.Number] = i.Amount
 		}
 	}

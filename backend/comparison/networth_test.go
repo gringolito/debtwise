@@ -65,7 +65,7 @@ func TestAPrepayScenarioHasANetWorthOnEachDate(t *testing.T) {
 			Bond: bonds.Bond{Type: bonds.LTN, Maturity: date(t, "2027-01-01")},
 			Buy:  &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")},
 		}}},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm, PrepaySlack: true},
+		comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.ShortenTerm, PrepaySlack: true},
 		decided,
 	)
 	require.NoError(t, err)
@@ -97,7 +97,7 @@ func TestAnInvestScenarioValuesTheBondAtItsAccrualUntilTheHorizon(t *testing.T) 
 			}},
 			Taxes: lotTaxes(t),
 		},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.ShortenTerm, PrepaySlack: true},
+		comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.ShortenTerm, PrepaySlack: true},
 		decided,
 	)
 	require.NoError(t, err)
@@ -132,7 +132,7 @@ func TestTheLastFlowsNetWorthIsTheScenariosNetWorth(t *testing.T) {
 			},
 			Taxes: lotTaxes(t),
 		},
-		comparison.Decision{Amount: dec(t, "5000.00"), Date: decided, Effect: mortgage.LowerInstallment},
+		comparison.Decision{Amount: dec(t, "5000.00"), Effect: mortgage.LowerInstallment},
 		decided,
 	)
 	require.NoError(t, err)
@@ -203,7 +203,7 @@ func TestAnAmountTooSmallNamesTheMinimumAmountThatBuysAHundredth(t *testing.T) {
 				}},
 				Taxes: lotTaxes(t),
 			},
-			comparison.Decision{Amount: dec(t, amount), Date: decided, Effect: mortgage.ShortenTerm},
+			comparison.Decision{Amount: dec(t, amount), Effect: mortgage.ShortenTerm},
 			decided,
 		)
 		require.NoError(t, err)

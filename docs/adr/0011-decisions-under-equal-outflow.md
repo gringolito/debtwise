@@ -69,8 +69,8 @@ contract date has nothing to compare with, since there was no balance to prepay.
 
 ## Considered Options
 
-- **Valuing the bond at today's quoted unit price:** rejected. The decision's date can be later
-  than the quote, and Tesouro computes that price from the same rate, so the rate is what carries
+- **Valuing the bond at today's quoted unit price:** rejected. The quote can be from an earlier day
+  than the decision, and Tesouro computes that price from the same rate, so the rate is what carries
   over to another date.
 - **A reinvestment rate for freed cash:** rejected, as the issue's equal outflow rule says. Money
   held until the horizon earns nothing, which is conservative for prepaying.

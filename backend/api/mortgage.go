@@ -261,6 +261,8 @@ func mortgageFailure(err error) error {
 		return huma.Error404NotFound("no such prepayment")
 	case errors.Is(err, mortgage.ErrStatementNotFound):
 		return huma.Error404NotFound("no such statement")
+	case errors.Is(err, mortgage.ErrNotStarted):
+		return huma.Error409Conflict("the mortgage's contract starts after today")
 	default:
 		return err
 	}

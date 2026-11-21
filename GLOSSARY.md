@@ -191,7 +191,7 @@ _Avoid_: Admin fee (the mortgage's monthly fee), brokerage (charged by brokers, 
 ### Comparison
 
 **Decision**:
-A forward-looking comparison of prepaying an amount on a date against buying a bond with it. It
+A forward-looking comparison of prepaying an amount today against buying a bond with it. It
 answers "what should I do with this money?", while the early sale check asks the same of a lot
 already held. The owner asks for one on Comparar, the screen named for the act of comparing.
 _Avoid_: Simulation (suggests free-form what-ifs), recommendation (DebtWise reports; the owner
