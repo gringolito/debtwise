@@ -743,9 +743,9 @@ func TestWithTheSlackIgnoredShorteningTheTermIsWorthNoLessThanLoweringTheInstall
 
 // A decision offers the bonds that follow the mortgage's indexer (ADR-0007): an NTN-B Principal or
 // an NTN-B against an IPCA mortgage, an LTN or an NTN-F against any other. Only bonds on offer,
-// maturing after the decision's date and by the mortgage's payoff, are compared; the 140
-// installments of the mortgage here run to 2035-09-10, after every maturity. Without IPCA index
-// numbers, the VNA of an IPCA+ bond is unknown, so its verdict says so.
+// maturing after today and before the mortgage's payoff, are compared; the 140 installments of the
+// mortgage here run to 2035-09-10, after every maturity. Without IPCA index numbers, the VNA of an
+// IPCA+ bond is unknown, so its verdict says so.
 func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 	t.Parallel()
 
@@ -798,14 +798,15 @@ func TestADecisionComparesTheBondsThatFollowTheMortgagesIndexer(t *testing.T) {
 	}
 }
 
-// A decision compares only the bonds that mature on or before the mortgage's payoff as recorded
+// A decision compares only the bonds that mature before the mortgage's payoff as recorded
 // (ADR-0019): the due date of the last installment once its recorded events are replayed. The
-// interest-free mortgage ends on 2026-01-10, so a bond maturing that day is compared and one
-// maturing the day after isn't. A recorded prepayment that shortens the term moves the payoff
-// earlier: the 2,000.00 prepaid on 2024-06-10 drops 2 of the 24 installments, so the mortgage ends
-// on 2025-11-10 and the NTN-F maturing on 2026-01-01, which the contract's term alone allows, isn't
-// compared. One that lowers the installment keeps the term and the payoff.
-func TestADecisionComparesOnlyTheBondsThatMatureByTheMortgagesPayoff(t *testing.T) {
+// interest-free mortgage ends on 2026-01-10, so a bond maturing the day before is compared and one
+// maturing that day isn't: its Maturity Value would arrive with nothing left to prepay. A recorded
+// prepayment that shortens the term moves the payoff earlier: the 2,000.00 prepaid on 2024-06-10
+// drops 2 of the 24 installments, so the mortgage ends on 2025-11-10 and the NTN-F maturing on
+// 2026-01-01, which the contract's term alone allows, isn't compared. One that lowers the
+// installment keeps the term and the payoff.
+func TestADecisionComparesOnlyTheBondsThatMatureBeforeTheMortgagesPayoff(t *testing.T) {
 	t.Parallel()
 
 	buy := &bonds.Price{Rate: dec(t, "0.12"), UnitPrice: dec(t, "800.00")}
@@ -836,20 +837,20 @@ func TestADecisionComparesOnlyTheBondsThatMatureByTheMortgagesPayoff(t *testing.
 			name: "the contract's term",
 			want: []string{
 				"ltn 2025-06-01", "ltn 2025-11-09", "ltn 2025-11-10", "ltn 2025-11-11", "ntn_f 2026-01-01",
-				"ltn 2026-01-09", "ltn 2026-01-10",
+				"ltn 2026-01-09",
 			},
 		},
 		{
 			name:   "a recorded prepayment that shortens the term",
 			events: prepaid(mortgage.ShortenTerm),
-			want:   []string{"ltn 2025-06-01", "ltn 2025-11-09", "ltn 2025-11-10"},
+			want:   []string{"ltn 2025-06-01", "ltn 2025-11-09"},
 		},
 		{
 			name:   "a recorded prepayment that lowers the installment",
 			events: prepaid(mortgage.LowerInstallment),
 			want: []string{
 				"ltn 2025-06-01", "ltn 2025-11-09", "ltn 2025-11-10", "ltn 2025-11-11", "ntn_f 2026-01-01",
-				"ltn 2026-01-09", "ltn 2026-01-10",
+				"ltn 2026-01-09",
 			},
 		},
 	}
@@ -1379,17 +1380,17 @@ func TestACouponDueOnceNothingIsOwedIsHeld(t *testing.T) {
 }
 
 // A coupon due the same day as an installment is prepaid after it, and the day shows both on one
-// row. With the interest-free mortgage due on the 1st over 36 months, so its last installment falls
-// due on 2027-01-01, the bond's maturity, 5,000.00 on 2025-01-02 buys 5.16 NTN-F maturing then at
-// 12% a year, with 24,000.00 owed. On 2025-07-01, 180 days after the purchase and so still at 22.5%
-// of income tax, the 1,000.00 installment leaves 18,000.00 and the 191.15 net coupon is prepaid
-// from it. The figures come from the same separate implementation in Python. With the slack
-// ignored, the 17,808.85 left fits in 18 months of at most 1,000.00, so the next installment is
-// 989.38, and nothing more is prepaid.
+// row. With the interest-free mortgage due on the 1st over 37 months, so its last installment falls
+// due on 2027-02-01, after the bond's maturity, 5,000.00 on 2025-01-02 buys 5.16 NTN-F maturing on
+// 2027-01-01 at 12% a year, with 25,000.00 owed. On 2025-07-01, 180 days after the purchase and so
+// still at 22.5% of income tax, the 1,000.00 installment leaves 19,000.00 and the 191.15 net coupon
+// is prepaid from it. The coupon comes from the same separate implementation in Python. With the
+// slack ignored, the 18,808.85 left needs all 19 months left to stay at most 1,000.00 a month, so
+// the next installment is 18,808.85 / 19 = 989.94, and nothing more is prepaid.
 func TestACouponDueWithAnInstallmentIsPrepaidAfterIt(t *testing.T) {
 	t.Parallel()
 
-	terms := longInterestFreeTerms(t)
+	terms := interestFreeTermsOver(t, 37)
 	terms.FirstInstallmentDate = date(t, "2024-02-01")
 	decided := date(t, "2025-01-02")
 
@@ -1412,9 +1413,9 @@ func TestACouponDueWithAnInstallmentIsPrepaidAfterIt(t *testing.T) {
 	i := slices.IndexFunc(got, func(f couponFlow) bool { return f.Date == "2025-07-01" })
 	require.Positive(t, i)
 	assert.Equal(t, []couponFlow{
-		{flow{"2025-06-01", "1000.00", "0.00", "0.00", "0.00", "", "19000.00"}, amountView{}},
-		{flow{"2025-07-01", "1000.00", "0.00", "191.15", "0.00", "", "17808.85"}, amountView{"251.85", "0.00", "55.49", "5.21", "191.15"}},
-		{flow{"2025-08-01", "989.38", "0.00", "0.00", "0.00", "", "16819.47"}, amountView{}},
+		{flow{"2025-06-01", "1000.00", "0.00", "0.00", "0.00", "", "20000.00"}, amountView{}},
+		{flow{"2025-07-01", "1000.00", "0.00", "191.15", "0.00", "", "18808.85"}, amountView{"251.85", "0.00", "55.49", "5.21", "191.15"}},
+		{flow{"2025-08-01", "989.94", "0.00", "0.00", "0.00", "", "17818.91"}, amountView{}},
 	}, got[i-1:i+2])
 }
 

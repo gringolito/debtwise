@@ -26,7 +26,7 @@ type decision struct {
 	Date        string    `json:"date" format:"date" doc:"The day the verdicts were computed, which both scenarios prepay or invest the amount on."`
 	Effect      string    `json:"effect" enum:"shorten_term,lower_installment" doc:"What each prepayment changes."`
 	PrepaySlack bool      `json:"prepay_slack" doc:"Whether the comparison assumed the owner prepays the installment's slack every month."`
-	Verdicts    []verdict `json:"verdicts" nullable:"false" doc:"A verdict for every bond on offer that follows the mortgage's indexer and matures after today and by the mortgage's payoff as recorded, in the order of the bond catalogue."`
+	Verdicts    []verdict `json:"verdicts" nullable:"false" doc:"A verdict for every bond on offer that follows the mortgage's indexer and matures after today and before the mortgage's payoff as recorded, in the order of the bond catalogue."`
 }
 
 type verdict struct {
@@ -104,7 +104,7 @@ func registerDecisions(humaAPI huma.API, services Services, now func() time.Time
 		Method:      http.MethodPost,
 		Path:        "/decisions",
 		Summary:     "Compare prepaying an amount with buying a bond",
-		Description: "Compares prepaying the amount today with buying each bond on offer that follows the mortgage's indexer and matures by its payoff, valued on the bond's maturity. It is computed on request and not stored.",
+		Description: "Compares prepaying the amount today with buying each bond on offer that follows the mortgage's indexer and matures before its payoff, valued on the bond's maturity. It is computed on request and not stored.",
 		Tags:        []string{decisionsTag},
 	}, func(ctx context.Context, in *struct{ Body decisionInput }) (*struct{ Body decision }, error) {
 		today := dateOf(now())

@@ -122,7 +122,7 @@ interface Backend {
 function stubBackend(partial: Partial<Backend> = {}, routes: Routes = {}): RecordedRequest[] {
   const backend: Backend = {
     mortgage: trMortgage,
-    payoff: "2035-05-15",
+    payoff: "2035-06-10",
     status: FRESH_STATUS,
     histories: HISTORIES,
     methods: METHODS,
@@ -534,8 +534,8 @@ describe("Títulos", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps the bonds maturing after the payoff with the other bonds", async () => {
-    stubBackend({ payoff: "2030-12-31" });
+  it("keeps the bonds maturing on or after the payoff with the other bonds", async () => {
+    stubBackend({ payoff: "2031-01-01" });
 
     renderAt("/mercado/titulos");
 
@@ -558,8 +558,8 @@ describe("Títulos", () => {
     ]);
   });
 
-  it("compares a bond maturing on the payoff", async () => {
-    stubBackend({ payoff: "2031-01-01" });
+  it("compares a bond maturing the day before the payoff", async () => {
+    stubBackend({ payoff: "2031-01-02" });
 
     renderAt("/mercado/titulos");
 

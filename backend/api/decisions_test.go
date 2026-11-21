@@ -44,8 +44,8 @@ const (
 )
 
 // decisionMortgage is interestFreeMortgage over the given months, still amortizing 1,000.00 a
-// month. A decision only compares the bonds that mature by the mortgage's payoff, the due date of
-// its last installment, 2026-02-10 plus the months less one.
+// month. A decision only compares the bonds that mature before the mortgage's payoff, the due date
+// of its last installment, 2026-02-10 plus the months less one.
 func decisionMortgage(indexer string, months int) string {
 	return amortizingMortgage(indexer, months, 1000)
 }
@@ -715,10 +715,10 @@ func TestAnAmountBelowAHundredthOfTheBondHasNoScenarios(t *testing.T) {
 	}, got)
 }
 
-// A decision compares only the bonds that mature by the mortgage's payoff, the due date of its last
-// installment: the LTN maturing on 2029-01-01 and the NTN-F maturing on 2037-01-01 against a
+// A decision compares only the bonds that mature before the mortgage's payoff, the due date of its
+// last installment: the LTN maturing on 2029-01-01 and the NTN-F maturing on 2037-01-01 against a
 // mortgage paid off on 2028-01-10, 2029-01-10 and 2037-01-10.
-func TestADecisionOnlyComparesBondsMaturingByThePayoff(t *testing.T) {
+func TestADecisionOnlyComparesBondsMaturingBeforeThePayoff(t *testing.T) {
 	t.Parallel()
 
 	type bond struct{ Type, Maturity string }

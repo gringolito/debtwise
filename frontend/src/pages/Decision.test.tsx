@@ -1140,13 +1140,13 @@ describe("a decision that compares no bond", () => {
     );
   });
 
-  it("says no bond on offer follows the indexer and matures by the payoff, and points to those on offer", async () => {
+  it("says no bond on offer follows the indexer and matures before the payoff, and points to those on offer", async () => {
     await compare([]);
 
     const panel = await screen.findByRole("region", { name: "Nenhum título para comparar" });
     expect(
       within(panel).getByText(
-        "Nenhum título à venda acompanha o indexador do seu financiamento e vence entre hoje e a quitação prevista.",
+        "Nenhum título à venda acompanha o indexador do seu financiamento e vence depois de hoje e antes da quitação prevista.",
       ),
     ).toBeInTheDocument();
     expect(within(panel).getByRole("link", { name: "Ver títulos à venda" })).toHaveAttribute(
