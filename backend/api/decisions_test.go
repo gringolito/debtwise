@@ -714,14 +714,14 @@ func TestARejectedDecisionNamesTheRuleItBreaks(t *testing.T) {
 }
 
 // Every decision is dated today, so a mortgage whose contract starts after today has nothing to
-// prepay yet.
+// prepay yet. On the contract date itself, the decision is compared.
 func TestADecisionBeforeTheContractStartsConflictsWithTheMortgage(t *testing.T) {
 	t.Parallel()
 
-	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.January, 9)))
-	do(t, s.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
+	before := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.January, 9)))
+	do(t, before.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
 
-	rec := serve(t, s.handler, http.MethodPost, "/decisions", `{"amount": "5000.00", "effect": "shorten_term"}`)
+	rec := serve(t, before.handler, http.MethodPost, "/decisions", `{"amount": "5000.00", "effect": "shorten_term"}`)
 
 	require.Equal(t, http.StatusConflict, rec.Code, rec.Body.String())
 
@@ -730,4 +730,8 @@ func TestADecisionBeforeTheContractStartsConflictsWithTheMortgage(t *testing.T) 
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &problem))
 	assert.Equal(t, "the mortgage's contract starts after today", problem.Detail)
+
+	signed := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.January, 10)))
+	do(t, signed.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
+	assert.Equal(t, "2026-01-10", signed.decide(t, `{"amount": "5000.00", "effect": "shorten_term"}`).Date)
 }
