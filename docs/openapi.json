@@ -367,7 +367,7 @@
             "type": "boolean"
           },
           "verdicts": {
-            "description": "A verdict for every bond on offer that follows the mortgage's indexer and matures after the date, in the order of the bond catalogue.",
+            "description": "A verdict for every bond on offer that follows the mortgage's indexer and matures after today and by the mortgage's payoff as recorded, in the order of the bond catalogue.",
             "items": {
               "$ref": "#/components/schemas/Verdict"
             },
@@ -2462,7 +2462,7 @@
     },
     "/decisions": {
       "post": {
-        "description": "Compares prepaying the amount today with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. It is computed on request and not stored.",
+        "description": "Compares prepaying the amount today with buying each bond on offer that follows the mortgage's indexer and matures by its payoff, valued on the bond's maturity. It is computed on request and not stored.",
         "operationId": "decide",
         "requestBody": {
           "content": {

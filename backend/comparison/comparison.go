@@ -155,13 +155,16 @@ var (
 )
 
 // Decide returns a verdict for every bond on offer that follows the mortgage's indexer (ADR-0007)
-// and matures after today, in the order of the quotes. today is also the day installments start
-// being corrected by projected values after.
+// and matures after today and by the mortgage's payoff as recorded (ADR-0019), in the order of the
+// quotes. today is also the day installments start being corrected by projected values after.
 func Decide(m Mortgage, market Market, d Decision, today time.Time) ([]Verdict, error) {
 	var verdicts []Verdict
 
+	payoff := m.Terms.Payoff(m.Outlook, m.Events, today)
+
 	for _, q := range market.Quotes {
-		if q.Buy == nil || !q.Bond.Maturity.After(today) || !follows(q.Bond.Type, m.Terms.Indexer) {
+		maturity := q.Bond.Maturity
+		if q.Buy == nil || !maturity.After(today) || maturity.After(payoff) || !follows(q.Bond.Type, m.Terms.Indexer) {
 			continue
 		}
 

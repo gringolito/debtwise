@@ -88,6 +88,12 @@ func (t Terms) Drifts(outlook indexes.Outlook, events Events, today time.Time) [
 	return r.drifts
 }
 
+// Payoff returns the date the schedule Schedule replays is paid off: the due date of its last
+// installment, or that of the event that paid it off before its first.
+func (t Terms) Payoff(outlook indexes.Outlook, events Events, today time.Time) time.Time {
+	return t.replay(outlook, events, today).payoffDate()
+}
+
 // replayer replays a schedule once, keeping its state between installments.
 type replayer struct {
 	terms   Terms
