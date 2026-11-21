@@ -20,8 +20,7 @@ import {
 import { formatMoney, formatNumber } from "@/lib/format";
 import { projectedByText } from "@/lib/projectionMethods";
 import { NoComparisonPanel } from "@/pages/decision/NoComparisonPanel";
-import { ScenarioDetails } from "@/pages/decision/ScenarioDetails";
-import { Scenarios } from "@/pages/decision/Scenarios";
+import { ScenariosPrototype } from "@/pages/decision/Scenarios.prototype";
 import { UncomparedBonds } from "@/pages/decision/UncomparedBonds";
 import { VerdictPanel } from "@/pages/decision/VerdictPanel";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
@@ -49,10 +48,12 @@ function Details({ verdict }: { verdict: ComparedVerdict }) {
         ))}
       </GroupedList>
       {note && <p className="px-4 text-footnote text-muted-foreground">{note}</p>}
-      <Scenarios>
-        <ScenarioDetails title="Investir" scenario={verdict.invest} />
-        <ScenarioDetails title="Amortizar" scenario={verdict.prepay} />
-      </Scenarios>
+      <ScenariosPrototype
+        scenarios={[
+          { title: "Investir", scenario: verdict.invest },
+          { title: "Amortizar", scenario: verdict.prepay },
+        ]}
+      />
     </GroupedListSection>
   );
 }

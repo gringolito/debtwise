@@ -71,10 +71,15 @@ export function marketDataOf(checks: EarlySaleCheck[]): VerdictMarketData | unde
  */
 export interface EffectSearch {
   efeito?: "reduzir-prestacao";
+  /** PROTOTYPE: the Scenarios variant, kept through the route's search validation. */
+  variant?: string;
 }
 
 export function validateEffectSearch(search: Record<string, unknown>): EffectSearch {
-  return search.efeito === "reduzir-prestacao" ? { efeito: "reduzir-prestacao" } : {};
+  const variant = typeof search.variant === "string" ? search.variant : undefined;
+  return search.efeito === "reduzir-prestacao"
+    ? { efeito: "reduzir-prestacao", variant }
+    : { variant };
 }
 
 export function effectOf(search: EffectSearch): PrepaymentEffect {

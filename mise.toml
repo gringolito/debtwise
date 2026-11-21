@@ -35,6 +35,19 @@ trap 'kill 0' EXIT
 wait
 '''
 
+[tasks."prototype:scenarios"]
+description = "PROTOTYPE: Ver cenários as a modal; open /comparar?variant=atual|abas|lado|resumo|painel"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+trap 'kill 0' EXIT
+db="${PROTOTYPE_DB:-prototype-wipe-me.db}"
+[ -f "backend/$db" ] || cp backend/debtwise.db "backend/$db"
+(cd backend && PORT=8090 DB_PATH="$db" go run ./cmd/server) &
+(cd frontend && API_URL=http://localhost:8090 pnpm run dev --port 5180 --open '/comparar?variant=abas') &
+wait
+'''
+
 # ---------------------------------------------------------------------------
 # Full stack in Docker (build from source; drop a .env and run)
 # ---------------------------------------------------------------------------

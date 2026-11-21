@@ -8,8 +8,7 @@ import { useEarlySaleChecks } from "@/lib/earlySaleQueries";
 import { formatDate, formatMoney } from "@/lib/format";
 import { checkOf, saleGain } from "@/lib/investments";
 import type { PrepaymentEffect } from "@/lib/mortgageEvents";
-import { ScenarioDetails } from "@/pages/decision/ScenarioDetails";
-import { Scenarios } from "@/pages/decision/Scenarios";
+import { ScenariosPrototype } from "@/pages/decision/Scenarios.prototype";
 import { EffectControl } from "@/pages/investments/EffectControl";
 import { SaleGainAmount } from "@/pages/investments/SaleGainAmount";
 import { StaleNote } from "@/pages/marketdata/StaleNote";
@@ -97,10 +96,12 @@ function Body({ lot, effect }: { lot: LotValued; effect: PrepaymentEffect }) {
       <hr />
       <Basis check={check} />
       {check.hold && check.sell && (
-        <Scenarios>
-          <ScenarioDetails title="Manter" scenario={check.hold} />
-          <ScenarioDetails title="Vender" scenario={check.sell} />
-        </Scenarios>
+        <ScenariosPrototype
+          scenarios={[
+            { title: "Manter", scenario: check.hold },
+            { title: "Vender", scenario: check.sell },
+          ]}
+        />
       )}
     </>
   );

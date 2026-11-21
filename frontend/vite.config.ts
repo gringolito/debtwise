@@ -13,7 +13,7 @@ export default defineConfig({
   server: {
     // The local dev loop runs the API host-native; in the images Caddy proxies /api instead.
     proxy: {
-      "/api": "http://localhost:8080",
+      "/api": process.env.API_URL ?? "http://localhost:8080",
     },
   },
   test: {

@@ -63,6 +63,9 @@ const dialogContentVariants = cva(
          * frame and without animation, so the modal reads as one changing its content.
          */
         feedback: "max-w-[520px] text-center",
+        // PROTOTYPE: room for the scenarios' cash flow tables.
+        wide: "duration-150 sm:max-w-6xl sm:data-open:animate-in sm:data-open:fade-in-0 sm:data-open:zoom-in-95 sm:data-closed:animate-out sm:data-closed:fade-out-0 sm:data-closed:zoom-out-95 motion-safe:max-sm:data-open:animate-sheet-in motion-safe:max-sm:data-closed:animate-sheet-out",
+        full: "duration-150 sm:h-full sm:max-w-[calc(100%-4rem)] sm:overflow-hidden sm:data-open:animate-in sm:data-open:fade-in-0 sm:data-open:zoom-in-95 sm:data-closed:animate-out sm:data-closed:fade-out-0 sm:data-closed:zoom-out-95 motion-safe:max-sm:data-open:animate-sheet-in motion-safe:max-sm:data-closed:animate-sheet-out",
       },
     },
     defaultVariants: {
