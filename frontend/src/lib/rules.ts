@@ -5,7 +5,6 @@ import { type BondType, bondKinds } from "@/lib/bondKinds";
 export const ruleMessages: Record<Rule, string> = {
   not_positive: "Precisa ser maior que zero.",
   before_contract: "Não pode ser antes da data do contrato.",
-  before_today: "Não pode ser antes de hoje.",
   no_row_from_first_installment: "Uma mudança precisa valer desde a primeira prestação.",
   repeated_date: "Outra mudança já começa nesta data.",
   after_today: "Não pode ser depois de hoje.",

@@ -304,11 +304,15 @@ describe("arriving with an amount in the address", () => {
 });
 
 describe("the question as a sentence", () => {
-  it("reads today and a shorter term until the owner changes them, and leaves the date to the server", async () => {
+  it("reads today as plain text, asks for no date, and a shorter term until the owner changes it", async () => {
     const requests = await compare([ltnVerdict], "10.000,00");
 
     await verdictPanel();
-    expect(screen.getByRole("button", { name: "Data: hoje" })).toHaveTextContent("hoje");
+    expect(screen.queryByRole("button", { name: /^Data/ })).toBeNull();
+    expect(screen.queryByLabelText("Data")).toBeNull();
+    expect(screen.getByRole("form", { name: "Decisão" })).toHaveTextContent(
+      "Se eu tiver R$ hoje para",
+    );
     expect(screen.getByLabelText("Efeito")).toHaveDisplayValue("reduzir o prazo");
     expect(asked(requests)).toEqual([{ amount: "10000.00", effect: "shorten_term" }]);
   });
@@ -322,86 +326,20 @@ describe("the question as a sentence", () => {
     expect(screen.getByLabelText("Valor")).toHaveValue("1.250.000,5");
   });
 
-  it("sends the date the owner typed as dd/mm/aaaa and the effect they chose", async () => {
+  it("sends the effect the owner chose", async () => {
     const requests = stubDecisions(() =>
-      Response.json(decisionOf([ltnVerdict], { effect: "lower_installment", date: "2026-12-01" })),
+      Response.json(decisionOf([ltnVerdict], { effect: "lower_installment" })),
     );
     renderAt("/comparar");
     await sentence();
 
     fill("Valor", "2.500,50");
-    fireEvent.click(screen.getByRole("button", { name: "Data: hoje" }));
-    fill("Data", "01/12/2026");
-    fireEvent.blur(screen.getByLabelText("Data"));
     fill("Efeito", "lower_installment");
-
-    expect(
-      screen.getByRole("button", { name: "Data: 01/12/2026" }).parentElement,
-    ).toHaveTextContent("Se eu tiver R$ em 01/12/2026 para");
     expect(screen.getByLabelText("Efeito")).toHaveDisplayValue("reduzir a prestação");
     fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
 
     await verdictPanel();
-    expect(asked(requests)).toEqual([
-      { amount: "2500.50", date: "2026-12-01", effect: "lower_installment" },
-    ]);
-  });
-
-  it("returns to today once the owner clears the date", async () => {
-    stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
-    renderAt("/comparar");
-    await sentence();
-
-    fireEvent.click(screen.getByRole("button", { name: "Data: hoje" }));
-    fill("Data", "01/12/2026");
-    fireEvent.blur(screen.getByLabelText("Data"));
-    fireEvent.click(screen.getByRole("button", { name: "Data: 01/12/2026" }));
-    fill("Data", "");
-    fireEvent.blur(screen.getByLabelText("Data"));
-
-    expect(screen.getByRole("button", { name: "Data: hoje" })).toBeInTheDocument();
-  });
-
-  it("says a date that does not exist does not, while the owner is typing it", async () => {
-    stubDecisions(() => Response.json(decisionOf([ltnVerdict])));
-    renderAt("/comparar");
-    await sentence();
-
-    fireEvent.click(screen.getByRole("button", { name: "Data: hoje" }));
-    fill("Data", "31/02/2026");
-
-    expect(screen.getByText("Essa data não existe.")).toBeInTheDocument();
-    expect(screen.getByLabelText("Data")).toBeInvalid();
-    expect(screen.getByLabelText("Data")).toHaveAccessibleDescription("Essa data não existe.");
-
-    fill("Data", "28/02/2026");
-    expect(screen.queryByText("Essa data não existe.")).toBeNull();
-  });
-
-  it("compares no date it was not given: one that does not exist stays to be fixed", async () => {
-    const requests = stubDecisions(() =>
-      Response.json(decisionOf([ltnVerdict], { date: "2026-02-28" })),
-    );
-    renderAt("/comparar");
-    await sentence();
-    fill("Valor", "10000");
-    fireEvent.click(screen.getByRole("button", { name: "Data: hoje" }));
-    fill("Data", "31/02/2026");
-
-    fireEvent.blur(screen.getByLabelText("Data"));
-    fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
-
-    expect(screen.getByLabelText("Data")).toHaveDisplayValue("31/02/2026");
-    expect(screen.getByText("Essa data não existe.")).toBeInTheDocument();
-    expect(asked(requests)).toEqual([]);
-
-    fill("Data", "28/02/2026");
-    fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
-
-    await verdictPanel();
-    expect(asked(requests)).toEqual([
-      { amount: "10000", date: "2026-02-28", effect: "shorten_term" },
-    ]);
+    expect(asked(requests)).toEqual([{ amount: "2500.50", effect: "lower_installment" }]);
   });
 
   it("starts with the slack switch off on every visit and asks without prepay_slack", async () => {
@@ -639,13 +577,13 @@ describe("the verdict panel", () => {
     expect(outcome(panel, "Se amortizar").slice(2, 4)).toEqual(["No fim, você tem", "R$ 0,00"]);
   });
 
-  it("says when the amount is for a later date than today", async () => {
+  it("says the day a verdict was computed on once it is no longer today", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date(2026, 10, 12, 9, 30));
-    await compare([ltnVerdict], "10000", { date: "2026-12-01" });
+    vi.setSystemTime(new Date(2026, 10, 13, 0, 10));
+    await compare([ltnVerdict], "10000", { date: "2026-11-12" });
 
     const panel = await verdictPanel();
-    expect(outcome(panel, "Se amortizar")[1]).toBe("R$ 10.000,00 em 01/12/2026");
+    expect(outcome(panel, "Se amortizar")[1]).toBe("R$ 10.000,00 em 12/11/2026");
   });
 
   it("notes the market data the verdict reads that is not fresh", async () => {
@@ -1208,7 +1146,7 @@ describe("a decision that compares no bond", () => {
     const panel = await screen.findByRole("region", { name: "Nenhum título para comparar" });
     expect(
       within(panel).getByText(
-        "Nenhum título à venda acompanha o indexador do seu financiamento e vence depois da data escolhida.",
+        "Nenhum título à venda acompanha o indexador do seu financiamento e vence depois de hoje.",
       ),
     ).toBeInTheDocument();
     expect(within(panel).getByRole("link", { name: "Ver títulos à venda" })).toHaveAttribute(
@@ -1219,11 +1157,11 @@ describe("a decision that compares no bond", () => {
 });
 
 describe("a decision the server rejects", () => {
-  it("names the rule each rejected value breaks under the sentence", async () => {
+  it("names the rule or field each rejected value breaks under the sentence", async () => {
     stubDecisions(() =>
       problem(422, "Unprocessable Entity", "validation failed", [
         { location: "body.amount", message: "must be greater than zero", code: "not_positive" },
-        { location: "body.date", message: "must not be before today", code: "before_today" },
+        { location: "body.effect", message: "expected value to be one of" },
       ]),
     );
     renderAt("/comparar");
@@ -1231,15 +1169,15 @@ describe("a decision the server rejects", () => {
     fill("Valor", "0");
     fireEvent.click(screen.getByRole("button", { name: "Comparar" }));
 
-    await screen.findByText("A data não pode ser antes de hoje.");
+    await screen.findByText("Escolha o que a amortização muda.");
     expect(screen.getByLabelText("Valor")).toHaveAccessibleDescription(
       "Informe um valor maior que zero.",
     );
     expect(screen.getByLabelText("Valor")).toBeInvalid();
-    expect(screen.getByRole("button", { name: "Data: hoje" })).toHaveAccessibleDescription(
-      "A data não pode ser antes de hoje.",
+    expect(screen.getByLabelText("Efeito")).toHaveAccessibleDescription(
+      "Escolha o que a amortização muda.",
     );
-    expect(screen.getByLabelText("Efeito")).toBeValid();
+    expect(screen.getByLabelText("Efeito")).toBeInvalid();
   });
 
   it("explains an amount the schema rejects by its field", async () => {

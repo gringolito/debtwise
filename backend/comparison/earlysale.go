@@ -65,7 +65,7 @@ func CheckEarlySales(m Mortgage, market Market, lots []bonds.Lot, effect mortgag
 			sell = &p
 		}
 
-		c := comparer{mortgage: m, market: market, decision: Decision{Date: today, Effect: effect}, today: today, bond: l.Bond}
+		c := comparer{mortgage: m, market: market, decision: Decision{Effect: effect}, start: today, today: today, bond: l.Bond}
 
 		check, err := c.earlySale(l, sell)
 		if err != nil {
@@ -100,13 +100,13 @@ func rank(u Unavailable) int {
 func (c comparer) earlySale(l bonds.Lot, sell *bonds.Price) (EarlySaleCheck, error) {
 	check := EarlySaleCheck{Lot: l, SellPrice: sell, Indexes: c.indexes()}
 
-	if !l.Bond.Maturity.After(c.decision.Date) {
+	if !l.Bond.Maturity.After(c.start) {
 		check.Unavailable = Matured
 
 		return check, nil
 	}
 
-	valuation, err := l.Value(c.decision.Date, c.market.Taxes, c.market.IPCA, sell)
+	valuation, err := l.Value(c.start, c.market.Taxes, c.market.IPCA, sell)
 
 	switch {
 	case errors.Is(err, bonds.ErrMissingIPCANumber):
@@ -129,7 +129,7 @@ func (c comparer) earlySale(l bonds.Lot, sell *bonds.Price) (EarlySaleCheck, err
 	var coupons []bonds.CouponPayment
 
 	for _, coupon := range valuation.Coupons {
-		if coupon.Date.After(c.decision.Date) {
+		if coupon.Date.After(c.start) {
 			coupons = append(coupons, coupon)
 			methods = append(methods, coupon.ProjectedBy)
 		}

@@ -88,7 +88,7 @@ type search struct {
 
 // at returns the advantage of buying the bond at rate.
 func (s search) at(rate decimal.Decimal) (point, error) {
-	price, _, err := s.bond.PriceOn(rate, s.decision.Date, s.market.IPCA)
+	price, _, err := s.bond.PriceOn(rate, s.start, s.market.IPCA)
 	if err != nil {
 		return point{}, err
 	}
@@ -244,7 +244,7 @@ func (s search) jump(b bracket) (decimal.Decimal, error) {
 	for hi.Sub(lo).Cmp(rateStep) > 0 {
 		rate := lo.Add(hi.Sub(lo).Mul(half)).TruncateBreakEvenRate()
 
-		price, _, err := s.bond.PriceOn(rate, s.decision.Date, s.market.IPCA)
+		price, _, err := s.bond.PriceOn(rate, s.start, s.market.IPCA)
 		if err != nil {
 			return decimal.Decimal{}, err
 		}

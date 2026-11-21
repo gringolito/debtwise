@@ -217,7 +217,7 @@ export type Decision = {
      */
     amount: string;
     /**
-     * The date the amount is prepaid or invested on.
+     * The day the verdicts were computed, which both scenarios prepay or invest the amount on.
      */
     date: string;
     /**
@@ -239,10 +239,6 @@ export type DecisionInput = {
      * The amount to prepay or invest, in reais, as a decimal string.
      */
     amount: string;
-    /**
-     * The date the amount is prepaid or invested on. Today when absent; it must not be before today.
-     */
-    date?: string;
     /**
      * What prepaying changes: shorten_term keeps the installment and ends the mortgage earlier; lower_installment keeps the end date and lowers the installments. Every prepayment of both scenarios has it.
      */
@@ -352,7 +348,7 @@ export type ErrorDetail = {
     /**
      * The rule of the mortgage or of a lot the value breaks, present when it breaks one rather than the schema. message says what the rule asks in English.
      */
-    code?: 'not_positive' | 'before_contract' | 'before_today' | 'no_row_from_first_installment' | 'repeated_date' | 'below_minimum' | 'not_after_purchase' | 'not_maturity_day' | 'after_today';
+    code?: 'not_positive' | 'before_contract' | 'no_row_from_first_installment' | 'repeated_date' | 'below_minimum' | 'not_after_purchase' | 'not_maturity_day' | 'after_today';
     /**
      * Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'
      */

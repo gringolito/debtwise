@@ -49,7 +49,7 @@ export const saveDefaultComparison = <ThrowOnError extends boolean = false>(opti
 /**
  * Compare prepaying an amount with buying a bond
  *
- * Compares prepaying the amount on the date with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. It is computed on request and not stored.
+ * Compares prepaying the amount today with buying each bond on offer that follows the mortgage's indexer, valued on the bond's maturity. It is computed on request and not stored.
  */
 export const decide = <ThrowOnError extends boolean = false>(options: Options<DecideData, ThrowOnError>) => (options.client ?? client).post<DecideResponses, DecideErrors, ThrowOnError>({
     url: '/decisions',

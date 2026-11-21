@@ -544,7 +544,7 @@ func TestAnIPCABondVerdictWithoutTheIPCAItFollowsIsUnavailable(t *testing.T) {
 	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
 	do(t, s.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "ipca"), http.StatusOK)
 
-	got := s.decide(t, `{"amount": "5000.00", "date": "2026-11-03", "effect": "lower_installment"}`)
+	got := s.decide(t, `{"amount": "5000.00", "effect": "lower_installment"}`)
 	status := s.status(t)
 
 	var ipcaStatuses []indexStatus
@@ -557,7 +557,7 @@ func TestAnIPCABondVerdictWithoutTheIPCAItFollowsIsUnavailable(t *testing.T) {
 
 	marketData := verdictMarketData{Bonds: status.Bonds, Focus: status.Focus, Indexes: ipcaStatuses}
 	assert.Equal(t, decisionResult{
-		Amount: "5000.00", Date: "2026-11-03", Effect: "lower_installment",
+		Amount: "5000.00", Date: "2026-10-28", Effect: "lower_installment",
 		Verdicts: []decisionVerdict{
 			{
 				Type: "ntn_b_principal", Maturity: "2032-08-15", Rate: "0.0672", Unavailable: "missing_ipca",
@@ -659,9 +659,9 @@ func TestADecisionFailsWithoutAMortgageOrWithAnInvalidRequest(t *testing.T) {
 		want []errorDetail
 	}{
 		{
-			name: "date before today",
-			body: `{"amount": "5000.00", "date": "2026-10-27", "effect": "shorten_term"}`,
-			want: []errorDetail{{"body.date", "must not be before today"}},
+			name: "a date",
+			body: `{"amount": "5000.00", "date": "2026-11-03", "effect": "shorten_term"}`,
+			want: []errorDetail{{"body.date", "unexpected property"}},
 		},
 		{
 			name: "zero amount",
@@ -696,14 +696,13 @@ func TestADecisionFailsWithoutAMortgageOrWithAnInvalidRequest(t *testing.T) {
 	}
 }
 
-func TestADecisionDatedBeforeTodayNamesTheRuleItBreaks(t *testing.T) {
+func TestARejectedDecisionNamesTheRuleItBreaks(t *testing.T) {
 	t.Parallel()
 
 	s := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.October, 28)))
 	do(t, s.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
 
-	rec := serve(t, s.handler, http.MethodPost, "/decisions",
-		`{"amount": "0.00", "date": "2026-10-27", "effect": "shorten_term"}`)
+	rec := serve(t, s.handler, http.MethodPost, "/decisions", `{"amount": "0.00", "effect": "shorten_term"}`)
 
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code, rec.Body.String())
 
@@ -711,8 +710,28 @@ func TestADecisionDatedBeforeTodayNamesTheRuleItBreaks(t *testing.T) {
 		Errors []ruleDetail `json:"errors"`
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &problem))
-	assert.Equal(t, []ruleDetail{
-		{"body.amount", "not_positive"},
-		{"body.date", "before_today"},
-	}, problem.Errors)
+	assert.Equal(t, []ruleDetail{{"body.amount", "not_positive"}}, problem.Errors)
+}
+
+// Every decision is dated today, so a mortgage whose contract starts after today has nothing to
+// prepay yet. On the contract date itself, the decision is compared.
+func TestADecisionBeforeTheContractStartsConflictsWithTheMortgage(t *testing.T) {
+	t.Parallel()
+
+	before := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.January, 9)))
+	do(t, before.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
+
+	rec := serve(t, before.handler, http.MethodPost, "/decisions", `{"amount": "5000.00", "effect": "shorten_term"}`)
+
+	require.Equal(t, http.StatusConflict, rec.Code, rec.Body.String())
+
+	var problem struct {
+		Detail string `json:"detail"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &problem))
+	assert.Equal(t, "the mortgage's contract starts after today", problem.Detail)
+
+	signed := newServer(t, sgsWithRows(nil), quotingRadar(), onDay(date(2026, time.January, 10)))
+	do(t, signed.handler, http.MethodPut, "/mortgage", fmt.Sprintf(interestFreeMortgage, "none"), http.StatusOK)
+	assert.Equal(t, "2026-01-10", signed.decide(t, `{"amount": "5000.00", "effect": "shorten_term"}`).Date)
 }
