@@ -23,7 +23,7 @@ type decisionInput struct {
 
 type decision struct {
 	Amount      string    `json:"amount" doc:"The amount prepaid or invested, in reais, as a decimal string."`
-	Date        string    `json:"date" format:"date" doc:"The date the amount is prepaid or invested on: today."`
+	Date        string    `json:"date" format:"date" doc:"The day the verdicts were computed, which both scenarios prepay or invest the amount on."`
 	Effect      string    `json:"effect" enum:"shorten_term,lower_installment" doc:"What each prepayment changes."`
 	PrepaySlack bool      `json:"prepay_slack" doc:"Whether the comparison assumed the owner prepays the installment's slack every month."`
 	Verdicts    []verdict `json:"verdicts" nullable:"false" doc:"A verdict for every bond on offer that follows the mortgage's indexer and matures after the date, in the order of the bond catalogue."`

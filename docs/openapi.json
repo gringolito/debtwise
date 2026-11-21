@@ -350,7 +350,7 @@
             "type": "string"
           },
           "date": {
-            "description": "The date the amount is prepaid or invested on: today.",
+            "description": "The day the verdicts were computed, which both scenarios prepay or invest the amount on.",
             "format": "date",
             "type": "string"
           },

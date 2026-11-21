@@ -217,7 +217,7 @@ export type Decision = {
      */
     amount: string;
     /**
-     * The date the amount is prepaid or invested on: today.
+     * The day the verdicts were computed, which both scenarios prepay or invest the amount on.
      */
     date: string;
     /**
